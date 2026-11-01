@@ -12,11 +12,30 @@
 
 Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. The Daily Log is currently the only tab. The tab bar arrives with the second one, because a one-tab bar is clutter. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
 
-**App menu (#15).** The ☰ button in the Daily Log header opens the app menu, a sheet rather than a drawer. It holds the application-level operations, which stay off the day itself so they don't compete with it:
+## Layout layers (#19)
+
+Every main screen stacks three layers, top to bottom. Each control belongs to one layer only.
+
+| Layer | Owned by | Contains | Rules |
+|---|---|---|---|
+| **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu) on the left, then the app name | Rendered by the layout, never by a screen. Fixed at the top, outside any scroll view. Respects the top safe area. 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. |
+| **Screen header** | The screen | For the Daily Log: the date row, then the day line (see below) | Scrolls with the content. Screens never add shell controls (menu, app title) to it. |
+| **Content** | The screen | For the Daily Log: **Do this next**, measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
+
+**Daily Log header**, at most three compact rows:
+1. `‹ date ▾ ›`, plus **Today** at the right when another date is open.
+2. The day title (26 pt) with the day-type chip on the same row. If both don't fit, the chip wraps below, right-aligned. Neither truncates.
+3. Progress text and the progress bar on one line.
+
+**Vertical budget.** On a 390 × 844 phone, the **Do this next** card starts within **200 px** of the top of the viewport, app bar included. `e2e/app-shell.spec.ts` measures it. A change that pushes the card lower has to change this contract first.
+
+**Modal routes** (`/import`, `/configure`) are tasks rather than places. They cover the shell and have their own header (Cancel or Close). They don't show the app bar.
+
+**App menu (#15).** The ☰ in the app bar opens the app menu, a sheet rather than a drawer. It holds the application-level operations, which stay off the day so they don't compete with it:
 
 | Item | Does |
 |---|---|
-| **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the day with nothing changed. A selection opens `/import` (review, contract 06), dated from the open day. |
+| **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
 
@@ -24,7 +43,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 
 | Route (Expo Router) | Surface | Purpose |
 |---|---|---|
-| `/` (`?date=`) | **Daily Log** tab, the launch screen (opens on today) | One day of the continuous log: resolved plan, measurements, targets, recorded observations. The ☰ app menu is in its header. |
+| `/` (`?date=`) | **Daily Log** tab, the launch screen (opens on today) | One day of the continuous log: resolved plan, measurements, targets, recorded observations. Rendered inside the app shell. |
 | `/(tabs)/progress` | **Progress** tab | Goal progress, measurement trend, recent days (read-mostly) |
 | `/(tabs)/plan` | **Plan** tab | Read-only week overview of the loaded plan, plus plan-package actions (import, replace, export data) |
 | Measure sheet | Sheet | Enter a value for one measurement (numeric keypad) |
@@ -33,7 +52,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
 | `/import` | Modal | Screenshot import (contract 06) |
 
-The log shows **one day at a time**. Header: `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).
+The log shows **one day at a time**. Its screen header (see Layout layers): `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).
 
 ## Interaction rules
 

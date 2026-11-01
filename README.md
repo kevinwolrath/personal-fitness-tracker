@@ -21,6 +21,7 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `fixtures/plans/` | Generic plans for tests. |
 | `src/plan/` | Schema (zod mirror of `plan.schema.json`), validation, date helpers, `resolveDay`. Pure and unit-tested. |
 | `src/storage/` | `TrackingStore` interface: `sqliteStore` (native), `keyValueStore` (web), `openStore[.web].ts` selects one. |
+| `src/features/shell/` | App shell (contract 02 "Layout layers"): the persistent app bar and the app menu (import, configure, export). |
 | `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
 | `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
 | `src/features/import/` | Screenshot import flow. |
@@ -30,8 +31,8 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `src/features/configure/` | Configure-with-AI screen. |
 | `src/export/` | Full-history JSON export (`pft-export` v1) and its inverse for restore. |
 | `src/platform/` | Native/web adapters for secure storage and files/sharing. |
-| `src/ui/` | Theme tokens and platform adapters (`Sheet`, `PhoneFrame`, `haptics`). |
-| `app/` | Expo Router routes. Kept thin. |
+| `src/ui/` | Theme tokens, shared UI (`Toast`) and platform adapters (`Sheet`, `ConfirmDialog`, `PhoneFrame`, `haptics`). |
+| `app/` | Expo Router routes. Kept thin. Main screens sit in the `(main)` group, whose layout renders the app shell. |
 
 ## Run
 

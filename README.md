@@ -84,7 +84,9 @@ This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `
 
 ## Screenshot import
 
-**Import from screenshots** (on any editable day) reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
+**Import from screenshots** (in the ☰ menu) opens your photo library, so you can pick several screenshots at once. It reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
+
+**Export all data** (also in the ☰ menu) asks first, then saves your complete history as one JSON file: the share sheet on a phone, a download on the web.
 
 ## Today: do this next
 
@@ -94,7 +96,7 @@ Tap any exercise for an illustrated guide: step-by-step pictures, the equipment 
 
 ## Configure with AI
 
-Daily Log → **Configure with AI**. Copy the instructions into ChatGPT or Claude, talk through what you want to change (diet, equipment, injuries, schedule, goals), and paste back the update it gives you. The app validates it, shows exactly what will change, and applies it only when you tap **Apply update**. Sections the update doesn't mention are left exactly as they were, and the last change can be undone. See [contract 07](docs/design-contracts/07-ai-configuration.md).
+Daily Log → ☰ → **Configure with AI**. Copy the instructions into ChatGPT or Claude, talk through what you want to change (diet, equipment, injuries, schedule, goals), and paste back the update it gives you. The app validates it, shows exactly what will change, and applies it only when you tap **Apply update**. Sections the update doesn't mention are left exactly as they were, and the last change can be undone. See [contract 07](docs/design-contracts/07-ai-configuration.md).
 
 ## Changing the plan
 

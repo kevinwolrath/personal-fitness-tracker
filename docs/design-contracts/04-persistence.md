@@ -2,7 +2,7 @@
 
 ## Ownership
 
-- **All data belongs to the user and lives on the device.** V1 has no accounts, network calls, analytics or telemetry.
+- **All data belongs to the user and lives on the device.** V1 has no accounts, backend, analytics or telemetry. The only network call is user-initiated screenshot reading with the user's own API key (contract 06).
 - There are two kinds of data, and they never mix:
   - **Plan package**: authored content. The app reads it and never edits it. It can be replaced by importing a new package.
   - **User records**: what happened. They're written only by user actions and never derived from or embedded in the plan.
@@ -22,7 +22,8 @@
 |---|---|---|
 | `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`. Exactly one active plan. |
 | `activity_log` | `planId, date, activityId` | `status` (`pending`, `done`, `skipped`), `count` (for count tracking; `pending` means partial), `labelSnapshot`, `updatedAt` |
-| `measurement` | `id` (uuid) | `planId`, `measurementId`, `date`, `value` (in plan units), `recordedAt` |
+| `observation` | `id` | `date`, `metric`, `value` (canonical unit), `unit`, `kind` (`observed`/`inferred`), `label`, `note`, provenance (`source_*`), `recordedAt`. Not plan-scoped. See contract 06 |
+| `import_session` | `id` | `createdAt`, `extractor`, `assets` (JSON) |
 | `quick_log` | `id` (uuid) | `planId`, `quickLogId`, `at` (ISO timestamp with offset) |
 | `day_override` | `planId, date` | `dayTypeId` |
 
@@ -32,7 +33,7 @@ Rules:
 - A missing `activity_log` row means "not done". Undo deletes the row (or sets `count` back).
 - `labelSnapshot` keeps history readable after a plan revision renames or removes an activity.
 - **Editable window:** today and any past day, so history can be corrected. Future days are view-only in the UI. The data layer doesn't enforce this.
-- Measurements may have several entries per day. The latest one is "the value for that day".
+- Observations may have several entries per day and per metric, from several sources. The latest **observed** one is "the value for that day"; inferred values are never used as measurements.
 
 ## Plan replacement
 
@@ -42,5 +43,5 @@ Rules:
 
 ## Export and backup
 
-- **Export data** (Plan tab) writes one JSON file: `{ exportFormat: 1, exportedAt, plan, records }`. It's shared through the native share sheet on native and downloaded on web.
-- Import of a data export is out of scope for V1. The format is defined now so exports stay useful later.
+- **Export all data** (Today) writes the full-history `pft-export` v1 JSON defined in contract 06: everything from the earliest record through today, with provenance. It's shared through the native share sheet on native and downloaded on web.
+- Restore is built and tested at the data layer (`toSnapshot` + `TrackingStore.restore`). A restore UI is not built yet.

@@ -20,6 +20,10 @@ plans/seed.plan.json ──▶ validatePlan ──▶ TrackingStore (active plan
 | `src/plan/` | Schema (zod mirror of `plan.schema.json`), validation, date helpers, `resolveDay`. Pure and unit-tested. |
 | `src/storage/` | `TrackingStore` interface: `sqliteStore` (native), `keyValueStore` (web), `openStore[.web].ts` selects one. |
 | `src/features/today/` | The Today screen and its sheets. |
+| `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
+| `src/features/import/` | Screenshot import flow. |
+| `src/export/` | Full-history JSON export (`pft-export` v1) and its inverse for restore. |
+| `src/platform/` | Native/web adapters for secure storage and files/sharing. |
 | `src/ui/` | Theme tokens and platform adapters (`Sheet`, `PhoneFrame`, `haptics`). |
 | `app/` | Expo Router routes. Kept thin. |
 
@@ -56,6 +60,10 @@ npm run check:native
 - `npm test` runs unit tests, plus Today rendered under the iOS and Android presets.
 - `npm run test:e2e` runs Playwright on the web export at 360, 390 and 430 px. Run `npx playwright test --update-snapshots` after an intended visual change.
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
+
+## Screenshot import
+
+Today → **Import from screenshots** reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved. See [contract 06](docs/design-contracts/06-observations-import-export.md).
 
 ## Changing the plan
 

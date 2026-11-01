@@ -28,6 +28,8 @@ All three run with `isMobile: true`, `hasTouch: true` and `deviceScaleFactor: 3`
 - Visual baselines live in `e2e/__screenshots__/`. Each day gets a first-screen capture and a `-full` capture taken with the viewport grown to the scroll height.
 - Gestures are tested through their tap or accessibility equivalents. Any swipe shortcut added later gets one smoke test with touch emulation. V1 has none.
 - Every screen gets an automated check: no horizontal overflow at `phone-small`, and touch targets at least 44 px.
+- **Responsive sweep** (`e2e/responsive.spec.ts`): Monday, Thursday and Saturday are rendered at 320, 340, 360, 375, 390, 412, 430, 500, 768 and 1280 px. It fails if any element leaves the phone frame, any text is clipped, or content spills out of a clipping parent. That catches card-level overflow (for example a value pushed out of its card), not just page scroll.
+- The Claude API is stubbed at the network layer in Playwright (`e2e/claudeStub.ts`), so the real SDK request and parsing path runs with canned model output. No test calls the real API.
 
 ## Required test coverage before a screen is "done"
 

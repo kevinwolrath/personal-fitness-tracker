@@ -2,19 +2,22 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ChangeLine } from '../../config/diff';
+import type { ChangeLine, SectionPreview } from '../../config/diff';
 import { sections as sectionDefs } from '../../config/sections';
 import { summarizeConfig } from '../../config/summary';
 import { useApp } from '../../providers/AppProvider';
 import { Button } from '../../ui/Button';
+import { ModalHeader } from '../../ui/ModalHeader';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 import { useConfigSession } from './useConfigSession';
 
 const mark: Record<ChangeLine['kind'], string> = { add: '+', remove: '−', change: '~' };
+const listWords = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /**
  * "AI is the configuration editor; the app is the configuration owner" (contract 07).
- * No settings controls: copy instructions → talk to any chat AI → paste its update → preview → apply.
+ * One page (contract 02 "Configure"): finished steps collapse to a line, the preview lists only the
+ * sections that change, and there is one primary action at a time. Apply lives in a fixed bottom bar.
  */
 export function ConfigureScreen() {
   const { store, reloadPlan } = useApp();
@@ -30,60 +33,72 @@ export function ConfigureScreen() {
     );
   }
 
+  const previewing = s.check.kind === 'preview';
+  const hasText = s.text.trim() !== '';
+  const copyDone = copied || hasText;
   const latest = s.history[0];
   const canUndo = latest && latest.toRevision === s.stored?.revision;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={close} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Close">
-          <Text style={styles.link}>Close</Text>
-        </Pressable>
-        <Text style={[type.body, styles.headerTitle]} accessibilityRole="header">
-          Configure with AI
-        </Text>
-        <View style={styles.headerButton} />
+        {/* A pasted update is lost on close: Cancel. Otherwise nothing is: Close. */}
+        <ModalHeader title="Configure with AI" dismiss={{ label: hasText ? 'Cancel' : 'Close', onPress: close }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="configure-scroll">
-        <Text style={type.detail}>
-          Change your plan by talking it through with ChatGPT or Claude. The app checks every change and shows it to you before
-          anything is saved.
-        </Text>
+        {!copyDone && (
+          <Text style={type.detail}>
+            Change your plan by talking it through with ChatGPT or Claude. The app checks every change and shows it to you before
+            anything is saved.
+          </Text>
+        )}
 
-        <View style={styles.step}>
-          <Text style={type.section}>1 · Copy instructions</Text>
-          <Text style={type.detail}>Paste them into a new chat. They include your current setup and the exact format the app accepts.</Text>
-          <Button
-            title={copied ? 'Copied ✓' : 'Copy AI instructions'}
+        {/* Step 1: copy the instructions. */}
+        {copyDone ? (
+          <DoneRow
+            label={copied ? 'Instructions copied' : 'AI instructions'}
+            action="Copy again"
+            actionLabel="Copy AI instructions"
             onPress={async () => setCopied(await s.copyInstructions())}
-            accessibilityLabel="Copy AI instructions"
           />
-        </View>
+        ) : (
+          <View style={styles.step}>
+            <Text style={type.section}>1 · Copy instructions</Text>
+            <Text style={type.detail}>Paste them into a new chat. They include your current setup and the exact format the app accepts.</Text>
+            <Button title="Copy AI instructions" onPress={async () => setCopied(await s.copyInstructions())} accessibilityLabel="Copy AI instructions" />
+          </View>
+        )}
 
-        <View style={styles.step}>
-          <Text style={type.section}>2 · Paste the AI's update</Text>
-          <TextInput
-            value={s.text}
-            onChangeText={s.editText}
-            multiline
-            placeholder={'{ "fitnessConfigUpdate": { … } }'}
-            placeholderTextColor={colors.faint}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.input}
-            accessibilityLabel="AI update"
-            testID="config-input"
-          />
-          <View style={styles.row}>
-            <View style={styles.flex}>
-              <Button title="Paste" variant="secondary" onPress={s.pasteFromClipboard} />
-            </View>
-            <View style={styles.flex}>
-              <Button title="Check update" onPress={s.runCheck} disabled={!s.text.trim()} />
+        {/* Step 2: paste and check the AI's update. */}
+        {previewing ? (
+          <DoneRow label="Update checked" action="Change" actionLabel="Change update" onPress={() => s.editText(s.text)} />
+        ) : (
+          <View style={styles.step}>
+            <Text style={type.section}>2 · Paste the AI's update</Text>
+            <TextInput
+              value={s.text}
+              onChangeText={s.editText}
+              multiline
+              placeholder={'{ "fitnessConfigUpdate": { … } }'}
+              placeholderTextColor={colors.faint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.input}
+              accessibilityLabel="AI update"
+              testID="config-input"
+            />
+            <View style={styles.row}>
+              <View style={styles.flex}>
+                <Button title="Paste" variant="secondary" onPress={s.pasteFromClipboard} />
+              </View>
+              <View style={styles.flex}>
+                {/* Primary only once step 1 is done: one primary action at a time. */}
+                <Button title="Check update" variant={copyDone ? 'primary' : 'secondary'} onPress={s.runCheck} disabled={!hasText} />
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {s.check.kind === 'invalid' && (
           <View style={[styles.panel, styles.errorPanel]} testID="config-errors" accessibilityLiveRegion="polite">
@@ -97,40 +112,9 @@ export function ConfigureScreen() {
           </View>
         )}
 
-        {s.check.kind === 'preview' && (
-          <View style={styles.panel} testID="config-preview" accessibilityLiveRegion="polite">
-            <Text style={type.body} accessibilityRole="header">
-              Configuration update detected
-            </Text>
-            {s.check.sections.map((sec) => (
-              <View key={sec.section} style={styles.previewSection} testID={`preview-${sec.section}`}>
-                <Text style={[styles.previewTitle, !sec.supplied && styles.muted]}>{sec.title}</Text>
-                {!sec.supplied ? (
-                  <Text style={[type.detail, styles.muted]}>Not in this update · unchanged</Text>
-                ) : sec.lines.length === 0 ? (
-                  <Text style={type.detail}>No changes</Text>
-                ) : (
-                  sec.lines.map((l, i) => (
-                    <Text key={i} style={[styles.line, l.kind === 'remove' && styles.lineRemove]}>
-                      <Text style={styles.mark}>{mark[l.kind]} </Text>
-                      {l.text}
-                    </Text>
-                  ))
-                )}
-              </View>
-            ))}
-            <View style={styles.actions}>
-              <Button
-                title={s.check.changeCount ? 'Apply update' : 'Nothing to apply'}
-                onPress={s.apply}
-                disabled={!s.check.changeCount || s.busy}
-              />
-              <Button title="Discard" variant="quiet" onPress={() => s.editText('')} />
-            </View>
-          </View>
-        )}
+        {s.check.kind === 'preview' && <Preview sections={s.check.sections} />}
 
-        {latest && (
+        {!previewing && latest && (
           <View style={styles.panel} testID="config-history">
             <Text style={type.section}>Last change</Text>
             <Text style={type.detail}>
@@ -141,32 +125,122 @@ export function ConfigureScreen() {
           </View>
         )}
 
-        <View style={styles.step}>
-          <Text style={type.section}>Your configuration</Text>
-          {summarizeConfig(s.raw).map((sec) => (
-            <View key={sec.section} style={styles.summarySection} testID={`summary-${sec.section}`}>
-              <Text style={styles.previewTitle}>{sec.title}</Text>
-              {sec.lines.map((l, i) => (
-                <Text key={i} style={type.detail}>
-                  {l}
-                </Text>
-              ))}
-            </View>
-          ))}
-        </View>
+        {!previewing && (
+          <View style={styles.step}>
+            <Text style={type.section}>Your configuration</Text>
+            {summarizeConfig(s.raw).map((sec) => (
+              <View key={sec.section} style={styles.summarySection} testID={`summary-${sec.section}`}>
+                <Text style={styles.sectionTitle}>{sec.title}</Text>
+                {sec.lines.map((l, i) => (
+                  <Text key={i} style={type.detail}>
+                    {l}
+                  </Text>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      {s.check.kind === 'preview' && (
+        <View style={styles.bar} testID="config-actions">
+          <View>
+            <Button title="Discard" variant="secondary" onPress={() => s.editText('')} />
+          </View>
+          <View style={styles.flex}>
+            <Button
+              title={s.check.changeCount ? `Apply ${s.check.changeCount} change${s.check.changeCount > 1 ? 's' : ''}` : 'Nothing to apply'}
+              onPress={s.apply}
+              disabled={!s.check.changeCount || s.busy}
+            />
+          </View>
+        </View>
+      )}
     </SafeAreaView>
+  );
+}
+
+/** A finished step, collapsed to one line with a way back in. */
+function DoneRow(p: { label: string; action: string; actionLabel: string; onPress: () => void }) {
+  return (
+    <View style={styles.doneRow}>
+      <View style={styles.tick}>
+        <Text style={styles.tickText}>✓</Text>
+      </View>
+      <Text style={[type.body, styles.flex]} numberOfLines={1}>
+        {p.label}
+      </Text>
+      <Pressable onPress={p.onPress} style={styles.doneAction} accessibilityRole="button" accessibilityLabel={p.actionLabel}>
+        <Text style={styles.link}>{p.action}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/** Only the sections that change, one row each; open a row to see every change in it. */
+function Preview({ sections }: { sections: SectionPreview[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const changing = sections.filter((s) => s.supplied && s.lines.length);
+  const unchanged = sections.filter((s) => !s.supplied || !s.lines.length).map((s) => s.title.toLowerCase());
+  return (
+    <View style={styles.step} testID="config-preview" accessibilityLiveRegion="polite">
+      <Text style={type.section} accessibilityRole="header">
+        What changes
+      </Text>
+      {changing.length ? (
+        <View style={styles.list}>
+          {changing.map((sec, i) => {
+            const expanded = open === sec.section;
+            const more = sec.lines.length - 1;
+            return (
+              <View key={sec.section} style={[styles.item, i > 0 && styles.itemDivider]} testID={`preview-${sec.section}`}>
+                <Pressable
+                  onPress={() => setOpen(expanded ? null : sec.section)}
+                  style={styles.itemHead}
+                  accessibilityRole="button"
+                  aria-expanded={expanded}
+                  accessibilityLabel={`${sec.title}: ${sec.lines.length} change${sec.lines.length > 1 ? 's' : ''}`}
+                >
+                  <View style={styles.flex}>
+                    <Text style={styles.sectionTitle}>{sec.title}</Text>
+                    {!expanded && (
+                      <Text style={type.detail} numberOfLines={2}>
+                        {sec.lines[0].text}
+                        {more > 0 ? `, and ${more} more` : ''}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
+                </Pressable>
+                {expanded &&
+                  sec.lines.map((l, j) => (
+                    <Text key={j} style={[styles.line, l.kind === 'remove' && styles.lineRemove]}>
+                      <Text style={styles.mark}>{mark[l.kind]} </Text>
+                      {l.text}
+                    </Text>
+                  ))}
+              </View>
+            );
+          })}
+        </View>
+      ) : (
+        <Text style={type.body}>This update doesn't change anything.</Text>
+      )}
+      {changing.length > 0 && unchanged.length > 0 && (
+        <Text style={type.detail} testID="preview-unchanged">
+          {listWords(unchanged).replace(/^./, (c) => c.toUpperCase())} stay as they are.
+        </Text>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, minHeight: touch + 8 },
-  headerButton: { minWidth: 72, minHeight: touch, justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center' },
-  link: { fontSize: 17, color: colors.accent, fontWeight: '600' },
-  content: { paddingHorizontal: space.xl, paddingBottom: space.xxl, gap: space.xl },
+  header: { paddingHorizontal: space.lg },
+  link: { fontSize: 16, color: colors.accent, fontWeight: '600' },
+  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxl, gap: space.lg },
   step: { gap: space.sm },
   input: {
     minHeight: 140,
@@ -183,15 +257,40 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', gap: space.sm },
   flex: { flex: 1 },
+  doneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: touch + 8,
+    paddingLeft: space.lg,
+    paddingRight: space.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  tick: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  tickText: { color: colors.onAccent, fontSize: 12, fontWeight: '800' },
+  doneAction: { minHeight: touch, minWidth: touch, paddingHorizontal: space.sm, justifyContent: 'center' },
   panel: { backgroundColor: colors.surface, borderRadius: radius.md, padding: space.lg, gap: space.sm },
   errorPanel: { borderWidth: 2, borderColor: colors.ink },
   errorText: { fontSize: 14, color: colors.ink, lineHeight: 20 },
-  previewSection: { gap: 2, paddingTop: space.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
-  previewTitle: { fontSize: 15, fontWeight: '800', color: colors.ink },
-  muted: { color: colors.faint },
-  line: { fontSize: 15, color: colors.ink, lineHeight: 21 },
+  list: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
+  item: { paddingHorizontal: space.lg, paddingBottom: space.xs, gap: 4 },
+  itemDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
+  itemHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch + 16, paddingVertical: space.sm },
+  chevron: { fontSize: 18, color: colors.muted, width: 20, textAlign: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: colors.ink },
+  line: { fontSize: 15, color: colors.ink, lineHeight: 21, paddingBottom: 4 },
   lineRemove: { color: colors.muted },
   mark: { fontWeight: '900', color: colors.accent },
-  actions: { gap: space.xs, marginTop: space.sm },
   summarySection: { gap: 2, paddingVertical: space.xs },
+  bar: {
+    flexDirection: 'row',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.line,
+    backgroundColor: colors.bg,
+  },
 });

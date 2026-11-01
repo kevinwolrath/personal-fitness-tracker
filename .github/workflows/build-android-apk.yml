@@ -1,13 +1,10 @@
 name: Build Android APK
 
+# Manual only. The job needs a self-hosted runner, and none is registered, so automatic
+# pull_request/push triggers would only leave runs queued forever against every PR.
+# Run it from Actions → "Build Android APK" → "Run workflow" once a runner exists.
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - develop
-  push:
-    branches:
-      - develop
 
 permissions:
   contents: read

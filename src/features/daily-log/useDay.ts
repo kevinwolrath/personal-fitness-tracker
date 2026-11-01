@@ -172,21 +172,6 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     [commit, store, load],
   );
 
-  const addQuickLog = useCallback(
-    (quickLogId: string): string => {
-      const entry = { id: newId(), planId: plan.id, quickLogId, date, at: localIsoTimestamp() };
-      commit({ ...current.current, quickLogs: [...current.current.quickLogs, entry] }, () => store.addQuickLog(entry));
-      return entry.id;
-    },
-    [commit, store, plan.id, date],
-  );
-
-  const removeQuickLog = useCallback(
-    (id: string) =>
-      commit({ ...current.current, quickLogs: current.current.quickLogs.filter((q) => q.id !== id) }, () => store.removeQuickLog(id)),
-    [commit, store],
-  );
-
   return {
     loading: records === null,
     day: prescription.day,
@@ -198,6 +183,6 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     reload: load,
     /** Latest observed value on or before this day, per plan measurement id. */
     latestMeasurement: previous,
-    actions: { advance, setDone, setSkipped, setDayType, addMeasurement, removeObservation, correctObservation, addQuickLog, removeQuickLog },
+    actions: { advance, setDone, setSkipped, setDayType, addMeasurement, removeObservation, correctObservation},
   };
 }

@@ -44,7 +44,7 @@ export function exifToIso(exif: Record<string, unknown> | null | undefined): str
   return Number.isNaN(d.getTime()) ? null : localIsoTimestamp(d);
 }
 
-function toPicked(a: ImagePicker.ImagePickerAsset): PickedScreenshot {
+export function toPicked(a: ImagePicker.ImagePickerAsset): PickedScreenshot {
   const base64 = a.base64 ?? (a.uri.startsWith('data:') ? a.uri.slice(a.uri.indexOf(',') + 1) : null);
   const mediaType = base64 ? sniffMediaType(base64) : null;
   const bytes = base64 ? Math.floor((base64.length * 3) / 4) : 0;
@@ -75,6 +75,36 @@ function toPicked(a: ImagePicker.ImagePickerAsset): PickedScreenshot {
 }
 
 /**
+ * Open the platform image picker: images only, several at once. Resolves null when cancelled.
+ * The picker is the selection dialog; there is no extra in-app step before it (#15).
+ */
+export async function pickScreenshots(): Promise<PickedScreenshot[] | null> {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsMultipleSelection: true,
+    selectionLimit: 10,
+    base64: true,
+    exif: true,
+    quality: 0.8,
+  });
+  return result.canceled || !result.assets.length ? null : result.assets.map(toPicked);
+}
+
+/**
+ * Hand-off from the app menu to the import screen: the menu picks first, then opens /import.
+ * Picked images (with base64) are too large for route params, so they wait here until the screen takes them.
+ */
+let pendingShots: PickedScreenshot[] | null = null;
+export const handOffScreenshots = (shots: PickedScreenshot[]) => {
+  pendingShots = shots;
+};
+export const takeHandedOffScreenshots = (): PickedScreenshot[] => {
+  const shots = pendingShots ?? [];
+  pendingShots = null;
+  return shots;
+};
+
+/**
  * One screenshot-import session: pick → read (extract) → review → save (contract 06).
  * `makeExtractor` is injectable so tests and future sources (OCR, APIs) can replace Claude.
  */
@@ -83,12 +113,14 @@ export function useImportSession(opts: {
   defaultDate: LocalDate;
   today: LocalDate;
   makeExtractor?: (apiKey: string) => ScreenshotExtractor;
+  initialShots?: PickedScreenshot[];
 }) {
   const { store, defaultDate, today } = opts;
   const makeExtractor = opts.makeExtractor ?? ((key: string) => new ClaudeScreenshotExtractor(key));
 
   const [apiKey, setApiKeyState] = useState<string | null | undefined>(undefined); // undefined = loading
-  const [shots, setShots] = useState<PickedScreenshot[]>([]);
+  // Screenshots chosen from the app menu before this screen opened (pickScreenshots → handoff).
+  const [shots, setShots] = useState<PickedScreenshot[]>(() => opts.initialShots ?? []);
   const [review, setReview] = useState<ReviewedCandidate[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -108,16 +140,8 @@ export function useImportSession(opts: {
   }, []);
 
   const pick = useCallback(async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: 10,
-      base64: true,
-      exif: true,
-      quality: 0.8,
-    });
-    if (result.canceled) return;
-    setShots((s) => [...s, ...result.assets.map(toPicked)]);
+    const picked = await pickScreenshots();
+    if (picked) setShots((s) => [...s, ...picked]);
   }, []);
 
   const removeShot = useCallback((assetId: string) => {

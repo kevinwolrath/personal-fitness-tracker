@@ -34,7 +34,7 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 | `nutrition.targets` | | Daily targets with `min` and/or `max`. `quantity` is `energy` (plan energy unit) or `grams`. Optional `appliesTo`. |
 | `nutrition.eatingWindow` | | `start`/`end` `HH:MM`. Display only. |
 | `activities` | ✓ | Everything that appears in the day list, including meals (see below). |
-| `quickLogs` | | At most 2 one-tap event loggers, for example "I'm hungry". Each tap records a timestamp. |
+| `quickLogs` | | At most 2 one-tap event loggers. Each tap records a timestamp. Kept in the format, storage and export. The Daily Log has had no quick-log buttons since #15, and the seed plan (revision 3) defines none. |
 
 ## Activities
 

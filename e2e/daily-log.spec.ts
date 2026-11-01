@@ -68,11 +68,6 @@ test('happy path persists across reload', async ({ page }) => {
   await expect(page.getByTestId('measurement-weight')).toContainText('97.8 kg');
   await expect(page.getByTestId('measurement-weight')).toContainText('19.8 kg to go');
 
-  // Quick hunger log.
-  await page.getByRole('button', { name: "I'm hungry" }).click();
-  await expect(page.getByRole('status')).toContainText('logged');
-  await expect(page.getByTestId('quick-log-summary')).toContainText("I'm hungry: 9:00");
-
   // 7 required, resistance skipped → 6; lunch + boxing done.
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 6 done');
 
@@ -82,10 +77,9 @@ test('happy path persists across reload', async ({ page }) => {
   await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /3 of 3/);
   await expect(row(page, 'resistance')).toContainText('Skipped');
   await expect(page.getByTestId('measurement-weight')).toContainText('97.8 kg');
-  await expect(page.getByTestId('quick-log-summary')).toContainText("I'm hungry: 9:00");
 });
 
-test('undo: tapping a done row again, restoring a skip, undoing a quick log', async ({ page }) => {
+test('undo: tapping a done row again, restoring a skip', async ({ page }) => {
   await openAt(page, MONDAY);
   const lunch = row(page, 'lunch').getByRole('checkbox');
   await lunch.click();
@@ -96,10 +90,6 @@ test('undo: tapping a done row again, restoring a skip, undoing a quick log', as
   await page.getByRole('button', { name: 'Skip', exact: true }).click();
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(row(page, 'dog-walk')).not.toContainText('Skipped');
-
-  await page.getByRole('button', { name: "I'm hungry" }).click();
-  await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(page.getByTestId('quick-log-summary')).toHaveText('Nothing logged yet');
 });
 
 test('day-type override re-resolves the day and persists', async ({ page }) => {
@@ -179,8 +169,6 @@ test.describe('visual', () => {
     await page.getByTestId('measurement-weight').click();
     await page.getByTestId('measure-input').fill('97.8');
     await page.getByRole('button', { name: 'Save' }).click();
-    await page.getByRole('button', { name: "I'm hungry" }).click();
-    await page.getByRole('button', { name: 'Undo' }).waitFor();
     await page.getByTestId('day-scroll').evaluate((el) => el.scrollTo(0, 0));
     await expandToFullDay(page);
     await expect(page).toHaveScreenshot('today-monday-in-progress-full.png');

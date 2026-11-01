@@ -14,6 +14,8 @@ type Props = {
   onToday: () => void;
   onPickDate: () => void;
   onDayType: () => void;
+  /** Opens the app menu (import, configure, export). */
+  onMenu: () => void;
 };
 
 /**
@@ -49,9 +51,18 @@ export function DayHeader(p: Props) {
         )}
       </View>
 
-      <Text style={styles.title} accessibilityRole="header" testID="day-title">
-        {labels.title}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title} accessibilityRole="header" testID="day-title">
+          {labels.title}
+        </Text>
+        <Pressable onPress={p.onMenu} style={styles.menuButton} accessibilityRole="button" accessibilityLabel="Menu" testID="menu-button" hitSlop={4}>
+          <View style={styles.burger}>
+            <View style={styles.bar} />
+            <View style={styles.bar} />
+            <View style={styles.bar} />
+          </View>
+        </Pressable>
+      </View>
       <View style={styles.statusRow}>
         <Text style={[type.detail, styles.progressText]} testID="day-progress">
           {p.progress.total === 0 ? 'Nothing required' : p.progress.complete ? `All ${p.progress.total} done` : `${p.progress.done} of ${p.progress.total} done`}
@@ -91,7 +102,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayText: { color: colors.onAccent, fontSize: 15, fontWeight: '800' },
-  title: { ...type.title, marginTop: space.xs },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
+  title: { ...type.title, flex: 1 },
+  menuButton: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center', marginRight: -space.sm },
+  burger: { width: 22, gap: 5 },
+  bar: { height: 2.5, borderRadius: 2, backgroundColor: colors.ink },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xs },
   progressText: { flex: 1, ...type.number },
   chip: {

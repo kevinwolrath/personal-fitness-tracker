@@ -9,7 +9,7 @@ import { useApp } from '../../providers/AppProvider';
 import type { ReviewedCandidate } from '../../observations/review';
 import { Button } from '../../ui/Button';
 import { colors, radius, space, touch, type } from '../../ui/theme';
-import { useImportSession, type PickedScreenshot } from './useImportSession';
+import { takeHandedOffScreenshots, useImportSession, type PickedScreenshot } from './useImportSession';
 
 const shownUnit = (u: string) => (u === 'count' || u === 'score' ? '' : u);
 const isDate = (d: unknown): d is LocalDate => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -20,7 +20,8 @@ export function ImportScreen() {
   const params = useLocalSearchParams<{ date?: string }>();
   const today = toLocalDate(new Date());
   const defaultDate = isDate(params.date) && params.date <= today ? params.date : today;
-  const s = useImportSession({ store, defaultDate, today });
+  const [initialShots] = useState(takeHandedOffScreenshots);
+  const s = useImportSession({ store, defaultDate, today, initialShots });
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const toRead = s.shots.filter((x) => x.input && x.status !== 'done' && x.status !== 'reading');

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { presetApiKey, stubClaude } from './claudeStub';
-import { HISTORY_DAY, MONDAY, expandToFullDay, historyObservations, openAt, row, seedRecords, vrBoxing } from './helpers';
+import { HISTORY_DAY, MONDAY, expandToFullDay, exportAllData, historyObservations, importScreenshots, openAt, row, seedRecords, vrBoxing } from './helpers';
 
 /** Issue #6: one continuous Daily Log; Today is just the current date. */
 
@@ -75,7 +75,6 @@ test('a historical day is fully correctable and stays corrected', async ({ page 
   await page.getByTestId('measurement-weight').click();
   await page.getByTestId('measure-input').fill('101.4');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('button', { name: "I'm hungry" }).click();
 
   await page.getByRole('button', { name: 'Back to Today' }).click();
   // Today's weight tile shows the most recent earlier value, from that historical entry.
@@ -85,7 +84,6 @@ test('a historical day is fully correctable and stays corrected', async ({ page 
   await jumpTo(page, '2026-09-14');
   await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /2 of 3/);
   await expect(page.getByTestId('measurement-weight')).toContainText('101.4 kg');
-  await expect(page.getByTestId('quick-log-summary')).toContainText("I'm hungry");
 
   // Correct the weight: newest entry for the day wins.
   await page.getByTestId('measurement-weight').click();
@@ -99,7 +97,6 @@ test('future days are view-only', async ({ page }) => {
   await jumpTo(page, '2026-12-01');
   await expect(page.getByText('Upcoming.')).toBeVisible();
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Import from screenshots' })).toHaveCount(0);
 });
 
 test('imported observations land on their effective date and can be corrected there', async ({ page }) => {
@@ -108,10 +105,7 @@ test('imported observations land on their effective date and can be corrected th
   await openAt(page, MONDAY);
 
   // Imported from Today, but the screen is for Tue 27 Oct.
-  await page.getByRole('button', { name: 'Import from screenshots' }).click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Choose screenshots' }).click();
-  await (await chooser).setFiles('e2e/fixtures/fitbit-last-week.png');
+  await importScreenshots(page, ['e2e/fixtures/fitbit-last-week.png']);
   await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
   await page.getByRole('button', { name: 'Save 3 values' }).click();
 
@@ -141,13 +135,7 @@ test('imported observations land on their effective date and can be corrected th
   await expect(page.getByTestId('recorded-readiness_score')).toHaveCount(0);
 
   // The same canonical store feeds the export.
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export all data' }).click();
-  const doc = JSON.parse(await (await download).createReadStream().then(async (s) => {
-    let data = '';
-    for await (const chunk of s) data += chunk;
-    return data;
-  }));
+  const doc = await exportAllData(page);
   const steps = doc.observations.find((o: any) => o.metric === 'steps');
   expect(steps).toMatchObject({ date: '2026-10-27', value: 9210, source: { app: 'fitbit', edited: true } });
   expect(doc.observations.some((o: any) => o.metric === 'readiness_score')).toBe(false);

@@ -49,12 +49,12 @@ export async function expandToFullDay(page: Page) {
 }
 
 /** Seed tracking records (no plan: the bundled seed installs as normal) before the app boots. */
-export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown> }) {
+export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[] }) {
   await page.addInitScript((json) => {
     const key = 'pft:tracking:v1';
     if (localStorage.getItem(key)) return;
     const r = JSON.parse(json);
-    localStorage.setItem(key, JSON.stringify({ version: 1, plan: null, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: [], imports: [] }));
+    localStorage.setItem(key, JSON.stringify({ version: 1, plan: null, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [] }));
   }, JSON.stringify(records));
 }
 
@@ -75,3 +75,30 @@ export const historyObservations = [
 
 /** The VR boxing alternative inside tonight's conditioning requirement (contract 08). */
 export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');
+
+/** App-level operations live in the header menu (#15). */
+export async function chooseFromMenu(page: Page, label: 'Import from screenshots' | 'Configure with AI' | 'Export all data') {
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
+}
+
+/** Menu → Import from screenshots: the platform picker opens straight away; choose these files. */
+export async function importScreenshots(page: Page, files: string[]) {
+  const chooser = page.waitForEvent('filechooser');
+  await chooseFromMenu(page, 'Import from screenshots');
+  const fc = await chooser;
+  expect(fc.isMultiple()).toBe(true);
+  await fc.setFiles(files);
+  await expect(page.getByRole('heading', { name: 'Import screenshots' })).toBeVisible();
+}
+
+/** Menu → Export all data → confirm "Export JSON". Resolves with the downloaded document. */
+export async function exportAllData(page: Page): Promise<any> {
+  await chooseFromMenu(page, 'Export all data');
+  const dialog = page.getByRole('alertdialog', { name: 'Export all fitness data?' });
+  await expect(dialog).toBeVisible();
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Export JSON' }).click();
+  const { readFileSync } = await import('node:fs');
+  return JSON.parse(readFileSync((await (await download).path())!, 'utf8'));
+}

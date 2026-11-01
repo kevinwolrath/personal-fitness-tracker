@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { presetApiKey, stubClaude } from './claudeStub';
-import { MONDAY, openAt } from './helpers';
+import { MONDAY, importScreenshots, openAt } from './helpers';
 
 /**
  * Runs against the Metro *development* server (npm run test:e2e:dev), which loads modules differently
@@ -16,10 +16,7 @@ test('dev server: app boots without errors and screenshot import works end to en
   const requests = await stubClaude(page);
   await openAt(page, MONDAY);
 
-  await page.getByRole('button', { name: 'Import from screenshots' }).click();
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Choose screenshots' }).click();
-  await (await chooser).setFiles('e2e/fixtures/scale.png');
+  await importScreenshots(page, ['e2e/fixtures/scale.png']);
   await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
   await expect(page.getByTestId('review-scale.png')).toBeVisible();
   expect(requests).toHaveLength(1);

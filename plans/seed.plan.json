@@ -3,7 +3,7 @@
   "format": "pft-plan",
   "formatVersion": 2,
   "id": "weight-loss-v1",
-  "revision": 2,
+  "revision": 3,
   "title": "Weight loss · phase 1",
   "description": "School-run home days, office days and weekends. Strength sessions for muscle preservation; nightly high-intensity conditioning (VR boxing, heavy bag or battle ropes).",
   "units": {
@@ -374,13 +374,7 @@
       }
     }
   ],
-  "quickLogs": [
-    {
-      "id": "hunger",
-      "label": "I'm hungry",
-      "detail": "Logs the time you felt hungry"
-    }
-  ],
+  "quickLogs": [],
   "requirements": [
     {
       "id": "hard-conditioning",

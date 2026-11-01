@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sheet } from '../../ui/Sheet';
 import { colors, space, touch, type } from '../../ui/theme';
-import { SheetHeader, TextButton } from './Sheets';
+import { SheetHeader, TextButton } from '../daily-log/Sheets';
 
 export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void };
 

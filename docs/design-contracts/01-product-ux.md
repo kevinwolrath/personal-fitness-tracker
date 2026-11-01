@@ -17,7 +17,8 @@
 5. **Generous touch targets.** At least 48×48 dp on Android and 44×44 pt on iOS, with rows at least 56 dp tall. Keep at least 8 dp between adjacent targets.
 6. **Direct manipulation where it removes steps.** Gestures must save effort over an existing tap path. They are never the only way to do something (see 02).
 7. **Honest, forgiving tracking.** You can undo anything, and correct any past day, without confirmation dialogs. Missed items are shown neutrally, not as failure.
-8. **Accessible by default.** Every control has an accessibility label and role. Text scales with the system font size up to 200% without clipping essential content. Custom gestures are exposed as `accessibilityActions`. Contrast is at least WCAG AA.
+8. **Layered layout, content first.** Every screen is built from three layers in a fixed order: the app shell, the screen header, then the content (02, "Layout layers"). Controls belong to exactly one layer. Never place a control wherever it happens to fit. Chrome is kept small, so the content a screen exists for is visible without scrolling. This is held to a measured vertical budget, enforced by tests.
+9. **Accessible by default. Every control has an accessibility label and role. Text scales with the system font size up to 200% without clipping essential content. Custom gestures are exposed as `accessibilityActions`. Contrast is at least WCAG AA.
 
 ## Visual system
 

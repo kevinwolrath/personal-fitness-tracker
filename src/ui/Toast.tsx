@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, space, touch } from '../../ui/theme';
+import { colors, radius, space, touch } from './theme';
 
 export type ToastState = { key: number; message: string; onUndo?: () => void } | null;
 

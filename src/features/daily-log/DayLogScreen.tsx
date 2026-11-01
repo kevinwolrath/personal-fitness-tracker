@@ -3,9 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
-import { buildExport } from '../../export/exportFormat';
-import { formatAmount, localIsoTimestamp } from '../../format';
-import { shareJson } from '../../platform/files';
+import { formatAmount } from '../../format';
 import { measurementMetric } from '../../observations/planMetrics';
 import { addDays, type LocalDate } from '../../plan/dates';
 import type { Observation } from '../../observations/types';
@@ -20,9 +18,6 @@ import { ObservationSheet, RecordedSection } from './RecordedSection';
 import { MeasurementPanel } from './MeasurementPanel';
 import { DayTypeSheet, MeasureSheet } from './Sheets';
 import { ItemSheet } from './ItemSheet';
-import { AppMenu, type AppMenuItem } from './AppMenu';
-import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
@@ -31,7 +26,7 @@ import { RequirementRow } from './RequirementRow';
 import { partLabels, partOrder } from '../../prescription/windows';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import { TargetsLine } from './TargetsLine';
-import { Toast, type ToastState } from './Toast';
+import { Toast, type ToastState } from '../../ui/Toast';
 import { useDay, useNowMinutes, useToday } from './useDay';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
@@ -81,8 +76,6 @@ export function DayLogScreen() {
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
   const [dayTypeOpen, setDayTypeOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmExport, setConfirmExport] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const clearToast = useCallback(() => setToast(null), []);
 
@@ -135,31 +128,8 @@ export function DayLogScreen() {
     .filter((g) => g.items.length);
   const nothingPlanned = !prescription.items.length;
 
-  // App-level operations live in the menu, not on the day (#15).
-  const importScreenshots = async () => {
-    const shots = await pickScreenshots();
-    if (!shots) return; // cancelled: nothing happens
-    handOffScreenshots(shots);
-    router.push({ pathname: '/import', params: { date } });
-  };
-  const menuItems: AppMenuItem[] = [
-    { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
-    { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
-    { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
-  ];
-
-  const exportAll = async () => {
-    try {
-      const doc = buildExport(await store.snapshot(), { exportedAt: localIsoTimestamp(), today, appVersion: '0.1.0' });
-      await shareJson(`fitness-export-${today}.json`, JSON.stringify(doc, null, 2));
-      setToast({ key: Date.now(), message: `Exported ${doc.counts.observations + doc.counts.activityLogs + doc.counts.quickLogs} records` });
-    } catch {
-      setToast({ key: Date.now(), message: "Export didn't complete" });
-    }
-  };
-
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.content} testID="day-scroll">
         <DayHeader
           date={date}
@@ -172,13 +142,12 @@ export function DayLogScreen() {
           onToday={() => setDate(today)}
           onPickDate={() => setJumpOpen(true)}
           onDayType={() => setDayTypeOpen(true)}
-          onMenu={() => setMenuOpen(true)}
         />
 
         {!editable && <Text style={[type.detail, styles.notice]}>Upcoming. You can tick these off on the day.</Text>}
 
         {date === today && (
-          <View style={styles.block}>
+          <View style={styles.firstBlock}>
             <NextActionCard next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onOpenExercise={setGuideFor} />
           </View>
         )}
@@ -226,18 +195,6 @@ export function DayLogScreen() {
         onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
         exerciseConfig={plan.exercise}
       />
-      <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
-      <ConfirmDialog
-        visible={confirmExport}
-        title="Export all fitness data?"
-        message="This creates a JSON file containing your complete fitness-tracker history, configuration and recorded observations."
-        confirmLabel="Export JSON"
-        onCancel={() => setConfirmExport(false)}
-        onConfirm={() => {
-          setConfirmExport(false);
-          exportAll();
-        }}
-      />
       <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
       <MeasureSheet
         plan={plan}
@@ -283,8 +240,10 @@ export function DayLogScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space.xxl },
+  content: { paddingHorizontal: space.xl, paddingBottom: space.xxl },
   block: { marginTop: space.xl },
+  /** The card follows the day header closely: it's the point of the screen (vertical budget, contract 02). */
+  firstBlock: { marginTop: space.lg },
   notice: { marginTop: space.md },
   empty: { marginTop: space.xl, color: colors.muted },
   list: { marginTop: space.xs },

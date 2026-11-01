@@ -12,11 +12,13 @@
     "test": "jest",
     "test:e2e": "playwright test",
     "export:web": "expo export --platform web",
-    "check:native": "expo export --platform ios --platform android --output-dir dist-native"
+    "check:native": "expo export --platform ios --platform android --output-dir dist-native",
+    "test:e2e:dev": "E2E_DEV=1 playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",
     "@expo/metro-runtime": "~6.1.2",
+    "@react-native-community/datetimepicker": "8.4.4",
     "expo": "~54.0.0",
     "expo-file-system": "~19.0.24",
     "expo-haptics": "~15.0.8",
@@ -61,6 +63,9 @@
         "preset": "jest-expo/ios",
         "testMatch": [
           "<rootDir>/src/**/*.native.test.tsx"
+        ],
+        "setupFiles": [
+          "<rootDir>/test/jest.native-setup.js"
         ]
       },
       {
@@ -68,6 +73,9 @@
         "preset": "jest-expo/android",
         "testMatch": [
           "<rootDir>/src/**/*.native.test.tsx"
+        ],
+        "setupFiles": [
+          "<rootDir>/test/jest.native-setup.js"
         ]
       }
     ]

@@ -74,6 +74,9 @@ export interface TrackingStore {
   addQuickLog(entry: QuickLogEntry): Promise<void>;
   removeQuickLog(id: string): Promise<void>;
 
+  /** Earliest date that has any record (observation, activity, override or quick log); null when empty. */
+  firstRecordDate(): Promise<LocalDate | null>;
+
   /** Every record, from the earliest through the latest. No lookback limit. */
   snapshot(): Promise<StoreSnapshot>;
   /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */

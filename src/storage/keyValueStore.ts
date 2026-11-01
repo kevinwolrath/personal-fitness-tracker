@@ -143,6 +143,17 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
+  async firstRecordDate(): Promise<string | null> {
+    const d = this.read();
+    const dates = [
+      ...d.observations.map((o) => o.date),
+      ...Object.keys(d.activities).map((k) => splitKey(k).date),
+      ...Object.keys(d.overrides).map((k) => splitKey(k).date),
+      ...d.quickLogs.map((q) => q.date),
+    ];
+    return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
+  }
+
   async snapshot(): Promise<StoreSnapshot> {
     const d = this.read();
     const activityLogs: ActivityLogRecord[] = Object.entries(d.activities).flatMap(([k, day]) => {

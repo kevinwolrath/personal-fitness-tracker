@@ -4,11 +4,12 @@
  */
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { Slot } from 'expo-router';
+import { Platform } from 'react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MemoryKeyValue } from '../../../storage/keyValueStore';
 import { AppProvider } from '../../../providers/AppProvider';
-import { TodayScreen } from '../TodayScreen';
+import { DayLogScreen } from '../DayLogScreen';
 
 // One in-memory backend per test; a new store over it simulates an app restart.
 let mockKv = new MemoryKeyValue();
@@ -32,7 +33,7 @@ async function launch() {
           </AppProvider>
         </SafeAreaProvider>
       ),
-      index: TodayScreen,
+      index: DayLogScreen,
     },
     { initialUrl: '/' },
   );
@@ -74,4 +75,23 @@ it('completes, skips via the native sheet, and survives a restart', async () => 
   expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 4 done');
   expect(screen.getByTestId('activity-vr-boxing')).toHaveTextContent(/Skipped/);
   expect(screen.getByTestId('quick-log-summary')).toHaveTextContent(/I'm hungry: 9:00/i);
+});
+
+it('is one continuous log: step back, jump via the date sheet, return to Today', async () => {
+  await launch();
+  expect(screen.getByTestId('day-title')).toHaveTextContent('Today');
+
+  fireEvent.press(screen.getByLabelText('Previous day'));
+  await waitFor(() => expect(screen.getByTestId('day-title')).toHaveTextContent('Yesterday'));
+  expect(screen.getByLabelText(/Day type: Home day/)).toBeTruthy(); // Wed 4 Nov resolves from the plan
+
+  fireEvent.press(screen.getByTestId('date-button'));
+  // iOS: inline calendar in the sheet. Android: a button that opens the system date dialog.
+  if (Platform.OS === 'ios') expect(await screen.findByTestId('native-date-picker')).toBeTruthy();
+  else expect(await screen.findByText('Choose a date')).toBeTruthy();
+  fireEvent.press(screen.getByLabelText('A week ago'));
+  await waitFor(() => expect(screen.getByTestId('day-title')).toHaveTextContent(/October 29|29 October/)); // 7 days back: a date, not a weekday
+
+  fireEvent.press(screen.getByLabelText('Back to Today'));
+  await waitFor(() => expect(screen.getByTestId('day-title')).toHaveTextContent('Today'));
 });

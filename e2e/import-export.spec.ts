@@ -61,7 +61,7 @@ test.describe('screenshot import', () => {
 
     // Back on Today: the imported weight is today's weight, with its source.
     await expect(page.getByTestId('measurement-weight')).toContainText('97.3 kg');
-    await expect(page.getByTestId('measurement-weight')).toContainText('From renpho');
+    await expect(page.getByTestId('measurement-weight')).toContainText('Renpho screenshot');
 
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!));
     const byMetric = Object.fromEntries(stored.observations.map((o: any) => [o.metric, o]));
@@ -122,7 +122,7 @@ test('export all data downloads a versioned full-history JSON with provenance', 
   await page.getByTestId('measurement-weight').click();
   await page.getByTestId('measure-input').fill('98.4');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('button', { name: /go to today/ }).click();
+  await page.getByRole('button', { name: 'Back to Today' }).click();
   await page.getByTestId('activity-lunch').getByRole('checkbox').click();
   await page.getByRole('button', { name: 'Import from screenshots' }).click();
   await chooseScreenshots(page, ['scale.png']);

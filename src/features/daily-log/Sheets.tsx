@@ -9,7 +9,7 @@ import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 
-function SheetHeader({ title, left, right }: { title: string; left?: React.ReactNode; right?: React.ReactNode }) {
+export function SheetHeader({ title, left, right }: { title: string; left?: React.ReactNode; right?: React.ReactNode }) {
   return (
     <View style={styles.header}>
       <View style={styles.headerSide}>{left}</View>
@@ -21,7 +21,7 @@ function SheetHeader({ title, left, right }: { title: string; left?: React.React
   );
 }
 
-function TextButton({ title, onPress, disabled, strong }: { title: string; onPress: () => void; disabled?: boolean; strong?: boolean }) {
+export function TextButton({ title, onPress, disabled, strong }: { title: string; onPress: () => void; disabled?: boolean; strong?: boolean }) {
   return (
     <Pressable onPress={onPress} disabled={disabled} style={styles.textButton} accessibilityRole="button" accessibilityLabel={title}>
       <Text style={[styles.textButtonText, strong && styles.strong, disabled && styles.disabled]}>{title}</Text>

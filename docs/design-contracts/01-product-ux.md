@@ -10,7 +10,7 @@
 
 ## Principles
 
-1. **Today first.** The app opens on today. Ticking off an activity or logging a measurement is at most two taps from launch.
+1. **One continuous Daily Log, opening on today.** The app is a diary through time; Today is the current date in it (02). Ticking off an activity or logging a measurement is at most two taps from launch. Any past date is a jump away and looks and behaves the same.
 2. **The plan is data.** Every user-visible plan word, number, time and target comes from the loaded plan package (03). Components contain layout and generic copy only ("Today", "Done", "Skip"). No personal content in source code.
 3. **One primary action per surface.** Each screen or sheet has one obvious thing to do. Secondary actions are smaller or one level down. Never more than about 5 tappable controls above the fold on Today, not counting activity rows.
 4. **Calm hierarchy.** Use one display size for the screen title, one for section headings and one body size, with muted secondary text. Use colour for state (done, skipped, over target), not decoration. Don't use badges, streak confetti or red numbers for normal progress.

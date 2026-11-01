@@ -28,12 +28,16 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
   const [records, setRecords] = useState<DayRecords | null>(null);
   const [previous, setPrevious] = useState<Record<string, Observation | null>>({});
   const current = useRef<DayRecords>(emptyDay);
+  // The date whose data may be shown. A slow load for a date the user already left is discarded.
+  const shownDate = useRef(date);
+  shownDate.current = date;
 
   const load = useCallback(async () => {
     const [day, ...latest] = await Promise.all([
       store.getDay(plan.id, date),
       ...plan.measurements.map((m) => store.latestObservation(m.id, date)),
     ]);
+    if (shownDate.current !== date) return;
     current.current = day;
     setRecords(day);
     setPrevious(Object.fromEntries(plan.measurements.map((m, i) => [m.id, latest[i]])));
@@ -119,7 +123,20 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     [commit, store, plan, date],
   );
 
-  const removeMeasurement = useCallback(
+  /** Correct a stored observation's value in place (any source); provenance records the edit. */
+  const correctObservation = useCallback(
+    (o: Observation, value: number) => {
+      if (value === o.value) return;
+      const next: Observation = { ...o, value, source: { ...o.source, edited: true } };
+      commit({ ...current.current, observations: current.current.observations.map((x) => (x.id === o.id ? next : x)) }, async () => {
+        await store.addObservations([next]);
+        await load();
+      });
+    },
+    [commit, store, load],
+  );
+
+  const removeObservation = useCallback(
     (id: string) => {
       commit({ ...current.current, observations: current.current.observations.filter((o) => o.id !== id) }, async () => {
         await store.removeObservation(id);
@@ -155,6 +172,6 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     reload: load,
     /** Latest observed value on or before this day, per plan measurement id. */
     latestMeasurement: previous,
-    actions: { advance, setDone, setSkipped, setDayType, addMeasurement, removeMeasurement, addQuickLog, removeQuickLog },
+    actions: { advance, setDone, setSkipped, setDayType, addMeasurement, removeObservation, correctObservation, addQuickLog, removeQuickLog },
   };
 }

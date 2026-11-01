@@ -1,16 +1,18 @@
 # Personal Fitness Tracker
 
-A deliberately simple, local-first fitness tracker for Android and iOS, built with Expo, React Native and TypeScript. The app renders a **plan package**, a versioned JSON file, rather than hard-coding a plan. Today shows what the plan says for this day, and you tick it off.
+A deliberately simple, local-first fitness diary for Android and iOS, built with Expo, React Native and TypeScript. The app renders a **plan package**, a versioned JSON file, rather than hard-coding a plan, and keeps one continuous **Daily Log** of what actually happened.
+
+**Architecture:** the Daily Log is the primary application surface. Today is the current date within that log. Every date uses the same underlying day view, canonical data model and editing behaviour. New capabilities extend the shared model and continuous history rather than creating isolated feature slices.
 
 Design contracts (authoritative): [`docs/design-contracts/`](docs/design-contracts/README.md).
 
 ## How it fits together
 
 ```
-plans/seed.plan.json ──▶ validatePlan ──▶ TrackingStore (active plan) ──▶ resolveDay(plan, date, override)
-                         (zod + rules)     SQLite on native, localStorage      │
-                                           on web                              ▼
-                                                    tracking records ──▶ Today screen
+screenshots / manual entry / future APIs ──▶ canonical observations + activity records ──▶ TrackingStore ──┬─▶ Daily Log (any date)
+                                                                              SQLite (native)   └─▶ JSON export (full history)
+                                                                              localStorage (web)
+plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ resolveDay(plan, date, override) ──▶ Daily Log
 ```
 
 | Path | What |
@@ -19,7 +21,7 @@ plans/seed.plan.json ──▶ validatePlan ──▶ TrackingStore (active plan
 | `fixtures/plans/` | Generic plans for tests. |
 | `src/plan/` | Schema (zod mirror of `plan.schema.json`), validation, date helpers, `resolveDay`. Pure and unit-tested. |
 | `src/storage/` | `TrackingStore` interface: `sqliteStore` (native), `keyValueStore` (web), `openStore[.web].ts` selects one. |
-| `src/features/today/` | The Today screen and its sheets. |
+| `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
 | `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
 | `src/features/import/` | Screenshot import flow. |
 | `src/export/` | Full-history JSON export (`pft-export` v1) and its inverse for restore. |
@@ -57,13 +59,18 @@ npm run test:e2e
 npm run check:native
 ```
 
-- `npm test` runs unit tests, plus Today rendered under the iOS and Android presets.
-- `npm run test:e2e` runs Playwright on the web export at 360, 390 and 430 px. Run `npx playwright test --update-snapshots` after an intended visual change.
+```bash
+npm run test:e2e:dev
+```
+
+- `npm test` runs unit tests, plus the Daily Log rendered under the iOS and Android presets.
+- `npm run test:e2e` runs Playwright on the web export at 360, 390 and 430 px, plus a responsive sweep from 320 to 1280 px. Run `npx playwright test --update-snapshots` after an intended visual change.
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
+- `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a screenshot import works.
 
 ## Screenshot import
 
-Today → **Import from screenshots** reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved. See [contract 06](docs/design-contracts/06-observations-import-export.md).
+**Import from screenshots** (on any editable day) reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
 
 ## Changing the plan
 

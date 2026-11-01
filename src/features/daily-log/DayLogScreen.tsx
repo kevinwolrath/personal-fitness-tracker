@@ -1,5 +1,5 @@
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
@@ -7,27 +7,49 @@ import { buildExport } from '../../export/exportFormat';
 import { formatAmount, formatTimestamp, localIsoTimestamp } from '../../format';
 import { shareJson } from '../../platform/files';
 import { measurementMetric } from '../../observations/planMetrics';
-import { addDays } from '../../plan/dates';
+import { addDays, type LocalDate } from '../../plan/dates';
+import type { Observation } from '../../observations/types';
 import type { Activity, Measurement } from '../../plan/schema';
 import { tap } from '../../ui/haptics';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 import { ActivityRow } from './ActivityRow';
 import { DayHeader } from './DayHeader';
+import { loggedOutsidePlan, recordedObservations } from './dayContent';
+import { JumpToDateSheet } from './JumpToDateSheet';
+import { ObservationSheet, RecordedSection } from './RecordedSection';
 import { MeasurementPanel } from './MeasurementPanel';
 import { ActivitySheet, DayTypeSheet, MeasureSheet } from './Sheets';
 import { TargetsLine } from './TargetsLine';
 import { Toast, type ToastState } from './Toast';
 import { useDay, useToday } from './useDay';
 
+const isLocalDate = (d: unknown): d is LocalDate =>
+  typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
+
 /**
- * Today: renders whatever plan is loaded for the selected date (contract 02).
+ * The Daily Log day view (contract 02): one screen for every date. "Today" is just the current date.
+ * The selected date lives in the URL (`/?date=YYYY-MM-DD`; none = today), so reload and links keep it.
  * Contains layout and generic copy only — every plan word comes from data.
  */
-export function TodayScreen() {
+export function DayLogScreen() {
   const { store, plan } = useApp();
   const today = useToday();
-  const [date, setDate] = useState(today);
+  const params = useLocalSearchParams<{ date?: string }>();
+  const date: LocalDate = isLocalDate(params.date) ? params.date : today;
+  const setDate = useCallback(
+    (d: LocalDate) => router.setParams({ date: d === today ? undefined : d }),
+    [today],
+  );
   const { day, progress, records, latestMeasurement, actions, reload } = useDay(store, plan, date);
+
+  const [firstRecord, setFirstRecord] = useState<LocalDate | null>(null);
+  const [jumpOpen, setJumpOpen] = useState(false);
+  useEffect(() => {
+    if (jumpOpen) store.firstRecordDate().then(setFirstRecord, () => setFirstRecord(null));
+  }, [jumpOpen, store]);
+  const [sheetObservation, setSheetObservation] = useState<Observation | null>(null);
+  const recorded = useMemo(() => recordedObservations(day, records), [day, records]);
+  const outsidePlan = useMemo(() => loggedOutsidePlan(day, records), [day, records]);
 
   // Coming back from Import: show what was just saved.
   const firstFocus = useRef(true);
@@ -99,17 +121,17 @@ export function TodayScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content} testID="today-scroll">
+      <ScrollView contentContainerStyle={styles.content} testID="day-scroll">
         <DayHeader
           date={date}
           today={today}
-          yesterday={addDays(today, -1)}
           dayTypeLabel={day.dayTypeLabel}
           overridden={day.overridden}
           progress={progress}
-          onPrev={() => setDate((d) => addDays(d, -1))}
-          onNext={() => setDate((d) => addDays(d, 1))}
+          onPrev={() => setDate(addDays(date, -1))}
+          onNext={() => setDate(addDays(date, 1))}
           onToday={() => setDate(today)}
+          onPickDate={() => setJumpOpen(true)}
           onDayType={() => setDayTypeOpen(true)}
         />
 
@@ -137,7 +159,7 @@ export function TodayScreen() {
           )}
         </View>
 
-        {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned today</Text>}
+        {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
 
         {day.timed.length > 0 && (
           <View style={styles.block}>
@@ -155,6 +177,10 @@ export function TodayScreen() {
             <View style={styles.list}>{renderRows(day.anytime, false)}</View>
           </View>
         )}
+
+        <View style={styles.block}>
+          <RecordedSection plan={plan} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
+        </View>
 
         <Pressable onPress={exportAll} style={[styles.textAction, styles.exportAction]} accessibilityRole="button" accessibilityLabel="Export all data">
           <Text style={[type.detail, styles.exportText]}>Export all data (JSON)</Text>
@@ -211,7 +237,23 @@ export function TodayScreen() {
         }
         onClose={() => setSheetMeasurement(null)}
         onSave={(v) => sheetMeasurement && actions.addMeasurement(sheetMeasurement, v)}
-        onRemove={actions.removeMeasurement}
+        onRemove={actions.removeObservation}
+      />
+      <JumpToDateSheet
+        visible={jumpOpen}
+        date={date}
+        today={today}
+        firstRecord={firstRecord}
+        onClose={() => setJumpOpen(false)}
+        onJump={setDate}
+      />
+      <ObservationSheet
+        plan={plan}
+        observation={sheetObservation}
+        editable={editable}
+        onClose={() => setSheetObservation(null)}
+        onCorrect={actions.correctObservation}
+        onRemove={(o) => actions.removeObservation(o.id)}
       />
       <DayTypeSheet
         plan={plan}

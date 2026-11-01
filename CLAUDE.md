@@ -60,6 +60,6 @@ Enforcement in this repo:
 - `docs/design-contracts/` is authoritative. Change the contract in the same PR as the behaviour it describes.
 - The Daily Log is the primary surface. Extend the shared model; don't build isolated feature slices (contract 02).
 - The plan is data. No plan content or personal data in UI code (contract 01).
-- Business rules live in pure modules (`src/plan`, `src/prescription`, `src/config`, `src/observations`), not in components.
+- Business rules live in pure modules (`src/plan`, `src/prescription`, `src/config`, `src/observations`, `src/exercises`), not in components.
 - Storage changes are additive, numbered migrations, tested against the previous schema (contract 04).
 - No CI build runs in GitHub Actions. The APK is built locally with `scripts/build-apk.ps1`.

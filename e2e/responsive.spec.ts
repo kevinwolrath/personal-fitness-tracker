@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, openAt, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, openAt, seedPlan, seedRecords } from './helpers';
 
 /**
  * Responsive sweep (contract 05): every width from a small Android phone to a desktop browser.
@@ -25,8 +25,15 @@ async function layoutProblems(page: Page): Promise<string[]> {
       if (r.width === 0 || r.height === 0) continue;
       const style = getComputedStyle(el);
       if (style.visibility === 'hidden' || style.position === 'fixed') continue;
-      // Anything outside the frame horizontally is cut off on a real phone.
-      if (r.left < frame.left - 0.5 || r.right > frame.right + 0.5) {
+      // Anything outside the frame horizontally is cut off on a real phone. Pages of a horizontal
+      // scroller (the exercise guide pager) are scrolled out of view, not cut off: the scroller itself is checked.
+      const inScroller = (() => {
+        for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+          if (['auto', 'scroll'].includes(getComputedStyle(a).overflowX)) return true;
+        }
+        return false;
+      })();
+      if (!inScroller && (r.left < frame.left - 0.5 || r.right > frame.right + 0.5)) {
         problems.push(`outside frame: "${describe(el)}" ${Math.round(r.left)}–${Math.round(r.right)} vs ${Math.round(frame.left)}–${Math.round(frame.right)}`);
       }
       // Text wider than its own box is clipped (unless deliberately truncated with an ellipsis).
@@ -122,5 +129,20 @@ test('evening next-action card with alternatives and a part-done requirement fit
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(50);
     expect(await layoutProblems(page), `at ${width}px`).toEqual([]);
+  }
+});
+
+test('the exercise guide (long instructions, substitution note, caution) fits at every width', async ({ page }) => {
+  await seedPlan(page, require('../fixtures/plans/prescription-example.plan.json'));
+  await openAt(page, '2026-11-02T15:00:00+11:00');
+  for (const name of [/^Hammer curl/, /^Overhead press/, /^Lat pulldown/]) {
+    await page.getByTestId('next-action-session').getByRole('button', { name }).click();
+    await expect(page.getByTestId('exercise-guide')).toBeVisible();
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(50);
+      expect(await layoutProblems(page), `${name} at ${width}px`).toEqual([]);
+    }
+    await page.getByRole('button', { name: 'Close guide' }).click();
   }
 });

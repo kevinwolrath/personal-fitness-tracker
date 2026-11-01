@@ -7,6 +7,7 @@ import { partLabels } from '../../prescription/windows';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { colors, radius, space, touch, type } from '../../ui/theme';
+import type { PrescribedExercise } from '../../prescription/session';
 import { SessionExercises } from './SessionExercises';
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   logs: Record<string, ActivityLog | undefined>;
   onAdvance: (item: PrescriptionItem, a: Activity) => void;
   onDetails: (item: PrescriptionItem) => void;
+  /** Opens the exercise guide for a prescribed exercise (contract 09). */
+  onOpenExercise?: (e: PrescribedExercise) => void;
 };
 
 function whenLabel(n: NextAction): string {
@@ -35,7 +38,7 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
 }
 
 /** "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08). */
-export function NextActionCard({ next, progress, logs, onAdvance, onDetails }: Props) {
+export function NextActionCard({ next, progress, logs, onAdvance, onDetails, onOpenExercise }: Props) {
   if (!next) {
     return (
       <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
@@ -58,7 +61,7 @@ export function NextActionCard({ next, progress, logs, onAdvance, onDetails }: P
       </Text>
       {session && (
         <View style={styles.session}>
-          <SessionExercises exercises={session.exercises} testID="next-action-session" />
+          <SessionExercises exercises={session.exercises} testID="next-action-session" onOpen={onOpenExercise} />
         </View>
       )}
       <View style={styles.actions}>

@@ -24,6 +24,7 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
 | `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
 | `src/features/import/` | Screenshot import flow. |
+| `src/exercises/` | Exercise library (contract 09): reusable definitions, bundled illustrations, `buildGuide`. Pure, no UI. |
 | `src/prescription/` | Daily prescription engine (contract 08): `prescribeDay`, `nextAction`, completion log entries, session substitutions, time windows. Pure, no UI. |
 | `src/config/` | AI configuration: sections over the plan, update parser/applier, preview diff, AI instructions, history/undo (contract 07). |
 | `src/features/configure/` | Configure-with-AI screen. |
@@ -88,6 +89,8 @@ This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `
 ## Today: do this next
 
 The Daily Log opens on **Do this next**, the next thing your plan prescribes for now. Tick it off and the app moves to the next one. The rest of the day is grouped by morning, midday, afternoon, evening and anytime. Alternatives that meet the same need (for example VR boxing, heavy bag or battle ropes for tonight's conditioning) count once, whichever you do. Strength sessions list their exercises, with your limitations' substitutes applied, and have a short version for busy days. See [contract 08](docs/design-contracts/08-daily-prescription.md).
+
+Tap any exercise for an illustrated guide: step-by-step pictures, the equipment you have for it, and how to do it, with today's sets and reps. Closing it leaves the day exactly as it was. See [contract 09](docs/design-contracts/09-exercise-guides.md).
 
 ## Configure with AI
 

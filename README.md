@@ -24,6 +24,7 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
 | `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
 | `src/features/import/` | Screenshot import flow. |
+| `src/prescription/` | Daily prescription engine (contract 08): `prescribeDay`, `nextAction`, completion log entries, session substitutions, time windows. Pure, no UI. |
 | `src/config/` | AI configuration: sections over the plan, update parser/applier, preview diff, AI instructions, history/undo (contract 07). |
 | `src/features/configure/` | Configure-with-AI screen. |
 | `src/export/` | Full-history JSON export (`pft-export` v1) and its inverse for restore. |
@@ -83,6 +84,10 @@ This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `
 ## Screenshot import
 
 **Import from screenshots** (on any editable day) reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
+
+## Today: do this next
+
+The Daily Log opens on **Do this next**, the next thing your plan prescribes for now. Tick it off and the app moves to the next one. The rest of the day is grouped by morning, midday, afternoon, evening and anytime. Alternatives that meet the same need (for example VR boxing, heavy bag or battle ropes for tonight's conditioning) count once, whichever you do. Strength sessions list their exercises, with your limitations' substitutes applied, and have a short version for busy days. See [contract 08](docs/design-contracts/08-daily-prescription.md).
 
 ## Configure with AI
 

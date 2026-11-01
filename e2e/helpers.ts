@@ -72,3 +72,6 @@ export const historyObservations = [
   { id: 'h6', date: HISTORY_DAY, metric: 'exercise_session', value: 52, unit: 'min', kind: 'observed', label: 'Outdoor bike ride with the kids around the lake', note: null, recordedAt: '2025-12-25T09:00:03Z', source: shot('google-health-connect', '52 min') },
   { id: 'h7', date: HISTORY_DAY, metric: 'total_energy', value: 13180, unit: 'kJ', kind: 'observed', label: null, note: null, recordedAt: '2025-12-25T09:00:04Z', source: shot('fitbit', '3,150 cal') },
 ];
+
+/** The VR boxing alternative inside tonight's conditioning requirement (contract 08). */
+export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');

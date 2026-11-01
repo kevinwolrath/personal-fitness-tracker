@@ -1,16 +1,24 @@
 import { expect, test } from '@playwright/test';
 import generic from '../fixtures/plans/generic-example.plan.json';
-import { MONDAY, SATURDAY, THURSDAY, expandToFullDay, openAt, renderedActivityIds, row, seedPlan } from './helpers';
+import { MONDAY, SATURDAY, THURSDAY, expandToFullDay, openAt, renderedActivityIds, row, seedPlan, vrBoxing } from './helpers';
 
 test.describe('seed plan resolves from JSON', () => {
   test('fresh install starts on Monday with the seed plan', async ({ page }) => {
     await openAt(page, MONDAY);
-    await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Day type: Home day/ })).toBeVisible();
+    // Grouped by part of day (contract 08); within a part, by window start then plan order.
     expect(await renderedActivityIds(page)).toEqual([
-      'school-run-am', 'lunch', 'dog-walk', 'school-run-pm', 'dinner', // Schedule (timed)
-      'snack', 'resistance', 'vr-boxing', // Anytime
+      'school-run-am', // morning
+      'lunch', 'dog-walk', // midday
+      'snack', 'school-run-pm', // afternoon (the snack's afternoon window opens at 14:00, the 15:15 run at 14:45)
+      'dinner', // evening, after the conditioning requirement
+      'resistance', // anytime
     ]);
+    await expect(page.getByTestId('requirement-hard-conditioning')).toContainText('High-intensity conditioning');
+    for (const part of ['Morning', 'Midday', 'Afternoon', 'Evening', 'Anytime today']) {
+      await expect(page.getByRole('heading', { name: part, exact: true })).toBeVisible();
+    }
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 7 done');
     await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,530 kJ');
     await expect(page.getByTestId('targets')).toContainText('Protein 160–180 g');
@@ -21,14 +29,16 @@ test.describe('seed plan resolves from JSON', () => {
   test('Thursday renders the office day', async ({ page }) => {
     await openAt(page, THURSDAY);
     await expect(page.getByRole('button', { name: /Day type: Office day/ })).toBeVisible();
-    expect(await renderedActivityIds(page)).toEqual(['lunch', 'lunch-walk', 'dinner', 'snack', 'vr-boxing']);
+    expect(await renderedActivityIds(page)).toEqual(['lunch', 'lunch-walk', 'snack', 'dinner']);
+    await expect(page.getByTestId('requirement-hard-conditioning')).toBeVisible();
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 5 done');
   });
 
   test('Saturday renders the weekend', async ({ page }) => {
     await openAt(page, SATURDAY);
     await expect(page.getByRole('button', { name: /Day type: Weekend/ })).toBeVisible();
-    expect(await renderedActivityIds(page)).toEqual(['lunch', 'dinner', 'snack', 'resistance-long', 'weekend-movement', 'vr-boxing']);
+    expect(await renderedActivityIds(page)).toEqual(['lunch', 'snack', 'dinner', 'resistance-long', 'weekend-movement']);
+    await expect(page.getByTestId('requirement-hard-conditioning')).toBeVisible();
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 5 done');
   });
 });
@@ -42,12 +52,12 @@ test('happy path persists across reload', async ({ page }) => {
   await expect(lunch).toBeChecked();
 
   // Advance a count activity to its target.
-  const boxing = row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ });
+  const boxing = vrBoxing(page);
   for (let i = 0; i < 3; i++) await boxing.click();
   await expect(boxing).toHaveAttribute('aria-valuetext', /3 of 3 rounds/);
 
   // Skip via the details sheet.
-  await row(page, 'resistance').getByRole('button', { name: 'Resistance details' }).click();
+  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
   await page.getByRole('button', { name: 'Skip', exact: true }).click();
   await expect(row(page, 'resistance')).toContainText('Skipped');
 
@@ -69,7 +79,7 @@ test('happy path persists across reload', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 6 done');
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeChecked();
-  await expect(row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ })).toHaveAttribute('aria-valuetext', /3 of 3/);
+  await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /3 of 3/);
   await expect(row(page, 'resistance')).toContainText('Skipped');
   await expect(page.getByTestId('measurement-weight')).toContainText('97.8 kg');
   await expect(page.getByTestId('quick-log-summary')).toContainText("I'm hungry: 9:00");
@@ -112,7 +122,7 @@ test('history can be corrected; future days are view-only', async ({ page }) => 
   await expect(lunch).toBeChecked();
 
   await page.getByRole('button', { name: 'Back to Today' }).click();
-  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Today', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Next day' }).click();
   await expect(page.getByText('Upcoming.')).toBeVisible();
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeDisabled();
@@ -165,7 +175,7 @@ test.describe('visual', () => {
     await openAt(page, MONDAY);
     await row(page, 'school-run-am').getByRole('checkbox').click();
     await row(page, 'lunch').getByRole('checkbox').click();
-    await row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ }).click();
+    await vrBoxing(page).click();
     await page.getByTestId('measurement-weight').click();
     await page.getByTestId('measure-input').fill('97.8');
     await page.getByRole('button', { name: 'Save' }).click();

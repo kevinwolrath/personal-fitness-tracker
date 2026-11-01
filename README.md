@@ -81,7 +81,9 @@ Needs Docker Desktop. From the repo root in PowerShell:
 ./scripts/build-apk.ps1
 ```
 
-This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `artifacts/personal-fitness-tracker.apk`, ready to sideload. It runs only on your machine; there's no CI build.
+This builds a **release** APK inside Docker (`docker/android.Dockerfile`) and writes `artifacts/personal-fitness-tracker.apk`, ready to sideload. The JS bundle is embedded, so the app starts on its own: no Metro, USB, `adb reverse` or dev server. Both the image and the script fail the build if `assets/index.android.bundle` isn't inside the APK. Add `-NoCache` for a fully clean build. It runs only on your machine; there's no CI build.
+
+It's signed with Expo's debug keystore, which is fine for sideloading but not for the Play Store. A debug APK (`assembleDebug`) is never used here: React Native leaves the JS out of debug builds and loads it from Metro, which is what causes "Unable to load script".
 
 ## Screenshot import
 

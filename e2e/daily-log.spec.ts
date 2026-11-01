@@ -111,13 +111,15 @@ test('history can be corrected; future days are view-only', async ({ page }) => 
   await lunch.click();
   await expect(lunch).toBeChecked();
 
-  await page.getByRole('button', { name: /go to today/ }).click();
+  await page.getByRole('button', { name: 'Back to Today' }).click();
   await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible();
   await page.getByRole('button', { name: 'Next day' }).click();
   await expect(page.getByText('Upcoming.')).toBeVisible();
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeDisabled();
 
   await page.reload();
+  await expect(page.getByRole('heading', { name: 'Tomorrow' })).toBeVisible(); // reload keeps the viewed date
+  await page.getByRole('button', { name: 'Back to Today' }).click();
   await page.getByRole('button', { name: 'Previous day' }).click();
   await page.getByRole('button', { name: 'Previous day' }).click();
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeChecked();
@@ -169,7 +171,7 @@ test.describe('visual', () => {
     await page.getByRole('button', { name: 'Save' }).click();
     await page.getByRole('button', { name: "I'm hungry" }).click();
     await page.getByRole('button', { name: 'Undo' }).waitFor();
-    await page.getByTestId('today-scroll').evaluate((el) => el.scrollTo(0, 0));
+    await page.getByTestId('day-scroll').evaluate((el) => el.scrollTo(0, 0));
     await expandToFullDay(page);
     await expect(page).toHaveScreenshot('today-monday-in-progress-full.png');
   });

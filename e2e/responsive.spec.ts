@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, SATURDAY, THURSDAY, openAt } from './helpers';
+import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, openAt, seedRecords } from './helpers';
 
 /**
  * Responsive sweep (contract 05): every width from a small Android phone to a desktop browser.
@@ -11,6 +11,7 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'the swee
 
 async function layoutProblems(page: Page): Promise<string[]> {
   return page.evaluate(() => {
+    const strict = new Set(['date-button', 'day-title']); // must never truncate, even with an ellipsis
     const frame = document.querySelector('[data-testid="phone-frame"]')!.getBoundingClientRect();
     const problems: string[] = [];
     const describe = (el: Element) =>
@@ -30,7 +31,8 @@ async function layoutProblems(page: Page): Promise<string[]> {
       }
       // Text wider than its own box is clipped (unless deliberately truncated with an ellipsis).
       const isLeafText = el.childElementCount === 0 && (el.textContent ?? '').trim() !== '';
-      if (isLeafText && el.scrollWidth > el.clientWidth + 1 && style.textOverflow !== 'ellipsis') {
+      const inStrict = [...strict].some((id) => el.closest(`[data-testid="${id}"]`));
+      if (isLeafText && el.scrollWidth > el.clientWidth + 1 && (style.textOverflow !== 'ellipsis' || inStrict)) {
         problems.push(`clipped text: "${describe(el)}" needs ${el.scrollWidth}px, has ${el.clientWidth}px`);
       }
       // Content spilling out of a parent that clips (overflow hidden), e.g. a card.
@@ -61,5 +63,26 @@ test('weight logged with a long value still fits at the narrowest width', async 
   await page.getByTestId('measurement-weight').click();
   await page.getByTestId('measure-input').fill('188.88');
   await page.getByRole('button', { name: 'Save' }).click();
+  expect(await layoutProblems(page)).toEqual([]);
+});
+
+test('a full historical day (many sources, long labels, past-year date) fits at every width', async ({ page }) => {
+  await seedRecords(page, { observations: historyObservations });
+  await openAt(page, MONDAY);
+  await page.goto(`/?date=${HISTORY_DAY}`);
+  await expect(page.getByTestId('recorded')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `at ${width}px`).toEqual([]);
+  }
+});
+
+test('the jump-to-date sheet fits at the narrowest width', async ({ page }) => {
+  await seedRecords(page, { observations: historyObservations });
+  await openAt(page, MONDAY);
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.getByTestId('date-button').click();
+  await expect(page.getByRole('button', { name: /First entry/ })).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
 });

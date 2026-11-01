@@ -39,9 +39,10 @@ Flow: app menu (☰) → **Import from screenshots** → the platform picker ope
 - **Network exception (amends 01 and 04):** this is the app's only network call. It runs only when the user taps **Read**, and sends only the screenshots they picked to Anthropic's API, using **the user's own API key**. The key is stored with the device keychain/keystore (`expo-secure-store`); on web, the dev surface, it lives in `localStorage`. There's no backend of ours.
 - **Review rules:**
   - Observed values are included by default. Inferred values are shown separately, excluded by default, and saved as `inferred` if included.
-  - Every value can be edited (numbers only) or unchecked.
+  - Every value can be edited or unchecked. Values are shown the way the Daily Log shows them: "13,765" steps, "7h 45m" for durations. Editing accepts that form or plain numbers ("7h 50m", "7:50", "470"; "13765"; "97,25").
   - Values under 0.8 confidence are flagged "check this".
   - Each screenshot's date can be moved, but never into the future. The default date is the date shown on screen, otherwise the day open on Today.
+- **Save** is the screen's one primary action. It appears in a fixed bottom bar once there are values to save; until then **Read** is the primary. **Forget key** sits at the end of the content, away from Save.
 - **Save** writes the session and its observations atomically (`saveImport`). Several apps can contribute to the same day. Nothing is merged or overwritten across sources.
 
 ## Full-history export (`pft-export`, exportVersion 1)

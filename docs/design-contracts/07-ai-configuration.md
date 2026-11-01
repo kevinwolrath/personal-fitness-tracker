@@ -50,8 +50,14 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 3. **Sections:** detect which sections are supplied.
 4. **Validate sections:** each is checked strictly against its patch schema, and every error is reported at once with its path (for example `fitnessConfigUpdate.exercise.equipment[0].type: …`).
 5. **Merge and validate:** the update is merged onto a **copy** of the stored raw plan JSON, then the whole result is validated, including cross-section rules (for example a meal's nutrition keys must be existing targets, or modalities must exist).
-6. **Preview:** a human-readable change list per section (`src/config/diff.ts`). Supplied sections list their changes, or "No changes". Other sections say "Not in this update · unchanged".
-7. **Apply:** only on **Apply update**. The new plan revision (origin `config`) and a history entry are written atomically.
+6. **Preview:** a human-readable change list per section (`src/config/diff.ts`), in plain language:
+   - amounts use the app's own formatting (thousands separators, the user's energy unit, `g`);
+   - fields have plain names ("time of day", "sessions a week");
+   - activity ids show their configured labels;
+   - removed fields read "cleared: …", never "→ —".
+
+   Only sections that change are listed (see 02, "Configure layout"); the others are named in one line as staying as they are.
+7. **Apply:** only on **Apply N changes**. The new plan revision (origin `config`) and a history entry are written atomically.
 8. **No partial state:** any failure means nothing is written. Omitted sections are preserved exactly, because patches act on the raw JSON, not on the parsed plan.
 
 ## History, undo, seed and export
@@ -69,10 +75,10 @@ The text is provider-neutral, with no tool calls or model-specific features, so 
 
 ## UI
 
-Daily Log → **Configure with AI** (`/configure`, modal):
+App menu (☰) → **Configure with AI** (`/configure`, modal; layout in 02, "Configure layout"):
 
 1. Copy instructions.
 2. Paste the update (or tap **Paste**), then **Check update**.
-3. Errors appear, or the preview, then **Apply update** or **Discard**.
+3. Errors appear, or the preview, then **Apply N changes** or **Discard** in the bottom bar.
 
-The screen also shows the last change with **Undo**, and a read-only summary of the current configuration (`src/config/summary.ts`) so it can be inspected without editing anything.
+Before an update is checked, the screen also shows the last change with **Undo**, and a read-only summary of the current configuration (`src/config/summary.ts`) so it can be inspected without editing anything.

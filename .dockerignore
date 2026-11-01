@@ -1,0 +1,10 @@
+node_modules
+.expo
+dist
+dist-native
+android
+ios
+artifacts
+.git
+.github
+*.log

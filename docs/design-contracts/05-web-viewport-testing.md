@@ -22,17 +22,24 @@ All three run with `isMobile: true`, `hasTouch: true` and `deviceScaleFactor: 3`
 ## Playwright conventions
 
 - Tests target **accessibility roles and labels first** (`getByRole`, `getByLabel`). Use `testID` (rendered as `data-testid`) only where no accessible name fits.
-- Tests load the plan through a seed hook. The default fixture is `fixtures/plans/generic-example.plan.json`, so assertions are about that generic data and never personal data.
-- **The clock is frozen** (`page.clock`) to a fixed date per test, so the weekday and day type are deterministic. Example: Monday 2026-11-02 resolves to `home`, and its strength session is present.
-- Gestures are tested through their tap or accessibility equivalents. Swipe shortcuts get one smoke test each, with touch emulation.
+- Tests start from a **fresh install**, so the bundled seed plan loads exactly as it does for a user. To test a different plan, `seedPlan()` in `e2e/helpers.ts` writes it into the web store before the app boots. The generic fixture is used this way to cover features the seed doesn't exercise, such as the flexible-meal budget.
+- Playwright runs against the **static web export** (`expo export --platform web`, served by `scripts/serve-dist.mjs`), not the dev server, so runs are deterministic.
+- **The clock is frozen** (`page.clock.setFixedTime`) to a fixed date per test, with `timezoneId: Australia/Melbourne` and `locale: en-AU`, so the weekday, day type and formatting are deterministic. The reference days are Monday 2026-11-02 (home), Thursday 2026-11-05 (office) and Saturday 2026-11-07 (weekend).
+- Visual baselines live in `e2e/__screenshots__/`. Each day gets a first-screen capture and a `-full` capture taken with the viewport grown to the scroll height.
+- Gestures are tested through their tap or accessibility equivalents. Any swipe shortcut added later gets one smoke test with touch emulation. V1 has none.
 - Every screen gets an automated check: no horizontal overflow at `phone-small`, and touch targets at least 44 px.
 
 ## Required test coverage before a screen is "done"
 
-1. Renders the resolved day from the fixture: the correct activities for a frozen Monday and a frozen Saturday.
+1. Renders the resolved day from plan data: the correct activities for a frozen Monday, Thursday and Saturday.
 2. Happy path: complete a check activity, advance a count activity to its target, log weight, quick-log.
 3. State survives reload (persistence through the web storage backend).
 4. Visual snapshot at `phone`.
 5. Type check (`tsc --noEmit`) and plan-fixture validation against `plan.schema.json` pass in CI.
 
-Native (Android and iOS) is verified manually on device or simulator for each screen until a device test runner is chosen (out of scope here).
+Native code paths are checked without a device by:
+
+- Jest projects `ios` and `android` (`jest-expo/ios`, `jest-expo/android`), which render real screens with native platform files (`*.native.test.tsx`).
+- `npm run check:native` (`expo export` for iOS and Android), which bundles and compiles Hermes bytecode for both platforms.
+
+On-device verification stays manual until a device test runner is chosen.

@@ -57,9 +57,10 @@ One list covers exercise, meals and habits, so that a single timeline renders th
 2. **Activities** are those whose `appliesTo` is absent or matches the date's day type or weekday. Timed ones are sorted by `time`, with untimed ones after them in plan order.
 3. **Nutrition targets** are those whose `appliesTo` is absent or matches.
 4. **Planned intake** is the sum of `nutrition` for the day's **non-flexible meals**. This is planned, not measured. V1 doesn't log food.
-5. **Flexible-meal budget**: for each target, `max − planned` (energy) or `min − planned` (protein-style minimums), clamped to 0 or more. It's shown on the flexible meal row, for example "≈ 2,900 kJ · 10 g protein left". Shown only if the day has exactly one flexible meal.
+5. **Flexible-meal budget**: for each target, `min − planned` if the target has a `min` ("to go"), otherwise `max − planned` ("left"), clamped to 0 or more. It's shown on the flexible meal row, for example "≈ 2,900 kJ left · ≈ 10 g protein to go". It's shown only if the day has exactly one flexible meal, and a target's line appears only when **every fixed meal that day states a value for it**. A partly specified plan never shows a misleading number.
 6. **Measurements due**: `every:"day"` is due every day, and `every:"week"` is due on its `on` weekday (with a quiet "last logged…" on other days).
-7. **Day completion**: a day is complete when every **required** activity is done. Optional and skipped activities don't count, either for or against completion. This is the only completion rule.
+7. **Day completion**: a day is complete when every **required, non-skipped** activity is done. Optional activities never count. A skipped required activity is removed from the total ("2 of 6" rather than "2 of 7"). Any activity may be skipped. This is the only completion rule.
+8. **Count tracking**: a row tap adds one unit. Reaching `target` marks it done, and one more tap resets it to zero. Partial progress is stored with status `pending`.
 
 ## Validation rules (beyond the schema)
 

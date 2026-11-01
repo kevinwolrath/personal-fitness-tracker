@@ -1,0 +1,132 @@
+{
+  "$schema": "../docs/design-contracts/plan.schema.json",
+  "format": "pft-plan",
+  "formatVersion": 1,
+  "id": "weight-loss-v1",
+  "revision": 1,
+  "title": "Weight loss · phase 1",
+  "description": "School-run home days, office days and weekends, with nightly VR boxing.",
+  "units": { "mass": "kg", "energy": "kJ", "length": "cm" },
+  "dayTypes": [
+    { "id": "home", "label": "Home day" },
+    { "id": "office", "label": "Office day" },
+    { "id": "weekend", "label": "Weekend" }
+  ],
+  "schedule": {
+    "mon": "home",
+    "tue": "home",
+    "wed": "home",
+    "thu": "office",
+    "fri": "office",
+    "sat": "weekend",
+    "sun": "weekend"
+  },
+  "measurements": [
+    { "id": "weight", "label": "Weight", "quantity": "mass", "decimals": 1, "cadence": { "every": "day" } },
+    { "id": "waist", "label": "Waist", "quantity": "length", "decimals": 0, "cadence": { "every": "week", "on": "sun" } }
+  ],
+  "goals": [
+    { "id": "goal-weight", "label": "Goal", "measurementId": "weight", "target": 78, "direction": "decrease" }
+  ],
+  "nutrition": {
+    "targets": [
+      { "id": "energy", "label": "Energy", "quantity": "energy", "max": 7530 },
+      { "id": "protein", "label": "Protein", "quantity": "grams", "min": 160, "max": 180 }
+    ],
+    "eatingWindow": { "start": "12:00", "end": "20:00" }
+  },
+  "activities": [
+    {
+      "id": "school-run-am",
+      "kind": "exercise",
+      "label": "School run",
+      "detail": "Bike out, walk-jog home",
+      "time": "08:30",
+      "appliesTo": { "dayTypes": ["home"] }
+    },
+    {
+      "id": "lunch",
+      "kind": "meal",
+      "label": "Fixed lunch",
+      "detail": "Cold high-protein lunch, no heating needed",
+      "time": "12:00"
+    },
+    {
+      "id": "dog-walk",
+      "kind": "exercise",
+      "label": "Dog walk",
+      "time": "12:30",
+      "required": false,
+      "appliesTo": { "dayTypes": ["home"] }
+    },
+    {
+      "id": "lunch-walk",
+      "kind": "exercise",
+      "label": "Lunch walk",
+      "time": "12:30",
+      "duration": { "min": 30, "max": 45 },
+      "appliesTo": { "dayTypes": ["office"] }
+    },
+    {
+      "id": "school-run-pm",
+      "kind": "exercise",
+      "label": "School run",
+      "detail": "Walk-jog out, bike home",
+      "time": "15:15",
+      "appliesTo": { "dayTypes": ["home"] }
+    },
+    {
+      "id": "snack",
+      "kind": "meal",
+      "label": "Fixed snack",
+      "detail": "Anti-hunger snack before family dinner"
+    },
+    {
+      "id": "dinner",
+      "kind": "meal",
+      "label": "Family dinner",
+      "detail": "Usually 6:30–7:30 pm",
+      "time": "18:30",
+      "flexible": true
+    },
+    {
+      "id": "resistance",
+      "kind": "exercise",
+      "label": "Resistance",
+      "duration": { "min": 30, "max": 40 },
+      "appliesTo": { "days": ["mon", "wed"] }
+    },
+    {
+      "id": "resistance-long",
+      "kind": "exercise",
+      "label": "Resistance",
+      "duration": { "min": 45, "max": 60 },
+      "appliesTo": { "days": ["sat"] }
+    },
+    {
+      "id": "weekend-movement",
+      "kind": "habit",
+      "label": "Normal weekend movement",
+      "required": false,
+      "appliesTo": { "days": ["sat"] }
+    },
+    {
+      "id": "recovery",
+      "kind": "habit",
+      "label": "Recovery",
+      "detail": "Normal movement only",
+      "required": false,
+      "appliesTo": { "days": ["sun"] }
+    },
+    {
+      "id": "vr-boxing",
+      "kind": "exercise",
+      "label": "VR boxing",
+      "detail": "3-minute rounds",
+      "tracking": { "type": "count", "target": 3, "unitLabel": "rounds" }
+    }
+  ],
+  "quickLogs": [
+    { "id": "hunger", "label": "I'm hungry", "detail": "Logs the time you felt hungry" }
+  ]
+}

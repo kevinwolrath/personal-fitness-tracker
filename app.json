@@ -5,10 +5,24 @@
     "scheme": "personalfitnesstracker",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router", "expo-sqlite"],
-    "experiments": {"typedRoutes": true},
-    "android": {"package": "com.kevinwolrath.personalfitnesstracker"},
-    "ios": {"bundleIdentifier": "com.kevinwolrath.personalfitnesstracker"}
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "android": {
+      "package": "com.kevinwolrath.personalfitnesstracker"
+    },
+    "ios": {
+      "bundleIdentifier": "com.kevinwolrath.personalfitnesstracker"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
   }
 }

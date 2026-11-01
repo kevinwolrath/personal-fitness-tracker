@@ -1,0 +1,184 @@
+import type { ImportSession, Observation } from '../observations/types';
+import type {
+  ActivityLog,
+  ActivityLogRecord,
+  DayRecords,
+  QuickLogEntry,
+  StoreSnapshot,
+  StoredPlan,
+  TrackingStore,
+} from './types';
+
+/** Minimal synchronous key-value backend: `window.localStorage` on web, a Map in tests. */
+export interface KeyValue {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+type Doc = {
+  version: 1;
+  plan: StoredPlan | null;
+  /** key: `${planId}|${date}` */
+  activities: Record<string, Record<string, ActivityLog>>;
+  overrides: Record<string, string>;
+  observations: Observation[];
+  quickLogs: QuickLogEntry[];
+  imports: ImportSession[];
+};
+
+export const STORAGE_KEY = 'pft:tracking:v1';
+const dayKey = (planId: string, date: string) => `${planId}|${date}`;
+const splitKey = (k: string) => {
+  const i = k.lastIndexOf('|');
+  return { planId: k.slice(0, i), date: k.slice(i + 1) };
+};
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [] });
+const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
+  for (const k of keys) {
+    const c = String(a[k]).localeCompare(String(b[k]));
+    if (c) return c;
+  }
+  return 0;
+};
+const upsertById = <T extends { id: string }>(list: T[], item: T) => {
+  const i = list.findIndex((x) => x.id === item.id);
+  if (i >= 0) list[i] = item;
+  else list.push(item);
+};
+
+/**
+ * Web implementation of TrackingStore (contract 04): one JSON document in key-value storage.
+ * Data volume is tiny (a few rows per day), so whole-document rewrites are fine.
+ */
+export class KeyValueTrackingStore implements TrackingStore {
+  constructor(private kv: KeyValue) {}
+
+  private read(): Doc {
+    const raw = this.kv.getItem(STORAGE_KEY);
+    if (!raw) return empty();
+    try {
+      const doc = JSON.parse(raw) as Doc;
+      return doc.version === 1 ? { ...empty(), ...doc } : empty();
+    } catch {
+      return empty();
+    }
+  }
+
+  private update(fn: (doc: Doc) => void): void {
+    const doc = this.read();
+    fn(doc);
+    this.kv.setItem(STORAGE_KEY, JSON.stringify(doc));
+  }
+
+  async getActivePlan() {
+    return this.read().plan;
+  }
+
+  async setActivePlan(plan: StoredPlan) {
+    this.update((d) => {
+      d.plan = plan;
+    });
+  }
+
+  async getDay(planId: string, date: string): Promise<DayRecords> {
+    const d = this.read();
+    const k = dayKey(planId, date);
+    return {
+      activities: { ...(d.activities[k] ?? {}) },
+      dayTypeOverride: d.overrides[k] ?? null,
+      observations: d.observations.filter((o) => o.date === date).sort(byKey<Observation>('recordedAt', 'id')),
+      quickLogs: d.quickLogs.filter((q) => q.planId === planId && q.date === date).sort(byKey<QuickLogEntry>('at')),
+    };
+  }
+
+  async setActivity(planId: string, date: string, activityId: string, log: ActivityLog | null) {
+    this.update((d) => {
+      const k = dayKey(planId, date);
+      const day = (d.activities[k] ??= {});
+      if (log) day[activityId] = log;
+      else delete day[activityId];
+      if (!Object.keys(day).length) delete d.activities[k];
+    });
+  }
+
+  async setDayOverride(planId: string, date: string, dayTypeId: string | null) {
+    this.update((d) => {
+      const k = dayKey(planId, date);
+      if (dayTypeId === null) delete d.overrides[k];
+      else d.overrides[k] = dayTypeId;
+    });
+  }
+
+  async addObservations(observations: Observation[]) {
+    this.update((d) => observations.forEach((o) => upsertById(d.observations, o)));
+  }
+
+  async removeObservation(id: string) {
+    this.update((d) => {
+      d.observations = d.observations.filter((o) => o.id !== id);
+    });
+  }
+
+  async latestObservation(metric: string, onOrBefore: string) {
+    const candidates = this.read().observations.filter((o) => o.metric === metric && o.kind === 'observed' && o.date <= onOrBefore);
+    candidates.sort((a, b) => b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id));
+    return candidates[0] ?? null;
+  }
+
+  async saveImport(session: ImportSession, observations: Observation[]) {
+    // One document write: atomic by construction.
+    this.update((d) => {
+      upsertById(d.imports, session);
+      observations.forEach((o) => upsertById(d.observations, o));
+    });
+  }
+
+  async addQuickLog(entry: QuickLogEntry) {
+    this.update((d) => upsertById(d.quickLogs, entry));
+  }
+
+  async removeQuickLog(id: string) {
+    this.update((d) => {
+      d.quickLogs = d.quickLogs.filter((q) => q.id !== id);
+    });
+  }
+
+  async snapshot(): Promise<StoreSnapshot> {
+    const d = this.read();
+    const activityLogs: ActivityLogRecord[] = Object.entries(d.activities).flatMap(([k, day]) => {
+      const { planId, date } = splitKey(k);
+      return Object.values(day).map((log) => ({ ...log, planId, date }));
+    });
+    return {
+      plans: d.plan ? [d.plan] : [],
+      activityLogs: activityLogs.sort(byKey<ActivityLogRecord>('date', 'planId', 'activityId')),
+      dayOverrides: Object.entries(d.overrides)
+        .map(([k, dayTypeId]) => ({ ...splitKey(k), dayTypeId }))
+        .sort(byKey('date', 'planId')),
+      observations: [...d.observations].sort(byKey<Observation>('date', 'recordedAt', 'id')),
+      quickLogs: [...d.quickLogs].sort(byKey<QuickLogEntry>('at', 'id')),
+      imports: [...d.imports].sort(byKey<ImportSession>('createdAt', 'id')),
+    };
+  }
+
+  async restore(s: StoreSnapshot) {
+    this.update((d) => {
+      if (s.plans[0]) d.plan = s.plans[0];
+      for (const { planId, date, ...log } of s.activityLogs) (d.activities[dayKey(planId, date)] ??= {})[log.activityId] = log;
+      for (const o of s.dayOverrides) d.overrides[dayKey(o.planId, o.date)] = o.dayTypeId;
+      s.imports.forEach((i) => upsertById(d.imports, i));
+      s.observations.forEach((o) => upsertById(d.observations, o));
+      s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
+    });
+  }
+}
+
+export class MemoryKeyValue implements KeyValue {
+  private map = new Map<string, string>();
+  getItem(key: string) {
+    return this.map.get(key) ?? null;
+  }
+  setItem(key: string, value: string) {
+    this.map.set(key, value);
+  }
+}

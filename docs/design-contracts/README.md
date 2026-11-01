@@ -8,7 +8,8 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 02 | [Navigation & interactions](02-navigation-interactions.md) | Screens, routes, tap/swipe/drag rules |
 | 03 | [Plan format](03-plan-format.md) + [`plan.schema.json`](plan.schema.json) | The versioned JSON plan package the app renders |
 | 04 | [Persistence & data ownership](04-persistence.md) | What is stored, where, who owns it, export |
-| 05 | [Web & phone-viewport testing](05-web-viewport-testing.md) | Web as a test surface, viewports, Playwright |
+| 05 | [Web & phone-viewport testing](05-web-viewport-testing.md) | Web as a test surface, viewports, Playwright, responsive sweep |
+| 06 | [Observations, import & export](06-observations-import-export.md) | Canonical observation model, provenance, screenshot import, full-history export |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 

@@ -70,6 +70,16 @@ npm run test:e2e:dev
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
 - `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a screenshot import works.
 
+## Build an Android APK (on your PC)
+
+Needs Docker Desktop. From the repo root in PowerShell:
+
+```bash
+./scripts/build-apk.ps1
+```
+
+This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `artifacts/personal-fitness-tracker.apk`, ready to sideload. It runs only on your machine; there's no CI build.
+
 ## Screenshot import
 
 **Import from screenshots** (on any editable day) reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).

@@ -1,0 +1,115 @@
+{
+  "$schema": "../../docs/design-contracts/plan.schema.json",
+  "format": "pft-plan",
+  "formatVersion": 1,
+  "id": "generic-example",
+  "revision": 1,
+  "title": "Everyday strength & walking",
+  "description": "Generic example plan used for development, tests and screenshots. Not anyone's real plan.",
+  "units": { "mass": "kg", "energy": "kJ", "length": "cm" },
+  "dayTypes": [
+    { "id": "home", "label": "Home day" },
+    { "id": "office", "label": "Office day" },
+    { "id": "weekend", "label": "Weekend" }
+  ],
+  "schedule": {
+    "mon": "home",
+    "tue": "office",
+    "wed": "home",
+    "thu": "office",
+    "fri": "home",
+    "sat": "weekend",
+    "sun": "weekend"
+  },
+  "measurements": [
+    { "id": "weight", "label": "Weight", "quantity": "mass", "decimals": 1, "cadence": { "every": "day" } },
+    { "id": "waist", "label": "Waist", "quantity": "length", "decimals": 0, "cadence": { "every": "week", "on": "sun" } }
+  ],
+  "goals": [
+    { "id": "goal-weight", "label": "Goal", "measurementId": "weight", "target": 70, "direction": "decrease" }
+  ],
+  "nutrition": {
+    "targets": [
+      { "id": "energy", "label": "Energy", "quantity": "energy", "max": 8000 },
+      { "id": "protein", "label": "Protein", "quantity": "grams", "min": 120, "max": 140 }
+    ],
+    "eatingWindow": { "start": "08:00", "end": "19:30" }
+  },
+  "activities": [
+    {
+      "id": "morning-walk",
+      "kind": "exercise",
+      "label": "Morning walk",
+      "detail": "Brisk pace, flat route",
+      "time": "07:00",
+      "duration": { "min": 20, "max": 30 },
+      "appliesTo": { "dayTypes": ["home", "weekend"] }
+    },
+    {
+      "id": "commute-walk",
+      "kind": "exercise",
+      "label": "Walk from station",
+      "time": "08:15",
+      "duration": { "minutes": 15 },
+      "appliesTo": { "dayTypes": ["office"] }
+    },
+    {
+      "id": "breakfast",
+      "kind": "meal",
+      "label": "Breakfast",
+      "detail": "Oats, yoghurt, berries",
+      "time": "08:00",
+      "nutrition": { "energy": 1900, "protein": 35 }
+    },
+    {
+      "id": "lunch",
+      "kind": "meal",
+      "label": "Lunch",
+      "detail": "Packed salad bowl with chicken",
+      "time": "12:30",
+      "nutrition": { "energy": 2300, "protein": 45 }
+    },
+    {
+      "id": "lunch-walk",
+      "kind": "exercise",
+      "label": "Lunch walk",
+      "duration": { "min": 15, "max": 30 },
+      "required": false,
+      "appliesTo": { "dayTypes": ["home", "office"] }
+    },
+    {
+      "id": "snack",
+      "kind": "meal",
+      "label": "Afternoon snack",
+      "detail": "Fruit and a protein shake",
+      "time": "15:30",
+      "nutrition": { "energy": 900, "protein": 30 }
+    },
+    {
+      "id": "strength",
+      "kind": "exercise",
+      "label": "Strength session",
+      "detail": "Full-body routine",
+      "duration": { "min": 30, "max": 45 },
+      "appliesTo": { "days": ["mon", "wed", "sat"] }
+    },
+    {
+      "id": "dinner",
+      "kind": "meal",
+      "label": "Dinner",
+      "detail": "Flexible meal",
+      "time": "18:30",
+      "flexible": true
+    },
+    {
+      "id": "evening-stretch",
+      "kind": "habit",
+      "label": "Stretch",
+      "detail": "Three rounds of the mobility routine",
+      "tracking": { "type": "count", "target": 3, "unitLabel": "rounds" }
+    }
+  ],
+  "quickLogs": [
+    { "id": "hunger", "label": "I'm hungry", "detail": "Logs the time you felt hungry" }
+  ]
+}

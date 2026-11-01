@@ -32,7 +32,7 @@ it('migrations are idempotent and set user_version', async () => {
   const db = nodeSqlite(new DatabaseSync(':memory:'));
   await migrate(db);
   await migrate(db);
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 2 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 3 });
 });
 
 it('migrates an existing version-1 database without losing data (plan becomes origin "seed")', async () => {
@@ -56,5 +56,7 @@ it('migrates an existing version-1 database without losing data (plan becomes or
   expect(await store.getActivePlan()).toEqual({ planId: 'p', revision: 3, formatVersion: 1, json: '{"id":"p"}', importedAt: 't', origin: 'seed' });
   expect((await store.getDay('p', '2026-10-01')).activities.walk.status).toBe('done');
   expect(await store.configHistory()).toEqual([]);
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 2 });
+  expect(await store.completionEvents('p', '2026-10-01')).toEqual([]);
+  expect((await store.getDay('p', '2026-10-01')).activities.walk).toEqual({ activityId: 'walk', status: 'done', count: 0, labelSnapshot: 'Walk', updatedAt: 't' });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 3 });
 });

@@ -35,6 +35,35 @@ export type ActivityLog = {
   count: number;
   labelSnapshot: string;
   updatedAt: string;
+  /** Session variant used ("short" = the shortened version). Absent = full / not applicable. */
+  variant?: 'full' | 'short';
+  /** Requirement this activity satisfied as an alternative (contract 08). */
+  requirementId?: string;
+};
+
+/** Append-only record of every completion action (contract 08). Never rewritten or deleted by undo. */
+export type CompletionEvent = {
+  id: string;
+  planId: string;
+  date: LocalDate;
+  /** Activity id, or `req:<id>` when a whole requirement was skipped/restored. */
+  activityId: string;
+  requirementId: string | null;
+  action: 'complete' | 'progress' | 'undo' | 'skip' | 'restore';
+  count: number;
+  variant: 'full' | 'short' | null;
+  label: string;
+  purpose: string | null;
+  at: string;
+};
+
+/** What was prescribed on a date, captured when the day was acted on, so later plan edits can't rewrite it. */
+export type DaySnapshot = {
+  planId: string;
+  date: LocalDate;
+  planRevision: number;
+  prescribed: unknown;
+  updatedAt: string;
 };
 
 export type QuickLogEntry = {
@@ -65,6 +94,8 @@ export type StoreSnapshot = {
   quickLogs: QuickLogEntry[];
   imports: ImportSession[];
   configChanges: ConfigChange[];
+  completionEvents: CompletionEvent[];
+  daySnapshots: DaySnapshot[];
 };
 
 /**
@@ -93,6 +124,14 @@ export interface TrackingStore {
 
   /** Replace the active plan with a configuration change, and record the change. Atomic. */
   applyConfigChange(plan: StoredPlan, change: ConfigChange): Promise<void>;
+  /**
+   * Record a completion action atomically: current state (null = back to not done), the append-only event,
+   * and the day's prescription snapshot.
+   */
+  logCompletion(planId: string, date: LocalDate, activityId: string, log: ActivityLog | null, event: CompletionEvent, snapshot: DaySnapshot): Promise<void>;
+  completionEvents(planId: string, date: LocalDate): Promise<CompletionEvent[]>;
+  daySnapshot(planId: string, date: LocalDate): Promise<DaySnapshot | null>;
+
   /** Applied configuration changes, newest first. */
   configHistory(): Promise<ConfigChange[]>;
 

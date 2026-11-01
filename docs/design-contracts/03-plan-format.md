@@ -1,8 +1,10 @@
-# 03 · Plan package format (`pft-plan`, formatVersion 1)
+# 03 · Plan package format (`pft-plan`, formatVersion 1–2)
 
 A **plan package** is a single JSON file describing a fitness plan. The app renders whatever valid plan is loaded and has no built-in plan of its own. The machine-readable contract is [`plan.schema.json`](plan.schema.json) (JSON Schema 2020-12). This document defines semantics and the rules the schema cannot express.
 
 Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
+
+**formatVersion 2** adds two optional sections, `profile` and `exercise`, which are edited through the AI configuration protocol (contract 07). A formatVersion 1 plan must not contain them. Everything else below applies to both versions.
 
 ## Design limits (deliberate)
 

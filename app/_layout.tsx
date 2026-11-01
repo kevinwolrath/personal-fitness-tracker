@@ -14,6 +14,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="import" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="configure" options={{ presentation: 'modal' }} />
           </Stack>
         </AppProvider>
       </PhoneFrame>

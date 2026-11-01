@@ -24,6 +24,9 @@ dist-native/
 *.mobileprovision
 *.pem
 
+# Locally built APKs (scripts/build-apk.ps1)
+artifacts/
+
 # Tests
 test-results/
 playwright-report/

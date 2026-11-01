@@ -32,7 +32,7 @@ it('exports the entire history, earliest record through today, versioned', async
   const doc = buildExport(await (await populatedStore()).snapshot(), meta);
   expect(exportSchema.parse(doc)).toBeTruthy();
   expect(doc).toMatchObject({ format: 'pft-export', exportVersion: 1, range: { from: '2024-03-05', to: '2026-11-01' } });
-  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1 });
+  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1, configChanges: 0 });
   expect(doc.activityLogs.map((a) => [a.date, a.activityId, a.status, a.count])).toEqual([
     ['2024-03-05', 'vr-boxing', 'done', 3],
     ['2026-11-01', 'resistance', 'skipped', 0],
@@ -71,4 +71,11 @@ it('an empty store exports a valid document with no start date', async () => {
 
 it('rejects a document that is not a v1 export', () => {
   expect(toSnapshot({ format: 'pft-export', exportVersion: 2 })).toMatchObject({ ok: false });
+});
+
+it('reads an export written before configChanges existed (additive field)', () => {
+  const old = { format: 'pft-export', exportVersion: 1, exportedAt: 't', app: { name: 'x', version: '0.1.0' }, range: { from: null, to: '2026-11-01' },
+    counts: {}, plans: [], observations: [], activityLogs: [], dayOverrides: [], quickLogs: [], imports: [] };
+  const r = toSnapshot(old);
+  expect(r.ok && r.snapshot.configChanges).toEqual([]);
 });

@@ -1,12 +1,17 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { loadActivePlan } from '../plan/bootstrap';
-import type { Plan } from '../plan/schema';
+import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
 import { colors, space, type } from '../ui/theme';
 
-type AppData = { store: TrackingStore; plan: Plan };
+type AppData = {
+  store: TrackingStore;
+  plan: Plan;
+  /** Re-read the active plan after it changed (e.g. a configuration update was applied or undone). */
+  reloadPlan: () => Promise<void>;
+};
 const AppContext = createContext<AppData | null>(null);
 
 export function useApp(): AppData {
@@ -17,7 +22,7 @@ export function useApp(): AppData {
 
 /** Opens storage and loads the active plan (installing the seed on first run). */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppData | { error: string } | null>(null);
+  const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { error: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +35,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  const reloadPlan = useCallback(async () => {
+    if (!state || 'error' in state) return;
+    const stored = await state.store.getActivePlan();
+    if (stored) setState({ store: state.store, plan: planSchema.parse(JSON.parse(stored.json)) });
+  }, [state]);
+  const value = useMemo(() => (state && !('error' in state) ? { ...state, reloadPlan } : null), [state, reloadPlan]);
 
   if (!state) {
     return (
@@ -46,7 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       </View>
     );
   }
-  return <AppContext.Provider value={state}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
 const styles = StyleSheet.create({

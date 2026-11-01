@@ -59,5 +59,37 @@ export function validatePlan(input: unknown): PlanValidation {
     if (m.unitLabel !== undefined && m.quantity !== 'number') errors.push(`measurement ${m.id}: unitLabel is only for quantity "number"`);
   }
 
+  if (plan.exercise) {
+    const ex = plan.exercise;
+    const dupes = (what: string, keys: string[]) => {
+      const seen = new Set<string>();
+      for (const k of keys) {
+        if (seen.has(k)) errors.push(`exercise.${what}: "${k}" is listed twice`);
+        seen.add(k);
+      }
+    };
+    dupes('limitations', (ex.limitations ?? []).map((l) => l.movement));
+    dupes('substitutions', (ex.substitutions ?? []).map((x) => x.instead));
+    dupes('activityTypes', (ex.activityTypes ?? []).map((a) => a.id));
+    const types = new Set((ex.activityTypes ?? []).map((a) => a.id));
+    for (const block of ['strength', 'conditioning'] as const) {
+      for (const m of ex[block]?.modalities ?? []) {
+        if (!types.has(m)) errors.push(`exercise.${block}.modalities: "${m}" is not one of exercise.activityTypes`);
+      }
+    }
+    for (const sub of ex.substitutions ?? []) {
+      if (sub.use.includes(sub.instead)) errors.push(`exercise.substitutions: "${sub.instead}" can't substitute for itself`);
+      for (const u of sub.use) {
+        if (ex.limitations?.some((l) => l.movement === u && l.status === 'avoid')) {
+          errors.push(`exercise.substitutions: "${u}" is suggested for "${sub.instead}" but is itself marked avoid`);
+        }
+      }
+    }
+    for (const block of ['strength', 'conditioning'] as const) {
+      const r = ex[block]?.sessionMinutes;
+      if (r && 'min' in r && r.min > r.max) errors.push(`exercise.${block}.sessionMinutes: min > max`);
+    }
+  }
+
   return errors.length ? { ok: false, errors } : { ok: true, plan };
 }

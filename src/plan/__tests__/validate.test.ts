@@ -25,7 +25,10 @@ describe.each([
 const shapeMutations: [string, (p: any) => void][] = [
   ['bad time format', (p) => (p.activities[0].time = '7:00')],
   ['unknown property', (p) => (p.activities[0].colour = 'red')],
-  ['newer formatVersion', (p) => (p.formatVersion = 2)],
+  ['newer formatVersion', (p) => (p.formatVersion = 3)],
+  ['exercise on a formatVersion 1 plan', (p) => (p.exercise = { goals: ['fitness'] })],
+  ['unknown equipment type', (p) => ((p.formatVersion = 2), (p.exercise = { equipment: [{ type: 'trampoline' }] }))],
+  ['movement not snake_case', (p) => ((p.formatVersion = 2), (p.exercise = { limitations: [{ movement: 'Biceps Curl', status: 'avoid' }] }))],
   ['missing weekday in schedule', (p) => delete p.schedule.sun],
   ['bad id', (p) => (p.id = 'Not A Slug')],
   ['count target too small', (p) => (p.activities[0].tracking = { type: 'count', target: 1, unitLabel: 'x' })],
@@ -67,4 +70,27 @@ it('applies schema defaults', () => {
   expect(lunch.required).toBe(true);
   expect(lunch.tracking).toEqual({ type: 'check' });
   expect(lunch.flexible).toBe(false);
+});
+
+describe('formatVersion 2 (profile + exercise)', () => {
+  const exercise = require('../../../fixtures/config/real-world-exercise.update.json').fitnessConfigUpdate.exercise;
+  const v2 = { ...clone(seed), formatVersion: 2, exercise, profile: { displayName: 'Kevin', notes: ['Two kids'] } };
+  it('JSON Schema accepts the real-world exercise profile', () => {
+    expect(contractValidate(v2) ? [] : contractValidate.errors).toEqual([]);
+  });
+  it('runtime validator accepts it', () => {
+    const r = validatePlan(v2);
+    expect(r.ok ? [] : r.errors).toEqual([]);
+  });
+  it.each([
+    ['modality not an activity type', (p: any) => (p.exercise.conditioning.modalities = ['swimming']), /not one of exercise.activityTypes/],
+    ['duplicate limitation', (p: any) => p.exercise.limitations.push({ movement: 'biceps_curl', status: 'caution' }), /listed twice/],
+    ['substitute that is itself avoided', (p: any) => (p.exercise.substitutions[0].use = ['biceps_curl', 'hammer_curl']), /itself|marked avoid/],
+  ])('rejects (semantic): %s', (_n, mutate, message) => {
+    const p = clone(v2);
+    mutate(p);
+    const r = validatePlan(p);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join('\n')).toMatch(message);
+  });
 });

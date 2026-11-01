@@ -24,6 +24,8 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
 | `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
 | `src/features/import/` | Screenshot import flow. |
+| `src/config/` | AI configuration: sections over the plan, update parser/applier, preview diff, AI instructions, history/undo (contract 07). |
+| `src/features/configure/` | Configure-with-AI screen. |
 | `src/export/` | Full-history JSON export (`pft-export` v1) and its inverse for restore. |
 | `src/platform/` | Native/web adapters for secure storage and files/sharing. |
 | `src/ui/` | Theme tokens and platform adapters (`Sheet`, `PhoneFrame`, `haptics`). |
@@ -68,10 +70,24 @@ npm run test:e2e:dev
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
 - `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a screenshot import works.
 
+## Build an Android APK (on your PC)
+
+Needs Docker Desktop. From the repo root in PowerShell:
+
+```bash
+./scripts/build-apk.ps1
+```
+
+This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `artifacts/personal-fitness-tracker.apk`, ready to sideload. It runs only on your machine; there's no CI build.
+
 ## Screenshot import
 
 **Import from screenshots** (on any editable day) reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
 
+## Configure with AI
+
+Daily Log → **Configure with AI**. Copy the instructions into ChatGPT or Claude, talk through what you want to change (diet, equipment, injuries, schedule, goals), and paste back the update it gives you. The app validates it, shows exactly what will change, and applies it only when you tap **Apply update**. Sections the update doesn't mention are left exactly as they were, and the last change can be undone. See [contract 07](docs/design-contracts/07-ai-configuration.md).
+
 ## Changing the plan
 
-Edit `plans/seed.plan.json`, keeping it valid against `docs/design-contracts/plan.schema.json`. `npm test` checks this. Then bump `revision`. Installed apps pick up a higher revision of the same plan `id` on next launch, and tracking history is kept.
+Day to day, use **Configure with AI** (above). To change the bundled default for fresh installs, edit `plans/seed.plan.json`, keeping it valid against `docs/design-contracts/plan.schema.json`. `npm test` checks this. Then bump `revision`. Installed apps pick up a higher revision of the same plan `id` on next launch, unless the user has already changed their configuration in the app, which is never overwritten. Tracking history is always kept.

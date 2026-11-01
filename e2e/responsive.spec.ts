@@ -86,3 +86,22 @@ test('the jump-to-date sheet fits at the narrowest width', async ({ page }) => {
   await expect(page.getByRole('button', { name: /First entry/ })).toBeVisible();
   expect(await layoutProblems(page)).toEqual([]);
 });
+
+test('the AI configuration screen (with a preview and errors) fits at every width', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await openAt(page, MONDAY);
+  await page.getByRole('button', { name: 'Configure with AI' }).click();
+  const combined = require('node:fs').readFileSync('fixtures/config/combined.update.json', 'utf8');
+  await page.getByLabel('AI update').fill(combined);
+  await page.getByRole('button', { name: 'Check update' }).click();
+  await expect(page.getByTestId('config-preview')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `preview at ${width}px`).toEqual([]);
+  }
+  await page.getByLabel('AI update').fill('{"fitnessConfigUpdate":{"schemaVersion":1,"exercise":{"equipment":[{"type":"a_very_long_unknown_equipment_type_name"}]}}}');
+  await page.getByRole('button', { name: 'Check update' }).click();
+  await page.setViewportSize({ width: 320, height: 900 });
+  expect(await layoutProblems(page), 'errors at 320px').toEqual([]);
+});

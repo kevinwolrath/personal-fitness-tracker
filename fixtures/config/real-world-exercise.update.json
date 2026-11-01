@@ -1,0 +1,50 @@
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "exercise": {
+      "goals": ["weight_loss", "muscle_preservation", "strength", "fitness"],
+      "equipment": [
+        { "type": "home_gym", "brand": "Fortis", "label": "Fortis home multi-gym" },
+        { "type": "kettlebell", "weightsKg": [16, 24] },
+        { "type": "free_weights", "label": "Small free weights" },
+        { "type": "heavy_bag" },
+        { "type": "boxing_gloves" },
+        { "type": "battle_ropes" },
+        { "type": "vr_headset", "label": "VR headset (Thrill of the Fight)" }
+      ],
+      "limitations": [
+        { "movement": "biceps_curl", "status": "avoid", "reason": "aggravates elbow" },
+        { "movement": "hammer_curl", "status": "allowed", "reason": "tolerated by the elbow" }
+      ],
+      "substitutions": [
+        { "instead": "biceps_curl", "use": ["hammer_curl"], "reason": "neutral grip spares the elbow" }
+      ],
+      "activityTypes": [
+        { "id": "vr_boxing", "label": "VR boxing", "kind": "conditioning", "intensity": "high", "equipment": ["vr_headset"], "notes": "Thrill of the Fight" },
+        { "id": "heavy_bag", "label": "Heavy bag rounds", "kind": "conditioning", "intensity": "high", "equipment": ["heavy_bag", "boxing_gloves"] },
+        { "id": "battle_ropes", "label": "Battle ropes", "kind": "conditioning", "intensity": "high", "equipment": ["battle_ropes"] },
+        { "id": "kettlebell_strength", "label": "Kettlebell strength", "kind": "strength", "equipment": ["kettlebell"] },
+        { "id": "machine_strength", "label": "Multi-gym strength", "kind": "strength", "equipment": ["home_gym"] }
+      ],
+      "strength": {
+        "sessionsPerWeek": 3,
+        "sessionMinutes": { "min": 30, "max": 45 },
+        "split": "full_body",
+        "modalities": ["kettlebell_strength", "machine_strength"],
+        "focus": ["Preserve muscle while losing fat"]
+      },
+      "conditioning": {
+        "sessionsPerWeek": 7,
+        "sessionMinutes": { "minutes": 9 },
+        "intensity": "high",
+        "modalities": ["vr_boxing", "heavy_bag", "battle_ropes"]
+      },
+      "constraints": {
+        "location": "home",
+        "gymMembership": false,
+        "maxSessionMinutes": 45,
+        "notes": ["Limited training time: work, family and kids"]
+      }
+    }
+  }
+}

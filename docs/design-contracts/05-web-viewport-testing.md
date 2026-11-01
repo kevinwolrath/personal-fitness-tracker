@@ -29,6 +29,7 @@ All three run with `isMobile: true`, `hasTouch: true` and `deviceScaleFactor: 3`
 - Gestures are tested through their tap or accessibility equivalents. Any swipe shortcut added later gets one smoke test with touch emulation. V1 has none.
 - Every screen gets an automated check: no horizontal overflow at `phone-small`, and touch targets at least 44 px.
 - **Responsive sweep** (`e2e/responsive.spec.ts`): Monday, Thursday and Saturday are rendered at 320, 340, 360, 375, 390, 412, 430, 500, 768 and 1280 px. It fails if any element leaves the phone frame, any text is clipped, or content spills out of a clipping parent. That catches card-level overflow (for example a value pushed out of its card), not just page scroll.
+- **Dev-server smoke test** (`npm run test:e2e:dev`, `e2e/dev-smoke.spec.ts`): the main suite runs against the production export, which loads modules differently from the Metro development server (React Refresh). The smoke test boots the dev server, fails on any page or console error, and runs one screenshot import. It exists because a dev-only crash (an import cycle in `@anthropic-ai/sdk`'s ESM build; see `metro.config.js`) passed every production-build test.
 - The Claude API is stubbed at the network layer in Playwright (`e2e/claudeStub.ts`), so the real SDK request and parsing path runs with canned model output. No test calls the real API.
 
 ## Required test coverage before a screen is "done"

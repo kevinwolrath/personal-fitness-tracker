@@ -59,9 +59,14 @@ npm run test:e2e
 npm run check:native
 ```
 
+```bash
+npm run test:e2e:dev
+```
+
 - `npm test` runs unit tests, plus the Daily Log rendered under the iOS and Android presets.
 - `npm run test:e2e` runs Playwright on the web export at 360, 390 and 430 px, plus a responsive sweep from 320 to 1280 px. Run `npx playwright test --update-snapshots` after an intended visual change.
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
+- `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a screenshot import works.
 
 ## Screenshot import
 

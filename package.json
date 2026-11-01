@@ -12,7 +12,8 @@
     "test": "jest",
     "test:e2e": "playwright test",
     "export:web": "expo export --platform web",
-    "check:native": "expo export --platform ios --platform android --output-dir dist-native"
+    "check:native": "expo export --platform ios --platform android --output-dir dist-native",
+    "test:e2e:dev": "E2E_DEV=1 playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

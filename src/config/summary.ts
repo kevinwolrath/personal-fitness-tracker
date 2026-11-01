@@ -1,4 +1,4 @@
-import { describeItem, describeLimitation } from './diff';
+import { describeItem, describeLimitation, withFormat } from './diff';
 import { readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 
 export type SectionSummary = { section: SectionName; title: string; lines: string[] };
@@ -7,6 +7,10 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 /** Inspectable, read-only summary of the current configuration (no settings UI). Pure. */
 export function summarizeConfig(raw: RawPlan): SectionSummary[] {
+  return withFormat(raw, () => summarize(raw));
+}
+
+function summarize(raw: RawPlan): SectionSummary[] {
   const c = readConfig(raw) as Record<SectionName, Record<string, any>>;
   const out: Record<SectionName, string[]> = {
     profile: [

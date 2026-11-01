@@ -156,6 +156,15 @@ describe('rejecting bad payloads with actionable errors', () => {
 });
 
 describe('preview', () => {
+  it('reads in plain language: units, thousands separators, labels, and no "—" (#21)', () => {
+    const { nextRaw, update, raw } = apply(fixture('combined'));
+    const all = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
+    expect(all).toContain('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
+    expect(all).toContain('Fixed lunch at 12:00: energy 2,100 kJ, protein 55 g; cleared: purpose');
+    expect(all.find((t) => t.startsWith('Conditioning:'))).toContain('activities VR boxing, Heavy bag rounds, Battle ropes');
+    expect(all.join('\n')).not.toMatch(/—|sessionsPerWeek|max 7530|\b\d{4,}\b/);
+  });
+
   it('lists supplied sections with readable changes and marks the rest untouched', () => {
     const { nextRaw, update, raw } = apply(fixture('real-world-exercise'));
     const preview = previewUpdate(raw, nextRaw, update);

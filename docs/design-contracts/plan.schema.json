@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kevinwolrath/personal-fitness-tracker/docs/design-contracts/plan.schema.json",
   "title": "Personal Fitness Tracker plan package",
-  "description": "formatVersion 1. Authoritative contract: see 03-plan-format.md for semantics and rules that JSON Schema cannot express.",
+  "description": "formatVersion 1 and 2. Authoritative contract: see 03-plan-format.md and 07-ai-configuration.md for semantics and rules that JSON Schema cannot express.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -24,7 +24,10 @@
       "const": "pft-plan"
     },
     "formatVersion": {
-      "const": 1
+      "enum": [
+        1,
+        2
+      ]
     },
     "id": {
       "$ref": "#/$defs/id"
@@ -338,6 +341,12 @@
           }
         }
       }
+    },
+    "profile": {
+      "$ref": "#/$defs/profile"
+    },
+    "exercise": {
+      "$ref": "#/$defs/exercise"
     }
   },
   "$defs": {
@@ -537,6 +546,383 @@
           "description": "Meals only. Amount not fixed; Today shows the remaining budget instead of nutrition values."
         }
       }
+    },
+    "movementId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+      "maxLength": 40
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "minutesRange": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minutes"
+          ],
+          "properties": {
+            "minutes": {
+              "$ref": "#/$defs/minutes"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "min",
+            "max"
+          ],
+          "properties": {
+            "min": {
+              "$ref": "#/$defs/minutes"
+            },
+            "max": {
+              "$ref": "#/$defs/minutes"
+            }
+          }
+        }
+      ]
+    },
+    "equipmentType": {
+      "enum": [
+        "kettlebell",
+        "dumbbells",
+        "free_weights",
+        "barbell",
+        "weight_plates",
+        "home_gym",
+        "cable_machine",
+        "bench",
+        "pull_up_bar",
+        "resistance_bands",
+        "heavy_bag",
+        "boxing_gloves",
+        "battle_ropes",
+        "jump_rope",
+        "exercise_bike",
+        "treadmill",
+        "rower",
+        "bicycle",
+        "vr_headset",
+        "yoga_mat",
+        "other"
+      ]
+    },
+    "intensity": {
+      "enum": [
+        "low",
+        "moderate",
+        "high"
+      ]
+    },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "goals": {
+          "type": "array",
+          "maxItems": 9,
+          "items": {
+            "enum": [
+              "weight_loss",
+              "muscle_preservation",
+              "muscle_gain",
+              "strength",
+              "fitness",
+              "endurance",
+              "mobility",
+              "health",
+              "other"
+            ]
+          }
+        },
+        "equipment": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "$ref": "#/$defs/equipmentType"
+              },
+              "label": {
+                "$ref": "#/$defs/label"
+              },
+              "brand": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "weightsKg": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "number",
+                  "exclusiveMinimum": 0,
+                  "maximum": 500
+                }
+              },
+              "notes": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "movement",
+              "status"
+            ],
+            "properties": {
+              "movement": {
+                "$ref": "#/$defs/movementId"
+              },
+              "status": {
+                "enum": [
+                  "avoid",
+                  "caution",
+                  "allowed"
+                ]
+              },
+              "reason": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        },
+        "substitutions": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "instead",
+              "use"
+            ],
+            "properties": {
+              "instead": {
+                "$ref": "#/$defs/movementId"
+              },
+              "use": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 5,
+                "items": {
+                  "$ref": "#/$defs/movementId"
+                }
+              },
+              "reason": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        },
+        "activityTypes": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "$ref": "#/$defs/movementId"
+              },
+              "label": {
+                "$ref": "#/$defs/label"
+              },
+              "kind": {
+                "enum": [
+                  "strength",
+                  "conditioning",
+                  "cardio",
+                  "mobility",
+                  "sport",
+                  "active_commute",
+                  "other"
+                ]
+              },
+              "intensity": {
+                "$ref": "#/$defs/intensity"
+              },
+              "equipment": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "$ref": "#/$defs/equipmentType"
+                }
+              },
+              "notes": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        },
+        "strength": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sessionsPerWeek": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 14
+            },
+            "sessionMinutes": {
+              "$ref": "#/$defs/minutesRange"
+            },
+            "intensity": {
+              "$ref": "#/$defs/intensity"
+            },
+            "modalities": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "$ref": "#/$defs/movementId"
+              }
+            },
+            "notes": {
+              "$ref": "#/$defs/note"
+            },
+            "split": {
+              "enum": [
+                "full_body",
+                "upper_lower",
+                "push_pull",
+                "push_pull_legs",
+                "circuit",
+                "other"
+              ]
+            },
+            "focus": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        },
+        "conditioning": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sessionsPerWeek": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 14
+            },
+            "sessionMinutes": {
+              "$ref": "#/$defs/minutesRange"
+            },
+            "intensity": {
+              "$ref": "#/$defs/intensity"
+            },
+            "modalities": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "$ref": "#/$defs/movementId"
+              }
+            },
+            "notes": {
+              "$ref": "#/$defs/note"
+            }
+          }
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "location": {
+              "enum": [
+                "home",
+                "gym",
+                "outdoors",
+                "mixed"
+              ]
+            },
+            "gymMembership": {
+              "type": "boolean"
+            },
+            "maxSessionMinutes": {
+              "$ref": "#/$defs/minutes"
+            },
+            "notes": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "$ref": "#/$defs/note"
+              }
+            }
+          }
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "heightCm": {
+          "type": "number",
+          "minimum": 50,
+          "maximum": 260
+        },
+        "notes": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/note"
+          }
+        }
+      }
+    }
+  },
+  "if": {
+    "properties": {
+      "formatVersion": {
+        "const": 1
+      }
+    }
+  },
+  "then": {
+    "not": {
+      "anyOf": [
+        {
+          "required": [
+            "profile"
+          ]
+        },
+        {
+          "required": [
+            "exercise"
+          ]
+        }
+      ]
     }
   }
 }

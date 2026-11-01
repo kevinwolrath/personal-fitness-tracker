@@ -1,0 +1,16 @@
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "nutrition": {
+      "targets": [
+        { "id": "energy", "label": "Energy", "quantity": "energy", "max": 7300 },
+        { "id": "protein", "label": "Protein", "quantity": "grams", "min": 160, "max": 180 }
+      ],
+      "meals": [
+        { "id": "lunch", "kind": "meal", "label": "Fixed lunch", "detail": "Cold high-protein lunch, no heating needed", "time": "12:00", "nutrition": { "energy": 2100, "protein": 55 } },
+        { "id": "snack", "kind": "meal", "label": "Fixed snack", "detail": "Anti-hunger snack before family dinner", "nutrition": { "energy": 900, "protein": 30 } },
+        { "id": "dinner", "kind": "meal", "label": "Family dinner", "detail": "Usually 6:30–7:30 pm", "time": "18:30", "flexible": true }
+      ]
+    }
+  }
+}

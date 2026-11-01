@@ -2,6 +2,7 @@ import type { ImportSession, Observation } from '../observations/types';
 import type {
   ActivityLog,
   ActivityLogRecord,
+  ConfigChange,
   DayRecords,
   QuickLogEntry,
   StoreSnapshot,
@@ -24,6 +25,7 @@ type Doc = {
   observations: Observation[];
   quickLogs: QuickLogEntry[];
   imports: ImportSession[];
+  configChanges: ConfigChange[];
 };
 
 export const STORAGE_KEY = 'pft:tracking:v1';
@@ -32,7 +34,7 @@ const splitKey = (k: string) => {
   const i = k.lastIndexOf('|');
   return { planId: k.slice(0, i), date: k.slice(i + 1) };
 };
-const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [] });
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [] });
 const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
   for (const k of keys) {
     const c = String(a[k]).localeCompare(String(b[k]));
@@ -70,8 +72,9 @@ export class KeyValueTrackingStore implements TrackingStore {
     this.kv.setItem(STORAGE_KEY, JSON.stringify(doc));
   }
 
-  async getActivePlan() {
-    return this.read().plan;
+  async getActivePlan(): Promise<StoredPlan | null> {
+    const p = this.read().plan;
+    return p && { ...p, origin: p.origin ?? 'seed' }; // documents written before #7 have no origin
   }
 
   async setActivePlan(plan: StoredPlan) {
@@ -143,6 +146,18 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
+  async applyConfigChange(plan: StoredPlan, change: ConfigChange) {
+    // One document write: atomic by construction.
+    this.update((d) => {
+      d.plan = plan;
+      upsertById(d.configChanges, change);
+    });
+  }
+
+  async configHistory(): Promise<ConfigChange[]> {
+    return [...this.read().configChanges].sort((a, b) => b.appliedAt.localeCompare(a.appliedAt) || b.toRevision - a.toRevision);
+  }
+
   async firstRecordDate(): Promise<string | null> {
     const d = this.read();
     const dates = [
@@ -169,6 +184,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       observations: [...d.observations].sort(byKey<Observation>('date', 'recordedAt', 'id')),
       quickLogs: [...d.quickLogs].sort(byKey<QuickLogEntry>('at', 'id')),
       imports: [...d.imports].sort(byKey<ImportSession>('createdAt', 'id')),
+      configChanges: [...d.configChanges].sort((a, b) => a.appliedAt.localeCompare(b.appliedAt) || a.toRevision - b.toRevision),
     };
   }
 
@@ -180,6 +196,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       s.imports.forEach((i) => upsertById(d.imports, i));
       s.observations.forEach((o) => upsertById(d.observations, o));
       s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
+      (s.configChanges ?? []).forEach((c) => upsertById(d.configChanges, c));
     });
   }
 }

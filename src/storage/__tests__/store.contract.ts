@@ -48,7 +48,7 @@ export function describeTrackingStore(
     it('stores and replaces the single active plan', async () => {
       await store.setActivePlan({ planId: 'p', revision: 1, formatVersion: 1, json: '{"a":1}', importedAt: 't1' });
       await store.setActivePlan({ planId: 'p', revision: 2, formatVersion: 1, json: '{"a":2}', importedAt: 't2' });
-      expect(await store.getActivePlan()).toEqual({ planId: 'p', revision: 2, formatVersion: 1, json: '{"a":2}', importedAt: 't2' });
+      expect(await store.getActivePlan()).toEqual({ planId: 'p', revision: 2, formatVersion: 1, json: '{"a":2}', importedAt: 't2', origin: 'seed' });
     });
 
     it('upserts, updates and deletes activity logs per plan + date', async () => {
@@ -147,6 +147,24 @@ export function describeTrackingStore(
       await target.restore(snap);
       expect(await target.snapshot()).toEqual(snap);
       // Restore is idempotent (ids are stable).
+      await target.restore(snap);
+      expect(await target.snapshot()).toEqual(snap);
+    });
+
+    it('applies a configuration change atomically with its history, newest first', async () => {
+      await store.setActivePlan({ planId: 'p', revision: 1, formatVersion: 1, json: '{"v":1}', importedAt: 't0', origin: 'seed' });
+      const change = (id: string, at: string, from: number, to: number) => ({
+        id, appliedAt: at, sections: ['exercise'], payload: { fitnessConfigUpdate: { schemaVersion: 1 } }, fromRevision: from, toRevision: to, previousPlanJson: `{"v":${from}}`,
+      });
+      await store.applyConfigChange({ planId: 'p', revision: 2, formatVersion: 2, json: '{"v":2}', importedAt: 't1', origin: 'config' }, change('c1', '2026-11-01T10:00:00Z', 1, 2));
+      await store.applyConfigChange({ planId: 'p', revision: 3, formatVersion: 2, json: '{"v":3}', importedAt: 't2', origin: 'config' }, change('c2', '2026-11-01T11:00:00Z', 2, 3));
+      const again = await reopen();
+      expect(await again.getActivePlan()).toMatchObject({ revision: 3, origin: 'config', json: '{"v":3}' });
+      expect((await again.configHistory()).map((c) => c.id)).toEqual(['c2', 'c1']);
+      expect((await again.configHistory())[1]).toEqual(change('c1', '2026-11-01T10:00:00Z', 1, 2));
+      const snap = await again.snapshot();
+      expect(snap.configChanges.map((c) => c.id)).toEqual(['c1', 'c2']);
+      const target = await setupEmpty();
       await target.restore(snap);
       expect(await target.snapshot()).toEqual(snap);
     });

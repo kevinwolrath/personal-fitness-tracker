@@ -3,6 +3,7 @@ import type {
   ActivityLog,
   ActivityLogRecord,
   DayOverrideRecord,
+  ConfigChange,
   DayRecords,
   QuickLogEntry,
   StoreSnapshot,
@@ -50,6 +51,11 @@ const migrations = [
    CREATE TABLE day_override (
      plan_id TEXT NOT NULL, date TEXT NOT NULL, day_type_id TEXT NOT NULL,
      PRIMARY KEY (plan_id, date));`,
+  // 2 (#7): plan origin + configuration change history. Additive only.
+  `ALTER TABLE plan ADD COLUMN origin TEXT NOT NULL DEFAULT 'seed';
+   CREATE TABLE config_change (
+     id TEXT PRIMARY KEY, applied_at TEXT NOT NULL, sections TEXT NOT NULL, payload TEXT NOT NULL,
+     from_revision INTEGER NOT NULL, to_revision INTEGER NOT NULL, previous_plan_json TEXT NOT NULL);`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -136,19 +142,20 @@ export class SqliteTrackingStore implements TrackingStore {
   }
 
   async getActivePlan(): Promise<StoredPlan | null> {
-    const r = await this.db.getFirstAsync<{ plan_id: string; revision: number; format_version: number; json: string; imported_at: string }>(
-      'SELECT plan_id, revision, format_version, json, imported_at FROM plan WHERE id = 1',
+    const r = await this.db.getFirstAsync<{ plan_id: string; revision: number; format_version: number; json: string; imported_at: string; origin: StoredPlan['origin'] }>(
+      'SELECT plan_id, revision, format_version, json, imported_at, origin FROM plan WHERE id = 1',
       [],
     );
-    return r && { planId: r.plan_id, revision: r.revision, formatVersion: r.format_version, json: r.json, importedAt: r.imported_at };
+    return r && { planId: r.plan_id, revision: r.revision, formatVersion: r.format_version, json: r.json, importedAt: r.imported_at, origin: r.origin ?? 'seed' };
   }
 
   async setActivePlan(p: StoredPlan): Promise<void> {
     await this.db.runAsync(
-      `INSERT INTO plan (id, plan_id, revision, format_version, json, imported_at) VALUES (1, ?, ?, ?, ?, ?)
+      `INSERT INTO plan (id, plan_id, revision, format_version, json, imported_at, origin) VALUES (1, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET plan_id = excluded.plan_id, revision = excluded.revision,
-         format_version = excluded.format_version, json = excluded.json, imported_at = excluded.imported_at`,
-      [p.planId, p.revision, p.formatVersion, p.json, p.importedAt],
+         format_version = excluded.format_version, json = excluded.json, imported_at = excluded.imported_at,
+         origin = excluded.origin`,
+      [p.planId, p.revision, p.formatVersion, p.json, p.importedAt, p.origin ?? 'seed'],
     );
   }
 
@@ -261,6 +268,37 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync('DELETE FROM quick_log WHERE id = ?', [id]);
   }
 
+  private async insertConfigChange(c: ConfigChange): Promise<void> {
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO config_change (id, applied_at, sections, payload, from_revision, to_revision, previous_plan_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [c.id, c.appliedAt, JSON.stringify(c.sections), JSON.stringify(c.payload), c.fromRevision, c.toRevision, c.previousPlanJson],
+    );
+  }
+
+  async applyConfigChange(plan: StoredPlan, change: ConfigChange): Promise<void> {
+    await this.transaction(async () => {
+      await this.setActivePlan(plan);
+      await this.insertConfigChange(change);
+    });
+  }
+
+  async configHistory(): Promise<ConfigChange[]> {
+    const rows = await this.db.getAllAsync<{ id: string; applied_at: string; sections: string; payload: string; from_revision: number; to_revision: number; previous_plan_json: string }>(
+      'SELECT * FROM config_change ORDER BY applied_at DESC, to_revision DESC',
+      [],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      appliedAt: r.applied_at,
+      sections: JSON.parse(r.sections),
+      payload: JSON.parse(r.payload),
+      fromRevision: r.from_revision,
+      toRevision: r.to_revision,
+      previousPlanJson: r.previous_plan_json,
+    }));
+  }
+
   async firstRecordDate(): Promise<string | null> {
     const r = await this.db.getFirstAsync<{ first: string | null }>(
       `SELECT MIN(d) AS first FROM (
@@ -283,7 +321,9 @@ export class SqliteTrackingStore implements TrackingStore {
         [],
       ),
     ]);
+    const configChanges = (await this.configHistory()).reverse();
     return {
+      configChanges,
       plans: plan ? [plan] : [],
       activityLogs: acts.map(toActivity),
       dayOverrides: overrides.map((o): DayOverrideRecord => ({ planId: o.plan_id, date: o.date, dayTypeId: o.day_type_id })),
@@ -301,6 +341,7 @@ export class SqliteTrackingStore implements TrackingStore {
       for (const i of s.imports) await this.upsertImport(i);
       for (const o of s.observations) await this.upsertObservation(o);
       for (const q of s.quickLogs) await this.addQuickLog(q);
+      for (const c of s.configChanges ?? []) await this.insertConfigChange(c);
     });
   }
 }

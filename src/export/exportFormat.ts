@@ -37,6 +37,7 @@ export const exportSchema = z.object({
       revision: z.number(),
       formatVersion: z.number(),
       importedAt: z.string(),
+      origin: z.enum(['seed', 'config', 'import']).optional(),
       /** The plan package as imported (goals, targets, schedule live here). */
       plan: z.unknown(),
     }),
@@ -85,6 +86,20 @@ export const exportSchema = z.object({
       ),
     }),
   ),
+  /** Applied AI configuration updates with the previous plan for each (contract 07). Added in-version; optional when reading. */
+  configChanges: z
+    .array(
+      z.object({
+        id: z.string(),
+        appliedAt: z.string(),
+        sections: z.array(z.string()),
+        payload: z.unknown(),
+        fromRevision: z.number(),
+        toRevision: z.number(),
+        previousPlanJson: z.string(),
+      }),
+    )
+    .default([]),
 });
 
 export type ExportDocument = z.infer<typeof exportSchema>;
@@ -113,12 +128,14 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
       dayOverrides: s.dayOverrides.length,
       quickLogs: s.quickLogs.length,
       imports: s.imports.length,
+      configChanges: s.configChanges.length,
     },
     plans: s.plans.map((p) => ({
       planId: p.planId,
       revision: p.revision,
       formatVersion: p.formatVersion,
       importedAt: p.importedAt,
+      origin: p.origin ?? 'seed',
       plan: JSON.parse(p.json),
     })),
     observations: s.observations,
@@ -126,6 +143,7 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
     dayOverrides: s.dayOverrides,
     quickLogs: s.quickLogs,
     imports: s.imports,
+    configChanges: s.configChanges,
   };
 }
 
@@ -145,6 +163,7 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
         revision: p.revision,
         formatVersion: p.formatVersion,
         importedAt: p.importedAt,
+        origin: p.origin ?? 'seed',
         json: JSON.stringify(p.plan),
       })),
       observations: e.observations,
@@ -152,6 +171,7 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
       dayOverrides: e.dayOverrides,
       quickLogs: e.quickLogs,
       imports: e.imports,
+      configChanges: e.configChanges.map((c) => ({ ...c, payload: c.payload as unknown })),
     },
   };
 }

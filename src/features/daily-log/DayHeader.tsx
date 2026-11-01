@@ -14,8 +14,6 @@ type Props = {
   onToday: () => void;
   onPickDate: () => void;
   onDayType: () => void;
-  /** Opens the app menu (import, configure, export). */
-  onMenu: () => void;
 };
 
 /**
@@ -55,18 +53,6 @@ export function DayHeader(p: Props) {
         <Text style={styles.title} accessibilityRole="header" testID="day-title">
           {labels.title}
         </Text>
-        <Pressable onPress={p.onMenu} style={styles.menuButton} accessibilityRole="button" accessibilityLabel="Menu" testID="menu-button" hitSlop={4}>
-          <View style={styles.burger}>
-            <View style={styles.bar} />
-            <View style={styles.bar} />
-            <View style={styles.bar} />
-          </View>
-        </Pressable>
-      </View>
-      <View style={styles.statusRow}>
-        <Text style={[type.detail, styles.progressText]} testID="day-progress">
-          {p.progress.total === 0 ? 'Nothing required' : p.progress.complete ? `All ${p.progress.total} done` : `${p.progress.done} of ${p.progress.total} done`}
-        </Text>
         <Pressable
           onPress={p.onDayType}
           style={[styles.chip, p.overridden && styles.chipOverridden]}
@@ -78,8 +64,13 @@ export function DayHeader(p: Props) {
           </Text>
         </Pressable>
       </View>
-      <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <View style={[styles.fill, { width: `${pct * 100}%` }]} />
+      <View style={styles.progressRow}>
+        <Text style={[type.detail, styles.progressText]} testID="day-progress">
+          {p.progress.total === 0 ? 'Nothing required' : p.progress.complete ? `All ${p.progress.total} done` : `${p.progress.done} of ${p.progress.total} done`}
+        </Text>
+        <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={[styles.fill, { width: `${pct * 100}%` }]} />
+        </View>
       </View>
     </View>
   );
@@ -102,13 +93,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   todayText: { color: colors.onAccent, fontSize: 15, fontWeight: '800' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.xs },
-  title: { ...type.title, flex: 1 },
-  menuButton: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center', marginRight: -space.sm },
-  burger: { width: 22, gap: 5 },
-  bar: { height: 2.5, borderRadius: 2, backgroundColor: colors.ink },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xs },
-  progressText: { flex: 1, ...type.number },
+  // When a long date title and the chip don't fit on one line, the chip wraps below (right-aligned); neither truncates.
+  titleRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space.md, rowGap: space.xs },
+  title: { ...type.title, fontSize: 26, flexShrink: 0 },
   chip: {
     minHeight: touch,
     paddingHorizontal: space.md,
@@ -117,10 +104,13 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     justifyContent: 'center',
+    marginLeft: 'auto',
     flexShrink: 1,
   },
   chipOverridden: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   chipText: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  track: { height: 4, borderRadius: 2, backgroundColor: colors.line, marginTop: space.sm, overflow: 'hidden' },
+  progressRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xs },
+  progressText: { ...type.number },
+  track: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' },
   fill: { height: 4, backgroundColor: colors.accent },
 });

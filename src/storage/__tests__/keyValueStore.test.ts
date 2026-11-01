@@ -4,7 +4,7 @@ import { describeTrackingStore } from './store.contract';
 describeTrackingStore('key-value (web)', async () => {
   const kv = new MemoryKeyValue();
   return { store: new KeyValueTrackingStore(kv), reopen: async () => new KeyValueTrackingStore(kv) };
-});
+}, async () => new KeyValueTrackingStore(new MemoryKeyValue()));
 
 it('recovers from corrupt stored data instead of crashing', async () => {
   const kv = new MemoryKeyValue();

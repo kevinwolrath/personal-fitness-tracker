@@ -2,7 +2,9 @@
  * Renders the real Today screen with the iOS and Android RN presets (see jest "projects"),
  * exercising native code paths (native Sheet/Modal, no web adapters).
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { Slot } from 'expo-router';
+import { renderRouter } from 'expo-router/testing-library';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MemoryKeyValue } from '../../../storage/keyValueStore';
 import { AppProvider } from '../../../providers/AppProvider';
@@ -17,23 +19,32 @@ jest.mock('../../../storage/openStore', () => ({
   },
 }));
 
+const NOW = new Date(2026, 10, 5, 9, 0); // Thursday 5 Nov, local time
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 
 async function launch() {
-  const utils = render(
-    <SafeAreaProvider initialMetrics={metrics}>
-      <AppProvider>
-        <TodayScreen />
-      </AppProvider>
-    </SafeAreaProvider>,
+  const utils = renderRouter(
+    {
+      _layout: () => (
+        <SafeAreaProvider initialMetrics={metrics}>
+          <AppProvider>
+            <Slot />
+          </AppProvider>
+        </SafeAreaProvider>
+      ),
+      index: TodayScreen,
+    },
+    { initialUrl: '/' },
   );
+  // renderRouter re-installs fake timers (resetting the clock); Today mounts after the store loads, so re-pin now.
+  jest.setSystemTime(NOW);
   await screen.findByTestId('day-progress');
   return utils;
 }
 
 beforeEach(() => {
   mockKv = new MemoryKeyValue();
-  jest.useFakeTimers({ now: new Date(2026, 10, 5, 9, 0) }); // Thursday 5 Nov, local time
+  jest.useFakeTimers({ now: NOW });
 });
 afterEach(() => jest.useRealTimers());
 

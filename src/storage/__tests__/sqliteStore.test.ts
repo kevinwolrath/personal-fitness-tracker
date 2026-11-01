@@ -26,7 +26,7 @@ function nodeSqlite(db: DatabaseSync): SqlDatabase {
 describeTrackingStore('SQLite (native)', async () => {
   const db = nodeSqlite(new DatabaseSync(':memory:'));
   return { store: await SqliteTrackingStore.open(db), reopen: () => SqliteTrackingStore.open(db) };
-});
+}, () => SqliteTrackingStore.open(nodeSqlite(new DatabaseSync(':memory:'))));
 
 it('migrations are idempotent and set user_version', async () => {
   const db = nodeSqlite(new DatabaseSync(':memory:'));

@@ -2,14 +2,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatMeasurement, formatShortDate } from '../../format';
 import type { LocalDate } from '../../plan/dates';
 import type { Measurement, Plan } from '../../plan/schema';
-import type { MeasurementEntry } from '../../storage/types';
+import { measurementMetric } from '../../observations/planMetrics';
+import type { Observation } from '../../observations/types';
 import { colors, radius, space, type } from '../../ui/theme';
 
 type Props = {
   plan: Plan;
   date: LocalDate;
   due: Measurement[];
-  latest: Record<string, MeasurementEntry | null>;
+  latest: Record<string, Observation | null>;
   editable: boolean;
   onLog: (m: Measurement) => void;
 };
@@ -20,8 +21,10 @@ export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: P
   return (
     <View style={styles.row}>
       {due.map((m) => {
-        const entry = latest[m.id];
+        const obs = latest[m.id];
+        const entry = obs && { ...obs, value: measurementMetric(plan, m).toPlan(obs.value) };
         const loggedToday = entry?.date === date;
+        const via = loggedToday && entry.source.type === 'screenshot' ? `From ${entry.source.app ?? 'screenshot'}` : null;
         const goal = plan.goals.find((g) => g.measurementId === m.id);
         let goalText = goal ? `${goal.label} ${formatMeasurement(plan, m, goal.target)}` : null;
         if (goal && entry) {
@@ -46,9 +49,9 @@ export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: P
               {entry ? formatMeasurement(plan, m, entry.value) : 'Not logged'}
             </Text>
             <Text style={type.detail} numberOfLines={1}>
-              {!loggedToday && entry ? `Last ${formatShortDate(entry.date)}` : goalText ?? ' '}
+              {!loggedToday && entry ? `Last ${formatShortDate(entry.date)}` : (via ?? goalText ?? ' ')}
             </Text>
-            {!loggedToday && entry && goalText ? (
+            {((!loggedToday && entry) || via) && goalText ? (
               <Text style={type.detail} numberOfLines={1}>
                 {goalText}
               </Text>

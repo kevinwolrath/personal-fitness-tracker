@@ -1,8 +1,10 @@
+import type { ImportSession, Observation } from '../observations/types';
 import type {
   ActivityLog,
+  ActivityLogRecord,
   DayRecords,
-  MeasurementEntry,
   QuickLogEntry,
+  StoreSnapshot,
   StoredPlan,
   TrackingStore,
 } from './types';
@@ -19,13 +21,30 @@ type Doc = {
   /** key: `${planId}|${date}` */
   activities: Record<string, Record<string, ActivityLog>>;
   overrides: Record<string, string>;
-  measurements: MeasurementEntry[];
+  observations: Observation[];
   quickLogs: QuickLogEntry[];
+  imports: ImportSession[];
 };
 
 export const STORAGE_KEY = 'pft:tracking:v1';
 const dayKey = (planId: string, date: string) => `${planId}|${date}`;
-const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, measurements: [], quickLogs: [] });
+const splitKey = (k: string) => {
+  const i = k.lastIndexOf('|');
+  return { planId: k.slice(0, i), date: k.slice(i + 1) };
+};
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [] });
+const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
+  for (const k of keys) {
+    const c = String(a[k]).localeCompare(String(b[k]));
+    if (c) return c;
+  }
+  return 0;
+};
+const upsertById = <T extends { id: string }>(list: T[], item: T) => {
+  const i = list.findIndex((x) => x.id === item.id);
+  if (i >= 0) list[i] = item;
+  else list.push(item);
+};
 
 /**
  * Web implementation of TrackingStore (contract 04): one JSON document in key-value storage.
@@ -39,7 +58,7 @@ export class KeyValueTrackingStore implements TrackingStore {
     if (!raw) return empty();
     try {
       const doc = JSON.parse(raw) as Doc;
-      return doc.version === 1 ? doc : empty();
+      return doc.version === 1 ? { ...empty(), ...doc } : empty();
     } catch {
       return empty();
     }
@@ -64,12 +83,11 @@ export class KeyValueTrackingStore implements TrackingStore {
   async getDay(planId: string, date: string): Promise<DayRecords> {
     const d = this.read();
     const k = dayKey(planId, date);
-    const byTime = <T>(key: keyof T) => (a: T, b: T) => String(a[key]).localeCompare(String(b[key]));
     return {
       activities: { ...(d.activities[k] ?? {}) },
       dayTypeOverride: d.overrides[k] ?? null,
-      measurements: d.measurements.filter((m) => m.planId === planId && m.date === date).sort(byTime<MeasurementEntry>('recordedAt')),
-      quickLogs: d.quickLogs.filter((q) => q.planId === planId && q.date === date).sort(byTime<QuickLogEntry>('at')),
+      observations: d.observations.filter((o) => o.date === date).sort(byKey<Observation>('recordedAt', 'id')),
+      quickLogs: d.quickLogs.filter((q) => q.planId === planId && q.date === date).sort(byKey<QuickLogEntry>('at')),
     };
   }
 
@@ -91,35 +109,66 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
-  async addMeasurement(entry: MeasurementEntry) {
+  async addObservations(observations: Observation[]) {
+    this.update((d) => observations.forEach((o) => upsertById(d.observations, o)));
+  }
+
+  async removeObservation(id: string) {
     this.update((d) => {
-      d.measurements.push(entry);
+      d.observations = d.observations.filter((o) => o.id !== id);
     });
   }
 
-  async removeMeasurement(id: string) {
-    this.update((d) => {
-      d.measurements = d.measurements.filter((m) => m.id !== id);
-    });
-  }
-
-  async latestMeasurement(planId: string, measurementId: string, onOrBefore: string) {
-    const candidates = this.read().measurements.filter(
-      (m) => m.planId === planId && m.measurementId === measurementId && m.date <= onOrBefore,
-    );
-    candidates.sort((a, b) => b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt));
+  async latestObservation(metric: string, onOrBefore: string) {
+    const candidates = this.read().observations.filter((o) => o.metric === metric && o.kind === 'observed' && o.date <= onOrBefore);
+    candidates.sort((a, b) => b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id));
     return candidates[0] ?? null;
   }
 
-  async addQuickLog(entry: QuickLogEntry) {
+  async saveImport(session: ImportSession, observations: Observation[]) {
+    // One document write: atomic by construction.
     this.update((d) => {
-      d.quickLogs.push(entry);
+      upsertById(d.imports, session);
+      observations.forEach((o) => upsertById(d.observations, o));
     });
+  }
+
+  async addQuickLog(entry: QuickLogEntry) {
+    this.update((d) => upsertById(d.quickLogs, entry));
   }
 
   async removeQuickLog(id: string) {
     this.update((d) => {
       d.quickLogs = d.quickLogs.filter((q) => q.id !== id);
+    });
+  }
+
+  async snapshot(): Promise<StoreSnapshot> {
+    const d = this.read();
+    const activityLogs: ActivityLogRecord[] = Object.entries(d.activities).flatMap(([k, day]) => {
+      const { planId, date } = splitKey(k);
+      return Object.values(day).map((log) => ({ ...log, planId, date }));
+    });
+    return {
+      plans: d.plan ? [d.plan] : [],
+      activityLogs: activityLogs.sort(byKey<ActivityLogRecord>('date', 'planId', 'activityId')),
+      dayOverrides: Object.entries(d.overrides)
+        .map(([k, dayTypeId]) => ({ ...splitKey(k), dayTypeId }))
+        .sort(byKey('date', 'planId')),
+      observations: [...d.observations].sort(byKey<Observation>('date', 'recordedAt', 'id')),
+      quickLogs: [...d.quickLogs].sort(byKey<QuickLogEntry>('at', 'id')),
+      imports: [...d.imports].sort(byKey<ImportSession>('createdAt', 'id')),
+    };
+  }
+
+  async restore(s: StoreSnapshot) {
+    this.update((d) => {
+      if (s.plans[0]) d.plan = s.plans[0];
+      for (const { planId, date, ...log } of s.activityLogs) (d.activities[dayKey(planId, date)] ??= {})[log.activityId] = log;
+      for (const o of s.dayOverrides) d.overrides[dayKey(o.planId, o.date)] = o.dayTypeId;
+      s.imports.forEach((i) => upsertById(d.imports, i));
+      s.observations.forEach((o) => upsertById(d.observations, o));
+      s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
     });
   }
 }

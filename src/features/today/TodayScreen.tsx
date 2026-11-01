@@ -1,8 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
-import { formatAmount, formatTimestamp } from '../../format';
+import { buildExport } from '../../export/exportFormat';
+import { formatAmount, formatTimestamp, localIsoTimestamp } from '../../format';
+import { shareJson } from '../../platform/files';
+import { measurementMetric } from '../../observations/planMetrics';
 import { addDays } from '../../plan/dates';
 import type { Activity, Measurement } from '../../plan/schema';
 import { tap } from '../../ui/haptics';
@@ -23,7 +27,16 @@ export function TodayScreen() {
   const { store, plan } = useApp();
   const today = useToday();
   const [date, setDate] = useState(today);
-  const { day, progress, records, latestMeasurement, actions } = useDay(store, plan, date);
+  const { day, progress, records, latestMeasurement, actions, reload } = useDay(store, plan, date);
+
+  // Coming back from Import: show what was just saved.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) firstFocus.current = false;
+      else reload();
+    }, [reload]),
+  );
 
   // Past days can be corrected; future days are view-only (contract 04).
   const editable = date <= today;
@@ -74,6 +87,16 @@ export function TodayScreen() {
 
   const nothingPlanned = !day.timed.length && !day.anytime.length;
 
+  const exportAll = async () => {
+    try {
+      const doc = buildExport(await store.snapshot(), { exportedAt: localIsoTimestamp(), today, appVersion: '0.1.0' });
+      await shareJson(`fitness-export-${today}.json`, JSON.stringify(doc, null, 2));
+      setToast({ key: Date.now(), message: `Exported ${doc.counts.observations + doc.counts.activityLogs + doc.counts.quickLogs} records` });
+    } catch {
+      setToast({ key: Date.now(), message: "Export didn't complete" });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.content} testID="today-scroll">
@@ -102,6 +125,16 @@ export function TodayScreen() {
             onLog={setSheetMeasurement}
           />
           <TargetsLine plan={plan} targets={day.targets} />
+          {editable && (
+            <Pressable
+              onPress={() => router.push({ pathname: '/import', params: { date } })}
+              style={styles.textAction}
+              accessibilityRole="button"
+              accessibilityLabel="Import from screenshots"
+            >
+              <Text style={styles.textActionText}>Import from screenshots ›</Text>
+            </Pressable>
+          )}
         </View>
 
         {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned today</Text>}
@@ -122,6 +155,10 @@ export function TodayScreen() {
             <View style={styles.list}>{renderRows(day.anytime, false)}</View>
           </View>
         )}
+
+        <Pressable onPress={exportAll} style={[styles.textAction, styles.exportAction]} accessibilityRole="button" accessibilityLabel="Export all data">
+          <Text style={[type.detail, styles.exportText]}>Export all data (JSON)</Text>
+        </Pressable>
       </ScrollView>
 
       {plan.quickLogs.length > 0 && (
@@ -166,10 +203,14 @@ export function TodayScreen() {
       <MeasureSheet
         plan={plan}
         measurement={sheetMeasurement}
-        entries={sheetMeasurement ? records.measurements.filter((m) => m.measurementId === sheetMeasurement.id) : []}
-        prefill={sheetMeasurement ? latestMeasurement[sheetMeasurement.id]?.value ?? null : null}
+        entries={sheetMeasurement ? records.observations.filter((o) => o.metric === sheetMeasurement.id && o.kind === 'observed') : []}
+        prefill={
+          sheetMeasurement && latestMeasurement[sheetMeasurement.id]
+            ? measurementMetric(plan, sheetMeasurement).toPlan(latestMeasurement[sheetMeasurement.id]!.value)
+            : null
+        }
         onClose={() => setSheetMeasurement(null)}
-        onSave={(v) => sheetMeasurement && actions.addMeasurement(sheetMeasurement.id, v)}
+        onSave={(v) => sheetMeasurement && actions.addMeasurement(sheetMeasurement, v)}
         onRemove={actions.removeMeasurement}
       />
       <DayTypeSheet
@@ -192,6 +233,10 @@ const styles = StyleSheet.create({
   notice: { marginTop: space.md },
   empty: { marginTop: space.xl, color: colors.muted },
   list: { marginTop: space.xs },
+  textAction: { minHeight: touch, justifyContent: 'center', alignSelf: 'flex-start' },
+  textActionText: { fontSize: 16, fontWeight: '700', color: colors.accent },
+  exportAction: { alignSelf: 'center', marginTop: space.xl },
+  exportText: { textDecorationLine: 'underline' },
   footer: {
     backgroundColor: colors.bg,
     borderTopWidth: StyleSheet.hairlineWidth,

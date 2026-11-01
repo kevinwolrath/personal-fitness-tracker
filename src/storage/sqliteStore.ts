@@ -1,8 +1,11 @@
+import type { ImportSession, Observation } from '../observations/types';
 import type {
   ActivityLog,
+  ActivityLogRecord,
+  DayOverrideRecord,
   DayRecords,
-  MeasurementEntry,
   QuickLogEntry,
+  StoreSnapshot,
   StoredPlan,
   TrackingStore,
 } from './types';
@@ -28,10 +31,18 @@ const migrations = [
      status TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 0,
      label_snapshot TEXT NOT NULL, updated_at TEXT NOT NULL,
      PRIMARY KEY (plan_id, date, activity_id));
-   CREATE TABLE measurement (
-     id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, measurement_id TEXT NOT NULL,
-     date TEXT NOT NULL, value REAL NOT NULL, recorded_at TEXT NOT NULL);
-   CREATE INDEX measurement_lookup ON measurement (plan_id, measurement_id, date);
+   CREATE TABLE observation (
+     id TEXT PRIMARY KEY, date TEXT NOT NULL, metric TEXT NOT NULL,
+     value REAL NOT NULL, unit TEXT NOT NULL,
+     kind TEXT NOT NULL CHECK (kind IN ('observed', 'inferred')),
+     label TEXT, note TEXT,
+     source_type TEXT NOT NULL, source_app TEXT, captured_at TEXT, confidence REAL,
+     import_id TEXT, asset_id TEXT, evidence TEXT, edited INTEGER NOT NULL DEFAULT 0,
+     recorded_at TEXT NOT NULL);
+   CREATE INDEX observation_metric_date ON observation (metric, date);
+   CREATE INDEX observation_date ON observation (date);
+   CREATE TABLE import_session (
+     id TEXT PRIMARY KEY, created_at TEXT NOT NULL, extractor TEXT NOT NULL, assets_json TEXT NOT NULL);
    CREATE TABLE quick_log (
      id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, quick_log_id TEXT NOT NULL,
      date TEXT NOT NULL, at TEXT NOT NULL);
@@ -49,15 +60,61 @@ export async function migrate(db: SqlDatabase): Promise<void> {
   }
 }
 
-type MeasurementRow = { id: string; plan_id: string; measurement_id: string; date: string; value: number; recorded_at: string };
-const toMeasurement = (r: MeasurementRow): MeasurementEntry => ({
+type ObservationRow = {
+  id: string;
+  date: string;
+  metric: string;
+  value: number;
+  unit: string;
+  kind: Observation['kind'];
+  label: string | null;
+  note: string | null;
+  source_type: Observation['source']['type'];
+  source_app: string | null;
+  captured_at: string | null;
+  confidence: number | null;
+  import_id: string | null;
+  asset_id: string | null;
+  evidence: string | null;
+  edited: number;
+  recorded_at: string;
+};
+
+const toObservation = (r: ObservationRow): Observation => ({
   id: r.id,
-  planId: r.plan_id,
-  measurementId: r.measurement_id,
   date: r.date,
+  metric: r.metric,
   value: r.value,
+  unit: r.unit,
+  kind: r.kind,
+  label: r.label,
+  note: r.note,
+  source: {
+    type: r.source_type,
+    app: r.source_app,
+    capturedAt: r.captured_at,
+    confidence: r.confidence,
+    importId: r.import_id,
+    assetId: r.asset_id,
+    evidence: r.evidence,
+    edited: r.edited === 1,
+  },
   recordedAt: r.recorded_at,
 });
+
+type ActivityRow = { plan_id: string; date: string; activity_id: string; status: ActivityLog['status']; count: number; label_snapshot: string; updated_at: string };
+const toActivity = (a: ActivityRow): ActivityLogRecord => ({
+  planId: a.plan_id,
+  date: a.date,
+  activityId: a.activity_id,
+  status: a.status,
+  count: a.count,
+  labelSnapshot: a.label_snapshot,
+  updatedAt: a.updated_at,
+});
+
+type QuickLogRow = { id: string; plan_id: string; quick_log_id: string; date: string; at: string };
+const toQuickLog = (q: QuickLogRow): QuickLogEntry => ({ id: q.id, planId: q.plan_id, quickLogId: q.quick_log_id, date: q.date, at: q.at });
 
 export class SqliteTrackingStore implements TrackingStore {
   private constructor(private db: SqlDatabase) {}
@@ -65,6 +122,17 @@ export class SqliteTrackingStore implements TrackingStore {
   static async open(db: SqlDatabase): Promise<SqliteTrackingStore> {
     await migrate(db);
     return new SqliteTrackingStore(db);
+  }
+
+  private async transaction(fn: () => Promise<void>): Promise<void> {
+    await this.db.execAsync('BEGIN');
+    try {
+      await fn();
+      await this.db.execAsync('COMMIT');
+    } catch (e) {
+      await this.db.execAsync('ROLLBACK');
+      throw e;
+    }
   }
 
   async getActivePlan(): Promise<StoredPlan | null> {
@@ -85,31 +153,22 @@ export class SqliteTrackingStore implements TrackingStore {
   }
 
   async getDay(planId: string, date: string): Promise<DayRecords> {
-    const [acts, override, ms, qs] = await Promise.all([
-      this.db.getAllAsync<{ activity_id: string; status: ActivityLog['status']; count: number; label_snapshot: string; updated_at: string }>(
-        'SELECT activity_id, status, count, label_snapshot, updated_at FROM activity_log WHERE plan_id = ? AND date = ?',
-        [planId, date],
-      ),
+    const [acts, override, obs, qs] = await Promise.all([
+      this.db.getAllAsync<ActivityRow>('SELECT * FROM activity_log WHERE plan_id = ? AND date = ?', [planId, date]),
       this.db.getFirstAsync<{ day_type_id: string }>('SELECT day_type_id FROM day_override WHERE plan_id = ? AND date = ?', [planId, date]),
-      this.db.getAllAsync<MeasurementRow>(
-        'SELECT * FROM measurement WHERE plan_id = ? AND date = ? ORDER BY recorded_at',
-        [planId, date],
-      ),
-      this.db.getAllAsync<{ id: string; plan_id: string; quick_log_id: string; date: string; at: string }>(
-        'SELECT * FROM quick_log WHERE plan_id = ? AND date = ? ORDER BY at',
-        [planId, date],
-      ),
+      this.db.getAllAsync<ObservationRow>('SELECT * FROM observation WHERE date = ? ORDER BY recorded_at, id', [date]),
+      this.db.getAllAsync<QuickLogRow>('SELECT * FROM quick_log WHERE plan_id = ? AND date = ? ORDER BY at', [planId, date]),
     ]);
     return {
       activities: Object.fromEntries(
-        acts.map((a) => [
-          a.activity_id,
-          { activityId: a.activity_id, status: a.status, count: a.count, labelSnapshot: a.label_snapshot, updatedAt: a.updated_at },
-        ]),
+        acts.map((a) => {
+          const { planId: _p, date: _d, ...log } = toActivity(a);
+          return [a.activity_id, log];
+        }),
       ),
       dayTypeOverride: override?.day_type_id ?? null,
-      measurements: ms.map(toMeasurement),
-      quickLogs: qs.map((q) => ({ id: q.id, planId: q.plan_id, quickLogId: q.quick_log_id, date: q.date, at: q.at })),
+      observations: obs.map(toObservation),
+      quickLogs: qs.map(toQuickLog),
     };
   }
 
@@ -118,12 +177,16 @@ export class SqliteTrackingStore implements TrackingStore {
       await this.db.runAsync('DELETE FROM activity_log WHERE plan_id = ? AND date = ? AND activity_id = ?', [planId, date, activityId]);
       return;
     }
+    await this.upsertActivity({ ...log, planId, date, activityId });
+  }
+
+  private async upsertActivity(a: ActivityLogRecord): Promise<void> {
     await this.db.runAsync(
       `INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(plan_id, date, activity_id) DO UPDATE SET status = excluded.status, count = excluded.count,
          label_snapshot = excluded.label_snapshot, updated_at = excluded.updated_at`,
-      [planId, date, activityId, log.status, log.count, log.labelSnapshot, log.updatedAt],
+      [a.planId, a.date, a.activityId, a.status, a.count, a.labelSnapshot, a.updatedAt],
     );
   }
 
@@ -139,28 +202,53 @@ export class SqliteTrackingStore implements TrackingStore {
     );
   }
 
-  async addMeasurement(m: MeasurementEntry): Promise<void> {
+  private async upsertObservation(o: Observation): Promise<void> {
+    const s = o.source;
     await this.db.runAsync(
-      'INSERT INTO measurement (id, plan_id, measurement_id, date, value, recorded_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [m.id, m.planId, m.measurementId, m.date, m.value, m.recordedAt],
+      `INSERT OR REPLACE INTO observation
+         (id, date, metric, value, unit, kind, label, note, source_type, source_app, captured_at, confidence,
+          import_id, asset_id, evidence, edited, recorded_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [o.id, o.date, o.metric, o.value, o.unit, o.kind, o.label, o.note, s.type, s.app, s.capturedAt, s.confidence,
+        s.importId, s.assetId, s.evidence, s.edited ? 1 : 0, o.recordedAt],
     );
   }
 
-  async removeMeasurement(id: string): Promise<void> {
-    await this.db.runAsync('DELETE FROM measurement WHERE id = ?', [id]);
+  async addObservations(observations: Observation[]): Promise<void> {
+    await this.transaction(async () => {
+      for (const o of observations) await this.upsertObservation(o);
+    });
   }
 
-  async latestMeasurement(planId: string, measurementId: string, onOrBefore: string): Promise<MeasurementEntry | null> {
-    const r = await this.db.getFirstAsync<MeasurementRow>(
-      `SELECT * FROM measurement WHERE plan_id = ? AND measurement_id = ? AND date <= ?
-       ORDER BY date DESC, recorded_at DESC LIMIT 1`,
-      [planId, measurementId, onOrBefore],
+  async removeObservation(id: string): Promise<void> {
+    await this.db.runAsync('DELETE FROM observation WHERE id = ?', [id]);
+  }
+
+  async latestObservation(metric: string, onOrBefore: string): Promise<Observation | null> {
+    const r = await this.db.getFirstAsync<ObservationRow>(
+      `SELECT * FROM observation WHERE metric = ? AND kind = 'observed' AND date <= ?
+       ORDER BY date DESC, recorded_at DESC, id DESC LIMIT 1`,
+      [metric, onOrBefore],
     );
-    return r ? toMeasurement(r) : null;
+    return r ? toObservation(r) : null;
+  }
+
+  private async upsertImport(session: ImportSession): Promise<void> {
+    await this.db.runAsync(
+      'INSERT OR REPLACE INTO import_session (id, created_at, extractor, assets_json) VALUES (?, ?, ?, ?)',
+      [session.id, session.createdAt, session.extractor, JSON.stringify(session.assets)],
+    );
+  }
+
+  async saveImport(session: ImportSession, observations: Observation[]): Promise<void> {
+    await this.transaction(async () => {
+      await this.upsertImport(session);
+      for (const o of observations) await this.upsertObservation(o);
+    });
   }
 
   async addQuickLog(q: QuickLogEntry): Promise<void> {
-    await this.db.runAsync('INSERT INTO quick_log (id, plan_id, quick_log_id, date, at) VALUES (?, ?, ?, ?, ?)', [
+    await this.db.runAsync('INSERT OR REPLACE INTO quick_log (id, plan_id, quick_log_id, date, at) VALUES (?, ?, ?, ?, ?)', [
       q.id,
       q.planId,
       q.quickLogId,
@@ -171,5 +259,38 @@ export class SqliteTrackingStore implements TrackingStore {
 
   async removeQuickLog(id: string): Promise<void> {
     await this.db.runAsync('DELETE FROM quick_log WHERE id = ?', [id]);
+  }
+
+  async snapshot(): Promise<StoreSnapshot> {
+    const [plan, acts, overrides, obs, qs, imports] = await Promise.all([
+      this.getActivePlan(),
+      this.db.getAllAsync<ActivityRow>('SELECT * FROM activity_log ORDER BY date, plan_id, activity_id', []),
+      this.db.getAllAsync<{ plan_id: string; date: string; day_type_id: string }>('SELECT * FROM day_override ORDER BY date, plan_id', []),
+      this.db.getAllAsync<ObservationRow>('SELECT * FROM observation ORDER BY date, recorded_at, id', []),
+      this.db.getAllAsync<QuickLogRow>('SELECT * FROM quick_log ORDER BY at, id', []),
+      this.db.getAllAsync<{ id: string; created_at: string; extractor: string; assets_json: string }>(
+        'SELECT * FROM import_session ORDER BY created_at, id',
+        [],
+      ),
+    ]);
+    return {
+      plans: plan ? [plan] : [],
+      activityLogs: acts.map(toActivity),
+      dayOverrides: overrides.map((o): DayOverrideRecord => ({ planId: o.plan_id, date: o.date, dayTypeId: o.day_type_id })),
+      observations: obs.map(toObservation),
+      quickLogs: qs.map(toQuickLog),
+      imports: imports.map((i) => ({ id: i.id, createdAt: i.created_at, extractor: i.extractor, assets: JSON.parse(i.assets_json) })),
+    };
+  }
+
+  async restore(s: StoreSnapshot): Promise<void> {
+    await this.transaction(async () => {
+      for (const p of s.plans) await this.setActivePlan(p);
+      for (const a of s.activityLogs) await this.upsertActivity(a);
+      for (const o of s.dayOverrides) await this.setDayOverride(o.planId, o.date, o.dayTypeId);
+      for (const i of s.imports) await this.upsertImport(i);
+      for (const o of s.observations) await this.upsertObservation(o);
+      for (const q of s.quickLogs) await this.addQuickLog(q);
+    });
   }
 }

@@ -1,3 +1,4 @@
+import type { ImportSession, Observation } from '../observations/types';
 import type { LocalDate } from '../plan/dates';
 
 /** The verbatim plan package plus import metadata (contract 04 `plan`). */
@@ -20,15 +21,6 @@ export type ActivityLog = {
   updatedAt: string;
 };
 
-export type MeasurementEntry = {
-  id: string;
-  planId: string;
-  measurementId: string;
-  date: LocalDate;
-  value: number;
-  recordedAt: string;
-};
-
 export type QuickLogEntry = {
   id: string;
   planId: string;
@@ -40,8 +32,22 @@ export type QuickLogEntry = {
 export type DayRecords = {
   activities: Record<string, ActivityLog>;
   dayTypeOverride: string | null;
-  measurements: MeasurementEntry[];
+  /** All observations about this date, any metric or source, ordered by recordedAt. */
+  observations: Observation[];
   quickLogs: QuickLogEntry[];
+};
+
+export type ActivityLogRecord = ActivityLog & { planId: string; date: LocalDate };
+export type DayOverrideRecord = { planId: string; date: LocalDate; dayTypeId: string };
+
+/** Everything the store holds, for full-history export and (later) round-trip restore. */
+export type StoreSnapshot = {
+  plans: StoredPlan[];
+  activityLogs: ActivityLogRecord[];
+  dayOverrides: DayOverrideRecord[];
+  observations: Observation[];
+  quickLogs: QuickLogEntry[];
+  imports: ImportSession[];
 };
 
 /**
@@ -58,13 +64,20 @@ export interface TrackingStore {
   setActivity(planId: string, date: LocalDate, activityId: string, log: ActivityLog | null): Promise<void>;
   setDayOverride(planId: string, date: LocalDate, dayTypeId: string | null): Promise<void>;
 
-  addMeasurement(entry: MeasurementEntry): Promise<void>;
-  removeMeasurement(id: string): Promise<void>;
-  /** Latest entry on or before `date` (latest date, then latest recordedAt). */
-  latestMeasurement(planId: string, measurementId: string, onOrBefore: LocalDate): Promise<MeasurementEntry | null>;
+  addObservations(observations: Observation[]): Promise<void>;
+  removeObservation(id: string): Promise<void>;
+  /** Latest **observed** (never inferred) value on or before `date`: latest date, then latest recordedAt. */
+  latestObservation(metric: string, onOrBefore: LocalDate): Promise<Observation | null>;
+  /** Save an import session and its confirmed observations together (all or nothing). */
+  saveImport(session: ImportSession, observations: Observation[]): Promise<void>;
 
   addQuickLog(entry: QuickLogEntry): Promise<void>;
   removeQuickLog(id: string): Promise<void>;
+
+  /** Every record, from the earliest through the latest. No lookback limit. */
+  snapshot(): Promise<StoreSnapshot>;
+  /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */
+  restore(snapshot: StoreSnapshot): Promise<void>;
 }
 
 export function newId(): string {

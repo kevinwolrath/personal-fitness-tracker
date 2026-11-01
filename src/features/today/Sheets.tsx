@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { formatDuration, formatMeasurement, formatTimestamp, measurementUnit, parseDecimal } from '../../format';
 import type { Activity, Measurement, Plan } from '../../plan/schema';
-import type { ActivityLog, MeasurementEntry } from '../../storage/types';
+import { measurementMetric } from '../../observations/planMetrics';
+import type { Observation } from '../../observations/types';
+import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { colors, radius, space, touch, type } from '../../ui/theme';
@@ -75,7 +77,8 @@ export function ActivitySheet(p: {
 export function MeasureSheet(p: {
   plan: Plan;
   measurement: Measurement | null;
-  entries: MeasurementEntry[];
+  /** This day's observations for the measurement's metric (any source). */
+  entries: Observation[];
   prefill: number | null;
   onClose: () => void;
   onSave: (value: number) => void;
@@ -122,7 +125,10 @@ export function MeasureSheet(p: {
               {p.entries.map((e) => (
                 <View key={e.id} style={styles.entry}>
                   <Text style={[type.body, styles.entryText]}>
-                    {formatMeasurement(p.plan, m, e.value)} <Text style={type.detail}>· {formatTimestamp(e.recordedAt)}</Text>
+                    {formatMeasurement(p.plan, m, measurementMetric(p.plan, m).toPlan(e.value))}{' '}
+                    <Text style={type.detail}>
+                      · {e.source.type === 'manual' ? formatTimestamp(e.recordedAt) : `${e.source.app ?? e.source.type}${e.source.edited ? ' (edited)' : ''}`}
+                    </Text>
                   </Text>
                   <TextButton title="Remove" onPress={() => p.onRemove(e.id)} />
                 </View>

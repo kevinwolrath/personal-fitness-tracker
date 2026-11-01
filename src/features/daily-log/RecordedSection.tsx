@@ -9,7 +9,8 @@ import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { colors, space, touch, type } from '../../ui/theme';
-import { SheetHeader, TextButton } from './Sheets';
+import { ModalHeader } from '../../ui/ModalHeader';
+import { TextButton } from './Sheets';
 
 /**
  * Everything else recorded on this date: imported steps/sleep/readiness/workouts, other observations,
@@ -97,21 +98,20 @@ export function ObservationSheet(p: {
     <Sheet visible={!!o} onClose={p.onClose} label={o ? `${observationLabel(o)} details` : 'Details'}>
       {o && (
         <View style={styles.sheet}>
-          <SheetHeader
+          <ModalHeader
             title={observationLabel(o)}
-            left={<TextButton title="Close" onPress={p.onClose} />}
-            right={
-              p.editable ? (
-                <TextButton
-                  title="Save"
-                  strong
-                  disabled={!valid}
-                  onPress={() => {
-                    p.onCorrect(o, n);
-                    p.onClose();
-                  }}
-                />
-              ) : undefined
+            dismiss={{ label: p.editable ? 'Cancel' : 'Close', onPress: p.onClose }}
+            confirm={
+              p.editable
+                ? {
+                    label: 'Save',
+                    disabled: !valid,
+                    onPress: () => {
+                      p.onCorrect(o, n);
+                      p.onClose();
+                    },
+                  }
+                : undefined
             }
           />
           {o.kind === 'inferred' && <Text style={[type.detail, styles.center]}>Calculated from other values, not measured.</Text>}

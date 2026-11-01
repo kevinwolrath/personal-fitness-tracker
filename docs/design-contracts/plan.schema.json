@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kevinwolrath/personal-fitness-tracker/docs/design-contracts/plan.schema.json",
   "title": "Personal Fitness Tracker plan package",
-  "description": "formatVersion 1 and 2. Authoritative contract: see 03-plan-format.md and 07-ai-configuration.md for semantics and rules that JSON Schema cannot express.",
+  "description": "formatVersion 1 and 2. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -347,6 +347,13 @@
     },
     "exercise": {
       "$ref": "#/$defs/exercise"
+    },
+    "requirements": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/requirement"
+      }
     }
   },
   "$defs": {
@@ -544,6 +551,25 @@
           "type": "boolean",
           "default": false,
           "description": "Meals only. Amount not fixed; Today shows the remaining budget instead of nutrition values."
+        },
+        "purpose": {
+          "$ref": "#/$defs/purpose"
+        },
+        "when": {
+          "$ref": "#/$defs/dayPart"
+        },
+        "after": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "session": {
+          "$ref": "#/$defs/session"
+        },
+        "satisfies": {
+          "$ref": "#/$defs/id"
         }
       }
     },
@@ -900,6 +926,188 @@
           }
         }
       }
+    },
+    "purpose": {
+      "enum": [
+        "strength",
+        "conditioning_high_intensity",
+        "conditioning_low_intensity",
+        "walking",
+        "mobility",
+        "nutrition",
+        "supplement",
+        "recovery",
+        "habit",
+        "other"
+      ]
+    },
+    "dayPart": {
+      "enum": [
+        "morning",
+        "lunch",
+        "afternoon",
+        "evening",
+        "anytime"
+      ]
+    },
+    "sessionPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exercises"
+      ],
+      "properties": {
+        "minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "exercises": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "movement"
+            ],
+            "properties": {
+              "movement": {
+                "$ref": "#/$defs/movementId"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "reps": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "loadKg": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 500
+              },
+              "notes": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            }
+          }
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exercises"
+      ],
+      "properties": {
+        "minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "exercises": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "movement"
+            ],
+            "properties": {
+              "movement": {
+                "$ref": "#/$defs/movementId"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "sets": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              "reps": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "seconds": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 3600
+              },
+              "loadKg": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 500
+              },
+              "notes": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            }
+          }
+        },
+        "short": {
+          "$ref": "#/$defs/sessionPlan"
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "purpose"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/label"
+        },
+        "purpose": {
+          "$ref": "#/$defs/purpose"
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        },
+        "when": {
+          "$ref": "#/$defs/dayPart"
+        },
+        "time": {
+          "$ref": "#/$defs/time"
+        }
+      }
     }
   },
   "if": {
@@ -910,19 +1118,74 @@
     }
   },
   "then": {
-    "not": {
-      "anyOf": [
-        {
-          "required": [
-            "profile"
-          ]
-        },
-        {
-          "required": [
-            "exercise"
+    "allOf": [
+      {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "profile"
+              ],
+              "type": "object"
+            },
+            {
+              "required": [
+                "exercise"
+              ],
+              "type": "object"
+            },
+            {
+              "required": [
+                "requirements"
+              ],
+              "type": "object"
+            }
           ]
         }
-      ]
-    }
+      },
+      {
+        "properties": {
+          "activities": {
+            "items": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "purpose"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "when"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "after"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "session"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "required": [
+                      "satisfies"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "type": "array"
+          }
+        }
+      }
+    ]
   }
 }

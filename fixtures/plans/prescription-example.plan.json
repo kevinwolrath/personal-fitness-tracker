@@ -1,0 +1,69 @@
+{
+  "$schema": "../../docs/design-contracts/plan.schema.json",
+  "format": "pft-plan",
+  "formatVersion": 2,
+  "id": "prescription-example",
+  "revision": 1,
+  "title": "Prescription example",
+  "description": "Generic plan exercising every prescription rule (contract 08). Not anyone's real plan.",
+  "units": { "mass": "kg", "energy": "kJ", "length": "cm" },
+  "dayTypes": [{ "id": "home", "label": "Home day" }],
+  "schedule": { "mon": "home", "tue": "home", "wed": "home", "thu": "home", "fri": "home", "sat": "home", "sun": "home" },
+  "measurements": [{ "id": "weight", "label": "Weight", "quantity": "mass", "cadence": { "every": "day" } }],
+  "nutrition": {
+    "targets": [{ "id": "energy", "label": "Energy", "quantity": "energy", "max": 8000 }]
+  },
+  "requirements": [
+    {
+      "id": "hard-conditioning",
+      "label": "High-intensity conditioning",
+      "purpose": "conditioning_high_intensity",
+      "detail": "Any one of these counts for today",
+      "when": "evening"
+    }
+  ],
+  "activities": [
+    { "id": "breakfast", "kind": "meal", "label": "Breakfast", "when": "morning", "purpose": "nutrition", "nutrition": { "energy": 1800 } },
+    { "id": "morning-walk", "kind": "exercise", "label": "Morning walk", "when": "morning", "purpose": "walking", "after": ["breakfast"], "duration": { "minutes": 30 } },
+    { "id": "lunch", "kind": "meal", "label": "Lunch", "time": "12:00", "purpose": "nutrition", "nutrition": { "energy": 2200 } },
+    {
+      "id": "strength",
+      "kind": "exercise",
+      "label": "Strength workout",
+      "when": "afternoon",
+      "purpose": "strength",
+      "session": {
+        "minutes": 25,
+        "exercises": [
+          { "movement": "kettlebell_squat", "sets": 3, "reps": 10, "loadKg": 16 },
+          { "movement": "chest_press", "sets": 3, "reps": 10 },
+          { "movement": "lat_pulldown", "sets": 3, "reps": 10 },
+          { "movement": "cable_row", "sets": 3, "reps": 10 },
+          { "movement": "biceps_curl", "sets": 2, "reps": 12 },
+          { "movement": "overhead_press", "sets": 2, "reps": 8 }
+        ],
+        "short": {
+          "minutes": 10,
+          "exercises": [
+            { "movement": "kettlebell_squat", "sets": 2, "reps": 10, "loadKg": 16 },
+            { "movement": "chest_press", "sets": 2, "reps": 10 }
+          ]
+        }
+      }
+    },
+    { "id": "snack", "kind": "meal", "label": "Protein snack", "when": "afternoon", "purpose": "nutrition", "after": ["lunch"] },
+    { "id": "dinner", "kind": "meal", "label": "Dinner", "time": "18:30", "purpose": "nutrition", "flexible": true },
+    { "id": "vr-boxing", "kind": "exercise", "label": "VR boxing", "when": "evening", "satisfies": "hard-conditioning", "tracking": { "type": "count", "target": 3, "unitLabel": "rounds" } },
+    { "id": "heavy-bag", "kind": "exercise", "label": "Heavy bag rounds", "when": "evening", "satisfies": "hard-conditioning", "duration": { "minutes": 12 } },
+    { "id": "battle-ropes", "kind": "exercise", "label": "Battle ropes", "when": "evening", "satisfies": "hard-conditioning", "duration": { "minutes": 10 } },
+    { "id": "stretch", "kind": "habit", "label": "Stretch", "required": false, "purpose": "mobility" }
+  ],
+  "exercise": {
+    "limitations": [
+      { "movement": "biceps_curl", "status": "avoid", "reason": "elbow" },
+      { "movement": "hammer_curl", "status": "allowed" },
+      { "movement": "overhead_press", "status": "caution", "reason": "shoulder" }
+    ],
+    "substitutions": [{ "instead": "biceps_curl", "use": ["hammer_curl"] }]
+  }
+}

@@ -59,6 +59,44 @@ export function validatePlan(input: unknown): PlanValidation {
     if (m.unitLabel !== undefined && m.quantity !== 'number') errors.push(`measurement ${m.id}: unitLabel is only for quantity "number"`);
   }
 
+  // Prescription rules (contract 08)
+  const activityIds = new Set(plan.activities.map((a) => a.id));
+  const requirementIds = new Set((plan.requirements ?? []).map((r) => r.id));
+  unique('requirement', plan.requirements ?? []);
+  for (const r of plan.requirements ?? []) {
+    if (activityIds.has(r.id)) errors.push(`requirement ${r.id}: id is also used by an activity`);
+    if (r.time && r.when) errors.push(`requirement ${r.id}: use either time or when, not both`);
+    if (!plan.activities.some((a) => a.satisfies === r.id)) errors.push(`requirement ${r.id}: no activity satisfies it`);
+  }
+  for (const a of plan.activities) {
+    if (a.time && a.when) errors.push(`activity ${a.id}: use either time or when, not both`);
+    if (a.satisfies && !requirementIds.has(a.satisfies)) errors.push(`activity ${a.id}: satisfies unknown requirement "${a.satisfies}"`);
+    if (a.satisfies && a.kind === 'meal') errors.push(`activity ${a.id}: meals can't satisfy requirements`);
+    for (const dep of a.after ?? []) {
+      if (dep === a.id) errors.push(`activity ${a.id}: can't be after itself`);
+      else if (!activityIds.has(dep)) errors.push(`activity ${a.id}: after unknown activity "${dep}"`);
+    }
+    if (a.session?.short && a.session.minutes && a.session.short.minutes && a.session.short.minutes >= a.session.minutes) {
+      errors.push(`activity ${a.id}: session.short must be shorter than the session`);
+    }
+  }
+  // `after` must not form a cycle.
+  const deps = new Map(plan.activities.map((a) => [a.id, a.after ?? []]));
+  const visiting = new Set<string>();
+  const done = new Set<string>();
+  const visit = (id: string, path: string[]): void => {
+    if (done.has(id)) return;
+    if (visiting.has(id)) {
+      errors.push(`activities: "after" forms a cycle (${[...path, id].join(' → ')})`);
+      return;
+    }
+    visiting.add(id);
+    for (const d of deps.get(id) ?? []) if (deps.has(d)) visit(d, [...path, id]);
+    visiting.delete(id);
+    done.add(id);
+  };
+  for (const a of plan.activities) visit(a.id, []);
+
   if (plan.exercise) {
     const ex = plan.exercise;
     const dupes = (what: string, keys: string[]) => {

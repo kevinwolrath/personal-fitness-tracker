@@ -1,7 +1,7 @@
 import generic from '../../../fixtures/plans/generic-example.plan.json';
 import seed from '../../../plans/seed.plan.json';
 import { addDays, toLocalDate, weekdayOf } from '../dates';
-import { dayProgress, resolveDay } from '../resolveDay';
+import { resolveDay } from '../resolveDay';
 import { validatePlan } from '../validate';
 
 const load = (json: unknown) => {
@@ -36,7 +36,8 @@ describe('seed plan resolves from JSON', () => {
     expect(day.dayTypeId).toBe('home');
     expect(day.dayTypeLabel).toBe('Home day');
     expect(ids(day.timed)).toEqual(['school-run-am', 'lunch', 'dog-walk', 'school-run-pm', 'dinner']);
-    expect(ids(day.anytime)).toEqual(['snack', 'resistance', 'vr-boxing']);
+    // Untimed here means "no exact time"; day parts (when) and requirements are the prescription's job (src/prescription).
+    expect(ids(day.anytime)).toEqual(['snack', 'resistance', 'vr-boxing', 'heavy-bag', 'battle-ropes']);
     expect(ids(day.measurementsDue)).toEqual(['weight']);
   });
 
@@ -44,14 +45,14 @@ describe('seed plan resolves from JSON', () => {
     const day = resolveDay(seedPlan, '2026-11-05');
     expect(day.dayTypeId).toBe('office');
     expect(ids(day.timed)).toEqual(['lunch', 'lunch-walk', 'dinner']);
-    expect(ids(day.anytime)).toEqual(['snack', 'vr-boxing']);
+    expect(ids(day.anytime)).toEqual(['snack', 'vr-boxing', 'heavy-bag', 'battle-ropes']);
   });
 
   it('Saturday: weekend, long resistance, optional movement', () => {
     const day = resolveDay(seedPlan, '2026-11-07');
     expect(day.dayTypeId).toBe('weekend');
     expect(ids(day.timed)).toEqual(['lunch', 'dinner']);
-    expect(ids(day.anytime)).toEqual(['snack', 'resistance-long', 'weekend-movement', 'vr-boxing']);
+    expect(ids(day.anytime)).toEqual(['snack', 'resistance-long', 'weekend-movement', 'vr-boxing', 'heavy-bag', 'battle-ropes']);
   });
 
   it('Sunday: weekly waist measurement is due', () => {
@@ -86,20 +87,5 @@ describe('flexible-meal budget', () => {
         { targetId: 'protein', label: 'Protein', quantity: 'grams', remaining: 120 - (35 + 45 + 30) },
       ],
     });
-  });
-});
-
-describe('dayProgress', () => {
-  const day = resolveDay(seedPlan, '2026-11-02');
-  it('counts required activities only', () => {
-    // 8 resolved, dog walk optional
-    expect(dayProgress(day, {})).toEqual({ done: 0, total: 7, complete: false });
-  });
-  it('excludes skipped activities and completes when the rest are done', () => {
-    const states = Object.fromEntries(
-      [...day.timed, ...day.anytime].filter((a) => a.required).map((a) => [a.id, { status: 'done' as const }]),
-    );
-    states['resistance'] = { status: 'skipped' } as any;
-    expect(dayProgress(day, states)).toEqual({ done: 6, total: 6, complete: true });
   });
 });

@@ -77,12 +77,3 @@ function flexibleBudget(activities: Activity[], targets: NutritionTarget[]): Res
   }
   return lines.length ? { activityId: flexible[0].id, lines } : null;
 }
-
-export type ActivityState = { status: 'pending' | 'done' | 'skipped'; count?: number };
-
-/** Contract 03 §7: a day is complete when every required, non-skipped activity is done. */
-export function dayProgress(day: ResolvedDay, states: Record<string, ActivityState | undefined>) {
-  const required = [...day.timed, ...day.anytime].filter((a) => a.required && states[a.id]?.status !== 'skipped');
-  const done = required.filter((a) => states[a.id]?.status === 'done').length;
-  return { done, total: required.length, complete: required.length > 0 && done === required.length };
-}

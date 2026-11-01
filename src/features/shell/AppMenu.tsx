@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sheet } from '../../ui/Sheet';
 import { colors, space, touch, type } from '../../ui/theme';
-import { SheetHeader, TextButton } from '../daily-log/Sheets';
+import { ModalHeader } from '../../ui/ModalHeader';
 
 export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void };
 
@@ -28,7 +28,7 @@ export function AppMenu({ visible, onClose, items }: Props) {
   };
   return (
     <Sheet visible={visible} onClose={onClose} label="Menu" onDismiss={onDismiss}>
-      <SheetHeader title="Menu" right={<TextButton title="Close" onPress={onClose} />} />
+      <ModalHeader title="Menu" dismiss={{ label: 'Close', onPress: onClose }} />
       <View style={styles.list} testID="app-menu">
         {items.map((item) => (
           <Pressable

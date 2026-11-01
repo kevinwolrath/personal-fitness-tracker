@@ -6,20 +6,9 @@ import { measurementMetric } from '../../observations/planMetrics';
 import type { Observation } from '../../observations/types';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
+import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
 import { colors, radius, space, touch, type } from '../../ui/theme';
-
-export function SheetHeader({ title, left, right }: { title: string; left?: React.ReactNode; right?: React.ReactNode }) {
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerSide}>{left}</View>
-      <Text style={[type.body, styles.headerTitle]} accessibilityRole="header" numberOfLines={1}>
-        {title}
-      </Text>
-      <View style={[styles.headerSide, styles.headerRight]}>{right}</View>
-    </View>
-  );
-}
 
 export function TextButton({ title, onPress, disabled, strong }: { title: string; onPress: () => void; disabled?: boolean; strong?: boolean }) {
   return (
@@ -55,10 +44,10 @@ export function MeasureSheet(p: {
     <Sheet visible={!!m} onClose={p.onClose} label={m ? `Log ${m.label}` : 'Log'}>
       {m && (
         <View style={styles.body}>
-          <SheetHeader
+          <ModalHeader
             title={m.label}
-            left={<TextButton title="Cancel" onPress={p.onClose} />}
-            right={<TextButton title="Save" onPress={save} disabled={value === null} strong />}
+            dismiss={{ label: 'Cancel', onPress: p.onClose }}
+            confirm={{ label: 'Save', onPress: save, disabled: value === null }}
           />
           <View style={styles.inputRow}>
             <TextInput
@@ -110,7 +99,7 @@ export function DayTypeSheet(p: {
   return (
     <Sheet visible={p.visible} onClose={p.onClose} label="Day type">
       <View style={styles.body}>
-        <SheetHeader title="Day type" right={<TextButton title="Close" onPress={p.onClose} />} />
+        <ModalHeader title="Day type" dismiss={{ label: 'Close', onPress: p.onClose }} />
         {p.plan.dayTypes.map((d) => {
           const selected = d.id === p.currentId;
           return (
@@ -140,10 +129,6 @@ export function DayTypeSheet(p: {
 
 const styles = StyleSheet.create({
   body: { paddingBottom: space.md },
-  header: { flexDirection: 'row', alignItems: 'center', minHeight: touch, marginBottom: space.sm },
-  headerSide: { flex: 1, flexDirection: 'row' },
-  headerRight: { justifyContent: 'flex-end' },
-  headerTitle: { flex: 2, textAlign: 'center' },
   textButton: { minHeight: touch, minWidth: touch, justifyContent: 'center' },
   textButtonText: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   strong: { fontWeight: '800' },

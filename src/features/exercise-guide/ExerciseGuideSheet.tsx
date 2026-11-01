@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, 
 import type { ExerciseGuide } from '../../exercises/guide';
 import { illustrations } from '../../exercises/illustrations.generated';
 import { Illustration } from '../../ui/Illustration';
+import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 
@@ -33,14 +34,7 @@ export function ExerciseGuideSheet({ guide, onClose }: Props) {
     <Sheet visible={!!guide} onClose={onClose} label={guide ? `How to do ${guide.name}` : 'Exercise guide'} fill>
       {guide && (
         <View style={styles.body} testID="exercise-guide">
-          <View style={styles.header}>
-            <Text style={styles.title} accessibilityRole="header" testID="guide-title">
-              {guide.name}
-            </Text>
-            <Pressable onPress={onClose} style={styles.close} accessibilityRole="button" accessibilityLabel="Close guide">
-              <Text style={styles.closeText}>Close</Text>
-            </Pressable>
-          </View>
+          <ModalHeader title={guide.name} titleTestID="guide-title" dismiss={{ label: 'Close', a11yLabel: 'Close guide', onPress: onClose }} />
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
             <Text style={type.detail} testID="guide-prescription">
@@ -139,10 +133,6 @@ export function ExerciseGuideSheet({ guide, onClose }: Props) {
 
 const styles = StyleSheet.create({
   body: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch },
-  title: { ...type.title, fontSize: 26, flex: 1 },
-  close: { minHeight: touch, minWidth: touch, alignItems: 'flex-end', justifyContent: 'center' },
-  closeText: { fontSize: 17, fontWeight: '600', color: colors.accent },
   scroll: { flex: 1 },
   content: { gap: space.md, paddingBottom: space.xl },
   note: { ...type.detail, color: colors.ink },

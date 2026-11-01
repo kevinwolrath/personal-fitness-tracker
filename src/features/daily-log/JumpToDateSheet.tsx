@@ -4,7 +4,7 @@ import { DateField } from '../../ui/DateField';
 import { Sheet } from '../../ui/Sheet';
 import { colors, radius, space, touch } from '../../ui/theme';
 import { dayLabels } from './dayLabels';
-import { SheetHeader, TextButton } from './Sheets';
+import { ModalHeader } from '../../ui/ModalHeader';
 
 type Props = {
   visible: boolean;
@@ -31,7 +31,7 @@ export function JumpToDateSheet(p: Props) {
   return (
     <Sheet visible={p.visible} onClose={p.onClose} label="Jump to a date">
       <View style={styles.body}>
-        <SheetHeader title="Go to date" right={<TextButton title="Close" onPress={p.onClose} />} />
+        <ModalHeader title="Go to date" dismiss={{ label: 'Close', onPress: p.onClose }} />
         <View style={styles.chips}>
           {shortcuts.map((s) => (
             <Pressable

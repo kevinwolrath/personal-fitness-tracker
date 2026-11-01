@@ -9,6 +9,8 @@ export function Button({ title, variant = 'primary', disabled, ...rest }: Props)
       accessibilityRole="button"
       disabled={disabled}
       style={({ pressed }) => [styles.base, styles[variant], pressed && styles.pressed, disabled && styles.disabled]}
+      // data-variant on web: tests count primary buttons per surface (contract 01, one primary action).
+      {...({ dataSet: { variant } } as object)}
       {...rest}
     >
       <Text style={[styles.text, variant === 'primary' ? styles.onPrimary : styles.onOther]}>{title}</Text>

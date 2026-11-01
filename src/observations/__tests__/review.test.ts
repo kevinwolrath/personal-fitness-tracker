@@ -1,4 +1,4 @@
-import { buildObservations, type ReviewedCandidate } from '../review';
+import { buildObservations, formatReviewValue, parseReviewValue, type ReviewedCandidate } from '../review';
 import type { ImportSession } from '../types';
 
 const session: ImportSession = {
@@ -57,4 +57,31 @@ it('keeps the workout type as the label', () => {
 it('rejects invalid edits without saving anything', () => {
   const r = buildObservations(session, [c({ key: 'a', editedText: 'abc' }), c({ key: 'b', editedText: '-3' }), c({ key: 'ok' })], 'now', id);
   expect(r).toEqual({ ok: false, errors: { a: 'Enter a number', b: 'Must not be negative' } });
+});
+
+describe('review values are shown like the Daily Log and stay editable (#21)', () => {
+  it.each([
+    ['count', 13765, '13,765'],
+    ['min', 465, '7h 45m'],
+    ['min', 45, '45m'],
+    ['kg', 97.25, '97.25'],
+    ['kg', -2.55, '-2.55'],
+    ['score', 84, '84'],
+  ])('%s %p → %s and back', (unit, value, text) => {
+    expect(formatReviewValue(unit, value)).toBe(text);
+    expect(parseReviewValue(unit, text)).toBe(value);
+  });
+
+  it.each([
+    ['min', '7h45', 465],
+    ['min', '7:45', 465],
+    ['min', '7 h', 420],
+    ['min', '465', 465],
+    ['count', '13765', 13765],
+    ['kg', '97,25', 97.25],
+  ])('accepts %s "%s"', (unit, text, value) => expect(parseReviewValue(unit, text)).toBe(value));
+
+  it.each([['min', 'abc'], ['min', ''], ['kg', 'x']])('rejects %s "%s"', (unit, text) => expect(parseReviewValue(unit, text)).toBeNull());
+
+  it('a comma that is not a thousands group is a decimal comma', () => expect(parseReviewValue('kg', '13,76')).toBe(13.76));
 });

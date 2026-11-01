@@ -29,7 +29,25 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 **Vertical budget.** On a 390 × 844 phone, the **Do this next** card starts within **200 px** of the top of the viewport, app bar included. `e2e/app-shell.spec.ts` measures it. A change that pushes the card lower has to change this contract first.
 
-**Modal routes** (`/import`, `/configure`) are tasks rather than places. They cover the shell and have their own header (Cancel or Close). They don't show the app bar.
+**Modal routes** (`/import`, `/configure`) are tasks rather than places. They cover the shell and use the modal header below. They don't show the app bar.
+
+**Modal and sheet header (#21).** Every modal screen and every sheet uses one header, `ModalHeader` (`src/ui/ModalHeader.tsx`). There are no hand-built headers.
+
+| Left | Centre | Right |
+|---|---|---|
+| **Dismiss**, always | Title, one line | **Confirm** (e.g. Save), only if the surface has one |
+
+- **Dismiss wording:** **Cancel** when closing loses something (an unsaved value, a pasted update, picked screenshots); **Close** when nothing is lost (read-only, or already saved).
+- **Layout:** both sides have the same width, so the title stays centred with or without a confirm.
+- **Primary actions** for the content (Read, Apply) are buttons in the content or a fixed bottom bar, never in the header.
+- **Test:** `e2e/surfaces.spec.ts` checks the order, the centring and the wording on every surface.
+
+**Modal vertical budget.** In each modal screen's main state, its primary action is on screen at 390 × 844 without scrolling. The fixed bottom bar holds it when the content runs long: Import's **Save**, Configure's **Apply**.
+
+**Configure layout (#21, "one page").**
+- Finished steps collapse to one line with a way back in: "Instructions copied · Copy again", "Update checked · Change". After checking, the pasted JSON isn't shown.
+- **What changes** lists only the sections that change, one row each, with the first change and a count; tap a row to see every change in it. The other sections are named in one line ("… stay as they are").
+- **Discard** and **Apply N changes** sit in a fixed bottom bar.
 
 **App menu (#15).** The ☰ in the app bar opens the app menu, a sheet rather than a drawer. It holds the application-level operations, which stay off the day so they don't compete with it:
 

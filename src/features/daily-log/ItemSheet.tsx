@@ -12,7 +12,7 @@ import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { space, type } from '../../ui/theme';
 import { SessionExercises } from './SessionExercises';
-import { SheetHeader, TextButton } from './Sheets';
+import { ModalHeader } from '../../ui/ModalHeader';
 
 type Props = {
   item: PrescriptionItem | null;
@@ -41,7 +41,7 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
     }} label={item ? `${item.label} details` : 'Details'}>
       {item && (
         <View style={styles.body}>
-          <SheetHeader title={item.label} right={<TextButton title="Close" onPress={onClose} />} />
+          <ModalHeader title={item.label} dismiss={{ label: 'Close', onPress: onClose }} />
           <Text style={[type.detail, styles.center]}>
             {[when, a ? formatDuration(a.duration) : null, item.required ? null : 'Optional', item.detail].filter(Boolean).join(' · ')}
           </Text>

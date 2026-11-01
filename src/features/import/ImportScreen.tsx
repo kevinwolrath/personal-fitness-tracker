@@ -6,12 +6,13 @@ import { formatShortDate } from '../../format';
 import { formatMinutes } from '../../observations/units';
 import { addDays, toLocalDate, type LocalDate } from '../../plan/dates';
 import { useApp } from '../../providers/AppProvider';
-import type { ReviewedCandidate } from '../../observations/review';
+import { formatReviewValue, type ReviewedCandidate } from '../../observations/review';
 import { Button } from '../../ui/Button';
+import { ModalHeader } from '../../ui/ModalHeader';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 import { takeHandedOffScreenshots, useImportSession, type PickedScreenshot } from './useImportSession';
 
-const shownUnit = (u: string) => (u === 'count' || u === 'score' ? '' : u);
+const shownUnit = (u: string) => (u === 'count' || u === 'score' || u === 'min' ? '' : u); // durations carry h/m in the value
 const isDate = (d: unknown): d is LocalDate => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
 /** Screenshot import: pick → read → review/edit → save with provenance (contract 06). */
@@ -41,13 +42,7 @@ export function ImportScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={close} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Cancel">
-          <Text style={styles.link}>Cancel</Text>
-        </Pressable>
-        <Text style={[type.body, styles.headerTitle]} accessibilityRole="header">
-          Import screenshots
-        </Text>
-        <View style={styles.headerButton} />
+        <ModalHeader title="Import screenshots" dismiss={{ label: 'Cancel', onPress: close }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="import-scroll">
@@ -72,7 +67,12 @@ export function ImportScreen() {
 
             <View style={styles.actions}>
               {toRead.length > 0 ? (
-                <Button title={`Read ${toRead.length} screenshot${toRead.length > 1 ? 's' : ''}`} onPress={s.readAll} disabled={s.reading} />
+                <Button
+                  title={`Read ${toRead.length} screenshot${toRead.length > 1 ? 's' : ''}`}
+                  variant={included ? 'secondary' : 'primary'} // once values are ready, Save is the one primary action
+                  onPress={s.readAll}
+                  disabled={s.reading}
+                />
               ) : null}
               <Button
                 title={s.shots.length ? 'Add more screenshots' : 'Choose screenshots'}
@@ -101,11 +101,18 @@ export function ImportScreen() {
                   onDate={(d) => s.setShotDate(shot.asset.id, d)}
                 />
               ))}
+
+            <View style={styles.keyRow}>
+              <Text style={[type.detail, styles.flex]}>Screenshots are read with your Anthropic API key, kept on this device.</Text>
+              <Pressable onPress={s.forgetApiKey} style={styles.forget} accessibilityRole="button" accessibilityLabel="Forget API key">
+                <Text style={[type.detail, styles.forgetText]}>Forget key</Text>
+              </Pressable>
+            </View>
           </>
         )}
       </ScrollView>
 
-      {s.apiKey ? (
+      {s.apiKey && s.review.length > 0 ? (
         <View style={styles.footer}>
           {saveError && <Text style={[type.detail, styles.error]}>{saveError}</Text>}
           <Button
@@ -113,9 +120,6 @@ export function ImportScreen() {
             onPress={save}
             disabled={!included || s.saving || s.reading}
           />
-          <Pressable onPress={s.forgetApiKey} style={styles.forget} accessibilityRole="button" accessibilityLabel="Forget API key">
-            <Text style={[type.detail, styles.forgetText]}>Forget API key</Text>
-          </Pressable>
         </View>
       ) : null}
     </SafeAreaView>
@@ -234,11 +238,8 @@ function ShotReview(p: {
 }
 
 function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: string; onEdit: (key: string, patch: Partial<ReviewedCandidate>) => void }) {
-  const text = c.editedText ?? String(c.value);
-  const minutes = c.unit === 'min' ? Number(text.replace(',', '.')) : NaN;
-  const meta = [`“${c.evidence}”`, c.confidence < 0.8 ? 'check this' : null, Number.isFinite(minutes) && minutes >= 60 ? formatMinutes(minutes) : null]
-    .filter(Boolean)
-    .join(' · ');
+  const text = c.editedText ?? formatReviewValue(c.unit, c.value);
+  const meta = [`“${c.evidence}”`, c.confidence < 0.8 ? 'check this' : null].filter(Boolean).join(' · ');
   return (
     <View style={[styles.row, !c.include && styles.rowExcluded]} testID={`candidate-${c.metric}`}>
       <Pressable
@@ -262,7 +263,7 @@ function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: stri
       <TextInput
         value={text}
         onChangeText={(t) => onEdit(c.key, { editedText: t })}
-        keyboardType="decimal-pad"
+        keyboardType={c.unit === 'min' ? 'default' : 'decimal-pad'} // durations read "7h 45m"
         editable={c.include}
         style={[styles.valueInput, error && styles.valueInputError]}
         accessibilityLabel={`${c.label} value`}
@@ -274,9 +275,7 @@ function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: stri
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, minHeight: touch + 8 },
-  headerButton: { minWidth: 72, minHeight: touch, justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center' },
+  header: { paddingHorizontal: space.lg },
   link: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   content: { paddingHorizontal: space.xl, paddingBottom: space.xxl, gap: space.lg },
   actions: { gap: space.sm },
@@ -361,6 +360,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     backgroundColor: colors.bg,
   },
-  forget: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
+  keyRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.lg },
+  flex: { flex: 1 },
+  forget: { minHeight: touch, minWidth: touch, alignItems: 'center', justifyContent: 'center' },
   forgetText: { textDecorationLine: 'underline' },
 });

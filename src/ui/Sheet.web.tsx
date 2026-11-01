@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { colors, radius, space } from './theme';
 
-type Props = { visible: boolean; onClose: () => void; children: ReactNode; label: string; fill?: boolean };
+/** `onDismiss` is iOS-only (see Sheet.tsx); a web sheet is gone as soon as `visible` is false. */
+type Props = { visible: boolean; onClose: () => void; children: ReactNode; label: string; fill?: boolean; onDismiss?: () => void };
 
 /** id of the host layer PhoneFrame.web renders over the phone column. */
 export const SHEET_HOST_ID = 'sheet-host';

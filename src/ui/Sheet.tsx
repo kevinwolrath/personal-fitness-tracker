@@ -10,6 +10,12 @@ type Props = {
   label: string;
   /** Tall content (e.g. an exercise guide): the panel takes most of the screen and children can flex/scroll. */
   fill?: boolean;
+  /**
+   * Called once the sheet has finished closing. iOS only (Modal onDismiss): iOS can't present a picker,
+   * alert or modal route while a sheet is still animating away. Elsewhere the sheet is gone as soon as
+   * `visible` is false, so callers can act straight away.
+   */
+  onDismiss?: () => void;
 };
 
 /**
@@ -21,10 +27,10 @@ type Props = {
  * Sheets can be nested: render a child Sheet inside a parent Sheet's children so it presents on top
  * (iOS can only present a modal from the one currently shown).
  */
-export function Sheet({ visible, onClose, children, label, fill }: Props) {
+export function Sheet({ visible, onClose, children, label, fill, onDismiss }: Props) {
   if (Platform.OS === 'ios') {
     return (
-      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
         <SafeAreaView style={styles.iosBody} edges={['bottom']} accessibilityLabel={label}>
           <View style={styles.handle} />
           {children}

@@ -2,7 +2,7 @@
  * Renders the real Today screen with the iOS and Android RN presets (see jest "projects"),
  * exercising native code paths (native Sheet/Modal, no web adapters).
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Slot } from 'expo-router';
 import { Alert, Modal, Platform, Text } from 'react-native';
@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MemoryKeyValue } from '../../../storage/keyValueStore';
 import { AppProvider } from '../../../providers/AppProvider';
 import { DayLogScreen } from '../DayLogScreen';
+import { AppShell } from '../../shell/AppShell';
 
 // One in-memory backend per test; a new store over it simulates an app restart.
 let mockKv = new MemoryKeyValue();
@@ -39,7 +40,12 @@ async function launch() {
           </AppProvider>
         </SafeAreaProvider>
       ),
-      index: DayLogScreen,
+      '(main)/_layout': () => (
+        <AppShell>
+          <Slot />
+        </AppShell>
+      ),
+      '(main)/index': DayLogScreen,
       import: () => <Text testID="import-route">import</Text>,
       configure: () => <Text testID="configure-route">configure</Text>,
     },
@@ -180,4 +186,11 @@ it('configure opens the existing configuration flow', async () => {
   await launch();
   await chooseFromMenu('Configure with AI');
   expect(await screen.findByTestId('configure-route')).toBeTruthy();
+});
+
+it('the menu is in the app shell bar, not in the scrolling day (contract 02 layout layers)', async () => {
+  await launch();
+  expect(within(screen.getByTestId('app-bar')).getByLabelText('Menu')).toBeTruthy();
+  expect(within(screen.getByTestId('day-scroll')).queryByLabelText('Menu')).toBeNull();
+  expect(within(screen.getByTestId('day-scroll')).getByTestId('day-title')).toBeTruthy();
 });

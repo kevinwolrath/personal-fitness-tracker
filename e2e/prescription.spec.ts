@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import example from '../fixtures/plans/prescription-example.plan.json';
-import { openAt, row, seedPlan, seedRecords } from './helpers';
+import { openAt, row, seedPlan, seedRecords, chooseFromMenu, exportAllData } from './helpers';
 
 /** Issue #10: "Open app → see what I should do now → do it → tick it off → app tells me what's next." */
 
@@ -137,7 +137,7 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   // Remove the Monday strength session from the plan through the #7 protocol.
   const seed = JSON.parse(readFileSync('plans/seed.plan.json', 'utf8'));
   const activities = seed.activities.filter((a: any) => a.kind !== 'meal' && a.id !== 'resistance');
-  await page.getByRole('button', { name: 'Configure with AI' }).click();
+  await chooseFromMenu(page, 'Configure with AI');
   await page.getByLabel('AI update').fill(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, schedule: { activities } } }));
   await page.getByRole('button', { name: 'Check update' }).click();
   await expect(page.getByTestId('preview-schedule')).toContainText('Removed Strength workout');
@@ -147,9 +147,7 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   await expect(page.getByTestId('activity-resistance')).toHaveCount(0); // no longer prescribed
   await expect(page.getByTestId('history-resistance')).toContainText('Done'); // but what happened is still on the day
 
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export all data' }).click();
-  const doc = JSON.parse(readFileSync(await (await download).path(), 'utf8'));
+  const doc = await exportAllData(page);
   expect(doc.completionEvents.map((e: any) => [e.activityId, e.action, e.at])).toContainEqual(['resistance', 'complete', '2026-11-02T10:00:00+11:00']);
   const snapshot = doc.daySnapshots.find((d: any) => d.date === '2026-11-02');
   expect(snapshot.prescribed.items.find((i: any) => i.key === 'resistance').session.exercises[0].label).toBe('Kettlebell squat');

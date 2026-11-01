@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, openAt, seedPlan, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, seedPlan, seedRecords } from './helpers';
 
 /**
  * Responsive sweep (contract 05): every width from a small Android phone to a desktop browser.
@@ -97,7 +97,7 @@ test('the jump-to-date sheet fits at the narrowest width', async ({ page }) => {
 test('the AI configuration screen (with a preview and errors) fits at every width', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Configure with AI' }).click();
+  await chooseFromMenu(page, 'Configure with AI');
   const combined = require('node:fs').readFileSync('fixtures/config/combined.update.json', 'utf8');
   await page.getByLabel('AI update').fill(combined);
   await page.getByRole('button', { name: 'Check update' }).click();
@@ -144,5 +144,22 @@ test('the exercise guide (long instructions, substitution note, caution) fits at
       expect(await layoutProblems(page), `${name} at ${width}px`).toEqual([]);
     }
     await page.getByRole('button', { name: 'Close guide' }).click();
+  }
+});
+
+test('the app menu and the export confirmation fit at every width', async ({ page }) => {
+  await openAt(page, MONDAY);
+  await page.getByRole('button', { name: 'Menu' }).click();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `menu at ${width}px`).toEqual([]);
+  }
+  await page.getByTestId('app-menu').getByRole('button', { name: 'Export all data' }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `confirm at ${width}px`).toEqual([]);
   }
 });

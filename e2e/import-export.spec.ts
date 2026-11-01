@@ -1,24 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { presetApiKey, stubClaude } from './claudeStub';
-import { MONDAY, openAt } from './helpers';
+import { MONDAY, exportAllData, importScreenshots, openAt } from './helpers';
 
 const fixture = (name: string) => `e2e/fixtures/${name}`;
 
-async function chooseScreenshots(page: import('@playwright/test').Page, files: string[]) {
-  const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: /Choose screenshots|Add more screenshots/ }).click();
-  await (await chooser).setFiles(files.map(fixture));
-}
+const pick = (page: import('@playwright/test').Page, files: string[]) => importScreenshots(page, files.map(fixture));
 
 test.describe('screenshot import', () => {
-  test('asks for an API key first, and stores it on the device', async ({ page }) => {
+  test('asks for an API key, keeping the chosen screenshots, and stores it on the device', async ({ page }) => {
     await openAt(page, MONDAY);
-    await page.getByRole('button', { name: 'Import from screenshots' }).click();
+    await pick(page, ['scale.png']);
     await expect(page.getByText('Connect screenshot reading')).toBeVisible();
     await page.getByLabel('Anthropic API key').fill('sk-ant-test-key');
     await page.getByRole('button', { name: 'Save key' }).click();
-    await expect(page.getByRole('button', { name: 'Choose screenshots' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Read 1 screenshot' })).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('pft.anthropic.apiKey'))).toBe('sk-ant-test-key');
   });
 
@@ -26,9 +22,7 @@ test.describe('screenshot import', () => {
     await presetApiKey(page);
     const requests = await stubClaude(page);
     await openAt(page, MONDAY);
-    await page.getByRole('button', { name: 'Import from screenshots' }).click();
-
-    await chooseScreenshots(page, ['fitbit-today.png', 'scale.png']);
+    await pick(page, ['fitbit-today.png', 'scale.png']);
     await page.getByRole('button', { name: 'Read 2 screenshots' }).click();
 
     // One request per screenshot, through the real SDK, with the image and the expected options.
@@ -80,8 +74,7 @@ test.describe('screenshot import', () => {
     await presetApiKey(page);
     await stubClaude(page);
     await openAt(page, MONDAY);
-    await page.getByRole('button', { name: 'Import from screenshots' }).click();
-    await chooseScreenshots(page, ['scale.png']);
+    await pick(page, ['scale.png']);
     await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
     await expect(page.getByRole('button', { name: 'renpho: next day' })).toBeDisabled(); // no future dates
     await page.getByRole('button', { name: 'renpho: previous day' }).click();
@@ -102,8 +95,7 @@ test.describe('screenshot import', () => {
       });
     });
     await openAt(page, MONDAY);
-    await page.getByRole('button', { name: 'Import from screenshots' }).click();
-    await chooseScreenshots(page, ['scale.png']);
+    await pick(page, ['scale.png']);
     await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
     await expect(page.getByText('The API key was rejected')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Read 1 screenshot' })).toBeVisible(); // retry offered
@@ -124,17 +116,18 @@ test('export all data downloads a versioned full-history JSON with provenance', 
   await page.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('button', { name: 'Back to Today' }).click();
   await page.getByTestId('activity-lunch').getByRole('checkbox').click();
-  await page.getByRole('button', { name: 'Import from screenshots' }).click();
-  await chooseScreenshots(page, ['scale.png']);
+  await pick(page, ['scale.png']);
   await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
   await page.getByRole('checkbox', { name: 'Include Weight (calculated)' }).click(); // user explicitly keeps the calculation
   await page.getByRole('button', { name: 'Save 3 values' }).click();
 
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByTestId('app-menu').getByRole('button', { name: 'Export all data' }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export all data' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Export JSON' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe('fitness-export-2026-11-02.json');
-  const doc = JSON.parse(readFileSync(await file.path(), 'utf8'));
+  const doc = JSON.parse(readFileSync((await file.path())!, 'utf8'));
 
   expect(doc).toMatchObject({ format: 'pft-export', exportVersion: 1, range: { from: '2026-10-31', to: '2026-11-02' } });
   expect(doc.plans[0].plan.goals[0]).toMatchObject({ measurementId: 'weight', target: 78 });
@@ -161,8 +154,7 @@ test.describe('visual', () => {
     await presetApiKey(page);
     await stubClaude(page);
     await openAt(page, MONDAY);
-    await page.getByRole('button', { name: 'Import from screenshots' }).click();
-    await chooseScreenshots(page, ['fitbit-today.png', 'scale.png']);
+    await pick(page, ['fitbit-today.png', 'scale.png']);
     await page.getByRole('button', { name: 'Read 2 screenshots' }).click();
     await expect(page.getByTestId('review-scale.png')).toBeVisible();
     const height = await page.getByTestId('import-scroll').evaluate((el) => {

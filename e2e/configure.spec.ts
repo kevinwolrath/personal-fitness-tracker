@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import seed from '../plans/seed.plan.json';
-import { MONDAY, expandToFullDay, openAt, row, seedPlan } from './helpers';
+import { MONDAY, expandToFullDay, openAt, row, seedPlan, chooseFromMenu, exportAllData } from './helpers';
 
 /** Issue #7: AI-configurable fitness profile with partial, previewed, confirmed updates. */
 
@@ -22,7 +22,7 @@ const { exercise: _exercise, ...unconfigured } = seed as any;
 async function openConfigure(page: Page) {
   await seedPlan(page, unconfigured);
   await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Configure with AI' }).click();
+  await chooseFromMenu(page, 'Configure with AI');
   await expect(page.getByRole('heading', { name: 'Configure with AI' })).toBeVisible();
 }
 
@@ -143,9 +143,7 @@ test('configuration changes are included in the full export', async ({ page }) =
   await checkUpdate(page, fixture('real-world-exercise'));
   await page.getByRole('button', { name: 'Apply update' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
-  const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export all data' }).click();
-  const doc = JSON.parse(readFileSync(await (await download).path(), 'utf8'));
+  const doc = await exportAllData(page);
   expect(doc.plans[0]).toMatchObject({ origin: 'config', plan: { formatVersion: 2, exercise: { constraints: { gymMembership: false } } } });
   expect(doc.configChanges).toHaveLength(1);
   expect(doc.configChanges[0]).toMatchObject({ sections: ['exercise'] });

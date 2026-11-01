@@ -1,17 +1,17 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
 import { buildExport } from '../../export/exportFormat';
-import { formatAmount, formatTimestamp, localIsoTimestamp } from '../../format';
+import { formatAmount, localIsoTimestamp } from '../../format';
 import { shareJson } from '../../platform/files';
 import { measurementMetric } from '../../observations/planMetrics';
 import { addDays, type LocalDate } from '../../plan/dates';
 import type { Observation } from '../../observations/types';
 import type { Activity, Measurement } from '../../plan/schema';
 import { tap } from '../../ui/haptics';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { colors, space, type } from '../../ui/theme';
 import { ActivityRow } from './ActivityRow';
 import { DayHeader } from './DayHeader';
 import { loggedOutsidePlan, recordedObservations } from './dayContent';
@@ -20,6 +20,9 @@ import { ObservationSheet, RecordedSection } from './RecordedSection';
 import { MeasurementPanel } from './MeasurementPanel';
 import { DayTypeSheet, MeasureSheet } from './Sheets';
 import { ItemSheet } from './ItemSheet';
+import { AppMenu, type AppMenuItem } from './AppMenu';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
@@ -78,6 +81,8 @@ export function DayLogScreen() {
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
   const [dayTypeOpen, setDayTypeOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmExport, setConfirmExport] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const clearToast = useCallback(() => setToast(null), []);
 
@@ -97,11 +102,6 @@ export function DayLogScreen() {
     const skipped = item.state === 'skipped';
     actions.setSkipped(item, !skipped);
     if (!skipped) setToast({ key: Date.now(), message: `Skipped ${item.label}`, onUndo: () => actions.setSkipped(item, false) });
-  };
-  const quickLog = (id: string, label: string) => {
-    tap();
-    const entryId = actions.addQuickLog(id);
-    setToast({ key: Date.now(), message: `${label} · logged ${formatTimestamp(new Date().toISOString())}`, onUndo: () => actions.removeQuickLog(entryId) });
   };
 
   const renderItem = (item: PrescriptionItem) =>
@@ -135,6 +135,19 @@ export function DayLogScreen() {
     .filter((g) => g.items.length);
   const nothingPlanned = !prescription.items.length;
 
+  // App-level operations live in the menu, not on the day (#15).
+  const importScreenshots = async () => {
+    const shots = await pickScreenshots();
+    if (!shots) return; // cancelled: nothing happens
+    handOffScreenshots(shots);
+    router.push({ pathname: '/import', params: { date } });
+  };
+  const menuItems: AppMenuItem[] = [
+    { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
+    { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
+    { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
+  ];
+
   const exportAll = async () => {
     try {
       const doc = buildExport(await store.snapshot(), { exportedAt: localIsoTimestamp(), today, appVersion: '0.1.0' });
@@ -159,6 +172,7 @@ export function DayLogScreen() {
           onToday={() => setDate(today)}
           onPickDate={() => setJumpOpen(true)}
           onDayType={() => setDayTypeOpen(true)}
+          onMenu={() => setMenuOpen(true)}
         />
 
         {!editable && <Text style={[type.detail, styles.notice]}>Upcoming. You can tick these off on the day.</Text>}
@@ -179,16 +193,6 @@ export function DayLogScreen() {
             onLog={setSheetMeasurement}
           />
           <TargetsLine plan={plan} targets={day.targets} />
-          {editable && (
-            <Pressable
-              onPress={() => router.push({ pathname: '/import', params: { date } })}
-              style={styles.textAction}
-              accessibilityRole="button"
-              accessibilityLabel="Import from screenshots"
-            >
-              <Text style={styles.textActionText}>Import from screenshots ›</Text>
-            </Pressable>
-          )}
         </View>
 
         {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
@@ -206,46 +210,12 @@ export function DayLogScreen() {
           <RecordedSection plan={plan} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
         </View>
 
-        <View style={styles.footerLinks}>
-          <Pressable onPress={() => router.push('/configure')} style={styles.textAction} accessibilityRole="button" accessibilityLabel="Configure with AI">
-            <Text style={[type.detail, styles.exportText]}>Configure with AI</Text>
-          </Pressable>
-          <Pressable onPress={exportAll} style={styles.textAction} accessibilityRole="button" accessibilityLabel="Export all data">
-            <Text style={[type.detail, styles.exportText]}>Export all data (JSON)</Text>
-          </Pressable>
-        </View>
       </ScrollView>
 
-      {plan.quickLogs.length > 0 && (
-        <SafeAreaView edges={['bottom']} style={styles.footer}>
-          <Toast toast={toast} onDone={clearToast} />
-          <View style={styles.quickRow}>
-            {plan.quickLogs.map((q) => (
-              <Pressable
-                key={q.id}
-                onPress={() => quickLog(q.id, q.label)}
-                disabled={!editable}
-                style={({ pressed }) => [styles.quick, pressed && styles.pressed, !editable && styles.disabled]}
-                accessibilityRole="button"
-                accessibilityLabel={q.label}
-                accessibilityHint={q.detail}
-              >
-                <Text style={styles.quickText}>{q.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-          <Text style={[type.detail, styles.quickNote]} testID="quick-log-summary" numberOfLines={1}>
-            {plan.quickLogs
-              .map((q) => {
-                const times = records.quickLogs.filter((e) => e.quickLogId === q.id).map((e) => formatTimestamp(e.at));
-                return times.length ? `${q.label}: ${times.join(', ')}` : null;
-              })
-              .filter(Boolean)
-              .join('  ·  ') || 'Nothing logged yet'}
-          </Text>
-        </SafeAreaView>
-      )}
-      {!plan.quickLogs.length && <Toast toast={toast} onDone={clearToast} />}
+      {/* Toasts float above this zero-content dock at the bottom safe-area edge. */}
+      <SafeAreaView edges={['bottom']} style={styles.toastDock} pointerEvents="box-none">
+        <Toast toast={toast} onDone={clearToast} />
+      </SafeAreaView>
 
       <ItemSheet
         item={sheetItem && (prescription.items.find((i) => i.key === sheetItem.key) ?? null)}
@@ -255,6 +225,18 @@ export function DayLogScreen() {
         onSetDone={(item, a, done, variant) => actions.setDone(item, a, done, variant)}
         onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
         exerciseConfig={plan.exercise}
+      />
+      <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={menuItems} />
+      <ConfirmDialog
+        visible={confirmExport}
+        title="Export all fitness data?"
+        message="This creates a JSON file containing your complete fitness-tracker history, configuration and recorded observations."
+        confirmLabel="Export JSON"
+        onCancel={() => setConfirmExport(false)}
+        onConfirm={() => {
+          setConfirmExport(false);
+          exportAll();
+        }}
       />
       <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
       <MeasureSheet
@@ -306,21 +288,5 @@ const styles = StyleSheet.create({
   notice: { marginTop: space.md },
   empty: { marginTop: space.xl, color: colors.muted },
   list: { marginTop: space.xs },
-  textAction: { minHeight: touch, justifyContent: 'center', alignSelf: 'flex-start' },
-  textActionText: { fontSize: 16, fontWeight: '700', color: colors.accent },
-  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: space.xl, marginTop: space.xl },
-  exportText: { textDecorationLine: 'underline' },
-  footer: {
-    backgroundColor: colors.bg,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.line,
-    paddingHorizontal: space.xl,
-    paddingTop: space.md,
-  },
-  quickRow: { flexDirection: 'row', gap: space.sm },
-  quick: { flex: 1, minHeight: touch + 8, borderRadius: radius.md, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' },
-  quickText: { color: colors.onAccent, fontSize: 17, fontWeight: '800' },
-  quickNote: { textAlign: 'center', marginTop: space.sm, marginBottom: space.sm, ...type.number },
-  pressed: { opacity: 0.8 },
-  disabled: { opacity: 0.4 },
+  toastDock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: space.lg },
 });

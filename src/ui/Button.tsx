@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, type PressableProps } from 'react-native';
 import { colors, radius, space, touch } from './theme';
 
-type Props = Omit<PressableProps, 'children' | 'style'> & { title: string; variant?: 'primary' | 'secondary' | 'quiet' };
+type Props = Omit<PressableProps, 'children' | 'style'> & { title: string; variant?: 'primary' | 'secondary' | 'quiet' | 'inverse' };
 
 export function Button({ title, variant = 'primary', disabled, ...rest }: Props) {
   return (
@@ -21,6 +21,8 @@ const styles = StyleSheet.create({
   primary: { backgroundColor: colors.ink },
   secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   quiet: { backgroundColor: 'transparent' },
+  /** Primary action on an ink surface. */
+  inverse: { backgroundColor: colors.surface },
   pressed: { opacity: 0.75 },
   disabled: { opacity: 0.4 },
   text: { fontSize: 17, fontWeight: '700' },

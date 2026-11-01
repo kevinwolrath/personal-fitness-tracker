@@ -1,0 +1,309 @@
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "nutrition": {
+      "meals": [
+        {
+          "id": "lunch",
+          "kind": "meal",
+          "label": "Fixed lunch",
+          "detail": "Cold high-protein lunch, no heating needed",
+          "time": "12:00",
+          "purpose": "nutrition"
+        },
+        {
+          "id": "snack",
+          "kind": "meal",
+          "label": "Fixed snack",
+          "detail": "Anti-hunger snack before family dinner",
+          "purpose": "nutrition",
+          "when": "afternoon",
+          "after": [
+            "lunch"
+          ]
+        },
+        {
+          "id": "dinner",
+          "kind": "meal",
+          "label": "Family dinner",
+          "detail": "Usually 6:30–7:30 pm",
+          "time": "18:30",
+          "flexible": true,
+          "purpose": "nutrition"
+        }
+      ]
+    },
+    "schedule": {
+      "requirements": [
+        {
+          "id": "hard-conditioning",
+          "label": "High-intensity conditioning",
+          "purpose": "conditioning_high_intensity",
+          "detail": "Any one of these counts for today",
+          "when": "evening"
+        }
+      ],
+      "activities": [
+        {
+          "id": "school-run-am",
+          "kind": "exercise",
+          "label": "School run",
+          "detail": "Bike out, walk-jog home",
+          "time": "08:30",
+          "appliesTo": {
+            "dayTypes": [
+              "home"
+            ]
+          },
+          "purpose": "walking"
+        },
+        {
+          "id": "dog-walk",
+          "kind": "exercise",
+          "label": "Dog walk",
+          "time": "12:30",
+          "required": false,
+          "appliesTo": {
+            "dayTypes": [
+              "home"
+            ]
+          },
+          "purpose": "walking"
+        },
+        {
+          "id": "lunch-walk",
+          "kind": "exercise",
+          "label": "Lunch walk",
+          "time": "12:30",
+          "duration": {
+            "min": 30,
+            "max": 45
+          },
+          "appliesTo": {
+            "dayTypes": [
+              "office"
+            ]
+          },
+          "purpose": "walking"
+        },
+        {
+          "id": "school-run-pm",
+          "kind": "exercise",
+          "label": "School run",
+          "detail": "Walk-jog out, bike home",
+          "time": "15:15",
+          "appliesTo": {
+            "dayTypes": [
+              "home"
+            ]
+          },
+          "purpose": "walking"
+        },
+        {
+          "id": "resistance",
+          "kind": "exercise",
+          "label": "Strength workout",
+          "duration": {
+            "min": 30,
+            "max": 40
+          },
+          "appliesTo": {
+            "days": [
+              "mon",
+              "wed"
+            ]
+          },
+          "purpose": "strength",
+          "session": {
+            "minutes": 35,
+            "exercises": [
+              {
+                "movement": "kettlebell_squat",
+                "sets": 3,
+                "reps": 10
+              },
+              {
+                "movement": "chest_press",
+                "label": "Chest press (Fortis)",
+                "sets": 3,
+                "reps": 10
+              },
+              {
+                "movement": "lat_pulldown",
+                "label": "Lat pulldown (Fortis)",
+                "sets": 3,
+                "reps": 10
+              },
+              {
+                "movement": "cable_row",
+                "label": "Cable row (Fortis)",
+                "sets": 3,
+                "reps": 10
+              },
+              {
+                "movement": "hammer_curl",
+                "sets": 2,
+                "reps": 12
+              }
+            ],
+            "short": {
+              "minutes": 10,
+              "exercises": [
+                {
+                  "movement": "kettlebell_squat",
+                  "sets": 2,
+                  "reps": 10
+                },
+                {
+                  "movement": "chest_press",
+                  "label": "Chest press (Fortis)",
+                  "sets": 2,
+                  "reps": 10
+                },
+                {
+                  "movement": "cable_row",
+                  "label": "Cable row (Fortis)",
+                  "sets": 2,
+                  "reps": 10
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "resistance-long",
+          "kind": "exercise",
+          "label": "Strength workout",
+          "duration": {
+            "min": 45,
+            "max": 60
+          },
+          "appliesTo": {
+            "days": [
+              "sat"
+            ]
+          },
+          "purpose": "strength",
+          "session": {
+            "minutes": 50,
+            "exercises": [
+              {
+                "movement": "kettlebell_squat",
+                "sets": 4,
+                "reps": 10
+              },
+              {
+                "movement": "chest_press",
+                "label": "Chest press (Fortis)",
+                "sets": 4,
+                "reps": 10
+              },
+              {
+                "movement": "lat_pulldown",
+                "label": "Lat pulldown (Fortis)",
+                "sets": 4,
+                "reps": 10
+              },
+              {
+                "movement": "cable_row",
+                "label": "Cable row (Fortis)",
+                "sets": 4,
+                "reps": 10
+              },
+              {
+                "movement": "hammer_curl",
+                "sets": 2,
+                "reps": 12
+              }
+            ],
+            "short": {
+              "minutes": 10,
+              "exercises": [
+                {
+                  "movement": "kettlebell_squat",
+                  "sets": 2,
+                  "reps": 10
+                },
+                {
+                  "movement": "chest_press",
+                  "label": "Chest press (Fortis)",
+                  "sets": 2,
+                  "reps": 10
+                },
+                {
+                  "movement": "cable_row",
+                  "label": "Cable row (Fortis)",
+                  "sets": 2,
+                  "reps": 10
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "weekend-movement",
+          "kind": "habit",
+          "label": "Normal weekend movement",
+          "required": false,
+          "appliesTo": {
+            "days": [
+              "sat"
+            ]
+          },
+          "purpose": "walking"
+        },
+        {
+          "id": "recovery",
+          "kind": "habit",
+          "label": "Recovery",
+          "detail": "Normal movement only",
+          "required": false,
+          "appliesTo": {
+            "days": [
+              "sun"
+            ]
+          },
+          "purpose": "recovery"
+        },
+        {
+          "id": "vr-boxing",
+          "kind": "exercise",
+          "label": "VR boxing",
+          "detail": "Thrill of the Fight · 3-minute rounds",
+          "tracking": {
+            "type": "count",
+            "target": 3,
+            "unitLabel": "rounds"
+          },
+          "purpose": "conditioning_high_intensity",
+          "when": "evening",
+          "satisfies": "hard-conditioning"
+        },
+        {
+          "id": "heavy-bag",
+          "kind": "exercise",
+          "label": "Heavy bag rounds",
+          "detail": "3 × 3-minute rounds",
+          "when": "evening",
+          "purpose": "conditioning_high_intensity",
+          "satisfies": "hard-conditioning",
+          "duration": {
+            "minutes": 12
+          }
+        },
+        {
+          "id": "battle-ropes",
+          "kind": "exercise",
+          "label": "Battle ropes",
+          "detail": "Intervals",
+          "when": "evening",
+          "purpose": "conditioning_high_intensity",
+          "satisfies": "hard-conditioning",
+          "duration": {
+            "minutes": 10
+          }
+        }
+      ]
+    }
+  }
+}

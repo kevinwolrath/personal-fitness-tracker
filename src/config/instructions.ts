@@ -1,5 +1,7 @@
 import {
   activityKinds,
+  dayParts,
+  purposes,
   equipmentTypes,
   exerciseGoals,
   intensities,
@@ -69,6 +71,10 @@ ${fieldDocs}
 - strength/conditioning.modalities: ids from exercise.activityTypes
 - sessionMinutes and duration: { "minutes": 30 } or { "min": 30, "max": 45 }
 - substitutions[].use must not contain movements marked "avoid"
+- purpose (activities and requirements): ${purposes.join(', ')}
+- when (instead of an exact time): ${dayParts.join(', ')}
+- requirements: an activity with "satisfies": "<requirementId>" is one alternative; completing any one satisfies the requirement for the day. Use this instead of scheduling several redundant activities.
+- session exercises: movement is a snake_case id; movements marked "avoid" are swapped for the configured substitute automatically
 
 ## Examples
 

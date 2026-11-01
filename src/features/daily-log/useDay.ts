@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { toLocalDate, type LocalDate } from '../../plan/dates';
-import { dayProgress, resolveDay } from '../../plan/resolveDay';
 import type { Activity, Measurement, Plan } from '../../plan/schema';
+import * as completion from '../../prescription/completion';
+import { nextAction } from '../../prescription/nextAction';
+import { prescribeDay, type PrescriptionItem } from '../../prescription/prescribe';
 import { measurementMetric } from '../../observations/planMetrics';
 import { manualSource, type Observation } from '../../observations/types';
 import { localIsoTimestamp } from '../../format';
@@ -20,8 +22,26 @@ export function useToday(): LocalDate {
   return today;
 }
 
+/** Local minutes since midnight, refreshed every minute and on returning to the foreground. */
+export function useNowMinutes(): number {
+  const read = () => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  };
+  const [now, setNow] = useState(read);
+  useEffect(() => {
+    const t = setInterval(() => setNow(read()), 60_000);
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && setNow(read()));
+    return () => {
+      clearInterval(t);
+      sub.remove();
+    };
+  }, []);
+  return now;
+}
+
 /**
- * One day's resolved plan + tracking records, with optimistic actions (contract 02 "Feedback").
+ * One day's prescription + tracking records, with optimistic actions (contract 02 "Feedback").
  * Writes go to the store immediately; on failure the day is reloaded from storage.
  */
 export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
@@ -57,42 +77,48 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     [load],
   );
 
-  const writeActivity = useCallback(
-    (a: Activity, log: Omit<ActivityLog, 'activityId' | 'labelSnapshot' | 'updatedAt'> | null) => {
-      const full: ActivityLog | null = log && { ...log, activityId: a.id, labelSnapshot: a.label, updatedAt: new Date().toISOString() };
+  // Prescription for this date (contract 08), recomputed from the latest records.
+  const prescription = useMemo(() => prescribeDay(plan, date, records ?? emptyDay), [plan, date, records]);
+  const prescriptionRef = useRef(prescription);
+  prescriptionRef.current = prescription;
+
+  /** Persist a completion change: state + append-only event + the day's prescription snapshot. */
+  const record = useCallback(
+    (c: completion.CompletionChange) => {
       const activities = { ...current.current.activities };
-      if (full) activities[a.id] = full;
-      else delete activities[a.id];
-      commit({ ...current.current, activities }, () => store.setActivity(plan.id, date, a.id, full));
+      if (c.log) activities[c.activityId] = c.log;
+      else delete activities[c.activityId];
+      const next = { ...current.current, activities };
+      const snapshot = completion.snapshotOf(prescribeDay(plan, date, next), plan.id, plan.revision, c.event.at);
+      commit(next, () => store.logCompletion(plan.id, date, c.activityId, c.log, c.event, snapshot));
     },
-    [commit, store, plan.id, date],
+    [commit, store, plan, date],
   );
 
-  /** Primary tap: check ↔ uncheck; count advances, completes at target, then resets. */
+  const ctx = useCallback(
+    (item: PrescriptionItem, activityId: string) => ({
+      planId: plan.id,
+      date,
+      now: localIsoTimestamp(),
+      current: current.current.activities[activityId],
+      item,
+    }),
+    [plan.id, date],
+  );
+
+  /** Primary tap on an item (or on one alternative of a requirement). */
   const advance = useCallback(
-    (a: Activity) => {
-      const log = current.current.activities[a.id];
-      if (a.tracking.type === 'check' || log?.status === 'skipped') {
-        writeActivity(a, log?.status === 'done' ? null : { status: 'done', count: 0 });
-        return;
-      }
-      const target = a.tracking.target;
-      const count = (log?.count ?? 0) + 1;
-      if (count > target) writeActivity(a, null);
-      else writeActivity(a, { status: count === target ? 'done' : 'pending', count });
-    },
-    [writeActivity],
+    (item: PrescriptionItem, activity: Activity) => record(completion.advance(ctx(item, activity.id), activity)),
+    [record, ctx],
   );
-
   const setDone = useCallback(
-    (a: Activity, done: boolean) =>
-      writeActivity(a, done ? { status: 'done', count: a.tracking.type === 'count' ? a.tracking.target : 0 } : null),
-    [writeActivity],
+    (item: PrescriptionItem, activity: Activity, done: boolean, variant: 'full' | 'short' = 'full') =>
+      record(completion.setDone(ctx(item, activity.id), activity, done, variant)),
+    [record, ctx],
   );
-
   const setSkipped = useCallback(
-    (a: Activity, skipped: boolean) => writeActivity(a, skipped ? { status: 'skipped', count: 0 } : null),
-    [writeActivity],
+    (item: PrescriptionItem, skipped: boolean) => record(completion.setSkipped(ctx(item, item.key), skipped)),
+    [record, ctx],
   );
 
   const setDayType = useCallback(
@@ -161,13 +187,13 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     [commit, store],
   );
 
-  const day = useMemo(() => resolveDay(plan, date, records?.dayTypeOverride), [plan, date, records?.dayTypeOverride]);
-  const progress = useMemo(() => dayProgress(day, records?.activities ?? {}), [day, records]);
-
   return {
     loading: records === null,
-    day,
-    progress,
+    day: prescription.day,
+    prescription,
+    progress: prescription.progress,
+    /** What to do now, from the prescription and the local time (only meaningful for today). */
+    nextAt: (nowMinutes: number) => nextAction(prescriptionRef.current, nowMinutes),
     records: records ?? emptyDay,
     reload: load,
     /** Latest observed value on or before this day, per plan measurement id. */

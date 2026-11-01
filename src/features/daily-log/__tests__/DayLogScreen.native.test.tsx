@@ -59,10 +59,11 @@ it('resolves Thursday from the seed plan', async () => {
 
 it('completes, skips via the native sheet, and survives a restart', async () => {
   const first = await launch();
-  fireEvent.press(screen.getByLabelText(/Fixed lunch$/));
+  fireEvent.press(screen.getByLabelText(/, Fixed lunch$/)); // the row (the card's button is "Done: Fixed lunch")
   await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 5 done'));
 
-  fireEvent.press(screen.getByLabelText('VR boxing details'));
+  // Conditioning is one requirement (VR boxing / heavy bag / battle ropes): skipped as a unit.
+  fireEvent.press(screen.getByLabelText('High-intensity conditioning details'));
   fireEvent.press(await screen.findByText('Skip'));
   await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 4 done'));
 
@@ -73,7 +74,7 @@ it('completes, skips via the native sheet, and survives a restart', async () => 
   await act(async () => {});
   await launch();
   expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 4 done');
-  expect(screen.getByTestId('activity-vr-boxing')).toHaveTextContent(/Skipped/);
+  expect(screen.getByTestId('requirement-hard-conditioning')).toHaveTextContent(/Skipped/);
   expect(screen.getByTestId('quick-log-summary')).toHaveTextContent(/I'm hungry: 9:00/i);
 });
 
@@ -94,4 +95,14 @@ it('is one continuous log: step back, jump via the date sheet, return to Today',
 
   fireEvent.press(screen.getByLabelText('Back to Today'));
   await waitFor(() => expect(screen.getByTestId('day-title')).toHaveTextContent('Today'));
+});
+
+it('shows the next action and ticks it off from the card (native)', async () => {
+  await launch();
+  // Thursday 09:00, office day: nothing due yet and no anytime work, so the earliest item is next.
+  expect(screen.getByTestId('next-action-title')).toHaveTextContent('Fixed lunch');
+  expect(screen.getByTestId('next-action-when')).toHaveTextContent(/Next up at 12:00/i);
+  fireEvent.press(screen.getByLabelText('Done: Fixed lunch'));
+  await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 5 done'));
+  await waitFor(() => expect(screen.getByTestId('next-action-title')).toHaveTextContent('Lunch walk'));
 });

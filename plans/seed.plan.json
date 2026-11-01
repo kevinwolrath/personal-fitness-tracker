@@ -1,16 +1,29 @@
 {
   "$schema": "../docs/design-contracts/plan.schema.json",
   "format": "pft-plan",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "id": "weight-loss-v1",
-  "revision": 1,
+  "revision": 2,
   "title": "Weight loss · phase 1",
-  "description": "School-run home days, office days and weekends, with nightly VR boxing.",
-  "units": { "mass": "kg", "energy": "kJ", "length": "cm" },
+  "description": "School-run home days, office days and weekends. Strength sessions for muscle preservation; nightly high-intensity conditioning (VR boxing, heavy bag or battle ropes).",
+  "units": {
+    "mass": "kg",
+    "energy": "kJ",
+    "length": "cm"
+  },
   "dayTypes": [
-    { "id": "home", "label": "Home day" },
-    { "id": "office", "label": "Office day" },
-    { "id": "weekend", "label": "Weekend" }
+    {
+      "id": "home",
+      "label": "Home day"
+    },
+    {
+      "id": "office",
+      "label": "Office day"
+    },
+    {
+      "id": "weekend",
+      "label": "Weekend"
+    }
   ],
   "schedule": {
     "mon": "home",
@@ -22,18 +35,55 @@
     "sun": "weekend"
   },
   "measurements": [
-    { "id": "weight", "label": "Weight", "quantity": "mass", "decimals": 1, "cadence": { "every": "day" } },
-    { "id": "waist", "label": "Waist", "quantity": "length", "decimals": 0, "cadence": { "every": "week", "on": "sun" } }
+    {
+      "id": "weight",
+      "label": "Weight",
+      "quantity": "mass",
+      "decimals": 1,
+      "cadence": {
+        "every": "day"
+      }
+    },
+    {
+      "id": "waist",
+      "label": "Waist",
+      "quantity": "length",
+      "decimals": 0,
+      "cadence": {
+        "every": "week",
+        "on": "sun"
+      }
+    }
   ],
   "goals": [
-    { "id": "goal-weight", "label": "Goal", "measurementId": "weight", "target": 78, "direction": "decrease" }
+    {
+      "id": "goal-weight",
+      "label": "Goal",
+      "measurementId": "weight",
+      "target": 78,
+      "direction": "decrease"
+    }
   ],
   "nutrition": {
     "targets": [
-      { "id": "energy", "label": "Energy", "quantity": "energy", "max": 7530 },
-      { "id": "protein", "label": "Protein", "quantity": "grams", "min": 160, "max": 180 }
+      {
+        "id": "energy",
+        "label": "Energy",
+        "quantity": "energy",
+        "max": 7530
+      },
+      {
+        "id": "protein",
+        "label": "Protein",
+        "quantity": "grams",
+        "min": 160,
+        "max": 180
+      }
     ],
-    "eatingWindow": { "start": "12:00", "end": "20:00" }
+    "eatingWindow": {
+      "start": "12:00",
+      "end": "20:00"
+    }
   },
   "activities": [
     {
@@ -42,14 +92,20 @@
       "label": "School run",
       "detail": "Bike out, walk-jog home",
       "time": "08:30",
-      "appliesTo": { "dayTypes": ["home"] }
+      "appliesTo": {
+        "dayTypes": [
+          "home"
+        ]
+      },
+      "purpose": "walking"
     },
     {
       "id": "lunch",
       "kind": "meal",
       "label": "Fixed lunch",
       "detail": "Cold high-protein lunch, no heating needed",
-      "time": "12:00"
+      "time": "12:00",
+      "purpose": "nutrition"
     },
     {
       "id": "dog-walk",
@@ -57,15 +113,28 @@
       "label": "Dog walk",
       "time": "12:30",
       "required": false,
-      "appliesTo": { "dayTypes": ["home"] }
+      "appliesTo": {
+        "dayTypes": [
+          "home"
+        ]
+      },
+      "purpose": "walking"
     },
     {
       "id": "lunch-walk",
       "kind": "exercise",
       "label": "Lunch walk",
       "time": "12:30",
-      "duration": { "min": 30, "max": 45 },
-      "appliesTo": { "dayTypes": ["office"] }
+      "duration": {
+        "min": 30,
+        "max": 45
+      },
+      "appliesTo": {
+        "dayTypes": [
+          "office"
+        ]
+      },
+      "purpose": "walking"
     },
     {
       "id": "school-run-pm",
@@ -73,13 +142,23 @@
       "label": "School run",
       "detail": "Walk-jog out, bike home",
       "time": "15:15",
-      "appliesTo": { "dayTypes": ["home"] }
+      "appliesTo": {
+        "dayTypes": [
+          "home"
+        ]
+      },
+      "purpose": "walking"
     },
     {
       "id": "snack",
       "kind": "meal",
       "label": "Fixed snack",
-      "detail": "Anti-hunger snack before family dinner"
+      "detail": "Anti-hunger snack before family dinner",
+      "purpose": "nutrition",
+      "when": "afternoon",
+      "after": [
+        "lunch"
+      ]
     },
     {
       "id": "dinner",
@@ -87,28 +166,161 @@
       "label": "Family dinner",
       "detail": "Usually 6:30–7:30 pm",
       "time": "18:30",
-      "flexible": true
+      "flexible": true,
+      "purpose": "nutrition"
     },
     {
       "id": "resistance",
       "kind": "exercise",
-      "label": "Resistance",
-      "duration": { "min": 30, "max": 40 },
-      "appliesTo": { "days": ["mon", "wed"] }
+      "label": "Strength workout",
+      "duration": {
+        "min": 30,
+        "max": 40
+      },
+      "appliesTo": {
+        "days": [
+          "mon",
+          "wed"
+        ]
+      },
+      "purpose": "strength",
+      "session": {
+        "minutes": 35,
+        "exercises": [
+          {
+            "movement": "kettlebell_squat",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "chest_press",
+            "label": "Chest press (Fortis)",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "lat_pulldown",
+            "label": "Lat pulldown (Fortis)",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "cable_row",
+            "label": "Cable row (Fortis)",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "hammer_curl",
+            "sets": 2,
+            "reps": 12
+          }
+        ],
+        "short": {
+          "minutes": 10,
+          "exercises": [
+            {
+              "movement": "kettlebell_squat",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "chest_press",
+              "label": "Chest press (Fortis)",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "cable_row",
+              "label": "Cable row (Fortis)",
+              "sets": 2,
+              "reps": 10
+            }
+          ]
+        }
+      }
     },
     {
       "id": "resistance-long",
       "kind": "exercise",
-      "label": "Resistance",
-      "duration": { "min": 45, "max": 60 },
-      "appliesTo": { "days": ["sat"] }
+      "label": "Strength workout",
+      "duration": {
+        "min": 45,
+        "max": 60
+      },
+      "appliesTo": {
+        "days": [
+          "sat"
+        ]
+      },
+      "purpose": "strength",
+      "session": {
+        "minutes": 50,
+        "exercises": [
+          {
+            "movement": "kettlebell_squat",
+            "sets": 4,
+            "reps": 10
+          },
+          {
+            "movement": "chest_press",
+            "label": "Chest press (Fortis)",
+            "sets": 4,
+            "reps": 10
+          },
+          {
+            "movement": "lat_pulldown",
+            "label": "Lat pulldown (Fortis)",
+            "sets": 4,
+            "reps": 10
+          },
+          {
+            "movement": "cable_row",
+            "label": "Cable row (Fortis)",
+            "sets": 4,
+            "reps": 10
+          },
+          {
+            "movement": "hammer_curl",
+            "sets": 2,
+            "reps": 12
+          }
+        ],
+        "short": {
+          "minutes": 10,
+          "exercises": [
+            {
+              "movement": "kettlebell_squat",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "chest_press",
+              "label": "Chest press (Fortis)",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "cable_row",
+              "label": "Cable row (Fortis)",
+              "sets": 2,
+              "reps": 10
+            }
+          ]
+        }
+      }
     },
     {
       "id": "weekend-movement",
       "kind": "habit",
       "label": "Normal weekend movement",
       "required": false,
-      "appliesTo": { "days": ["sat"] }
+      "appliesTo": {
+        "days": [
+          "sat"
+        ]
+      },
+      "purpose": "walking"
     },
     {
       "id": "recovery",
@@ -116,17 +328,208 @@
       "label": "Recovery",
       "detail": "Normal movement only",
       "required": false,
-      "appliesTo": { "days": ["sun"] }
+      "appliesTo": {
+        "days": [
+          "sun"
+        ]
+      },
+      "purpose": "recovery"
     },
     {
       "id": "vr-boxing",
       "kind": "exercise",
       "label": "VR boxing",
-      "detail": "3-minute rounds",
-      "tracking": { "type": "count", "target": 3, "unitLabel": "rounds" }
+      "detail": "Thrill of the Fight · 3-minute rounds",
+      "tracking": {
+        "type": "count",
+        "target": 3,
+        "unitLabel": "rounds"
+      },
+      "purpose": "conditioning_high_intensity",
+      "when": "evening",
+      "satisfies": "hard-conditioning"
+    },
+    {
+      "id": "heavy-bag",
+      "kind": "exercise",
+      "label": "Heavy bag rounds",
+      "detail": "3 × 3-minute rounds",
+      "when": "evening",
+      "purpose": "conditioning_high_intensity",
+      "satisfies": "hard-conditioning",
+      "duration": {
+        "minutes": 12
+      }
+    },
+    {
+      "id": "battle-ropes",
+      "kind": "exercise",
+      "label": "Battle ropes",
+      "detail": "Intervals",
+      "when": "evening",
+      "purpose": "conditioning_high_intensity",
+      "satisfies": "hard-conditioning",
+      "duration": {
+        "minutes": 10
+      }
     }
   ],
   "quickLogs": [
-    { "id": "hunger", "label": "I'm hungry", "detail": "Logs the time you felt hungry" }
-  ]
+    {
+      "id": "hunger",
+      "label": "I'm hungry",
+      "detail": "Logs the time you felt hungry"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "hard-conditioning",
+      "label": "High-intensity conditioning",
+      "purpose": "conditioning_high_intensity",
+      "detail": "Any one of these counts for today",
+      "when": "evening"
+    }
+  ],
+  "exercise": {
+    "goals": [
+      "weight_loss",
+      "muscle_preservation",
+      "strength",
+      "fitness"
+    ],
+    "equipment": [
+      {
+        "type": "home_gym",
+        "brand": "Fortis",
+        "label": "Fortis home multi-gym"
+      },
+      {
+        "type": "kettlebell",
+        "weightsKg": [
+          16,
+          24
+        ]
+      },
+      {
+        "type": "free_weights",
+        "label": "Small free weights"
+      },
+      {
+        "type": "heavy_bag"
+      },
+      {
+        "type": "boxing_gloves"
+      },
+      {
+        "type": "battle_ropes"
+      },
+      {
+        "type": "vr_headset",
+        "label": "VR headset (Thrill of the Fight)"
+      }
+    ],
+    "limitations": [
+      {
+        "movement": "biceps_curl",
+        "status": "avoid",
+        "reason": "aggravates elbow"
+      },
+      {
+        "movement": "hammer_curl",
+        "status": "allowed",
+        "reason": "tolerated by the elbow"
+      }
+    ],
+    "substitutions": [
+      {
+        "instead": "biceps_curl",
+        "use": [
+          "hammer_curl"
+        ],
+        "reason": "neutral grip spares the elbow"
+      }
+    ],
+    "activityTypes": [
+      {
+        "id": "vr_boxing",
+        "label": "VR boxing",
+        "kind": "conditioning",
+        "intensity": "high",
+        "equipment": [
+          "vr_headset"
+        ],
+        "notes": "Thrill of the Fight"
+      },
+      {
+        "id": "heavy_bag",
+        "label": "Heavy bag rounds",
+        "kind": "conditioning",
+        "intensity": "high",
+        "equipment": [
+          "heavy_bag",
+          "boxing_gloves"
+        ]
+      },
+      {
+        "id": "battle_ropes",
+        "label": "Battle ropes",
+        "kind": "conditioning",
+        "intensity": "high",
+        "equipment": [
+          "battle_ropes"
+        ]
+      },
+      {
+        "id": "kettlebell_strength",
+        "label": "Kettlebell strength",
+        "kind": "strength",
+        "equipment": [
+          "kettlebell"
+        ]
+      },
+      {
+        "id": "machine_strength",
+        "label": "Multi-gym strength",
+        "kind": "strength",
+        "equipment": [
+          "home_gym"
+        ]
+      }
+    ],
+    "strength": {
+      "sessionsPerWeek": 3,
+      "sessionMinutes": {
+        "min": 30,
+        "max": 45
+      },
+      "split": "full_body",
+      "modalities": [
+        "kettlebell_strength",
+        "machine_strength"
+      ],
+      "focus": [
+        "Preserve muscle while losing fat"
+      ]
+    },
+    "conditioning": {
+      "sessionsPerWeek": 7,
+      "sessionMinutes": {
+        "minutes": 9
+      },
+      "intensity": "high",
+      "modalities": [
+        "vr_boxing",
+        "heavy_bag",
+        "battle_ropes"
+      ]
+    },
+    "constraints": {
+      "location": "home",
+      "gymMembership": false,
+      "maxSessionMinutes": 45,
+      "notes": [
+        "Limited training time: work, family and kids"
+      ]
+    }
+  }
 }

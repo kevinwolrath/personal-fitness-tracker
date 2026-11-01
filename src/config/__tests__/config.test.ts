@@ -10,12 +10,18 @@ import { applyConfigUpdate, parseConfigUpdate } from '../update';
 
 const fixture = (name: string) => readFileSync(`fixtures/config/${name}.update.json`, 'utf8');
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
+/** The seed before any exercise configuration (it now ships with one), so updates show as changes. */
+const baseRaw = (): RawPlan => {
+  const s: RawPlan = clone(seed);
+  delete s.exercise;
+  return s;
+};
 const deepFreeze = <T>(o: T): T => {
   Object.values(o as object).forEach((v) => v && typeof v === 'object' && deepFreeze(v));
   return Object.freeze(o);
 };
 
-function apply(text: string, raw: RawPlan = clone(seed)) {
+function apply(text: string, raw: RawPlan = baseRaw()) {
   const p = parseConfigUpdate(text);
   if (!p.ok) throw new Error(p.errors.join('\n'));
   const a = applyConfigUpdate(raw, p.update);

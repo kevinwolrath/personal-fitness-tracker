@@ -169,6 +169,29 @@ export function describeTrackingStore(
       expect(await target.snapshot()).toEqual(snap);
     });
 
+    it('logs completions atomically: state, append-only events (kept through undo) and the day snapshot', async () => {
+      const ev = (id: string, action: any, at: string) => ({
+        id, planId: 'p', date: '2026-11-02', activityId: 'vr-boxing', requirementId: 'cond', action, count: action === 'undo' ? 0 : 3,
+        variant: action === 'complete' ? ('full' as const) : null, label: 'VR boxing', purpose: 'conditioning_high_intensity', at,
+      });
+      const snap = (rev: number) => ({ planId: 'p', date: '2026-11-02', planRevision: rev, prescribed: { items: [{ key: 'req:cond' }] }, updatedAt: 't' });
+      await store.logCompletion('p', '2026-11-02', 'vr-boxing', log('vr-boxing', { count: 3, variant: 'full', requirementId: 'cond' }), ev('e1', 'complete', '2026-11-02T19:00:00Z'), snap(1));
+      await store.logCompletion('p', '2026-11-02', 'vr-boxing', null, ev('e2', 'undo', '2026-11-02T19:05:00Z'), snap(1));
+      await store.logCompletion('p', '2026-11-02', 'vr-boxing', log('vr-boxing', { count: 3, variant: 'short', requirementId: 'cond' }), ev('e3', 'complete', '2026-11-02T19:10:00Z'), snap(2));
+
+      const again = await reopen();
+      expect((await again.getDay('p', '2026-11-02')).activities['vr-boxing']).toMatchObject({ status: 'done', variant: 'short', requirementId: 'cond' });
+      expect((await again.completionEvents('p', '2026-11-02')).map((e) => [e.id, e.action])).toEqual([['e1', 'complete'], ['e2', 'undo'], ['e3', 'complete']]);
+      expect(await again.daySnapshot('p', '2026-11-02')).toEqual(snap(2));
+      expect(await again.daySnapshot('p', '2026-11-03')).toBeNull();
+
+      const s = await again.snapshot();
+      expect(s.completionEvents).toHaveLength(3);
+      const target = await setupEmpty();
+      await target.restore(s);
+      expect(await target.snapshot()).toEqual(s);
+    });
+
     it('finds the first record date across every kind of record', async () => {
       expect(await store.firstRecordDate()).toBeNull();
       await store.addObservations([obs('w', 'weight', '2026-03-01', 99, 't')]);

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { presetApiKey, stubClaude } from './claudeStub';
-import { HISTORY_DAY, MONDAY, expandToFullDay, historyObservations, openAt, row, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, expandToFullDay, historyObservations, openAt, row, seedRecords, vrBoxing } from './helpers';
 
 /** Issue #6: one continuous Daily Log; Today is just the current date. */
 
@@ -70,8 +70,8 @@ test('a historical day is fully correctable and stays corrected', async ({ page 
   await openAt(page, MONDAY);
   await jumpTo(page, '2026-09-14');
 
-  await row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ }).click();
-  await row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ }).click();
+  await vrBoxing(page).click();
+  await vrBoxing(page).click();
   await page.getByTestId('measurement-weight').click();
   await page.getByTestId('measure-input').fill('101.4');
   await page.getByRole('button', { name: 'Save' }).click();
@@ -83,7 +83,7 @@ test('a historical day is fully correctable and stays corrected', async ({ page 
 
   await page.reload();
   await jumpTo(page, '2026-09-14');
-  await expect(row(page, 'vr-boxing').getByRole('button', { name: /VR boxing$/ })).toHaveAttribute('aria-valuetext', /2 of 3/);
+  await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /2 of 3/);
   await expect(page.getByTestId('measurement-weight')).toContainText('101.4 kg');
   await expect(page.getByTestId('quick-log-summary')).toContainText("I'm hungry");
 

@@ -111,7 +111,7 @@ export const sections = {
         schema: z.array(meal).max(20),
         clearable: false,
         title: 'Meals',
-        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time?, appliesTo?, nutrition?: { <targetId>: amount }, flexible? }]',
+        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time? | when?, after?, purpose?, appliesTo?, nutrition?: { <targetId>: amount }, flexible? }]',
         read: (raw) => (raw.activities ?? []).filter((a: any) => a.kind === 'meal'),
         write: (raw, value) => replaceActivities(raw, (a) => a.kind === 'meal', value as unknown[]),
       } satisfies Field,
@@ -135,11 +135,18 @@ export const sections = {
     fields: {
       dayTypes: top('dayTypes', 'Day types', z.array(dayTypeSchema).min(1).max(7), 'Kinds of day: [{ id, label }]'),
       week: top('schedule', 'Weekly schedule', weekScheduleSchema, 'Default day type per weekday: { mon: dayTypeId, …, sun: dayTypeId } (all 7 required)'),
+      requirements: top(
+        'requirements',
+        'Requirements',
+        z.array(planParts.requirement).max(20),
+        'Daily needs any one of several activities can meet: [{ id, label, purpose, detail?, required?, when? | time? }]. Activities point at one with "satisfies".',
+        true,
+      ),
       activities: {
         schema: z.array(scheduled).max(40),
         clearable: false,
         title: 'Scheduled activities',
-        doc: 'Planned exercise and habits (not meals): [{ id, kind: "exercise"|"habit", label, detail?, time?, duration?, required?, appliesTo?, tracking? }]',
+        doc: 'Planned exercise and habits (not meals): [{ id, kind: "exercise"|"habit", label, detail?, time? | when?, duration?, required?, appliesTo?, tracking?, purpose?, after?: [activityId], satisfies?: requirementId, session?: { minutes?, exercises: [{ movement, label?, sets?, reps?, seconds?, loadKg?, notes? }], short?: { minutes?, exercises } } }]',
         read: (raw) => (raw.activities ?? []).filter((a: any) => a.kind !== 'meal'),
         write: (raw, value) => replaceActivities(raw, (a) => a.kind !== 'meal', value as unknown[]),
       } satisfies Field,

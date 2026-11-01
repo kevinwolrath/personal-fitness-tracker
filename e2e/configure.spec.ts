@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { MONDAY, expandToFullDay, openAt, row } from './helpers';
+import seed from '../plans/seed.plan.json';
+import { MONDAY, expandToFullDay, openAt, row, seedPlan } from './helpers';
 
 /** Issue #7: AI-configurable fitness profile with partial, previewed, confirmed updates. */
 
@@ -15,7 +16,11 @@ const sectionsOf = (p: any) => ({
   tracking: JSON.stringify([p.measurements, p.quickLogs]),
 });
 
+/** Start from the seed before any exercise configuration, so #7 updates show as changes. */
+const { exercise: _exercise, ...unconfigured } = seed as any;
+
 async function openConfigure(page: Page) {
+  await seedPlan(page, unconfigured);
   await openAt(page, MONDAY);
   await page.getByRole('button', { name: 'Configure with AI' }).click();
   await expect(page.getByRole('heading', { name: 'Configure with AI' })).toBeVisible();

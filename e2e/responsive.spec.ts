@@ -105,3 +105,22 @@ test('the AI configuration screen (with a preview and errors) fits at every widt
   await page.setViewportSize({ width: 320, height: 900 });
   expect(await layoutProblems(page), 'errors at 320px').toEqual([]);
 });
+
+test('evening next-action card with alternatives and a part-done requirement fits at every width', async ({ page }) => {
+  const done = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, { activityId: id, status: 'done', count: 0, labelSnapshot: id, updatedAt: 't' }]));
+  await seedRecords(page, {
+    activities: {
+      'weight-loss-v1|2026-11-02': {
+        ...done(['school-run-am', 'lunch', 'school-run-pm', 'snack', 'dinner']),
+        'vr-boxing': { activityId: 'vr-boxing', status: 'pending', count: 2, labelSnapshot: 'VR boxing', updatedAt: 't', requirementId: 'hard-conditioning' },
+      },
+    },
+  });
+  await openAt(page, '2026-11-02T20:00:00+11:00');
+  await expect(page.getByTestId('next-action')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `at ${width}px`).toEqual([]);
+  }
+});

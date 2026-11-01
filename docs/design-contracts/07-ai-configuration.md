@@ -12,7 +12,7 @@ The configuration is not a second store. It's a sectioned view over the active p
 | `goals` | `targets` | `goals` |
 | `nutrition` | `targets`, `eatingWindow`, `meals` | `nutrition.targets`, `nutrition.eatingWindow`, activities with `kind: "meal"` |
 | `exercise` | `goals`, `equipment`, `limitations`, `substitutions`, `activityTypes`, `strength`, `conditioning`, `constraints` | `exercise.*` |
-| `schedule` | `dayTypes`, `week`, `activities` | `dayTypes`, `schedule`, activities that aren't meals |
+| `schedule` | `dayTypes`, `week`, `requirements`, `activities` | `dayTypes`, `schedule`, `requirements` (08), activities that aren't meals |
 | `tracking` | `measurements`, `quickLogs` | `measurements`, `quickLogs` |
 
 Field shapes and enums are in `plan.schema.json` (`$defs.exercise`, `$defs.profile`) and `src/plan/schema.ts`. Section/field mapping is in `src/config/sections.ts`. New areas extend this table: add a field or section, and the same protocol, importer, preview and instructions pick it up. No separate import system is needed.

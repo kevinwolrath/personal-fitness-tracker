@@ -14,7 +14,7 @@
 - **Native:** SQLite via `expo-sqlite`, accessed only through a small repository module, for example `src/storage/`. Screens never run SQL.
 - **Web (test surface):** the same `TrackingStore` interface over `localStorage`: one JSON document under `pft:tracking:v1` (decided in issue #3, so no SQLite/WASM in the browser). It falls back to in-memory storage if `localStorage` is unavailable. Platform selection is by file extension (`openStore.ts` / `openStore.web.ts`).
 - Both implementations must pass the shared suite in `src/storage/__tests__/store.contract.ts`. The SQLite implementation is tested against Node's built-in SQLite through the same `SqlDatabase` interface expo-sqlite provides.
-- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. A test opens a real version-1 database and checks nothing is lost.
+- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. Migration 3 (#10) is additive too: it adds `activity_log.variant` and `requirement_id`, plus `completion_event` and `day_snapshot`. A test opens a real version-1 database and checks nothing is lost.
 
 ## Records (logical model)
 
@@ -22,7 +22,9 @@
 |---|---|---|
 | `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`, `origin` (`seed`/`config`/`import`). Exactly one active plan. |
 | `config_change` | `id` | `appliedAt`, `sections`, `payload`, `fromRevision`, `toRevision`, `previousPlanJson` (contract 07) |
-| `activity_log` | `planId, date, activityId` | `status` (`pending`, `done`, `skipped`), `count` (for count tracking; `pending` means partial), `labelSnapshot`, `updatedAt` |
+| `activity_log` | `planId, date, activityId` | `status` (`pending`, `done`, `skipped`), `count` (for count tracking; `pending` means partial), `labelSnapshot`, `updatedAt` (completion time), `variant` (`full`/`short`), `requirementId` (alternative used). `activityId` is `req:<id>` for a skipped requirement. |
+| `completion_event` | `id` | Append-only: `planId`, `date`, `activityId`, `requirementId`, `action` (`complete`/`progress`/`undo`/`skip`/`restore`), `count`, `variant`, `label`, `purpose`, `at` (contract 08) |
+| `day_snapshot` | `planId, date` | `planRevision`, `prescribed` (what was prescribed that day), `updatedAt` |
 | `observation` | `id` | `date`, `metric`, `value` (canonical unit), `unit`, `kind` (`observed`/`inferred`), `label`, `note`, provenance (`source_*`), `recordedAt`. Not plan-scoped. See contract 06 |
 | `import_session` | `id` | `createdAt`, `extractor`, `assets` (JSON) |
 | `quick_log` | `id` (uuid) | `planId`, `quickLogId`, `at` (ISO timestamp with offset) |

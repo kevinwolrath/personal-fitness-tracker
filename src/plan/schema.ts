@@ -26,6 +26,46 @@ const tracking = z.union([
   }),
 ]);
 
+/** Movement / exercise identifiers are snake_case, e.g. "biceps_curl", "hammer_curl", "kettlebell_swing". */
+export const movementId = z.string().max(40).regex(/^[a-z0-9]+(_[a-z0-9]+)*$/, 'use snake_case, e.g. "hammer_curl"');
+
+// ---- Daily prescription (formatVersion 2, contract 08) --------------------------------------
+
+/** What an activity is for. Requirements are satisfied by purpose-compatible activities, never by name. */
+export const purposes = [
+  'strength', 'conditioning_high_intensity', 'conditioning_low_intensity', 'walking', 'mobility',
+  'nutrition', 'supplement', 'recovery', 'habit', 'other',
+] as const;
+/** Broad time windows for activities without an exact time. */
+export const dayParts = ['morning', 'lunch', 'afternoon', 'evening', 'anytime'] as const;
+
+const sessionExercise = z.strictObject({
+  movement: movementId,
+  label: z.string().min(1).max(40).optional(),
+  sets: z.number().int().min(1).max(20).optional(),
+  reps: z.number().int().min(1).max(100).optional(),
+  seconds: z.number().int().min(1).max(3600).optional(),
+  loadKg: z.number().positive().max(500).optional(),
+  notes: z.string().min(1).max(120).optional(),
+});
+const sessionPlan = z.strictObject({
+  minutes: z.number().int().min(1).max(600).optional(),
+  exercises: z.array(sessionExercise).min(1).max(20),
+});
+/** Structured exercise session, with an optional short version ("I only have 10 minutes"). */
+export const sessionSchema = sessionPlan.extend({ short: sessionPlan.optional() });
+
+/** A daily need that any one of several activities can meet (e.g. high-intensity conditioning). */
+export const requirementSchema = z.strictObject({
+  id,
+  label,
+  purpose: z.enum(purposes),
+  detail: z.string().max(120).optional(),
+  required: z.boolean().default(true),
+  when: z.enum(dayParts).optional(),
+  time: time.optional(),
+});
+
 const activity = z.strictObject({
   id,
   kind: z.enum(['exercise', 'meal', 'habit']),
@@ -40,6 +80,15 @@ const activity = z.strictObject({
   tracking: tracking.default({ type: 'check' }),
   nutrition: z.record(id, z.number().min(0)).optional(),
   flexible: z.boolean().default(false),
+  // formatVersion 2 (contract 08):
+  purpose: z.enum(purposes).optional(),
+  /** Broad window when there is no exact `time`. */
+  when: z.enum(dayParts).optional(),
+  /** Do after these activities (ids); they don't need to be finished first, only resolved (done/skipped). */
+  after: z.array(id).max(5).optional(),
+  session: sessionSchema.optional(),
+  /** Requirement id this activity can satisfy (one of several alternatives). */
+  satisfies: id.optional(),
 });
 
 const measurement = z.strictObject({
@@ -67,8 +116,6 @@ const nutritionTarget = z
 
 // ---- formatVersion 2 sections ------------------------------------------------------------
 
-/** Movement / exercise identifiers are snake_case, e.g. "biceps_curl", "hammer_curl", "kettlebell_swing". */
-export const movementId = z.string().max(40).regex(/^[a-z0-9]+(_[a-z0-9]+)*$/, 'use snake_case, e.g. "hammer_curl"');
 const note = z.string().min(1).max(200);
 const minutesRange = z.union([z.strictObject({ minutes }), z.strictObject({ min: minutes, max: minutes })]);
 
@@ -195,11 +242,18 @@ export const planSchema = z.strictObject({
   quickLogs: z.array(quickLogSchema).max(2).default([]),
   profile: profileSection.optional(),
   exercise: exerciseSection.optional(),
+  requirements: z.array(requirementSchema).max(20).optional(),
 }).superRefine((p, ctx) => {
   if (p.formatVersion === 1) {
-    for (const key of ['profile', 'exercise'] as const) {
+    for (const key of ['profile', 'exercise', 'requirements'] as const) {
       if (p[key] !== undefined) ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" needs formatVersion 2` });
     }
+    const v2Fields = ['purpose', 'when', 'after', 'session', 'satisfies'] as const;
+    p.activities.forEach((a, i) => {
+      for (const f of v2Fields) {
+        if (a[f] !== undefined) ctx.addIssue({ code: 'custom', path: ['activities', i, f], message: `"${f}" needs formatVersion 2` });
+      }
+    });
   }
 });
 
@@ -210,5 +264,10 @@ export type NutritionTarget = Plan['nutrition']['targets'][number];
 export type Weekday = (typeof weekdays)[number];
 export type ExerciseSection = z.infer<typeof exerciseSection>;
 export type ProfileSection = z.infer<typeof profileSection>;
+export type Requirement = z.output<typeof requirementSchema>;
+export type Session = z.infer<typeof sessionSchema>;
+export type SessionExercise = Session['exercises'][number];
+export type Purpose = (typeof purposes)[number];
+export type DayPart = (typeof dayParts)[number];
 /** Building blocks reused by the configuration sections (src/config). */
-export const planParts = { activity, measurement, nutritionTarget, appliesTo, time };
+export const planParts = { activity, measurement, nutritionTarget, appliesTo, time, requirement: requirementSchema };

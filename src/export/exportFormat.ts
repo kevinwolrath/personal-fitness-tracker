@@ -65,6 +65,8 @@ export const exportSchema = z.object({
       count: z.number(),
       labelSnapshot: z.string(),
       updatedAt: z.string(),
+      variant: z.enum(['full', 'short']).optional(),
+      requirementId: z.string().optional(),
     }),
   ),
   dayOverrides: z.array(z.object({ planId: z.string(), date, dayTypeId: z.string() })),
@@ -100,6 +102,19 @@ export const exportSchema = z.object({
       }),
     )
     .default([]),
+  /** Append-only completion history and what was prescribed each day (contract 08). Added in-version; optional when reading. */
+  completionEvents: z
+    .array(
+      z.object({
+        id: z.string(), planId: z.string(), date, activityId: z.string(), requirementId: z.string().nullable(),
+        action: z.enum(['complete', 'progress', 'undo', 'skip', 'restore']), count: z.number(),
+        variant: z.enum(['full', 'short']).nullable(), label: z.string(), purpose: z.string().nullable(), at: z.string(),
+      }),
+    )
+    .default([]),
+  daySnapshots: z
+    .array(z.object({ planId: z.string(), date, planRevision: z.number(), prescribed: z.unknown(), updatedAt: z.string() }))
+    .default([]),
 });
 
 export type ExportDocument = z.infer<typeof exportSchema>;
@@ -129,6 +144,8 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
       quickLogs: s.quickLogs.length,
       imports: s.imports.length,
       configChanges: s.configChanges.length,
+      completionEvents: s.completionEvents.length,
+      daySnapshots: s.daySnapshots.length,
     },
     plans: s.plans.map((p) => ({
       planId: p.planId,
@@ -144,6 +161,8 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
     quickLogs: s.quickLogs,
     imports: s.imports,
     configChanges: s.configChanges,
+    completionEvents: s.completionEvents,
+    daySnapshots: s.daySnapshots,
   };
 }
 
@@ -172,6 +191,8 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
       quickLogs: e.quickLogs,
       imports: e.imports,
       configChanges: e.configChanges.map((c) => ({ ...c, payload: c.payload as unknown })),
+      completionEvents: e.completionEvents,
+      daySnapshots: e.daySnapshots.map((d) => ({ ...d, prescribed: d.prescribed as unknown })),
     },
   };
 }

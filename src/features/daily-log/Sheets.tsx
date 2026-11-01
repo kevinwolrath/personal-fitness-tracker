@@ -29,50 +29,6 @@ export function TextButton({ title, onPress, disabled, strong }: { title: string
   );
 }
 
-/** Secondary actions for one activity (contract 02). Never needed for the happy path. */
-export function ActivitySheet(p: {
-  activity: Activity | null;
-  log: ActivityLog | undefined;
-  editable: boolean;
-  onClose: () => void;
-  onSetDone: (done: boolean) => void;
-  onSetSkipped: (skipped: boolean) => void;
-}) {
-  const a = p.activity;
-  const status = p.log?.status ?? 'pending';
-  const meta = a ? [formatDuration(a.duration), a.required ? null : 'Optional'].filter(Boolean).join(' · ') : '';
-  return (
-    <Sheet visible={!!a} onClose={p.onClose} label={a ? `${a.label} details` : 'Details'}>
-      {a && (
-        <View style={styles.body}>
-          <SheetHeader title={a.label} right={<TextButton title="Close" onPress={p.onClose} />} />
-          {a.detail ? <Text style={[type.detail, styles.center]}>{a.detail}</Text> : null}
-          {meta ? <Text style={[type.detail, styles.center]}>{meta}</Text> : null}
-          {a.tracking.type === 'count' && status !== 'skipped' ? (
-            <Text style={[type.detail, styles.center]}>
-              {p.log?.count ?? 0} of {a.tracking.target} {a.tracking.unitLabel}
-            </Text>
-          ) : null}
-          <View style={styles.actions}>
-            {status === 'skipped' ? (
-              <Button title="Restore" disabled={!p.editable} onPress={() => (p.onSetSkipped(false), p.onClose())} />
-            ) : (
-              <>
-                <Button
-                  title={status === 'done' ? 'Mark not done' : 'Mark done'}
-                  disabled={!p.editable}
-                  onPress={() => (p.onSetDone(status !== 'done'), p.onClose())}
-                />
-                <Button title="Skip" variant="secondary" disabled={!p.editable} onPress={() => (p.onSetSkipped(true), p.onClose())} />
-              </>
-            )}
-          </View>
-        </View>
-      )}
-    </Sheet>
-  );
-}
-
 /** Numeric entry for one measurement; also lists this day's entries for correction. */
 export function MeasureSheet(p: {
   plan: Plan;

@@ -11,12 +11,14 @@ type Props = {
   /** Extra meta, e.g. the flexible-meal budget. */
   note?: string | null;
   editable: boolean;
+  /** This is the "do this next" item (contract 08). */
+  isNext?: boolean;
   onPress: () => void;
   onMore: () => void;
   onSkipToggle: () => void;
 };
 
-export function ActivityRow({ activity: a, log, showTime, note, editable, onPress, onMore, onSkipToggle }: Props) {
+export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle }: Props) {
   const status = log?.status ?? 'pending';
   const done = status === 'done';
   const skipped = status === 'skipped';
@@ -24,7 +26,9 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, onPres
   const isCount = a.tracking.type === 'count';
   const target = a.tracking.type === 'count' ? a.tracking.target : 1;
 
-  const meta = [a.detail, formatDuration(a.duration), !a.required ? 'Optional' : null, skipped ? 'Skipped' : null, note]
+  const sessionMeta = a.session ? `${a.session.minutes ? `${a.session.minutes} min · ` : ''}${a.session.exercises.length} exercises` : null;
+  const variantMeta = done && log?.variant === 'short' ? 'Short version' : null;
+  const meta = [a.detail, sessionMeta ?? formatDuration(a.duration), !a.required ? 'Optional' : null, skipped ? 'Skipped' : null, variantMeta, note]
     .filter(Boolean)
     .join(' · ');
   const time = showTime && a.time ? formatClock(a.time) : null;
@@ -37,7 +41,7 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, onPres
   };
 
   return (
-    <View style={styles.row} testID={`activity-${a.id}`}>
+    <View style={[styles.row, isNext && styles.next]} testID={`activity-${a.id}`}>
       <Pressable
         onPress={onPress}
         onLongPress={onMore}
@@ -95,6 +99,7 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, onPres
 }
 
 const styles = StyleSheet.create({
+  next: { borderLeftWidth: 4, borderLeftColor: colors.accent, paddingLeft: space.sm, marginLeft: -space.md },
   row: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingVertical: space.md, gap: space.md },
   pressed: { opacity: 0.6 },

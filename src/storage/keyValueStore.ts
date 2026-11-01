@@ -2,7 +2,9 @@ import type { ImportSession, Observation } from '../observations/types';
 import type {
   ActivityLog,
   ActivityLogRecord,
+  CompletionEvent,
   ConfigChange,
+  DaySnapshot,
   DayRecords,
   QuickLogEntry,
   StoreSnapshot,
@@ -26,6 +28,9 @@ type Doc = {
   quickLogs: QuickLogEntry[];
   imports: ImportSession[];
   configChanges: ConfigChange[];
+  completionEvents: CompletionEvent[];
+  /** key: `${planId}|${date}` */
+  daySnapshots: Record<string, DaySnapshot>;
 };
 
 export const STORAGE_KEY = 'pft:tracking:v1';
@@ -34,7 +39,7 @@ const splitKey = (k: string) => {
   const i = k.lastIndexOf('|');
   return { planId: k.slice(0, i), date: k.slice(i + 1) };
 };
-const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [] });
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: {} });
 const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
   for (const k of keys) {
     const c = String(a[k]).localeCompare(String(b[k]));
@@ -146,6 +151,29 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
+  async logCompletion(planId: string, date: string, activityId: string, log: ActivityLog | null, event: CompletionEvent, snapshot: DaySnapshot) {
+    // One document write: atomic by construction.
+    this.update((d) => {
+      const k = dayKey(planId, date);
+      const day = (d.activities[k] ??= {});
+      if (log) day[activityId] = log;
+      else delete day[activityId];
+      if (!Object.keys(day).length) delete d.activities[k];
+      upsertById(d.completionEvents, event);
+      d.daySnapshots[k] = snapshot;
+    });
+  }
+
+  async completionEvents(planId: string, date: string): Promise<CompletionEvent[]> {
+    return this.read()
+      .completionEvents.filter((e) => e.planId === planId && e.date === date)
+      .sort(byKey<CompletionEvent>('at', 'id'));
+  }
+
+  async daySnapshot(planId: string, date: string): Promise<DaySnapshot | null> {
+    return this.read().daySnapshots[dayKey(planId, date)] ?? null;
+  }
+
   async applyConfigChange(plan: StoredPlan, change: ConfigChange) {
     // One document write: atomic by construction.
     this.update((d) => {
@@ -185,6 +213,8 @@ export class KeyValueTrackingStore implements TrackingStore {
       quickLogs: [...d.quickLogs].sort(byKey<QuickLogEntry>('at', 'id')),
       imports: [...d.imports].sort(byKey<ImportSession>('createdAt', 'id')),
       configChanges: [...d.configChanges].sort((a, b) => a.appliedAt.localeCompare(b.appliedAt) || a.toRevision - b.toRevision),
+      completionEvents: [...d.completionEvents].sort(byKey<CompletionEvent>('date', 'at', 'id')),
+      daySnapshots: Object.values(d.daySnapshots).sort(byKey<DaySnapshot>('date', 'planId')),
     };
   }
 
@@ -197,6 +227,8 @@ export class KeyValueTrackingStore implements TrackingStore {
       s.observations.forEach((o) => upsertById(d.observations, o));
       s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
       (s.configChanges ?? []).forEach((c) => upsertById(d.configChanges, c));
+      (s.completionEvents ?? []).forEach((e) => upsertById(d.completionEvents, e));
+      for (const snap of s.daySnapshots ?? []) d.daySnapshots[dayKey(snap.planId, snap.date)] = snap;
     });
   }
 }

@@ -4,7 +4,7 @@ A **plan package** is a single JSON file describing a fitness plan. The app rend
 
 Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 
-**formatVersion 2** adds two optional sections, `profile` and `exercise`, which are edited through the AI configuration protocol (contract 07). A formatVersion 1 plan must not contain them. Everything else below applies to both versions.
+**formatVersion 2** adds the optional `profile` and `exercise` sections (contract 07) and the daily-prescription fields: activity `purpose`, `when`, `after`, `session` and `satisfies`, and plan-level `requirements` (contract 08). A formatVersion 1 plan must not contain them. Everything else below applies to both versions.
 
 ## Design limits (deliberate)
 

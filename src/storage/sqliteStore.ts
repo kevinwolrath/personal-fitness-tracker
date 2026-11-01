@@ -3,8 +3,10 @@ import type {
   ActivityLog,
   ActivityLogRecord,
   DayOverrideRecord,
+  CompletionEvent,
   ConfigChange,
   DayRecords,
+  DaySnapshot,
   QuickLogEntry,
   StoreSnapshot,
   StoredPlan,
@@ -56,6 +58,16 @@ const migrations = [
    CREATE TABLE config_change (
      id TEXT PRIMARY KEY, applied_at TEXT NOT NULL, sections TEXT NOT NULL, payload TEXT NOT NULL,
      from_revision INTEGER NOT NULL, to_revision INTEGER NOT NULL, previous_plan_json TEXT NOT NULL);`,
+  // 3 (#10): completion variant/requirement, append-only completion events, prescription snapshots. Additive only.
+  `ALTER TABLE activity_log ADD COLUMN variant TEXT;
+   ALTER TABLE activity_log ADD COLUMN requirement_id TEXT;
+   CREATE TABLE completion_event (
+     id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, date TEXT NOT NULL, activity_id TEXT NOT NULL, requirement_id TEXT,
+     action TEXT NOT NULL, count INTEGER NOT NULL, variant TEXT, label TEXT NOT NULL, purpose TEXT, at TEXT NOT NULL);
+   CREATE INDEX completion_event_day ON completion_event (plan_id, date, at);
+   CREATE TABLE day_snapshot (
+     plan_id TEXT NOT NULL, date TEXT NOT NULL, plan_revision INTEGER NOT NULL, prescribed TEXT NOT NULL,
+     updated_at TEXT NOT NULL, PRIMARY KEY (plan_id, date));`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -108,7 +120,10 @@ const toObservation = (r: ObservationRow): Observation => ({
   recordedAt: r.recorded_at,
 });
 
-type ActivityRow = { plan_id: string; date: string; activity_id: string; status: ActivityLog['status']; count: number; label_snapshot: string; updated_at: string };
+type ActivityRow = {
+  plan_id: string; date: string; activity_id: string; status: ActivityLog['status']; count: number; label_snapshot: string; updated_at: string;
+  variant: ActivityLog['variant'] | null; requirement_id: string | null;
+};
 const toActivity = (a: ActivityRow): ActivityLogRecord => ({
   planId: a.plan_id,
   date: a.date,
@@ -117,6 +132,20 @@ const toActivity = (a: ActivityRow): ActivityLogRecord => ({
   count: a.count,
   labelSnapshot: a.label_snapshot,
   updatedAt: a.updated_at,
+  ...(a.variant ? { variant: a.variant } : {}),
+  ...(a.requirement_id ? { requirementId: a.requirement_id } : {}),
+});
+type EventRow = {
+  id: string; plan_id: string; date: string; activity_id: string; requirement_id: string | null; action: CompletionEvent['action'];
+  count: number; variant: CompletionEvent['variant']; label: string; purpose: string | null; at: string;
+};
+const toEvent = (e: EventRow): CompletionEvent => ({
+  id: e.id, planId: e.plan_id, date: e.date, activityId: e.activity_id, requirementId: e.requirement_id, action: e.action,
+  count: e.count, variant: e.variant, label: e.label, purpose: e.purpose, at: e.at,
+});
+type SnapshotRow = { plan_id: string; date: string; plan_revision: number; prescribed: string; updated_at: string };
+const toSnapshotRecord = (r: SnapshotRow): DaySnapshot => ({
+  planId: r.plan_id, date: r.date, planRevision: r.plan_revision, prescribed: JSON.parse(r.prescribed), updatedAt: r.updated_at,
 });
 
 type QuickLogRow = { id: string; plan_id: string; quick_log_id: string; date: string; at: string };
@@ -189,11 +218,12 @@ export class SqliteTrackingStore implements TrackingStore {
 
   private async upsertActivity(a: ActivityLogRecord): Promise<void> {
     await this.db.runAsync(
-      `INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant, requirement_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(plan_id, date, activity_id) DO UPDATE SET status = excluded.status, count = excluded.count,
-         label_snapshot = excluded.label_snapshot, updated_at = excluded.updated_at`,
-      [a.planId, a.date, a.activityId, a.status, a.count, a.labelSnapshot, a.updatedAt],
+         label_snapshot = excluded.label_snapshot, updated_at = excluded.updated_at,
+         variant = excluded.variant, requirement_id = excluded.requirement_id`,
+      [a.planId, a.date, a.activityId, a.status, a.count, a.labelSnapshot, a.updatedAt, a.variant ?? null, a.requirementId ?? null],
     );
   }
 
@@ -276,6 +306,41 @@ export class SqliteTrackingStore implements TrackingStore {
     );
   }
 
+  private async insertEvent(e: CompletionEvent): Promise<void> {
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO completion_event (id, plan_id, date, activity_id, requirement_id, action, count, variant, label, purpose, at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [e.id, e.planId, e.date, e.activityId, e.requirementId, e.action, e.count, e.variant, e.label, e.purpose, e.at],
+    );
+  }
+
+  private async upsertDaySnapshot(s: DaySnapshot): Promise<void> {
+    await this.db.runAsync(
+      `INSERT INTO day_snapshot (plan_id, date, plan_revision, prescribed, updated_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(plan_id, date) DO UPDATE SET plan_revision = excluded.plan_revision, prescribed = excluded.prescribed,
+         updated_at = excluded.updated_at`,
+      [s.planId, s.date, s.planRevision, JSON.stringify(s.prescribed), s.updatedAt],
+    );
+  }
+
+  async logCompletion(planId: string, date: string, activityId: string, log: ActivityLog | null, event: CompletionEvent, snapshot: DaySnapshot): Promise<void> {
+    await this.transaction(async () => {
+      if (log) await this.upsertActivity({ ...log, planId, date, activityId });
+      else await this.db.runAsync('DELETE FROM activity_log WHERE plan_id = ? AND date = ? AND activity_id = ?', [planId, date, activityId]);
+      await this.insertEvent(event);
+      await this.upsertDaySnapshot(snapshot);
+    });
+  }
+
+  async completionEvents(planId: string, date: string): Promise<CompletionEvent[]> {
+    return (await this.db.getAllAsync<EventRow>('SELECT * FROM completion_event WHERE plan_id = ? AND date = ? ORDER BY at, id', [planId, date])).map(toEvent);
+  }
+
+  async daySnapshot(planId: string, date: string): Promise<DaySnapshot | null> {
+    const r = await this.db.getFirstAsync<SnapshotRow>('SELECT * FROM day_snapshot WHERE plan_id = ? AND date = ?', [planId, date]);
+    return r ? toSnapshotRecord(r) : null;
+  }
+
   async applyConfigChange(plan: StoredPlan, change: ConfigChange): Promise<void> {
     await this.transaction(async () => {
       await this.setActivePlan(plan);
@@ -322,8 +387,14 @@ export class SqliteTrackingStore implements TrackingStore {
       ),
     ]);
     const configChanges = (await this.configHistory()).reverse();
+    const [events, snapshots] = await Promise.all([
+      this.db.getAllAsync<EventRow>('SELECT * FROM completion_event ORDER BY date, at, id', []),
+      this.db.getAllAsync<SnapshotRow>('SELECT * FROM day_snapshot ORDER BY date, plan_id', []),
+    ]);
     return {
       configChanges,
+      completionEvents: events.map(toEvent),
+      daySnapshots: snapshots.map(toSnapshotRecord),
       plans: plan ? [plan] : [],
       activityLogs: acts.map(toActivity),
       dayOverrides: overrides.map((o): DayOverrideRecord => ({ planId: o.plan_id, date: o.date, dayTypeId: o.day_type_id })),
@@ -342,6 +413,8 @@ export class SqliteTrackingStore implements TrackingStore {
       for (const o of s.observations) await this.upsertObservation(o);
       for (const q of s.quickLogs) await this.addQuickLog(q);
       for (const c of s.configChanges ?? []) await this.insertConfigChange(c);
+      for (const e of s.completionEvents ?? []) await this.insertEvent(e);
+      for (const d of s.daySnapshots ?? []) await this.upsertDaySnapshot(d);
     });
   }
 }

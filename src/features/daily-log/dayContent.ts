@@ -26,8 +26,9 @@ export function recordedObservations(day: ResolvedDay, records: DayRecords): Obs
  * Activity records for this date whose activity the current plan no longer schedules that day
  * (plan revised, or day type changed after logging). History stays visible via labelSnapshot.
  */
-export function loggedOutsidePlan(day: ResolvedDay, records: DayRecords): ActivityLog[] {
-  const scheduled = new Set([...day.timed, ...day.anytime].map((a) => a.id));
+export function loggedOutsidePlan(day: ResolvedDay, records: DayRecords, prescribedKeys: string[] = []): ActivityLog[] {
+  // Prescribed item keys include requirement keys (`req:<id>`), whose skip records are not orphans.
+  const scheduled = new Set([...day.timed, ...day.anytime].map((a) => a.id).concat(prescribedKeys));
   return Object.values(records.activities)
     .filter((log) => !scheduled.has(log.activityId) && (log.status !== 'pending' || log.count > 0))
     .sort((a, b) => a.labelSnapshot.localeCompare(b.labelSnapshot));

@@ -18,10 +18,15 @@ import { loggedOutsidePlan, recordedObservations } from './dayContent';
 import { JumpToDateSheet } from './JumpToDateSheet';
 import { ObservationSheet, RecordedSection } from './RecordedSection';
 import { MeasurementPanel } from './MeasurementPanel';
-import { ActivitySheet, DayTypeSheet, MeasureSheet } from './Sheets';
+import { DayTypeSheet, MeasureSheet } from './Sheets';
+import { ItemSheet } from './ItemSheet';
+import { NextActionCard } from './NextActionCard';
+import { RequirementRow } from './RequirementRow';
+import { partLabels, partOrder } from '../../prescription/windows';
+import type { PrescriptionItem } from '../../prescription/prescribe';
 import { TargetsLine } from './TargetsLine';
 import { Toast, type ToastState } from './Toast';
-import { useDay, useToday } from './useDay';
+import { useDay, useNowMinutes, useToday } from './useDay';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -40,7 +45,10 @@ export function DayLogScreen() {
     (d: LocalDate) => router.setParams({ date: d === today ? undefined : d }),
     [today],
   );
-  const { day, progress, records, latestMeasurement, actions, reload } = useDay(store, plan, date);
+  const { day, prescription, progress, nextAt, records, latestMeasurement, actions, reload } = useDay(store, plan, date);
+  const nowMinutes = useNowMinutes();
+  // "Do this next" is about the present, so it only shows on today (contract 08).
+  const next = date === today ? nextAt(nowMinutes) : null;
 
   const [firstRecord, setFirstRecord] = useState<LocalDate | null>(null);
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -49,7 +57,7 @@ export function DayLogScreen() {
   }, [jumpOpen, store]);
   const [sheetObservation, setSheetObservation] = useState<Observation | null>(null);
   const recorded = useMemo(() => recordedObservations(day, records), [day, records]);
-  const outsidePlan = useMemo(() => loggedOutsidePlan(day, records), [day, records]);
+  const outsidePlan = useMemo(() => loggedOutsidePlan(day, records, prescription.items.map((i) => i.key)), [day, records, prescription]);
 
   // Coming back from Import: show what was just saved.
   const firstFocus = useRef(true);
@@ -63,7 +71,7 @@ export function DayLogScreen() {
   // Past days can be corrected; future days are view-only (contract 04).
   const editable = date <= today;
 
-  const [sheetActivity, setSheetActivity] = useState<Activity | null>(null);
+  const [sheetItem, setSheetItem] = useState<PrescriptionItem | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
   const [dayTypeOpen, setDayTypeOpen] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
@@ -77,14 +85,14 @@ export function DayLogScreen() {
     return { [day.flexibleBudget.activityId]: text };
   }, [day.flexibleBudget, plan]);
 
-  const press = (a: Activity) => {
+  const press = (item: PrescriptionItem, a: Activity) => {
     tap();
-    actions.advance(a);
+    actions.advance(item, a);
   };
-  const toggleSkip = (a: Activity) => {
-    const skipped = records.activities[a.id]?.status === 'skipped';
-    actions.setSkipped(a, !skipped);
-    if (!skipped) setToast({ key: Date.now(), message: `Skipped ${a.label}`, onUndo: () => actions.setSkipped(a, false) });
+  const toggleSkip = (item: PrescriptionItem) => {
+    const skipped = item.state === 'skipped';
+    actions.setSkipped(item, !skipped);
+    if (!skipped) setToast({ key: Date.now(), message: `Skipped ${item.label}`, onUndo: () => actions.setSkipped(item, false) });
   };
   const quickLog = (id: string, label: string) => {
     tap();
@@ -92,22 +100,36 @@ export function DayLogScreen() {
     setToast({ key: Date.now(), message: `${label} · logged ${formatTimestamp(new Date().toISOString())}`, onUndo: () => actions.removeQuickLog(entryId) });
   };
 
-  const renderRows = (list: Activity[], showTime: boolean) =>
-    list.map((a) => (
-      <ActivityRow
-        key={a.id}
-        activity={a}
-        log={records.activities[a.id]}
-        showTime={showTime}
-        note={budgetNote[a.id]}
+  const renderItem = (item: PrescriptionItem) =>
+    item.kind === 'requirement' ? (
+      <RequirementRow
+        key={item.key}
+        item={item}
+        logs={records.activities}
         editable={editable}
-        onPress={() => press(a)}
-        onMore={() => setSheetActivity(a)}
-        onSkipToggle={() => toggleSkip(a)}
+        isNext={next?.item.key === item.key}
+        onOption={(a) => press(item, a)}
+        onMore={() => setSheetItem(item)}
       />
-    ));
-
-  const nothingPlanned = !day.timed.length && !day.anytime.length;
+    ) : (
+      <ActivityRow
+        key={item.key}
+        activity={item.activity!}
+        log={records.activities[item.key]}
+        showTime={item.window.part !== 'anytime'}
+        note={budgetNote[item.key]}
+        editable={editable}
+        isNext={next?.item.key === item.key}
+        onPress={() => press(item, item.activity!)}
+        onMore={() => setSheetItem(item)}
+        onSkipToggle={() => toggleSkip(item)}
+      />
+    );
+  // Grouped by part of the day; anytime last (contract 08).
+  const groups = partOrder
+    .map((part) => ({ part, items: prescription.items.filter((i) => i.window.part === part) }))
+    .filter((g) => g.items.length);
+  const nothingPlanned = !prescription.items.length;
 
   const exportAll = async () => {
     try {
@@ -137,6 +159,12 @@ export function DayLogScreen() {
 
         {!editable && <Text style={[type.detail, styles.notice]}>Upcoming. You can tick these off on the day.</Text>}
 
+        {date === today && (
+          <View style={styles.block}>
+            <NextActionCard next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />
+          </View>
+        )}
+
         <View style={styles.block}>
           <MeasurementPanel
             plan={plan}
@@ -161,22 +189,14 @@ export function DayLogScreen() {
 
         {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
 
-        {day.timed.length > 0 && (
-          <View style={styles.block}>
+        {groups.map((g) => (
+          <View key={g.part} style={styles.block} testID={`part-${g.part}`}>
             <Text style={type.section} accessibilityRole="header">
-              Schedule
+              {partLabels[g.part]}
             </Text>
-            <View style={styles.list}>{renderRows(day.timed, true)}</View>
+            <View style={styles.list}>{g.items.map(renderItem)}</View>
           </View>
-        )}
-        {day.anytime.length > 0 && (
-          <View style={styles.block}>
-            <Text style={type.section} accessibilityRole="header">
-              Anytime
-            </Text>
-            <View style={styles.list}>{renderRows(day.anytime, false)}</View>
-          </View>
-        )}
+        ))}
 
         <View style={styles.block}>
           <RecordedSection plan={plan} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
@@ -223,13 +243,13 @@ export function DayLogScreen() {
       )}
       {!plan.quickLogs.length && <Toast toast={toast} onDone={clearToast} />}
 
-      <ActivitySheet
-        activity={sheetActivity}
-        log={sheetActivity ? records.activities[sheetActivity.id] : undefined}
+      <ItemSheet
+        item={sheetItem && (prescription.items.find((i) => i.key === sheetItem.key) ?? null)}
+        logs={records.activities}
         editable={editable}
-        onClose={() => setSheetActivity(null)}
-        onSetDone={(done) => sheetActivity && actions.setDone(sheetActivity, done)}
-        onSetSkipped={(skipped) => sheetActivity && (skipped ? toggleSkip(sheetActivity) : actions.setSkipped(sheetActivity, false))}
+        onClose={() => setSheetItem(null)}
+        onSetDone={(item, a, done, variant) => actions.setDone(item, a, done, variant)}
+        onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
       />
       <MeasureSheet
         plan={plan}

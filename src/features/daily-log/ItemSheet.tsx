@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { buildGuide } from '../../exercises/guide';
+import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import { formatClock, formatDuration } from '../../format';
-import type { Activity } from '../../plan/schema';
+import type { Activity, Plan } from '../../plan/schema';
+import type { PrescribedExercise } from '../../prescription/session';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import { partLabels } from '../../prescription/windows';
 import type { ActivityLog } from '../../storage/types';
@@ -17,10 +21,13 @@ type Props = {
   onClose: () => void;
   onSetDone: (item: PrescriptionItem, a: Activity, done: boolean, variant?: 'full' | 'short') => void;
   onSetSkipped: (item: PrescriptionItem, skipped: boolean) => void;
+  /** Equipment and limitations used to describe exercise guides. */
+  exerciseConfig?: Plan['exercise'];
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped }: Props) {
+export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, exerciseConfig }: Props) {
+  const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const act = (fn: () => void) => () => {
     fn();
     onClose();
@@ -28,7 +35,10 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
   const a = item?.activity;
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';
   return (
-    <Sheet visible={!!item} onClose={onClose} label={item ? `${item.label} details` : 'Details'}>
+    <Sheet visible={!!item} onClose={() => {
+      setGuideFor(null);
+      onClose();
+    }} label={item ? `${item.label} details` : 'Details'}>
       {item && (
         <View style={styles.body}>
           <SheetHeader title={item.label} right={<TextButton title="Close" onPress={onClose} />} />
@@ -39,11 +49,11 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
           {item.session && (
             <View style={styles.block}>
               <Text style={type.section}>Full session{item.session.minutes ? ` · ${item.session.minutes} min` : ''}</Text>
-              <SessionExercises exercises={item.session.exercises} testID="sheet-session" />
+              <SessionExercises exercises={item.session.exercises} testID="sheet-session" onOpen={setGuideFor} />
               {item.session.short && (
                 <>
                   <Text style={[type.section, styles.gap]}>Short version{item.session.short.minutes ? ` · ${item.session.short.minutes} min` : ''}</Text>
-                  <SessionExercises exercises={item.session.short.exercises} testID="sheet-session-short" />
+                  <SessionExercises exercises={item.session.short.exercises} testID="sheet-session-short" onOpen={setGuideFor} />
                 </>
               )}
             </View>
@@ -89,6 +99,8 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
           </View>
         </View>
       )}
+      {/* Nested so closing the guide returns to this sheet (contract 09). */}
+      <ExerciseGuideSheet guide={item && guideFor ? buildGuide(guideFor, exerciseConfig) : null} onClose={() => setGuideFor(null)} />
     </Sheet>
   );
 }

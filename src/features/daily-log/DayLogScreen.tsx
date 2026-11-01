@@ -20,6 +20,9 @@ import { ObservationSheet, RecordedSection } from './RecordedSection';
 import { MeasurementPanel } from './MeasurementPanel';
 import { DayTypeSheet, MeasureSheet } from './Sheets';
 import { ItemSheet } from './ItemSheet';
+import { buildGuide } from '../../exercises/guide';
+import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
+import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
 import { RequirementRow } from './RequirementRow';
 import { partLabels, partOrder } from '../../prescription/windows';
@@ -72,6 +75,7 @@ export function DayLogScreen() {
   const editable = date <= today;
 
   const [sheetItem, setSheetItem] = useState<PrescriptionItem | null>(null);
+  const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
   const [dayTypeOpen, setDayTypeOpen] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
@@ -161,7 +165,7 @@ export function DayLogScreen() {
 
         {date === today && (
           <View style={styles.block}>
-            <NextActionCard next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />
+            <NextActionCard next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onOpenExercise={setGuideFor} />
           </View>
         )}
 
@@ -250,7 +254,9 @@ export function DayLogScreen() {
         onClose={() => setSheetItem(null)}
         onSetDone={(item, a, done, variant) => actions.setDone(item, a, done, variant)}
         onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
+        exerciseConfig={plan.exercise}
       />
+      <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
       <MeasureSheet
         plan={plan}
         measurement={sheetMeasurement}

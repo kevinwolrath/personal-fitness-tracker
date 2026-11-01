@@ -1,0 +1,80 @@
+{
+  "libraryVersion": 1,
+  "exercises": [
+    {
+      "id": "kettlebell_squat",
+      "name": "Kettlebell squat",
+      "equipment": ["kettlebell"],
+      "instructions": [
+        "Hold the kettlebell by the horns at chest height, elbows tucked in.",
+        "Feet about shoulder-width apart, toes turned out slightly.",
+        "Sit the hips back and down with the chest up, until the thighs are about parallel.",
+        "Drive through the whole foot to stand tall. Breathe out on the way up."
+      ],
+      "steps": [
+        { "image": "kettlebell-squat-1", "caption": "Stand tall with the kettlebell held at your chest." },
+        { "image": "kettlebell-squat-2", "caption": "Sit down between your heels, chest up, elbows inside the knees." }
+      ]
+    },
+    {
+      "id": "chest_press",
+      "name": "Seated chest press",
+      "equipment": ["home_gym"],
+      "instructions": [
+        "Set the seat so the handles line up with the middle of your chest.",
+        "Keep your back and head against the pad and your feet flat.",
+        "Press forward until the arms are nearly straight. Don't lock the elbows.",
+        "Return slowly until the handles are back level with your chest."
+      ],
+      "steps": [
+        { "image": "chest-press-1", "caption": "Handles level with mid-chest, back against the pad." },
+        { "image": "chest-press-2", "caption": "Press forward until the arms are nearly straight, without locking the elbows." }
+      ]
+    },
+    {
+      "id": "lat_pulldown",
+      "name": "Lat pulldown",
+      "equipment": ["home_gym"],
+      "instructions": [
+        "Lock the thighs under the pad and take a grip a little wider than the shoulders.",
+        "Lean back slightly with the chest up.",
+        "Pull the bar down to the top of the chest, driving the elbows down and back.",
+        "Let the bar rise under control until the arms are straight. Never pull behind the neck."
+      ],
+      "steps": [
+        { "image": "lat-pulldown-1", "caption": "Arms straight overhead, thighs secured under the pad." },
+        { "image": "lat-pulldown-2", "caption": "Pull the bar to your upper chest, in front of you. Never behind the neck." }
+      ]
+    },
+    {
+      "id": "cable_row",
+      "name": "Seated cable row",
+      "equipment": ["home_gym", "cable_machine"],
+      "instructions": [
+        "Feet braced on the footplate, knees slightly bent.",
+        "Sit tall with the arms long and the shoulders down.",
+        "Pull the handle to the lower ribs, squeezing the shoulder blades together.",
+        "Let the arms extend again without rounding the back."
+      ],
+      "steps": [
+        { "image": "cable-row-1", "caption": "Sit tall, arms long, feet braced, knees soft." },
+        { "image": "cable-row-2", "caption": "Pull the handle to your lower ribs and squeeze your shoulder blades together." }
+      ]
+    },
+    {
+      "id": "hammer_curl",
+      "name": "Hammer curl",
+      "equipment": ["dumbbells", "free_weights"],
+      "instructions": [
+        "Hold the weights with palms facing in (thumbs forward) and keep that grip throughout.",
+        "Keep the elbows by your sides. Only the forearms move.",
+        "Curl up, then lower slowly to straight arms.",
+        "The neutral grip is the elbow-friendly alternative to a standard biceps curl."
+      ],
+      "steps": [
+        { "image": "hammer-curl-1", "caption": "Arms at your sides, palms facing in, thumbs forward." },
+        { "image": "hammer-curl-2", "caption": "Curl up keeping the thumbs-up grip; elbows stay by your sides." }
+      ]
+    }
+  ]
+}

@@ -261,6 +261,16 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync('DELETE FROM quick_log WHERE id = ?', [id]);
   }
 
+  async firstRecordDate(): Promise<string | null> {
+    const r = await this.db.getFirstAsync<{ first: string | null }>(
+      `SELECT MIN(d) AS first FROM (
+         SELECT MIN(date) AS d FROM observation UNION ALL SELECT MIN(date) FROM activity_log
+         UNION ALL SELECT MIN(date) FROM day_override UNION ALL SELECT MIN(date) FROM quick_log)`,
+      [],
+    );
+    return r?.first ?? null;
+  }
+
   async snapshot(): Promise<StoreSnapshot> {
     const [plan, acts, overrides, obs, qs, imports] = await Promise.all([
       this.getActivePlan(),

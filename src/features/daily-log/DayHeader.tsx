@@ -1,23 +1,27 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { formatShortDate, formatWeekday } from '../../format';
 import type { LocalDate } from '../../plan/dates';
 import { colors, radius, space, touch, type } from '../../ui/theme';
+import { dayLabels } from './dayLabels';
 
 type Props = {
   date: LocalDate;
   today: LocalDate;
-  yesterday: LocalDate;
   dayTypeLabel: string;
   overridden: boolean;
   progress: { done: number; total: number; complete: boolean };
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
+  onPickDate: () => void;
   onDayType: () => void;
 };
 
+/**
+ * Header for any date in the Daily Log: step by day, jump to a date, return to Today.
+ * The date and title never truncate; they're the answer to "where am I in the log?".
+ */
 export function DayHeader(p: Props) {
-  const title = p.date === p.today ? 'Today' : p.date === p.yesterday ? 'Yesterday' : formatWeekday(p.date);
+  const labels = dayLabels(p.date, p.today);
   const pct = p.progress.total ? p.progress.done / p.progress.total : 0;
   return (
     <View>
@@ -26,34 +30,43 @@ export function DayHeader(p: Props) {
           <Text style={styles.chevronText}>‹</Text>
         </Pressable>
         <Pressable
-          onPress={p.onToday}
-          disabled={p.date === p.today}
+          onPress={p.onPickDate}
           style={styles.dateButton}
           accessibilityRole="button"
-          accessibilityLabel={p.date === p.today ? formatShortDate(p.date) : `${formatShortDate(p.date)}, go to today`}
+          accessibilityLabel={`${labels.date}. Jump to a date`}
+          testID="date-button"
         >
-          <Text style={styles.date}>{formatShortDate(p.date)}</Text>
+          <Text style={styles.date}>{labels.date} ▾</Text>
         </Pressable>
         <Pressable onPress={p.onNext} style={styles.chevron} accessibilityRole="button" accessibilityLabel="Next day" hitSlop={4}>
           <Text style={styles.chevronText}>›</Text>
         </Pressable>
         <View style={styles.spacer} />
+        {labels.when !== 'today' && (
+          <Pressable onPress={p.onToday} style={styles.todayButton} accessibilityRole="button" accessibilityLabel="Back to Today">
+            <Text style={styles.todayText}>Today</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <Text style={styles.title} accessibilityRole="header" testID="day-title">
+        {labels.title}
+      </Text>
+      <View style={styles.statusRow}>
+        <Text style={[type.detail, styles.progressText]} testID="day-progress">
+          {p.progress.total === 0 ? 'Nothing required' : p.progress.complete ? `All ${p.progress.total} done` : `${p.progress.done} of ${p.progress.total} done`}
+        </Text>
         <Pressable
           onPress={p.onDayType}
           style={[styles.chip, p.overridden && styles.chipOverridden]}
           accessibilityRole="button"
           accessibilityLabel={`Day type: ${p.dayTypeLabel}. Change`}
         >
-          <Text style={styles.chipText}>{p.dayTypeLabel} ▾</Text>
+          <Text style={styles.chipText} numberOfLines={1}>
+            {p.dayTypeLabel} ▾
+          </Text>
         </Pressable>
       </View>
-
-      <Text style={styles.title} accessibilityRole="header">
-        {title}
-      </Text>
-      <Text style={[type.detail, styles.progressText]} testID="day-progress">
-        {p.progress.total === 0 ? 'Nothing required today' : p.progress.complete ? `All ${p.progress.total} done` : `${p.progress.done} of ${p.progress.total} done`}
-      </Text>
       <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
         <View style={[styles.fill, { width: `${pct * 100}%` }]} />
       </View>
@@ -68,6 +81,19 @@ const styles = StyleSheet.create({
   dateButton: { minHeight: touch, justifyContent: 'center', paddingHorizontal: space.xs },
   date: { ...type.body, fontSize: 16 },
   spacer: { flex: 1 },
+  todayButton: {
+    minHeight: touch,
+    minWidth: touch,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.ink,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  todayText: { color: colors.onAccent, fontSize: 15, fontWeight: '800' },
+  title: { ...type.title, marginTop: space.xs },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginTop: space.xs },
+  progressText: { flex: 1, ...type.number },
   chip: {
     minHeight: touch,
     paddingHorizontal: space.md,
@@ -76,11 +102,10 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     justifyContent: 'center',
+    flexShrink: 1,
   },
   chipOverridden: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
   chipText: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  title: { ...type.title, marginTop: space.sm },
-  progressText: { marginTop: space.xs, ...type.number },
   track: { height: 4, borderRadius: 2, backgroundColor: colors.line, marginTop: space.sm, overflow: 'hidden' },
   fill: { height: 4, backgroundColor: colors.accent },
 });

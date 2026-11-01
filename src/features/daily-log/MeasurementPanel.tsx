@@ -3,6 +3,7 @@ import { formatMeasurement, formatShortDate } from '../../format';
 import type { LocalDate } from '../../plan/dates';
 import type { Measurement, Plan } from '../../plan/schema';
 import { measurementMetric } from '../../observations/planMetrics';
+import { observationSource } from '../../observations/format';
 import type { Observation } from '../../observations/types';
 import { colors, radius, space, type } from '../../ui/theme';
 
@@ -24,7 +25,7 @@ export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: P
         const obs = latest[m.id];
         const entry = obs && { ...obs, value: measurementMetric(plan, m).toPlan(obs.value) };
         const loggedToday = entry?.date === date;
-        const via = loggedToday && entry.source.type === 'screenshot' ? `From ${entry.source.app ?? 'screenshot'}` : null;
+        const via = loggedToday && entry.source.type !== 'manual' ? observationSource(entry) : null;
         const goal = plan.goals.find((g) => g.measurementId === m.id);
         let goalText = goal ? `${goal.label} ${formatMeasurement(plan, m, goal.target)}` : null;
         if (goal && entry) {

@@ -151,6 +151,16 @@ export function describeTrackingStore(
       expect(await target.snapshot()).toEqual(snap);
     });
 
+    it('finds the first record date across every kind of record', async () => {
+      expect(await store.firstRecordDate()).toBeNull();
+      await store.addObservations([obs('w', 'weight', '2026-03-01', 99, 't')]);
+      await store.setActivity('p', '2025-12-31', 'walk', log('walk'));
+      await store.addQuickLog({ id: 'q', planId: 'p', quickLogId: 'hunger', date: '2026-01-05', at: 't' });
+      expect(await store.firstRecordDate()).toBe('2025-12-31');
+      await store.setDayOverride('p', '2024-07-01', 'home');
+      expect(await store.firstRecordDate()).toBe('2024-07-01');
+    });
+
     it('adds and removes quick logs, ordered by time', async () => {
       await store.addQuickLog({ id: 'q2', planId: 'p', quickLogId: 'hunger', date: '2026-11-02', at: '2026-11-02T14:05:00+11:00' });
       await store.addQuickLog({ id: 'q1', planId: 'p', quickLogId: 'hunger', date: '2026-11-02', at: '2026-11-02T10:42:00+11:00' });

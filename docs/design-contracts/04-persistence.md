@@ -14,13 +14,14 @@
 - **Native:** SQLite via `expo-sqlite`, accessed only through a small repository module, for example `src/storage/`. Screens never run SQL.
 - **Web (test surface):** the same `TrackingStore` interface over `localStorage`: one JSON document under `pft:tracking:v1` (decided in issue #3, so no SQLite/WASM in the browser). It falls back to in-memory storage if `localStorage` is unavailable. Platform selection is by file extension (`openStore.ts` / `openStore.web.ts`).
 - Both implementations must pass the shared suite in `src/storage/__tests__/store.contract.ts`. The SQLite implementation is tested against Node's built-in SQLite through the same `SqlDatabase` interface expo-sqlite provides.
-- Schema migrations are numbered and run on startup. Never destructive without an export first.
+- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. A test opens a real version-1 database and checks nothing is lost.
 
 ## Records (logical model)
 
 | Record | Key | Fields |
 |---|---|---|
-| `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`. Exactly one active plan. |
+| `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`, `origin` (`seed`/`config`/`import`). Exactly one active plan. |
+| `config_change` | `id` | `appliedAt`, `sections`, `payload`, `fromRevision`, `toRevision`, `previousPlanJson` (contract 07) |
 | `activity_log` | `planId, date, activityId` | `status` (`pending`, `done`, `skipped`), `count` (for count tracking; `pending` means partial), `labelSnapshot`, `updatedAt` |
 | `observation` | `id` | `date`, `metric`, `value` (canonical unit), `unit`, `kind` (`observed`/`inferred`), `label`, `note`, provenance (`source_*`), `recordedAt`. Not plan-scoped. See contract 06 |
 | `import_session` | `id` | `createdAt`, `extractor`, `assets` (JSON) |
@@ -37,6 +38,7 @@ Rules:
 
 ## Plan replacement
 
+- **Bundled seed:** a newer seed revision replaces the stored plan only while that plan is still the untouched seed (`origin: seed`). Once the user changes their configuration (07) it's never overwritten.
 - Same `id`, higher `revision`: replace silently. History is kept.
 - Same `id`, same or lower `revision`: ask before replacing.
 - Different `id`: ask before replacing. Records for the old plan are kept, but they're hidden until that plan is re-imported.

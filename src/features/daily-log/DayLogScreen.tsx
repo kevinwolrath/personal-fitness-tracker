@@ -182,9 +182,14 @@ export function DayLogScreen() {
           <RecordedSection plan={plan} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
         </View>
 
-        <Pressable onPress={exportAll} style={[styles.textAction, styles.exportAction]} accessibilityRole="button" accessibilityLabel="Export all data">
-          <Text style={[type.detail, styles.exportText]}>Export all data (JSON)</Text>
-        </Pressable>
+        <View style={styles.footerLinks}>
+          <Pressable onPress={() => router.push('/configure')} style={styles.textAction} accessibilityRole="button" accessibilityLabel="Configure with AI">
+            <Text style={[type.detail, styles.exportText]}>Configure with AI</Text>
+          </Pressable>
+          <Pressable onPress={exportAll} style={styles.textAction} accessibilityRole="button" accessibilityLabel="Export all data">
+            <Text style={[type.detail, styles.exportText]}>Export all data (JSON)</Text>
+          </Pressable>
+        </View>
       </ScrollView>
 
       {plan.quickLogs.length > 0 && (
@@ -277,7 +282,7 @@ const styles = StyleSheet.create({
   list: { marginTop: space.xs },
   textAction: { minHeight: touch, justifyContent: 'center', alignSelf: 'flex-start' },
   textActionText: { fontSize: 16, fontWeight: '700', color: colors.accent },
-  exportAction: { alignSelf: 'center', marginTop: space.xl },
+  footerLinks: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: space.xl, marginTop: space.xl },
   exportText: { textDecorationLine: 'underline' },
   footer: {
     backgroundColor: colors.bg,

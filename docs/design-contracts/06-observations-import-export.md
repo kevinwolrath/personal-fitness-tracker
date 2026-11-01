@@ -31,7 +31,7 @@ An **import session** (`{ id, createdAt, extractor, assets[] }`) records what wa
 
 ## Screenshot import
 
-Flow: Today → **Import from screenshots** → pick one or more images → **Read** → review → **Save**.
+Flow: any editable day in the Daily Log → **Import from screenshots** → pick one or more images → **Read** → review → **Save**. Import is an ingestion path, not a destination: each saved observation appears in the Daily Log on its own date (the date shown on screen, or the day import was opened from), in that day's measurement tiles or **Recorded** section.
 
 - **Extraction** is behind `ScreenshotExtractor`. The V1 implementation sends **one screenshot per request** to Claude (`claude-opus-5-5`, vision plus structured output, server-side refusal fallback), so each value traces to exactly one image. Up to 3 requests run in parallel.
   - The extractor returns provider-neutral output (`extractionSchema`).

@@ -1,21 +1,28 @@
 # 02 · Navigation & interactions
 
-## Information architecture
+## The Daily Log
 
-Target: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**.
+**The Daily Log is the primary application surface. Today is the current date within that log.** Every date (today, yesterday, last year, next week) is rendered by the same day view (`DayLogScreen`), from the same canonical data model, with the same editing behaviour. History has no separate screen or store: a historical day *is* the Daily Log at that date. New capabilities extend the shared model and the continuous history rather than becoming isolated feature screens.
 
-**V1 slice (issue #3):** Today is the only route (`app/index.tsx`). The tab bar arrives with the second tab, because a one-tab bar is clutter. Sheets are rendered by Today through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`), not as routes: an iOS page sheet, an Android bottom panel, and an in-frame panel on web. They'll become routes only if deep-linking is needed.
+- **Route:** `/` is the Daily Log. The selected date is the `date` search parameter (`/?date=2026-03-11`); no parameter means today. Reloads, links and back/forward keep the date.
+- **What a day shows** (for any date where data exists): measurements against goals, targets, the plan's activities and meals for that date's day type, quick logs, and a **Recorded** section with every other observation on that date (imported steps, sleep, readiness, workouts, calculated values, and `other` metrics). It also shows activity history that the current plan no longer schedules that day, taken from `labelSnapshot`.
+- **Ingestion is not a destination.** Manual entry, screenshot import and future integrations write canonical observations (contract 06). Each appears on its own effective date in the log.
+- **Editing:** today and every past date are fully correctable, including imported values (edit or remove from the observation sheet; provenance records the edit). Future dates are view-only planned days (contract 04).
+
+Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. The Daily Log is currently the only tab. The tab bar arrives with the second one, because a one-tab bar is clutter. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
 
 | Route (Expo Router) | Surface | Purpose |
 |---|---|---|
-| `/(tabs)/index` (now `/`) | **Today** tab, the launch screen | The day's resolved plan: activities, meals, targets, today's measurements, quick log |
+| `/` (`?date=`) | **Daily Log** tab, the launch screen (opens on today) | One day of the continuous log: resolved plan, measurements, targets, quick log, recorded observations |
 | `/(tabs)/progress` | **Progress** tab | Goal progress, measurement trend, recent days (read-mostly) |
 | `/(tabs)/plan` | **Plan** tab | Read-only week overview of the loaded plan, plus plan-package actions (import, replace, export data) |
 | Measure sheet | Sheet | Enter a value for one measurement (numeric keypad) |
 | Activity sheet | Sheet | Activity details and secondary actions: done/not done, skip, restore. It's never required for the happy path |
-| `/day/[date]` | Push from Progress | Read-only or back-fillable view of a past day, using the same component as Today |
+| Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
+| Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
+| `/import` | Modal | Screenshot import (contract 06) |
 
-Today shows **one day at a time**. Chevrons in the header (and a tap on the date) move to the previous or next day. You can edit today and any past day, to correct history. Future days are view-only (see 04).
+The log shows **one day at a time**. Header: `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).
 
 ## Interaction rules
 
@@ -37,7 +44,10 @@ Today shows **one day at a time**. Chevrons in the header (and a tap on the date
 | Change today's day type (for example home ↔ office) | Tap the day-type chip → choose in a sheet. Choosing the plan default clears the override | None | Done rarely. A gesture would be undiscoverable. |
 | Log a quick event ("I'm hungry") | Tap the button. A haptic and a toast with **Undo** confirm it | None | It must be instant and unmistakable. |
 | Enter a measurement | Tap the measurement tile → sheet with numeric keypad, prefilled with the last value | None | Typing is faster and more precise than a drag wheel or slider. Explicitly rejected: drag-to-adjust. |
-| Change day | Header chevrons | **Not** horizontal paging | Rejected: it conflicts with row swipe and the iOS back gesture, and changing day is infrequent. |
+| Change day | Header chevrons | **Not** horizontal paging | Rejected: it conflicts with row swipe and the iOS back gesture. |
+| Jump to a date | Tap the header date → shortcut or platform date picker (iOS inline calendar; Android system calendar dialog; web `<input type=date>`) | None | Months or years of history must never need hundreds of chevron taps. The native pickers already handle fast month and year jumps. |
+| Return to Today | **Today** button in the header (or the Today shortcut) | None | Always one tap from anywhere in the log. |
+| Correct a recorded value | Tap the row in **Recorded** → edit or **Remove** | None | Same correction model for manual, imported and future integration data. |
 | Reorder activities | n/a | **Not** drag-to-reorder | Rejected: order comes from the plan (time, then plan order). |
 | Pull to refresh | n/a | **Not used** | Rejected: the app is local-first, so there's nothing to refresh. |
 
@@ -51,4 +61,4 @@ Today shows **one day at a time**. Chevrons in the header (and a tap on the date
 ## Empty and first-run states
 
 - With no plan loaded: one screen with **Use example plan** and **Import plan file**. Nothing else.
-- A day with no activities shows "Nothing planned today" plus the measurement tiles and quick log.
+- A day with no activities shows "Nothing planned for this day" plus the measurement tiles, recorded observations and quick log.

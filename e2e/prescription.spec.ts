@@ -140,8 +140,9 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   await chooseFromMenu(page, 'Configure with AI');
   await page.getByLabel('AI update').fill(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, schedule: { activities } } }));
   await page.getByRole('button', { name: 'Check update' }).click();
+  await page.getByTestId('preview-schedule').getByRole('button').first().click();
   await expect(page.getByTestId('preview-schedule')).toContainText('Removed Strength workout');
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
 
   await expect(page.getByTestId('activity-resistance')).toHaveCount(0); // no longer prescribed

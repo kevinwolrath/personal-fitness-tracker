@@ -107,6 +107,13 @@ test('the AI configuration screen (with a preview and errors) fits at every widt
     await page.waitForTimeout(50);
     expect(await layoutProblems(page), `preview at ${width}px`).toEqual([]);
   }
+  await page.getByTestId('preview-nutrition').getByRole('button').first().click(); // the longest lines, opened
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `open section at ${width}px`).toEqual([]);
+  }
+  await page.getByRole('button', { name: 'Change update' }).click();
   await page.getByLabel('AI update').fill('{"fitnessConfigUpdate":{"schemaVersion":1,"exercise":{"equipment":[{"type":"a_very_long_unknown_equipment_type_name"}]}}}');
   await page.getByRole('button', { name: 'Check update' }).click();
   await page.setViewportSize({ width: 320, height: 900 });

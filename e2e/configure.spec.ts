@@ -26,6 +26,15 @@ async function openConfigure(page: Page) {
   await expect(page.getByRole('heading', { name: 'Configure with AI' })).toBeVisible();
 }
 
+/** Preview rows are collapsed to a summary: open one to see every change in it. */
+async function openSection(page: Page, section: string) {
+  const row = page.getByTestId(`preview-${section}`);
+  await row.getByRole('button').first().click();
+  return row;
+}
+
+const applyButton = (page: Page) => page.getByRole('button', { name: /^Apply \d+ changes?$/ });
+
 async function checkUpdate(page: Page, text: string) {
   await page.getByLabel('AI update').fill(text);
   await page.getByRole('button', { name: 'Check update' }).click();
@@ -38,7 +47,7 @@ test.beforeEach(async ({ context }) => {
 test('copies AI session instructions with the current config and protocol', async ({ page }) => {
   await openConfigure(page);
   await page.getByRole('button', { name: 'Copy AI instructions' }).click();
-  await expect(page.getByRole('button', { name: 'Copy AI instructions' })).toContainText('Copied');
+  await expect(page.getByText('Instructions copied')).toBeVisible(); // step 1 collapses to one line
   const text = await page.evaluate(() => navigator.clipboard.readText());
   expect(text).toContain('Configuration schema version: 1');
   expect(text).toContain('"Fixed lunch"');
@@ -52,17 +61,18 @@ test('exercise-only update: preview, explicit confirm, only exercise changes', a
 
   await checkUpdate(page, fixture('real-world-exercise'));
   const preview = page.getByTestId('config-preview');
-  await expect(preview).toContainText('Configuration update detected');
-  const exercise = page.getByTestId('preview-exercise');
+  await expect(preview).toContainText('What changes');
+  const exercise = await openSection(page, 'exercise');
   for (const line of ['Added Fortis home multi-gym', 'Added 16 kg and 24 kg kettlebells', 'Added Heavy bag', 'Added Battle ropes', 'Avoid biceps curl (aggravates elbow)', 'Hammer curl permitted']) {
     await expect(exercise).toContainText(line);
   }
-  await expect(page.getByTestId('preview-nutrition')).toContainText('Not in this update · unchanged');
+  await expect(page.getByTestId('preview-nutrition')).toHaveCount(0); // only sections that change are listed
+  await expect(page.getByTestId('preview-unchanged')).toContainText('nutrition');
 
   // Nothing is persisted before confirmation.
   expect(sectionsOf(await storedPlan(page))).toEqual(before);
 
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await applyButton(page).click();
   await expect(page.getByTestId('config-preview')).toHaveCount(0);
   await expect(page.getByTestId('summary-exercise')).toContainText('Avoid biceps curl');
   await expect(page.getByTestId('config-history')).toContainText('Exercise');
@@ -78,13 +88,14 @@ test('exercise-only update: preview, explicit confirm, only exercise changes', a
 test('nutrition-only update leaves exercise untouched and immediately drives the Daily Log', async ({ page }) => {
   await openConfigure(page);
   await checkUpdate(page, fixture('real-world-exercise'));
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await applyButton(page).click();
   const exerciseBefore = sectionsOf(await storedPlan(page)).exercise;
 
   await checkUpdate(page, fixture('nutrition'));
-  await expect(page.getByTestId('preview-exercise')).toContainText('Not in this update · unchanged');
+  await expect(page.getByTestId('preview-exercise')).toHaveCount(0);
+  await expect(page.getByTestId('preview-unchanged')).toContainText('exercise');
   await expect(page.getByTestId('preview-nutrition')).toContainText('Energy');
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await applyButton(page).click();
   await expect(page.getByTestId('config-preview')).toHaveCount(0);
   expect(sectionsOf(await storedPlan(page)).exercise).toBe(exerciseBefore);
 
@@ -100,12 +111,25 @@ test('combined update in a fenced block with chat prose around it, pasted from t
   await page.evaluate((t) => navigator.clipboard.writeText(t), reply);
   await page.getByRole('button', { name: 'Paste', exact: true }).click();
   await page.getByRole('button', { name: 'Check update' }).click();
-  await expect(page.getByTestId('preview-exercise')).toContainText('Added Fortis home multi-gym');
-  await expect(page.getByTestId('preview-nutrition')).toContainText('Energy');
-  await expect(page.getByTestId('preview-schedule')).toContainText('unchanged');
-  await page.getByRole('button', { name: 'Apply update' }).click();
-  await expect(page.getByTestId('summary-nutrition')).toContainText('Energy ≤ 7300');
+  await expect(await openSection(page, 'exercise')).toContainText('Added Fortis home multi-gym');
+  await expect(await openSection(page, 'nutrition')).toContainText('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
+  await expect(page.getByTestId('preview-unchanged')).toContainText('schedule');
+  await applyButton(page).click();
+  await expect(page.getByTestId('summary-nutrition')).toContainText('Energy ≤ 7,300 kJ');
   await expect(page.getByTestId('summary-exercise')).toContainText('Hammer curl permitted');
+});
+
+test('after checking, the update collapses and Apply is on screen without scrolling (vertical budget)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openConfigure(page);
+  await checkUpdate(page, fixture('combined'));
+  await expect(page.getByLabel('AI update')).toHaveCount(0); // the pasted JSON collapses to one line
+  await expect(page.getByText('Update checked')).toBeVisible();
+  const apply = (await applyButton(page).boundingBox())!;
+  expect(apply.y + apply.height).toBeLessThanOrEqual(844);
+  // "Change" brings the text back, unchanged.
+  await page.getByRole('button', { name: 'Change update' }).click();
+  await expect(page.getByLabel('AI update')).toHaveValue(/fitnessConfigUpdate/);
 });
 
 test('invalid payloads show actionable errors and change nothing', async ({ page }) => {
@@ -116,7 +140,7 @@ test('invalid payloads show actionable errors and change nothing', async ({ page
   const errors = page.getByTestId('config-errors');
   await expect(errors).toContainText("This update can't be used");
   await expect(errors).toContainText('fitnessConfigUpdate.diet: unknown section');
-  await expect(page.getByRole('button', { name: 'Apply update' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Apply/ })).toHaveCount(0);
 
   await checkUpdate(page, JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { equipment: [{ type: 'trampoline' }] } } }));
   await expect(errors).toContainText('fitnessConfigUpdate.exercise.equipment[0].type');
@@ -131,7 +155,7 @@ test('undo restores the previous configuration exactly', async ({ page }) => {
   await openConfigure(page);
   const before = sectionsOf(await storedPlan(page));
   await checkUpdate(page, fixture('combined'));
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await applyButton(page).click();
   await page.getByRole('button', { name: 'Undo last change' }).click();
   await expect(page.getByTestId('config-history')).toContainText('Undo');
   expect(sectionsOf(await storedPlan(page))).toEqual(before);
@@ -141,7 +165,7 @@ test('undo restores the previous configuration exactly', async ({ page }) => {
 test('configuration changes are included in the full export', async ({ page }) => {
   await openConfigure(page);
   await checkUpdate(page, fixture('real-world-exercise'));
-  await page.getByRole('button', { name: 'Apply update' }).click();
+  await applyButton(page).click();
   await page.getByRole('button', { name: 'Close' }).click();
   const doc = await exportAllData(page);
   expect(doc.plans[0]).toMatchObject({ origin: 'config', plan: { formatVersion: 2, exercise: { constraints: { gymMembership: false } } } });
@@ -151,15 +175,16 @@ test('configuration changes are included in the full export', async ({ page }) =
 
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
+  test('configure-start', async ({ page }) => {
+    await openConfigure(page);
+    await expect(page).toHaveScreenshot('configure-start.png');
+  });
   test('configure-preview', async ({ page }) => {
     await openConfigure(page);
     await checkUpdate(page, fixture('combined'));
     await expect(page.getByTestId('config-preview')).toBeVisible();
-    const height = await page.getByTestId('configure-scroll').evaluate((el) => {
-      const s = el as HTMLElement;
-      return Math.ceil(window.innerHeight - s.clientHeight + s.scrollHeight);
-    });
-    await page.setViewportSize({ width: 390, height });
-    await expect(page).toHaveScreenshot('configure-preview-full.png');
+    await expect(page).toHaveScreenshot('configure-preview.png');
+    await openSection(page, 'nutrition');
+    await expect(page).toHaveScreenshot('configure-preview-open.png');
   });
 });

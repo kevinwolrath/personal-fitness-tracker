@@ -39,7 +39,9 @@ test.describe('screenshot import', () => {
     const scale = page.getByTestId('review-scale.png');
     await expect(fitbit).toContainText('fitbit');
     await expect(scale).toContainText('renpho');
-    await expect(fitbit).toContainText('7h 45m');
+    // Values read like the Daily Log, and stay editable (#21).
+    await expect(fitbit.getByLabel('Sleep value')).toHaveValue('7h 45m');
+    await expect(fitbit.getByLabel('Steps value')).toHaveValue('13,765');
     await expect(fitbit).toContainText('check this'); // low-confidence readiness
 
     // The calculated starting weight is shown separately and excluded by default.
@@ -49,6 +51,7 @@ test.describe('screenshot import', () => {
 
     // Edit one value, remove another.
     await fitbit.getByLabel('Steps value').fill('13800');
+    await fitbit.getByLabel('Sleep value').fill('7h 50m'); // durations are edited as written
     await fitbit.getByRole('checkbox', { name: 'Include Sleep score' }).click();
 
     await page.getByRole('button', { name: 'Save 5 values' }).click();
@@ -61,6 +64,7 @@ test.describe('screenshot import', () => {
     const byMetric = Object.fromEntries(stored.observations.map((o: any) => [o.metric, o]));
     expect(Object.keys(byMetric).sort()).toEqual(['readiness_score', 'sleep_duration', 'steps', 'weight', 'weight_change']);
     expect(byMetric.steps).toMatchObject({ value: 13800, date: '2026-11-02', kind: 'observed', source: { type: 'screenshot', app: 'fitbit', evidence: '13,765', edited: true, confidence: 0.98 } });
+    expect(byMetric.sleep_duration).toMatchObject({ value: 470, unit: 'min', source: { edited: true } });
     expect(byMetric.weight).toMatchObject({ value: 97.25, unit: 'kg', source: { app: 'renpho', edited: false } });
     expect(stored.imports).toHaveLength(1);
     expect(stored.imports[0]).toMatchObject({ extractor: 'anthropic:claude-opus-5-5' });

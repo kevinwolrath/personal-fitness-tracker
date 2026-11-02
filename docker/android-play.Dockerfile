@@ -15,6 +15,8 @@ RUN npm ci
 COPY . .
 
 COPY scripts/google-play-release.sh /usr/local/bin/google-play-release
-RUN chmod +x /usr/local/bin/google-play-release
+# The repo is checked out on Windows, so normalise CRLF -> LF before executing.
+RUN sed -i 's/\r$//' /usr/local/bin/google-play-release && \
+    chmod +x /usr/local/bin/google-play-release
 
 ENTRYPOINT ["google-play-release"]

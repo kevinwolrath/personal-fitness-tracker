@@ -2,8 +2,13 @@ name: Deploy Android to Google Play Internal
 
 on:
   workflow_dispatch:
+    inputs:
+      version_code:
+        description: Optional override; must be higher than every version code currently in Google Play
+        required: false
+        default: ""
+        type: string
 
-# Never allow two Play uploads from this workflow to race each other.
 concurrency:
   group: personal-fitness-tracker-google-play
   cancel-in-progress: false
@@ -26,9 +31,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Resolve next Android version code from Google Play
+        id: version_code
+        shell: powershell
+        env:
+          ANDROID_PACKAGE_NAME: com.questspire.personalfitnesstracker
+          REQUESTED_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node scripts/resolve-android-version-code.js
+          if ($LASTEXITCODE -ne 0) { throw "Google Play version-code resolution failed ($LASTEXITCODE)" }
 
       - name: Build signed AAB in Docker and deploy to INTERNAL
         shell: powershell
+        env:
+          ANDROID_VERSION_CODE: ${{ steps.version_code.outputs.value }}
         run: |
           $ErrorActionPreference = 'Stop'
 
@@ -37,20 +57,18 @@ jobs:
             'ANDROID_KEYSTORE_PASSWORD',
             'ANDROID_KEY_ALIAS',
             'ANDROID_KEY_PASSWORD',
-            'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'
+            'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON',
+            'ANDROID_VERSION_CODE'
           )
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name").Value)) {
-              throw "Required GitHub secret for $name is missing. See docs/google-play-deploy.md."
+              throw "Required value for $name is missing. See docs/google-play-deploy.md."
             }
           }
 
-          # Epoch seconds are monotonic and fit Android's versionCode range until 2038.
-          # A manual rerun of the same workflow attempt gets a fresh value.
-          $versionCode = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
           Write-Host "DEPLOY TARGET: Google Play INTERNAL testing"
           Write-Host "Package: com.questspire.personalfitnesstracker"
-          Write-Host "versionCode: $versionCode"
+          Write-Host "versionCode: $env:ANDROID_VERSION_CODE"
 
           $secretDir = Join-Path $env:RUNNER_TEMP "pft-play-$([guid]::NewGuid())"
           New-Item -ItemType Directory -Path $secretDir | Out-Null
@@ -68,7 +86,7 @@ jobs:
               --env ANDROID_KEYSTORE_PASSWORD `
               --env ANDROID_KEY_ALIAS `
               --env ANDROID_KEY_PASSWORD `
-              --env ANDROID_VERSION_CODE=$versionCode `
+              --env ANDROID_VERSION_CODE `
               --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
               --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
               --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `

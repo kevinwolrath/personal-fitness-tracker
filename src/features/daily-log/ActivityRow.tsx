@@ -16,9 +16,11 @@ type Props = {
   onPress: () => void;
   onMore: () => void;
   onSkipToggle: () => void;
+  /** Exercises ticked in a session (#28): the row shows "2 of 5 exercises" while it's under way. */
+  exerciseProgress?: { done: number; total: number } | null;
 };
 
-export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle }: Props) {
+export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle, exerciseProgress }: Props) {
   const status = log?.status ?? 'pending';
   const done = status === 'done';
   const skipped = status === 'skipped';
@@ -26,7 +28,10 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
   const isCount = a.tracking.type === 'count';
   const target = a.tracking.type === 'count' ? a.tracking.target : 1;
 
-  const sessionMeta = a.session ? `${a.session.minutes ? `${a.session.minutes} min · ` : ''}${a.session.exercises.length} exercises` : null;
+  const started = !done && !skipped && exerciseProgress && exerciseProgress.done > 0;
+  const sessionMeta = a.session
+    ? `${a.session.minutes ? `${a.session.minutes} min · ` : ''}${started ? `${exerciseProgress!.done} of ${exerciseProgress!.total} exercises` : `${a.session.exercises.length} exercises`}`
+    : null;
   const variantMeta = done && log?.variant === 'short' ? 'Short version' : null;
   const meta = [a.detail, sessionMeta ?? formatDuration(a.duration), !a.required ? 'Optional' : null, skipped ? 'Skipped' : null, variantMeta, note]
     .filter(Boolean)

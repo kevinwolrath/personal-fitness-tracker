@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { toLocalDate, type LocalDate } from '../../plan/dates';
 import type { Activity, Measurement, Plan } from '../../plan/schema';
 import * as completion from '../../prescription/completion';
+import * as exercises from '../../prescription/exercises';
 import { nextAction } from '../../prescription/nextAction';
 import { prescribeDay, type PrescriptionItem } from '../../prescription/prescribe';
 import { measurementMetric } from '../../observations/planMetrics';
@@ -116,6 +117,23 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
       record(completion.setDone(ctx(item, activity.id), activity, done, variant)),
     [record, ctx],
   );
+  /** Tick/untick one exercise of a session (#28). Returns the change, so the UI can see a completion. */
+  const tickExercise = useCallback(
+    (item: PrescriptionItem, activity: Activity, key: string, ticked: boolean) => {
+      const c = exercises.tickExercise(ctx(item, activity.id), activity, item.session!, key, ticked);
+      record(c);
+      return c;
+    },
+    [record, ctx],
+  );
+  /** Choose the full or short version of a session (#28). */
+  const chooseVariant = useCallback(
+    (item: PrescriptionItem, activity: Activity, variant: exercises.Variant) => {
+      const c = exercises.chooseVariant(ctx(item, activity.id), activity, item.session!, variant);
+      if (c) record(c);
+    },
+    [record, ctx],
+  );
   const setSkipped = useCallback(
     (item: PrescriptionItem, skipped: boolean) => record(completion.setSkipped(ctx(item, item.key), skipped)),
     [record, ctx],
@@ -183,6 +201,6 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     reload: load,
     /** Latest observed value on or before this day, per plan measurement id. */
     latestMeasurement: previous,
-    actions: { advance, setDone, setSkipped, setDayType, addMeasurement, removeObservation, correctObservation},
+    actions: { advance, setDone, setSkipped, tickExercise, chooseVariant, setDayType, addMeasurement, removeObservation, correctObservation },
   };
 }

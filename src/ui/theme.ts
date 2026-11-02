@@ -14,6 +14,8 @@ export const colors = {
   onAccent: '#FFFFFF',
   /** Action text on ink surfaces (toast Undo). */
   onInkAction: '#BFD8CD',
+  /** A raised control on ink surfaces (the Full/Short switch track). */
+  inkRaised: '#3A3833',
   /** Secondary text on ink surfaces. */
   onInkMuted: '#D9D5CC',
   scrim: 'rgba(28, 27, 24, 0.32)',

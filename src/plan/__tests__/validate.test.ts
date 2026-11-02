@@ -25,7 +25,11 @@ describe.each([
 const shapeMutations: [string, (p: any) => void][] = [
   ['bad time format', (p) => (p.activities[0].time = '7:00')],
   ['unknown property', (p) => (p.activities[0].colour = 'red')],
-  ['newer formatVersion', (p) => (p.formatVersion = 3)],
+  ['newer formatVersion', (p) => (p.formatVersion = 4)],
+  ['meal ingredients on a formatVersion 2 plan', (p) => ((p.formatVersion = 2), (p.activities.find((a: any) => a.kind === 'meal').ingredients = [{ name: 'Oats', grams: 40 }]))],
+  ['meal preparation on a formatVersion 1 plan', (p) => ((p.formatVersion = 1), (p.activities.find((a: any) => a.kind === 'meal').preparation = 'Mix it'))],
+  ['unknown ingredient property', (p) => ((p.formatVersion = 3), (p.activities.find((a: any) => a.kind === 'meal').ingredients = [{ name: 'Oats', cups: 0.5 }]))],
+  ['empty ingredient list', (p) => ((p.formatVersion = 3), (p.activities.find((a: any) => a.kind === 'meal').ingredients = []))],
   ['exercise on a formatVersion 1 plan', (p) => (p.exercise = { goals: ['fitness'] })],
   ['unknown equipment type', (p) => ((p.formatVersion = 2), (p.exercise = { equipment: [{ type: 'trampoline' }] }))],
   ['movement not snake_case', (p) => ((p.formatVersion = 2), (p.exercise = { limitations: [{ movement: 'Biceps Curl', status: 'avoid' }] }))],
@@ -72,9 +76,9 @@ it('applies schema defaults', () => {
   expect(lunch.flexible).toBe(false);
 });
 
-describe('formatVersion 2 (profile + exercise)', () => {
+describe('formatVersion 2+ (profile + exercise)', () => {
   const exercise = require('../../../fixtures/config/real-world-exercise.update.json').fitnessConfigUpdate.exercise;
-  const v2 = { ...clone(seed), formatVersion: 2, exercise, profile: { displayName: 'Kevin', notes: ['Two kids'] } };
+  const v2 = { ...clone(seed), exercise, profile: { displayName: 'Kevin', notes: ['Two kids'] } };
   it('JSON Schema accepts the real-world exercise profile', () => {
     expect(contractValidate(v2) ? [] : contractValidate.errors).toEqual([]);
   });
@@ -92,5 +96,29 @@ describe('formatVersion 2 (profile + exercise)', () => {
     const r = validatePlan(p);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.errors.join('\n')).toMatch(message);
+  });
+});
+
+describe('formatVersion 3 (meal ingredients and preparation, #26)', () => {
+  const lunch = (p: any) => p.activities.find((a: any) => a.id === 'lunch');
+  it('the seed lunch says exactly what to prepare and how', () => {
+    expect(seed.formatVersion).toBe(3);
+    expect(lunch(seed).ingredients.map((g: any) => g.name)).toEqual(['High-protein yoghurt', 'Rolled oats', 'Protein powder', 'Water']);
+    expect(lunch(seed).preparation).toMatch(/water/i);
+  });
+  it.each([
+    ['ingredients on a non-meal', (p: any) => (p.activities.find((a: any) => a.kind !== 'meal').ingredients = [{ name: 'Chalk', grams: 5 }]), /meals only/],
+    ['preparation on a non-meal', (p: any) => (p.activities.find((a: any) => a.kind !== 'meal').preparation = 'Warm up'), /meals only/],
+    ['an ingredient with no amount at all', (p: any) => (lunch(p).ingredients = [{ name: 'Oats' }]), /needs grams, ml or a measure/],
+  ])('rejects (semantic): %s', (_n, mutate, message) => {
+    const p = clone(seed);
+    mutate(p);
+    const r = validatePlan(p);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors.join('\n')).toMatch(message);
+  });
+  it('older plans still load (v1 generic fixture, v2 prescription example)', () => {
+    expect(validatePlan(generic).ok).toBe(true);
+    expect(validatePlan(require('../../../fixtures/plans/prescription-example.plan.json')).ok).toBe(true);
   });
 });

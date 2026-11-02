@@ -34,6 +34,29 @@ type Field = {
   title: string;
   /** What this field holds, for the AI instructions. */
   doc: string;
+  /**
+   * An id-keyed list that also accepts `{ "merge": [items] }`: items replace the ones with the same id,
+   * new ids are added, and every other item is left exactly as it was (contract 07, #26).
+   */
+  mergeById?: boolean;
+  /** How a merge lands, when the list lives inside a bigger one (meals in `activities`): in place, never reordered. */
+  merge?(raw: RawPlan, items: { id: string }[]): void;
+};
+
+/**
+ * Merge into `raw.activities` in place: same id in this part (meals, or non-meals) → replaced where it is;
+ * otherwise appended (so an id clash with the other part fails validation as a duplicate). Nothing moves.
+ */
+const mergeActivities = (isPart: (a: any) => boolean) => (raw: RawPlan, items: { id: string }[]) => {
+  const current: any[] = raw.activities ?? [];
+  const byId = new Map(items.map((m) => [m.id, m]));
+  const used = new Set<string>();
+  const out = current.map((a) => {
+    const m = isPart(a) ? byId.get(a.id) : undefined;
+    if (m) used.add(a.id);
+    return m ?? a;
+  });
+  raw.activities = [...out, ...items.filter((m) => !used.has(m.id))];
 };
 
 const meal = planParts.activity.refine((a) => a.kind === 'meal', { message: 'nutrition.meals items must have kind "meal"' });
@@ -99,21 +122,23 @@ export const sections = {
   goals: {
     title: 'Goals',
     fields: {
-      targets: top('goals', 'Measurement goals', z.array(goalSchema).max(4), 'Body measurement goals: [{ id, label, measurementId, target, direction: "decrease"|"increase"|"maintain" }]'),
+      targets: { ...top('goals', 'Measurement goals', z.array(goalSchema).max(4), 'Body measurement goals: [{ id, label, measurementId, target, direction: "decrease"|"increase"|"maintain" }]'), mergeById: true },
     },
   },
   nutrition: {
     title: 'Nutrition',
     fields: {
-      targets: nested('nutrition', 'targets', 'Daily targets', z.array(planParts.nutritionTarget).max(4), 'Daily targets: [{ id, label, quantity: "energy"|"grams", min?, max?, appliesTo? }]'),
+      targets: { ...nested('nutrition', 'targets', 'Daily targets', z.array(planParts.nutritionTarget).max(4), 'Daily targets: [{ id, label, quantity: "energy"|"grams", min?, max?, appliesTo? }]'), mergeById: true },
       eatingWindow: nested('nutrition', 'eatingWindow', 'Eating window', eatingWindowSchema, '{ start: "HH:MM", end: "HH:MM" }'),
       meals: {
         schema: z.array(meal).max(20),
         clearable: false,
         title: 'Meals',
-        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time? | when?, after?, purpose?, appliesTo?, nutrition?: { <targetId>: amount }, flexible? }]',
+        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time? | when?, after?, purpose?, appliesTo?, nutrition?: { <targetId>: amount }, flexible?, ingredients?: [{ name, grams?, ml?, measure? }], preparation? }]. ingredients: what to prepare, each with grams and/or ml where it applies plus an everyday measure written for the user (e.g. "~¾ cup", "1 scoop", "as needed"); the app shows the measure exactly as written and never converts units. preparation: short instructions for making the meal (e.g. how much water to add).',
         read: (raw) => (raw.activities ?? []).filter((a: any) => a.kind === 'meal'),
         write: (raw, value) => replaceActivities(raw, (a) => a.kind === 'meal', value as unknown[]),
+        mergeById: true,
+        merge: mergeActivities((a) => a.kind === 'meal'),
       } satisfies Field,
     },
   },
@@ -149,13 +174,15 @@ export const sections = {
         doc: 'Planned exercise and habits (not meals): [{ id, kind: "exercise"|"habit", label, detail?, time? | when?, duration?, required?, appliesTo?, tracking?, purpose?, after?: [activityId], satisfies?: requirementId, session?: { minutes?, exercises: [{ movement, label?, sets?, reps?, seconds?, loadKg?, notes? }], short?: { minutes?, exercises } } }]',
         read: (raw) => (raw.activities ?? []).filter((a: any) => a.kind !== 'meal'),
         write: (raw, value) => replaceActivities(raw, (a) => a.kind !== 'meal', value as unknown[]),
+        mergeById: true,
+        merge: mergeActivities((a) => a.kind !== 'meal'),
       } satisfies Field,
     },
   },
   tracking: {
     title: 'Tracking',
     fields: {
-      measurements: top('measurements', 'Measurements', z.array(planParts.measurement).max(8), 'What to record: [{ id, label, quantity: "mass"|"length"|"number", unitLabel?, decimals?, cadence }]'),
+      measurements: { ...top('measurements', 'Measurements', z.array(planParts.measurement).max(8), 'What to record: [{ id, label, quantity: "mass"|"length"|"number", unitLabel?, decimals?, cadence }]'), mergeById: true },
       quickLogs: top('quickLogs', 'Quick logs', z.array(quickLogSchema).max(2), 'One-tap event buttons: [{ id, label, detail? }] (max 2)'),
     },
   },
@@ -181,12 +208,31 @@ export function readConfig(raw: RawPlan): Record<SectionName, Record<string, unk
 /** Strict patch schema for a section: every field optional; clearable fields accept null. */
 export function sectionPatchSchema(name: SectionName) {
   const shape = Object.fromEntries(
-    Object.entries(sections[name].fields as Record<string, Field>).map(([k, f]) => [
-      k,
-      (f.clearable ? f.schema.nullable() : f.schema).optional(),
-    ]),
+    Object.entries(sections[name].fields as Record<string, Field>).map(([k, f]) => {
+      const whole = f.clearable ? f.schema.nullable() : f.schema;
+      if (!f.mergeById) return [k, whole.optional()];
+      // Pick the schema by shape (not z.union), so errors keep their exact paths for the AI.
+      const merge = z.strictObject({ merge: z.array((f.schema as z.ZodArray<z.ZodTypeAny>).element).min(1).max(20) });
+      const either = z.any().superRefine((v, ctx) => {
+        const r = (isMerge(v) || (v && typeof v === 'object' && !Array.isArray(v)) ? merge : whole).safeParse(v);
+        if (!r.success) for (const i of r.error.issues) ctx.addIssue({ code: 'custom', message: i.message, path: i.path });
+      });
+      return [k, either.optional()];
+    }),
   );
   return z.strictObject(shape).refine((o) => Object.keys(o).length > 0, { message: `"${name}" is empty: include at least one field` });
+}
+
+export const isMerge = (v: unknown): v is { merge: { id: string }[] } =>
+  typeof v === 'object' && v !== null && !Array.isArray(v) && Array.isArray((v as { merge?: unknown }).merge);
+
+/** `{ merge }` applied to the current list: same id → replaced in place, new id → appended, others untouched. */
+export function mergeById(current: unknown, merge: { id: string }[]): unknown[] {
+  const list = (Array.isArray(current) ? current : []) as { id: string }[];
+  const byId = new Map(merge.map((m) => [m.id, m]));
+  const out = list.map((item) => byId.get(item.id) ?? item);
+  const existing = new Set(list.map((i) => i.id));
+  return [...out, ...merge.filter((m) => !existing.has(m.id))];
 }
 
 export function fieldOf(section: SectionName, key: string): Field {

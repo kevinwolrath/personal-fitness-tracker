@@ -194,3 +194,24 @@ it('the menu is in the app shell bar, not in the scrolling day (contract 02 layo
   expect(within(screen.getByTestId('day-scroll')).queryByLabelText('Menu')).toBeNull();
   expect(within(screen.getByTestId('day-scroll')).getByTestId('day-title')).toBeTruthy();
 });
+
+it('meal rows (#26): the body opens what to prepare without completing it; the circle completes it', async () => {
+  await launch();
+  fireEvent.press(screen.getByLabelText('Fixed lunch details'));
+  const details = await screen.findByTestId('meal-details');
+  expect(within(details).getByText('High-protein yoghurt')).toBeTruthy(); // the card shows it too: lunch is next
+  expect(within(details).getByText('~¾ cup')).toBeTruthy();
+  expect(screen.getByTestId('meal-details-preparation')).toHaveTextContent(/Add water as needed/);
+  expect(screen.getByTestId('day-progress')).toHaveTextContent('0 of 5 done'); // viewing never completes
+  fireEvent.press(screen.getAllByLabelText('Close')[0]);
+  await waitFor(() => expect(screen.queryByTestId('meal-details')).toBeNull());
+
+  fireEvent.press(screen.getByLabelText(/, Fixed lunch$/)); // the circle
+  await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 5 done'));
+});
+
+it('"Do this next" shows the lunch ingredients on the card (#26)', async () => {
+  await launch(); // Thursday 09:00: lunch is next
+  expect(screen.getByTestId('next-action-meal-ingredients')).toHaveTextContent(/Rolled oats/);
+  expect(screen.getByTestId('next-action-meal-nutrition')).toHaveTextContent('≈ 1,780 kJ · 42 g protein');
+});

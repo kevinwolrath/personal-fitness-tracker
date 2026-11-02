@@ -47,6 +47,7 @@ test('sheets on the Daily Log share the header pattern and have one primary acti
     ['day type', () => page.getByRole('button', { name: /Day type:/ }).click(), 'Close'],
     ['go to date', () => page.getByTestId('date-button').click(), 'Close'],
     ['workout details', () => row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click(), 'Close'],
+    ['meal details', () => row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).click(), 'Close'],
   ];
   for (const [what, open, dismiss, confirm] of sheets) {
     await open();

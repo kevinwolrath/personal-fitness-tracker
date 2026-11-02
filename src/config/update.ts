@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { validatePlan } from '../plan/validate';
 import type { Plan } from '../plan/schema';
-import { CONFIG_SCHEMA_VERSION, fieldOf, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
+import { CONFIG_SCHEMA_VERSION, fieldOf, isMerge, mergeById, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
 
 /** A validated update: which sections, and within each, which fields (null = clear). */
 export type ConfigUpdate = {
@@ -91,10 +91,15 @@ export function applyConfigUpdate(currentRaw: RawPlan, update: ConfigUpdate): Ap
   const touched = Object.keys(update.sections) as SectionName[];
   for (const name of touched) {
     for (const [key, value] of Object.entries(update.sections[name]!)) {
-      fieldOf(name, key).write(next, value === null ? undefined : JSON.parse(JSON.stringify(value)));
+      const field = fieldOf(name, key);
+      const copy = value === null ? undefined : JSON.parse(JSON.stringify(value));
+      if (field.mergeById && isMerge(copy)) {
+        if (field.merge) field.merge(next, copy.merge);
+        else field.write(next, mergeById(field.read(next), copy.merge));
+      } else field.write(next, copy);
     }
   }
-  next.formatVersion = 2;
+  next.formatVersion = 3; // updates always produce the current format (a superset of 1 and 2)
   next.revision = (Number(currentRaw.revision) || 0) + 1;
 
   const result = validatePlan(next);

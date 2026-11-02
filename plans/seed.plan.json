@@ -1,9 +1,9 @@
 {
   "$schema": "../docs/design-contracts/plan.schema.json",
   "format": "pft-plan",
-  "formatVersion": 2,
+  "formatVersion": 3,
   "id": "weight-loss-v1",
-  "revision": 3,
+  "revision": 4,
   "title": "Weight loss · phase 1",
   "description": "School-run home days, office days and weekends. Strength sessions for muscle preservation; nightly high-intensity conditioning (VR boxing, heavy bag or battle ropes).",
   "units": {
@@ -103,9 +103,20 @@
       "id": "lunch",
       "kind": "meal",
       "label": "Fixed lunch",
-      "detail": "Cold high-protein lunch, no heating needed",
+      "detail": "Protein yoghurt and oats, no heating needed",
       "time": "12:00",
-      "purpose": "nutrition"
+      "purpose": "nutrition",
+      "nutrition": {
+        "energy": 1780,
+        "protein": 42
+      },
+      "ingredients": [
+        { "name": "High-protein yoghurt", "grams": 200, "measure": "~¾ cup" },
+        { "name": "Rolled oats", "grams": 40, "measure": "~½ cup" },
+        { "name": "Protein powder", "grams": 30, "measure": "~¼ cup / 1 scoop" },
+        { "name": "Water", "measure": "as needed" }
+      ],
+      "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency."
     },
     {
       "id": "dog-walk",

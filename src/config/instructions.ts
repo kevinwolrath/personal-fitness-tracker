@@ -22,7 +22,7 @@ export function buildAiInstructions(raw: RawPlan, today: string): string {
   const config = readConfig(raw);
   const fieldDocs = sectionNames
     .map((s) => {
-      const fields = Object.entries(sections[s].fields).map(([k, f]) => `  - ${k}${f.clearable ? ' (may be null to clear)' : ''}: ${f.doc}`);
+      const fields = Object.entries(sections[s].fields).map(([k, f]) => `  - ${k}${f.clearable ? ' (may be null to clear)' : ''}${'mergeById' in f && f.mergeById ? ' (merge by id)' : ''}: ${f.doc}`);
       return `- ${s}\n${fields.join('\n')}`;
     })
     .join('\n');
@@ -47,7 +47,7 @@ ${fence({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section
 
 Rules (the app rejects updates that break them):
 1. Include ONLY the sections you are changing. A missing section is left exactly as it is. Never repeat unchanged sections.
-2. Inside a section, include ONLY the fields you are changing. Each field you include REPLACES that whole field. To add one item to a list, send the complete new list, with the existing items plus the new one.
+2. Inside a section, include ONLY the fields you are changing. Each field you include REPLACES that whole field. Lists marked "merge by id" also accept { "merge": [items] }: each item replaces the existing one with the same id, or is added if the id is new, and every other item stays exactly as it is. Prefer merge when changing or adding one or two items (for example one meal). Otherwise, send the complete new list.
 3. To clear an optional field, set it to null (only where marked "may be null").
 4. Use exactly the field names, enum values and id formats listed here. Unknown fields or values are errors. No comments, no trailing commas, and numbers as numbers, not strings.
 5. Keep ids stable. Use lower-case-hyphen ids for plan items (meals, activities, targets, goals, measurements), and snake_case ids for movements and activity types (e.g. "hammer_curl").

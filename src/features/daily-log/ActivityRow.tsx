@@ -40,6 +40,72 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
     if (e.nativeEvent.actionName === 'details') onMore();
   };
 
+  const label = [time, a.label, !a.required ? 'optional' : null, skipped ? 'skipped' : null].filter(Boolean).join(', ');
+  const mark = (
+    <View style={[styles.mark, done && styles.markDone, skipped && styles.markSkipped]}>
+      {done ? <Text style={styles.tick}>✓</Text> : skipped ? <Text style={styles.dash}>–</Text> : null}
+    </View>
+  );
+  const body = (
+    <>
+      {showTime && (
+        <Text style={[styles.time, (done || skipped) && styles.textDone]} numberOfLines={1}>
+          {time ?? ''}
+        </Text>
+      )}
+      <View style={styles.text}>
+        <Text style={[type.body, (done || skipped) && styles.textDone]} numberOfLines={2}>
+          {a.label}
+        </Text>
+        {meta ? (
+          <Text style={[type.detail, styles.meta]} numberOfLines={2}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+  const a11yActions = [
+    { name: 'activate' },
+    { name: 'skip', label: skipped ? 'Restore' : 'Skip' },
+    { name: 'details', label: 'Details' },
+  ];
+
+  // Meals (#26): the circle is the explicit completion control; the rest of the row opens the
+  // meal's details (what to prepare). Other rows still tick off with a tap anywhere (contract 02).
+  if (a.kind === 'meal') {
+    return (
+      <View style={[styles.row, isNext && styles.next]} testID={`activity-${a.id}`}>
+        <Pressable
+          onPress={onPress}
+          onLongPress={onMore}
+          disabled={!editable}
+          style={({ pressed }) => [styles.circle, pressed && styles.pressed]}
+          role="checkbox"
+          aria-checked={done}
+          aria-disabled={!editable}
+          aria-label={label}
+          accessibilityActions={a11yActions}
+          onAccessibilityAction={onAction}
+        >
+          {mark}
+        </Pressable>
+        <Pressable
+          onPress={onMore}
+          style={({ pressed }) => [styles.main, styles.mealBody, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`${a.label} details`}
+          testID={`details-${a.id}`}
+        >
+          {body}
+          <View style={styles.more}>
+            <Text style={styles.moreText}>›</Text>
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.row, isNext && styles.next]} testID={`activity-${a.id}`}>
       <Pressable
@@ -50,33 +116,13 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
         role={isCount ? 'button' : 'checkbox'}
         aria-checked={isCount ? undefined : done}
         aria-disabled={!editable}
-        aria-label={[time, a.label, !a.required ? 'optional' : null, skipped ? 'skipped' : null].filter(Boolean).join(', ')}
+        aria-label={label}
         aria-valuetext={a11yState}
-        accessibilityActions={[
-          { name: 'activate' },
-          { name: 'skip', label: skipped ? 'Restore' : 'Skip' },
-          { name: 'details', label: 'Details' },
-        ]}
+        accessibilityActions={a11yActions}
         onAccessibilityAction={onAction}
       >
-        <View style={[styles.mark, done && styles.markDone, skipped && styles.markSkipped]}>
-          {done ? <Text style={styles.tick}>✓</Text> : skipped ? <Text style={styles.dash}>–</Text> : null}
-        </View>
-        {showTime && (
-          <Text style={[styles.time, (done || skipped) && styles.textDone]} numberOfLines={1}>
-            {time ?? ''}
-          </Text>
-        )}
-        <View style={styles.text}>
-          <Text style={[type.body, (done || skipped) && styles.textDone]} numberOfLines={2}>
-            {a.label}
-          </Text>
-          {meta ? (
-            <Text style={[type.detail, styles.meta]} numberOfLines={2}>
-              {meta}
-            </Text>
-          ) : null}
-        </View>
+        {mark}
+        {body}
         {isCount && !skipped && (
           <View style={styles.segments} testID={`count-${a.id}`}>
             {Array.from({ length: target }, (_, i) => (
@@ -103,6 +149,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingVertical: space.md, gap: space.md },
   pressed: { opacity: 0.6 },
+  // The completion circle on a meal row: a full 48 dp target, pulled left so the mark lines up with other rows.
+  circle: { width: touch, marginLeft: -(touch - 28) / 2, minHeight: touch, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center' },
+  // Starts where other rows' time column starts: mark (28) + gap, measured from the row edge.
+  mealBody: { gap: space.md, marginLeft: 28 + space.md - (touch + 28) / 2 },
   mark: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
   markDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   markSkipped: { borderStyle: 'dashed' },

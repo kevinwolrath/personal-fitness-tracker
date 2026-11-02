@@ -37,6 +37,11 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 1. **Section presence:** a section that is present is updated, and a section that is absent is untouched (byte-identical).
 2. **Field presence:** inside a present section, each field that is present **replaces** that field, and absent fields are kept. Lists are replaced whole, so adding an item means sending the full list.
+   - **Merge by id (#26).** Id-keyed lists also accept `{ "merge": [items] }`: `nutrition.meals`, `schedule.activities`, `nutrition.targets`, `goals.targets` and `tracking.measurements`, marked "merge by id" in the AI instructions.
+   - Each item **replaces the item with the same id in place**, or is **added** if the id is new. Every other item stays byte-identical and in its position.
+   - A meal can only replace a meal (and an activity an activity). An id clash with the other kind is a duplicate-id error.
+   - Merged items are validated like any other.
+   - This is how one meal is changed without resending, or resetting, the rest: `fixtures/config/lunch.update.json` adds the #26 lunch to an already-configured plan.
 3. **Clearing:** `null` clears a field marked clearable (profile and exercise fields, `nutrition.eatingWindow`, …). Required fields can't be null.
 4. **Strict:**
    - Unknown sections, fields or enum values are errors.
@@ -57,7 +62,7 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
    - removed fields read "cleared: …", never "→ —".
 
    Only sections that change are listed (see 02, "Configure layout"); the others are named in one line as staying as they are.
-7. **Apply:** only on **Apply N changes**. The new plan revision (origin `config`) and a history entry are written atomically.
+7. **Apply:** only on **Apply N changes**. The result is always the current plan format (formatVersion 3), so meals can carry `ingredients` and `preparation` (03). The new plan revision (origin `config`) and a history entry are written atomically.
 8. **No partial state:** any failure means nothing is written. Omitted sections are preserved exactly, because patches act on the raw JSON, not on the parsed plan.
 
 ## History, undo, seed and export

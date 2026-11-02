@@ -17,11 +17,11 @@ jobs:
     runs-on: [self-hosted, Windows, X64, .45]
     timeout-minutes: 60
     env:
-      ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-      GOOGLE_PLAY_SERVICE_ACCOUNT_B64: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_B64 }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - name: Checkout
@@ -33,11 +33,11 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           $required = @(
-            'ANDROID_KEYSTORE_B64',
+            'ANDROID_KEYSTORE_BASE64',
             'ANDROID_KEYSTORE_PASSWORD',
             'ANDROID_KEY_ALIAS',
             'ANDROID_KEY_PASSWORD',
-            'GOOGLE_PLAY_SERVICE_ACCOUNT_B64'
+            'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'
           )
           foreach ($name in $required) {
             if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name").Value)) {
@@ -58,8 +58,8 @@ jobs:
           $serviceFile = Join-Path $secretDir 'google-play-service-account.json'
 
           try {
-            [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_B64))
-            [IO.File]::WriteAllBytes($serviceFile, [Convert]::FromBase64String($env:GOOGLE_PLAY_SERVICE_ACCOUNT_B64))
+            [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+            [IO.File]::WriteAllText($serviceFile, $env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, [Text.UTF8Encoding]::new($false))
 
             docker build --pull -f docker/android-play.Dockerfile -t pft-google-play:$env:GITHUB_RUN_ID .
             if ($LASTEXITCODE -ne 0) { throw "Docker build failed ($LASTEXITCODE)" }

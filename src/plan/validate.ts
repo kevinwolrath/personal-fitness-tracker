@@ -50,6 +50,12 @@ export function validatePlan(input: unknown): PlanValidation {
     checkAppliesTo(`activity ${a.id}`, a.appliesTo);
     if (a.kind !== 'meal' && (a.nutrition || a.flexible)) errors.push(`activity ${a.id}: nutrition/flexible are for meals only`);
     if (a.flexible && a.nutrition) errors.push(`activity ${a.id}: a flexible meal cannot also have nutrition`);
+    if (a.kind !== 'meal' && (a.ingredients || a.preparation)) errors.push(`activity ${a.id}: ingredients/preparation are for meals only`);
+    a.ingredients?.forEach((g, i) => {
+      if (g.grams === undefined && g.ml === undefined && g.measure === undefined) {
+        errors.push(`activity ${a.id}: ingredient ${i + 1} ("${g.name}") needs grams, ml or a measure`);
+      }
+    });
     for (const key of Object.keys(a.nutrition ?? {})) {
       if (!targets.has(key)) errors.push(`activity ${a.id}: unknown nutrition target "${key}"`);
     }

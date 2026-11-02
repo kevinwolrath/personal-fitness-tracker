@@ -1,5 +1,6 @@
 /**
- * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1 and 2).
+ * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1, 2 and 3).
+ * formatVersion 3 adds meal `ingredients` and `preparation` (contract 03, #26).
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
@@ -66,6 +67,15 @@ export const requirementSchema = z.strictObject({
   time: time.optional(),
 });
 
+/** One ingredient of a meal (formatVersion 3). `measure` is the plan's everyday wording, shown as written: the app never converts units. */
+const ingredient = z.strictObject({
+  name: z.string().min(1).max(60),
+  grams: z.number().positive().max(5000).optional(),
+  ml: z.number().positive().max(5000).optional(),
+  /** e.g. "~¾ cup", "1 scoop", "as needed". */
+  measure: z.string().min(1).max(40).optional(),
+});
+
 const activity = z.strictObject({
   id,
   kind: z.enum(['exercise', 'meal', 'habit']),
@@ -89,6 +99,11 @@ const activity = z.strictObject({
   session: sessionSchema.optional(),
   /** Requirement id this activity can satisfy (one of several alternatives). */
   satisfies: id.optional(),
+  // formatVersion 3 (#26), meals only:
+  /** What goes into the meal, with target amounts. */
+  ingredients: z.array(ingredient).min(1).max(20).optional(),
+  /** How to make it, in the plan's words. */
+  preparation: z.string().min(1).max(400).optional(),
 });
 
 const measurement = z.strictObject({
@@ -222,7 +237,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -255,10 +270,18 @@ export const planSchema = z.strictObject({
       }
     });
   }
+  if (p.formatVersion < 3) {
+    p.activities.forEach((a, i) => {
+      for (const f of ['ingredients', 'preparation'] as const) {
+        if (a[f] !== undefined) ctx.addIssue({ code: 'custom', path: ['activities', i, f], message: `"${f}" needs formatVersion 3` });
+      }
+    });
+  }
 });
 
 export type Plan = z.output<typeof planSchema>;
 export type Activity = Plan['activities'][number];
+export type Ingredient = NonNullable<Activity['ingredients']>[number];
 export type Measurement = Plan['measurements'][number];
 export type NutritionTarget = Plan['nutrition']['targets'][number];
 export type Weekday = (typeof weekdays)[number];

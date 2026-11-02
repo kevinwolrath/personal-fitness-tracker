@@ -192,6 +192,28 @@ export function describeTrackingStore(
       expect(await target.snapshot()).toEqual(s);
     });
 
+    it('keeps exercise ticks (#28) on the day log and in tick/untick history, through reopen and export round trip', async () => {
+      const at = (m: string) => `2026-11-02T10:${m}:00Z`;
+      const ev = (id: string, action: any, label: string, at: string) => ({
+        id, planId: 'p', date: '2026-11-02', activityId: 'resistance', requirementId: null, action, count: 0, variant: 'full' as const, label, purpose: 'strength', at,
+      });
+      const snap = { planId: 'p', date: '2026-11-02', planRevision: 1, prescribed: { items: [] }, updatedAt: 't' };
+      const ticks = (keys: string[], status: 'pending' | 'done' = 'pending') => ({ ...log('resistance', { status, variant: 'full' }), exercisesDone: keys });
+      await store.logCompletion('p', '2026-11-02', 'resistance', ticks(['full:0:kettlebell_squat']), ev('t1', 'tick', 'Kettlebell squat', at('00')), snap);
+      await store.logCompletion('p', '2026-11-02', 'resistance', ticks(['full:0:kettlebell_squat', 'full:1:chest_press']), ev('t2', 'tick', 'Chest press', at('05')), snap);
+      await store.logCompletion('p', '2026-11-02', 'resistance', ticks(['full:1:chest_press']), ev('t3', 'untick', 'Kettlebell squat', at('06')), snap);
+
+      const again = await reopen();
+      expect((await again.getDay('p', '2026-11-02')).activities.resistance).toMatchObject({ status: 'pending', variant: 'full', exercisesDone: ['full:1:chest_press'] });
+      expect((await again.completionEvents('p', '2026-11-02')).map((e) => [e.action, e.label])).toEqual([
+        ['tick', 'Kettlebell squat'], ['tick', 'Chest press'], ['untick', 'Kettlebell squat'],
+      ]);
+      const s = await again.snapshot();
+      const target = await setupEmpty();
+      await target.restore(s);
+      expect(await target.snapshot()).toEqual(s);
+    });
+
     it('finds the first record date across every kind of record', async () => {
       expect(await store.firstRecordDate()).toBeNull();
       await store.addObservations([obs('w', 'weight', '2026-03-01', 99, 't')]);

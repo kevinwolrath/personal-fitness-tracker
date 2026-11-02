@@ -39,6 +39,12 @@ export type ActivityLog = {
   variant?: 'full' | 'short';
   /** Requirement this activity satisfied as an alternative (contract 08). */
   requirementId?: string;
+  /**
+   * Exercises ticked off within a session (#28), as keys `<variant>:<index>:<movement>` (see
+   * src/prescription/exercises.ts). Kept per variant: full and short doses differ. `variant` is then the
+   * version being done, even while `status` is still pending.
+   */
+  exercisesDone?: string[];
 };
 
 /** Append-only record of every completion action (contract 08). Never rewritten or deleted by undo. */
@@ -49,7 +55,8 @@ export type CompletionEvent = {
   /** Activity id, or `req:<id>` when a whole requirement was skipped/restored. */
   activityId: string;
   requirementId: string | null;
-  action: 'complete' | 'progress' | 'undo' | 'skip' | 'restore';
+  /** `tick`/`untick`: one exercise in a session (label = the exercise); `switch`: full ↔ short version chosen (#28). */
+  action: 'complete' | 'progress' | 'undo' | 'skip' | 'restore' | 'tick' | 'untick' | 'switch';
   count: number;
   variant: 'full' | 'short' | null;
   label: string;

@@ -67,6 +67,7 @@ export const exportSchema = z.object({
       updatedAt: z.string(),
       variant: z.enum(['full', 'short']).optional(),
       requirementId: z.string().optional(),
+      exercisesDone: z.array(z.string()).optional(),
     }),
   ),
   dayOverrides: z.array(z.object({ planId: z.string(), date, dayTypeId: z.string() })),
@@ -107,7 +108,7 @@ export const exportSchema = z.object({
     .array(
       z.object({
         id: z.string(), planId: z.string(), date, activityId: z.string(), requirementId: z.string().nullable(),
-        action: z.enum(['complete', 'progress', 'undo', 'skip', 'restore']), count: z.number(),
+        action: z.enum(['complete', 'progress', 'undo', 'skip', 'restore', 'tick', 'untick', 'switch']), count: z.number(),
         variant: z.enum(['full', 'short']).nullable(), label: z.string(), purpose: z.string().nullable(), at: z.string(),
       }),
     )

@@ -13,8 +13,8 @@ permissions:
 
 jobs:
   deploy-internal:
-    # Self-hosted .45 only. No GitHub-hosted runner fallback.
-    runs-on: [self-hosted, Windows, X64, .45]
+    # Dedicated Personal Fitness Tracker runner on .45. No GitHub-hosted runner fallback.
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
     timeout-minutes: 60
     env:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

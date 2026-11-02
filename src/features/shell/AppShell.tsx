@@ -12,6 +12,8 @@ import { Toast, type ToastState } from '../../ui/Toast';
 import { colors, space, touch } from '../../ui/theme';
 import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { AppMenu, type AppMenuItem } from './AppMenu';
+import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
+import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
@@ -20,7 +22,18 @@ const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{
  * Screens render below the bar and own only their screen header and content; the bar never scrolls.
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <RemindersProvider>
+      <Shell>{children}</Shell>
+    </RemindersProvider>
+  );
+}
+
+function Shell({ children }: { children: ReactNode }) {
   const { store } = useApp();
+  const reminders = useReminders();
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  const now = new Date();
   // The open Daily Log day, so an import defaults to it (contract 06).
   const params = useGlobalSearchParams<{ date?: string }>();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,6 +61,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const items: AppMenuItem[] = [
     { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
     { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
+    {
+      key: 'reminders',
+      label: 'Reminders',
+      detail: remindersStatus(reminders, now.getHours() * 60 + now.getMinutes()),
+      onSelect: () => setRemindersOpen(true),
+    },
     { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
   ];
 
@@ -74,6 +93,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Toast toast={toast} onDone={clearToast} />
       </SafeAreaView>
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
+      <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <ConfirmDialog
         visible={confirmExport}
         title="Export all fitness data?"

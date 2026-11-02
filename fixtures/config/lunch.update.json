@@ -36,7 +36,14 @@
                 "measure": "as needed"
               }
             ],
-            "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency."
+            "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency.",
+            "notifications": [
+              {
+                "offsetMinutes": -5,
+                "title": "Lunch",
+                "body": "Lunch in 5 minutes"
+              }
+            ]
           }
         ]
       }

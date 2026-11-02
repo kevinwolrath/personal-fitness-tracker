@@ -47,7 +47,7 @@ describe('applying updates', () => {
     const strip = ({ exercise: _e, formatVersion: _f, revision: _r, ...rest }: RawPlan) => JSON.stringify(rest);
     expect(strip(nextRaw)).toBe(strip(raw));
     expect(nextRaw.exercise.limitations).toContainEqual({ movement: 'biceps_curl', status: 'avoid', reason: 'aggravates elbow' });
-    expect(nextRaw).toMatchObject({ formatVersion: 3, revision: seed.revision + 1 });
+    expect(nextRaw).toMatchObject({ formatVersion: 4, revision: seed.revision + 1 });
   });
 
   it('nutrition-only payload leaves exercise (and the rest) untouched', () => {
@@ -165,7 +165,7 @@ describe('preview', () => {
     delete lunch0.preparation;
     delete lunch0.nutrition;
     const { nextRaw, update, raw } = apply(fixture('lunch'), before);
-    expect(nextRaw.formatVersion).toBe(3); // the update upgrades the plan format
+    expect(nextRaw.formatVersion).toBe(4); // the update upgrades the plan format
     // Lunch-only: every other meal is byte-identical (merge by id).
     const others = (r: any) => JSON.stringify(r.activities.filter((a: any) => a.id !== 'lunch'));
     expect(others(nextRaw)).toBe(others(raw));
@@ -182,7 +182,7 @@ describe('preview', () => {
     const all = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
     expect(all).toContain('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
     // The seed lunch now carries ingredients (#26); this older update replaces the meal without them.
-    expect(all.find((t) => t.startsWith('Fixed lunch at 12:00:'))).toMatch(/energy 1,780 kJ, protein 42 g → energy 2,100 kJ, protein 55 g; cleared: purpose, ingredients and preparation$/);
+    expect(all.find((t) => t.startsWith('Fixed lunch at 12:00:'))).toMatch(/energy 1,780 kJ, protein 42 g → energy 2,100 kJ, protein 55 g; cleared: purpose, ingredients, preparation and reminders$/);
     expect(all.find((t) => t.startsWith('Conditioning:'))).toContain('activities VR boxing, Heavy bag rounds, Battle ropes');
     expect(all.join('\n')).not.toMatch(/—|sessionsPerWeek|max 7530|\b\d{4,}\b/);
   });
@@ -255,7 +255,7 @@ describe('persistence, history, undo and the seed', () => {
     const before = (await store.getActivePlan())!;
     const { nextRaw, touched } = apply(fixture('real-world-exercise'), JSON.parse(before.json));
     const after = await commitConfigUpdate(store, before, nextRaw, touched, { any: 'payload' });
-    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 3 });
+    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 4 });
     const [change] = await store.configHistory();
     expect(change).toMatchObject({ sections: ['exercise'], fromRevision: before.revision, toRevision: after.revision, previousPlanJson: before.json });
 
@@ -321,5 +321,37 @@ describe('merge by id (#26): change one list item without resending the list', (
     const text = buildAiInstructions(baseRaw(), '2026-11-02');
     expect(text).toContain('{ "merge": [items] }');
     expect(text).toMatch(/- meals \(merge by id\):/);
+  });
+});
+
+describe('reminders in configuration (#30)', () => {
+  const update = (body: object) => {
+    const p = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, ...body } }));
+    if (!p.ok) throw new Error(p.errors.join());
+    return applyConfigUpdate(baseRaw(), p.update);
+  };
+  const reminders = (raw: any, id: string) => raw.activities.find((a: any) => a.id === id).notifications;
+  it('changing one activity’s reminder (merge by id) leaves every other activity’s reminders untouched', () => {
+    const snack = { ...baseRaw().activities.find((a: any) => a.id === 'snack'), notifications: [{ at: '15:30', title: 'Snack', body: 'Snack time' }] };
+    const a = update({ nutrition: { meals: { merge: [snack] } } });
+    if (!a.ok) throw new Error(a.errors.join());
+    expect(reminders(a.nextRaw, 'snack')).toEqual([{ at: '15:30', title: 'Snack', body: 'Snack time' }]);
+    expect(reminders(a.nextRaw, 'lunch')).toEqual(reminders(baseRaw(), 'lunch'));
+    expect(reminders(a.nextRaw, 'dinner')).toEqual(reminders(baseRaw(), 'dinner'));
+  });
+  it('a reminder can be added to a non-meal and removed again', () => {
+    const resistance = { ...baseRaw().activities.find((a: any) => a.id === 'resistance'), notifications: [{ at: '21:25', title: 'Strength', body: 'Strength workout soon' }] };
+    const added = update({ schedule: { activities: { merge: [resistance] } } });
+    if (!added.ok) throw new Error(added.errors.join());
+    expect(reminders(added.nextRaw, 'resistance')).toHaveLength(1);
+    const { notifications: _n, ...without } = resistance;
+    const removed = applyConfigUpdate(added.nextRaw, (parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, schedule: { activities: { merge: [without] } } } })) as any).update);
+    if (!removed.ok) throw new Error(removed.errors.join());
+    expect(reminders(removed.nextRaw, 'resistance')).toBeUndefined();
+  });
+  it('turning reminders on or off is not configuration: the plan has no such field', () => {
+    const p = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, tracking: { remindersEnabled: true } } }));
+    expect(p.ok).toBe(false);
+    expect(buildAiInstructions(baseRaw(), '2026-11-02')).toMatch(/never try to turn them on or off/);
   });
 });

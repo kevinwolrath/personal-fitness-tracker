@@ -36,6 +36,7 @@ const fieldLabels: Record<string, string> = {
   maxSessionMinutes: 'longest session',
   modalities: 'activities',
   weightsKg: 'weights',
+  notifications: 'reminders',
   nutrition: '', // a meal's amounts read on their own: "energy 2,100 kJ, protein 55 g"
 };
 const fieldLabel = (k: string) => fieldLabels[k] ?? words(k);
@@ -49,6 +50,12 @@ function compact(v: unknown): string {
     const o = v as Record<string, unknown>;
     if ('minutes' in o && Object.keys(o).length === 1) return `${o.minutes} min`;
     if (isRange(o)) return `${num(o.min as number)}–${num(o.max as number)}`;
+    // A reminder (#30): "“Lunch in 5 minutes” 5 min before", "“Time for your snack” at 16:00".
+    if (typeof o.title === 'string' && typeof o.body === 'string' && ('offsetMinutes' in o || 'at' in o)) {
+      const m = o.offsetMinutes as number | undefined;
+      const when = o.at ? `at ${o.at}` : m === 0 ? 'at the start' : m! < 0 ? `${-m!} min before` : `${m} min after`;
+      return `“${o.body}” ${when}`;
+    }
     // A meal ingredient (#26): "Rolled oats 40 g (~½ cup)".
     if (typeof o.name === 'string' && ('grams' in o || 'ml' in o || 'measure' in o)) {
       const amount = [o.grams !== undefined ? `${num(o.grams as number)} g` : null, o.ml !== undefined ? `${num(o.ml as number)} ml` : null].filter(Boolean).join(' / ');

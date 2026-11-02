@@ -89,6 +89,8 @@ It's signed with Expo's debug keystore, which is fine for sideloading but not fo
 
 **Import from screenshots** (in the ☰ menu) opens your photo library, so you can pick several screenshots at once. It reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
 
+**Reminders** (☰ menu) are off until you turn them on. Your plan decides what and when: by default a nudge before lunch, the snack and dinner. Done or skipped items stay quiet, and changing the plan reschedules them. The app asks for notification permission only when you tap **Turn on reminders**. See [contract 10](docs/design-contracts/10-reminders.md).
+
 **Export all data** (also in the ☰ menu) asks first, then saves your complete history as one JSON file: the share sheet on a phone, a download on the web.
 
 ## Today: do this next

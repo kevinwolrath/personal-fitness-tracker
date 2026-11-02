@@ -1,9 +1,9 @@
 {
   "$schema": "../docs/design-contracts/plan.schema.json",
   "format": "pft-plan",
-  "formatVersion": 3,
+  "formatVersion": 4,
   "id": "weight-loss-v1",
-  "revision": 4,
+  "revision": 5,
   "title": "Weight loss · phase 1",
   "description": "School-run home days, office days and weekends. Strength sessions for muscle preservation; nightly high-intensity conditioning (VR boxing, heavy bag or battle ropes).",
   "units": {
@@ -116,7 +116,10 @@
         { "name": "Protein powder", "grams": 30, "measure": "~¼ cup / 1 scoop" },
         { "name": "Water", "measure": "as needed" }
       ],
-      "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency."
+      "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency.",
+      "notifications": [
+        { "offsetMinutes": -5, "title": "Lunch", "body": "Lunch in 5 minutes" }
+      ]
     },
     {
       "id": "dog-walk",
@@ -169,6 +172,9 @@
       "when": "afternoon",
       "after": [
         "lunch"
+      ],
+      "notifications": [
+        { "at": "16:00", "title": "Snack", "body": "Time for your snack" }
       ]
     },
     {
@@ -178,7 +184,10 @@
       "detail": "Usually 6:30–7:30 pm",
       "time": "18:30",
       "flexible": true,
-      "purpose": "nutrition"
+      "purpose": "nutrition",
+      "notifications": [
+        { "offsetMinutes": -15, "title": "Dinner", "body": "Dinner in 15 minutes" }
+      ]
     },
     {
       "id": "resistance",

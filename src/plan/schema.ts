@@ -1,6 +1,7 @@
 /**
  * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1, 2 and 3).
  * formatVersion 3 adds meal `ingredients` and `preparation` (contract 03, #26).
+ * formatVersion 4 adds activity `notifications`: plan-defined local reminders (contract 10, #30).
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
@@ -76,6 +77,17 @@ const ingredient = z.strictObject({
   measure: z.string().min(1).max(40).optional(),
 });
 
+/**
+ * One local reminder for an activity (formatVersion 4). Timing and wording are plan data: exactly one of
+ * `offsetMinutes` (from the activity's start: its `time`, or the start of its day part) or `at` (HH:MM).
+ */
+const notification = z.strictObject({
+  offsetMinutes: z.number().int().min(-720).max(720).optional(),
+  at: time.optional(),
+  title: z.string().min(1).max(40),
+  body: z.string().min(1).max(120),
+});
+
 const activity = z.strictObject({
   id,
   kind: z.enum(['exercise', 'meal', 'habit']),
@@ -104,6 +116,9 @@ const activity = z.strictObject({
   ingredients: z.array(ingredient).min(1).max(20).optional(),
   /** How to make it, in the plan's words. */
   preparation: z.string().min(1).max(400).optional(),
+  // formatVersion 4 (#30):
+  /** Local reminders for this activity. Absent or empty: no reminder. */
+  notifications: z.array(notification).max(3).optional(),
 });
 
 const measurement = z.strictObject({
@@ -237,7 +252,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -270,6 +285,11 @@ export const planSchema = z.strictObject({
       }
     });
   }
+  if (p.formatVersion < 4) {
+    p.activities.forEach((a, i) => {
+      if (a.notifications !== undefined) ctx.addIssue({ code: 'custom', path: ['activities', i, 'notifications'], message: '"notifications" needs formatVersion 4' });
+    });
+  }
   if (p.formatVersion < 3) {
     p.activities.forEach((a, i) => {
       for (const f of ['ingredients', 'preparation'] as const) {
@@ -282,6 +302,7 @@ export const planSchema = z.strictObject({
 export type Plan = z.output<typeof planSchema>;
 export type Activity = Plan['activities'][number];
 export type Ingredient = NonNullable<Activity['ingredients']>[number];
+export type PlanNotification = NonNullable<Activity['notifications']>[number];
 export type Measurement = Plan['measurements'][number];
 export type NutritionTarget = Plan['nutrition']['targets'][number];
 export type Weekday = (typeof weekdays)[number];

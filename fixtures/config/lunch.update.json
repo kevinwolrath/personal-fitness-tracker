@@ -1,0 +1,63 @@
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "nutrition": {
+      "meals": [
+        {
+          "id": "lunch",
+          "kind": "meal",
+          "label": "Fixed lunch",
+          "detail": "Protein yoghurt and oats, no heating needed",
+          "time": "12:00",
+          "purpose": "nutrition",
+          "nutrition": {
+            "energy": 1780,
+            "protein": 42
+          },
+          "ingredients": [
+            {
+              "name": "High-protein yoghurt",
+              "grams": 200,
+              "measure": "~¾ cup"
+            },
+            {
+              "name": "Rolled oats",
+              "grams": 40,
+              "measure": "~½ cup"
+            },
+            {
+              "name": "Protein powder",
+              "grams": 30,
+              "measure": "~¼ cup / 1 scoop"
+            },
+            {
+              "name": "Water",
+              "measure": "as needed"
+            }
+          ],
+          "preparation": "Mix yoghurt and protein powder first, then add oats. Add water as needed to reach the desired consistency."
+        },
+        {
+          "id": "snack",
+          "kind": "meal",
+          "label": "Fixed snack",
+          "detail": "Anti-hunger snack before family dinner",
+          "purpose": "nutrition",
+          "when": "afternoon",
+          "after": [
+            "lunch"
+          ]
+        },
+        {
+          "id": "dinner",
+          "kind": "meal",
+          "label": "Family dinner",
+          "detail": "Usually 6:30–7:30 pm",
+          "time": "18:30",
+          "flexible": true,
+          "purpose": "nutrition"
+        }
+      ]
+    }
+  }
+}

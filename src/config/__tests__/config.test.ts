@@ -47,7 +47,7 @@ describe('applying updates', () => {
     const strip = ({ exercise: _e, formatVersion: _f, revision: _r, ...rest }: RawPlan) => JSON.stringify(rest);
     expect(strip(nextRaw)).toBe(strip(raw));
     expect(nextRaw.exercise.limitations).toContainEqual({ movement: 'biceps_curl', status: 'avoid', reason: 'aggravates elbow' });
-    expect(nextRaw).toMatchObject({ formatVersion: 2, revision: seed.revision + 1 });
+    expect(nextRaw).toMatchObject({ formatVersion: 3, revision: seed.revision + 1 });
   });
 
   it('nutrition-only payload leaves exercise (and the rest) untouched', () => {
@@ -156,11 +156,29 @@ describe('rejecting bad payloads with actionable errors', () => {
 });
 
 describe('preview', () => {
+  it('meal ingredients and preparation read as a shopping line, not JSON (#26)', () => {
+    // A configured plan from before #26: formatVersion 2, lunch without ingredients.
+    const before = baseRaw();
+    before.formatVersion = 2;
+    const lunch0 = before.activities.find((a: any) => a.id === 'lunch');
+    delete lunch0.ingredients;
+    delete lunch0.preparation;
+    delete lunch0.nutrition;
+    const { nextRaw, update, raw } = apply(fixture('lunch'), before);
+    expect(nextRaw.formatVersion).toBe(3); // the update upgrades the plan format
+    const lines = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
+    const lunch = lines.find((t) => t.startsWith('Fixed lunch'))!;
+    expect(lunch).toContain('ingredients High-protein yoghurt 200 g (~¾ cup), Rolled oats 40 g (~½ cup)');
+    expect(lunch).toContain('Water (as needed)');
+    expect(lunch).toContain('preparation Mix yoghurt and protein powder first');
+  });
+
   it('reads in plain language: units, thousands separators, labels, and no "—" (#21)', () => {
     const { nextRaw, update, raw } = apply(fixture('combined'));
     const all = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
     expect(all).toContain('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
-    expect(all).toContain('Fixed lunch at 12:00: energy 2,100 kJ, protein 55 g; cleared: purpose');
+    // The seed lunch now carries ingredients (#26); this older update replaces the meal without them.
+    expect(all.find((t) => t.startsWith('Fixed lunch at 12:00:'))).toMatch(/energy 1,780 kJ, protein 42 g → energy 2,100 kJ, protein 55 g; cleared: purpose, ingredients and preparation$/);
     expect(all.find((t) => t.startsWith('Conditioning:'))).toContain('activities VR boxing, Heavy bag rounds, Battle ropes');
     expect(all.join('\n')).not.toMatch(/—|sessionsPerWeek|max 7530|\b\d{4,}\b/);
   });
@@ -233,7 +251,7 @@ describe('persistence, history, undo and the seed', () => {
     const before = (await store.getActivePlan())!;
     const { nextRaw, touched } = apply(fixture('real-world-exercise'), JSON.parse(before.json));
     const after = await commitConfigUpdate(store, before, nextRaw, touched, { any: 'payload' });
-    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 2 });
+    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 3 });
     const [change] = await store.configHistory();
     expect(change).toMatchObject({ sections: ['exercise'], fromRevision: before.revision, toRevision: after.revision, previousPlanJson: before.json });
 

@@ -111,7 +111,7 @@ export const sections = {
         schema: z.array(meal).max(20),
         clearable: false,
         title: 'Meals',
-        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time? | when?, after?, purpose?, appliesTo?, nutrition?: { <targetId>: amount }, flexible? }]',
+        doc: 'Planned meals (activities with kind "meal"): [{ id, kind: "meal", label, detail?, time? | when?, after?, purpose?, appliesTo?, nutrition?: { <targetId>: amount }, flexible?, ingredients?: [{ name, grams?, ml?, measure? }], preparation? }]. ingredients: what to prepare, each with grams and/or ml where it applies plus an everyday measure written for the user (e.g. "~¾ cup", "1 scoop", "as needed"); the app shows the measure exactly as written and never converts units. preparation: short instructions for making the meal (e.g. how much water to add).',
         read: (raw) => (raw.activities ?? []).filter((a: any) => a.kind === 'meal'),
         write: (raw, value) => replaceActivities(raw, (a) => a.kind === 'meal', value as unknown[]),
       } satisfies Field,

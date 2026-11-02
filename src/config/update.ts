@@ -94,7 +94,7 @@ export function applyConfigUpdate(currentRaw: RawPlan, update: ConfigUpdate): Ap
       fieldOf(name, key).write(next, value === null ? undefined : JSON.parse(JSON.stringify(value)));
     }
   }
-  next.formatVersion = 2;
+  next.formatVersion = 3; // updates always produce the current format (a superset of 1 and 2)
   next.revision = (Number(currentRaw.revision) || 0) + 1;
 
   const result = validatePlan(next);

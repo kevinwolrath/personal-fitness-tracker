@@ -49,6 +49,11 @@ function compact(v: unknown): string {
     const o = v as Record<string, unknown>;
     if ('minutes' in o && Object.keys(o).length === 1) return `${o.minutes} min`;
     if (isRange(o)) return `${num(o.min as number)}–${num(o.max as number)}`;
+    // A meal ingredient (#26): "Rolled oats 40 g (~½ cup)".
+    if (typeof o.name === 'string' && ('grams' in o || 'ml' in o || 'measure' in o)) {
+      const amount = [o.grams !== undefined ? `${num(o.grams as number)} g` : null, o.ml !== undefined ? `${num(o.ml as number)} ml` : null].filter(Boolean).join(' / ');
+      return [o.name, amount || null, o.measure ? `(${o.measure})` : null].filter(Boolean).join(' ');
+    }
     // Nutrition amounts keyed by target id.
     const keys = Object.keys(o);
     if (keys.length && keys.every((k) => fmt.targets.has(k) && typeof o[k] === 'number')) {

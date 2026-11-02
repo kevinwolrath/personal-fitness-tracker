@@ -215,3 +215,87 @@ it('"Do this next" shows the lunch ingredients on the card (#26)', async () => {
   expect(screen.getByTestId('next-action-meal-ingredients')).toHaveTextContent(/Rolled oats/);
   expect(screen.getByTestId('next-action-meal-nutrition')).toHaveTextContent('≈ 1,780 kJ · 42 g protein');
 });
+
+describe('reminders (#30)', () => {
+  const n = () => (global as any).__notifications;
+  const ours = () => [...n().scheduled.keys()].filter((id: string) => id.startsWith('pft-reminder|'));
+  const todays = (activity: string) => ours().filter((id: string) => id.includes('|2026-11-05|') && id.includes(`|${activity}|`));
+  beforeEach(() => {
+    n().scheduled.clear();
+    n().permission = { granted: false, status: 'undetermined', canAskAgain: true };
+    n().deny = false;
+    n().requests = 0;
+    (global as any).__secureStore.clear();
+  });
+  // Let the (promise-only) reminder sync run to completion; fake timers freeze setImmediate.
+  const settle = () =>
+    act(async () => {
+      for (let i = 0; i < 50; i++) await Promise.resolve();
+    });
+
+  it('off by default: nothing is scheduled and permission is never asked on launch', async () => {
+    await launch();
+    await settle();
+    expect(ours()).toHaveLength(0);
+    expect(n().requests).toBe(0);
+  });
+
+  it('Turn on asks once, schedules the plan’s week, and switching off/on cancels and rebuilds; completing lunch cancels it', async () => {
+    const first = await launch();
+    await chooseFromMenu('Reminders');
+    fireEvent.press(await screen.findByText('Turn on reminders'));
+    await settle();
+    expect(n().requests).toBe(1);
+    // Thursday 09:00: lunch, snack and dinner today + 6 more days.
+    await waitFor(() => expect(ours()).toHaveLength(21));
+    expect(todays('lunch')).toHaveLength(1);
+
+    // Completing lunch cancels today's lunch reminder only.
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    fireEvent.press(screen.getByLabelText(/, Fixed lunch$/));
+    await settle();
+    await waitFor(() => expect(todays('lunch')).toHaveLength(0));
+    expect(ours()).toHaveLength(20);
+
+    // Restart: no duplicates, nothing lost, no new permission prompt.
+    first.unmount();
+    await act(async () => {});
+    await launch();
+    await settle();
+    await waitFor(() => expect(ours()).toHaveLength(20));
+    expect(n().requests).toBe(1);
+
+    // Off cancels everything; on rebuilds from the current plan.
+    await chooseFromMenu('Reminders');
+    fireEvent(await screen.findByTestId('reminders-switch'), 'valueChange', false);
+    await settle();
+    await waitFor(() => expect(ours()).toHaveLength(0));
+    fireEvent.press(await screen.findByText('Turn on reminders'));
+    await settle();
+    await waitFor(() => expect(ours()).toHaveLength(20));
+  });
+
+  it('denied permission: the app carries on, shows it is blocked, and never asks again by itself', async () => {
+    n().deny = true;
+    const first = await launch();
+    await chooseFromMenu('Reminders');
+    fireEvent.press(await screen.findByText('Turn on reminders'));
+    await settle();
+    expect(await screen.findByTestId('reminders-blocked')).toBeTruthy();
+    expect(ours()).toHaveLength(0);
+    first.unmount();
+    await act(async () => {});
+    await launch();
+    await settle();
+    expect(n().requests).toBe(1);
+    expect(screen.getByTestId('day-progress')).toBeTruthy();
+  });
+
+  it('tapping a reminder opens that day with the activity’s details', async () => {
+    await launch();
+    await settle();
+    const tap = [...n().listeners][0] as (r: unknown) => void;
+    await act(async () => tap({ notification: { request: { content: { data: { date: '2026-11-05', activityId: 'snack' } } } } }));
+    expect(await screen.findByTestId('modal-title')).toHaveTextContent('Fixed snack'); // its details sheet is open
+  });
+});

@@ -22,6 +22,7 @@ import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
+import { useReminders } from '../reminders/RemindersProvider';
 import { WorkoutCard } from './WorkoutCard';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { sessionProgress, switchNeedsConfirm, type ChecklistRow, type Variant } from '../../prescription/exercises';
@@ -43,7 +44,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
 export function DayLogScreen() {
   const { store, plan } = useApp();
   const today = useToday();
-  const params = useLocalSearchParams<{ date?: string }>();
+  const params = useLocalSearchParams<{ date?: string; focus?: string }>();
   const date: LocalDate = isLocalDate(params.date) ? params.date : today;
   const setDate = useCallback(
     (d: LocalDate) => router.setParams({ date: d === today ? undefined : d }),
@@ -76,6 +77,23 @@ export function DayLogScreen() {
   const editable = date <= today;
 
   const [sheetItem, setSheetItem] = useState<PrescriptionItem | null>(null);
+
+  // Reminders follow the day: a completion, skip or day-type change re-reconciles them (contract 10).
+  const reminders = useReminders();
+  const recordsSeen = useRef<unknown>(null);
+  useEffect(() => {
+    if (recordsSeen.current && recordsSeen.current !== records) reminders.sync();
+    recordsSeen.current = records;
+  }, [records, reminders]);
+
+  // Opened from a reminder: show that activity's details on its day, once.
+  useEffect(() => {
+    if (!params.focus) return;
+    const item = prescription.items.find((i) => i.key === params.focus || i.options.some((o) => o.id === params.focus));
+    if (!item) return;
+    setSheetItem(item);
+    router.setParams({ focus: undefined });
+  }, [params.focus, prescription]);
   // Workout card (#28): collapsed by default; remembered per day and item for this app session.
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const expandKey = (item: PrescriptionItem) => `${date}|${item.key}`;

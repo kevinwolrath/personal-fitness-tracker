@@ -112,3 +112,35 @@ test.describe('visual', () => {
     await expect(page).toHaveScreenshot('meal-sheet.png');
   });
 });
+
+test('an already-configured plan gets the lunch with a lunch-only update; the other meals stay exactly as they were', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  // A plan configured before #26: formatVersion 2, lunch without ingredients, a customised snack.
+  const before = JSON.parse(JSON.stringify(seed));
+  before.formatVersion = 2;
+  for (const a of before.activities) {
+    if (a.id === 'lunch') {
+      delete a.ingredients;
+      delete a.preparation;
+      delete a.nutrition;
+      a.detail = 'Cold high-protein lunch, no heating needed';
+    }
+    if (a.id === 'snack') a.detail = 'Apple and cheese';
+  }
+  await seedPlan(page, before);
+  await openAt(page, at('09:00'));
+  const { chooseFromMenu } = await import('./helpers');
+  await chooseFromMenu(page, 'Configure with AI');
+  await page.getByLabel('AI update').fill(require('node:fs').readFileSync('fixtures/config/lunch.update.json', 'utf8'));
+  await page.getByRole('button', { name: 'Check update' }).click();
+  await expect(page.getByTestId('preview-nutrition')).toContainText('Fixed lunch');
+  await page.getByTestId('preview-nutrition').getByRole('button').first().click();
+  await expect(page.getByTestId('preview-nutrition')).not.toContainText('Fixed snack');
+  await page.getByRole('button', { name: /^Apply 1 change$/ }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await expect(row(page, 'snack')).toContainText('Apple and cheese'); // untouched
+  await row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).click();
+  await expect(sheet(page)).toContainText('Protein powder');
+  await expect(page.getByTestId('meal-details-preparation')).toContainText('Add water as needed');
+});

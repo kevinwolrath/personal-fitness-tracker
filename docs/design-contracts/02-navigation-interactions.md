@@ -83,6 +83,7 @@ The log shows **one day at a time**. Its screen header (see Layout layers): `‹
 
 | Action | Primary (tap) | Gesture shortcut | Why the gesture is (or isn't) justified |
 |---|---|---|---|
+| Tick off one exercise of a workout | Tap its circle (48 dp) on the **Do this next** card (the next exercise, or any when expanded) or in the item sheet. The exercise's name or ⓘ opens its guide | None | The workout card is a live checklist (#28, contract 08). Ticking the last exercise completes the workout. |
 | Complete or uncomplete a `check` activity | Tap the row body. **Meals:** tap the completion circle (48 dp) | None | One tap is already minimal. A swipe would be slower. A meal row holds drill-down information (what to prepare), so completion gets its own explicit control (#26). |
 | See what a meal is (ingredients, amounts, preparation, energy/protein) | **Meals:** tap anywhere on the row except the circle; the `›` marks it. Opens the activity sheet. Viewing never completes anything, and closing returns to the same scroll position | Long-press | "What exactly am I eating, and how much?" is one tap from any day: past, today or future. |
 | Advance a `count` activity | Tap the next segment of the segmented row (for example ●●○) | None | Tapping segments shows progress and is one tap per unit. |

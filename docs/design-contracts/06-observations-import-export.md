@@ -58,7 +58,7 @@ App menu (☰) → **Export all data** → confirm **Export JSON**. Native opens
   "counts": { "observations": 0, "activityLogs": 0, "dayOverrides": 0, "quickLogs": 0, "imports": 0 },
   "plans": [{ "planId", "revision", "formatVersion", "importedAt", "plan": { /* package: goals, targets, schedule */ } }],
   "observations": [ /* every Observation, with provenance */ ],
-  "activityLogs": [ /* plan activity completions: VR boxing rounds, resistance, skips… */ ],
+  "activityLogs": [ /* plan activity completions: VR boxing rounds, resistance (with exercisesDone ticks, #28), skips… */ ],
   "dayOverrides": [], "quickLogs": [ /* hunger events */ ], "imports": [ /* sessions + assets */ ]
 }
 ```
@@ -70,4 +70,5 @@ App menu (☰) → **Export all data** → confirm **Export JSON**. Native opens
   - `TrackingStore.restore()` upserts idempotently.
   - Tests prove export → JSON → empty store → restore → identical data on both store implementations.
   - A "Restore from export" UI is not built yet.
+- **Additive in version 1 (#28):** `activityLogs[].exercisesDone` (optional) and the completion-event actions `tick`, `untick` and `switch`.
 - A breaking change to this shape bumps `exportVersion`. Importers must reject versions they don't know.

@@ -72,8 +72,40 @@ Completing, undoing or skipping anything recomputes it immediately. The time is 
 
 ## Home screen (Daily Log, today)
 
-1. **Do this next** card: the next action's label and window ("Now · 8:30 am", "Anytime today", "Was due 12:00 pm", "Next up at …"), its session exercises, or for a meal what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
+1. **Do this next** card: the next action's label and window ("Now · 8:30 am", "Anytime today", "Was due 12:00 pm", "Next up at …"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
 2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the next item has an accent bar.
-3. The item sheet: full and short sessions, **Done (full session)**, **Done (short version, N min)**, alternatives, skip and restore.
+3. The item sheet: for a session, the Full/Short switch and the exercise checklist (ticks on any editable day, so past days can be corrected), plus **Mark whole workout done** as a retrospective override; alternatives, skip and restore.
 
-The card is shown for today only. Past dates are correctable as before, and future dates are view-only (04). Exercise-level ticking isn't implemented: completion is per session, and `session.exercises` leaves room to add it.
+The card is shown for today only. Past dates are correctable as before, and future dates are view-only (04).
+
+## Exercise checklist (#28)
+
+A session (strength workout) is completed **exercise by exercise**, and it stays **one item** in the day's progress.
+
+**Version**
+- Full or short is an **explicit choice** (the Full/Short switch), defaulting to full. It's never inferred from ticks, because the short version is usually a subset of the full one: ticking those exercises mid-way through a full session must not complete it.
+- Each version keeps its own ticks, because their doses differ.
+- Switching when the current version has ticks asks first ("Switch to the short version?").
+
+**Completing and reopening**
+- Ticking the last required exercise of the chosen version completes the workout, recorded with that variant.
+- Unticking one of a completed workout reopens it.
+- An exercise marked *avoid* with no substitute is shown but isn't required.
+
+**Records**
+- `activity_log.exercisesDone` holds keys `<variant>:<index>:<movement>`. `variant` is the chosen version, even while pending.
+- Each tick is a `tick`/`untick` event (label = the exercise); a version change is `switch`; completing and reopening are `complete`/`undo`. All are append-only.
+- Pure rules live in `src/prescription/exercises.ts`.
+
+**Workout card** (option C, chosen in #28)
+- **Collapsed** (the default) shows only:
+  - the workout's name;
+  - progress ("35 min · 2 of 5 exercises");
+  - the **next exercise** with its own tick and ⓘ.
+
+  You can train without expanding: tick it, and the next one fades in. Keep this state minimal; don't add controls or copy to it.
+- **Expanded** (⌄): the Full/Short switch, every exercise (done ones stay visible, struck through, with the next one highlighted), and "Skip and more". Expanded or collapsed is remembered per day and item for the app session.
+- **No whole-workout Done on the card.** Ticks are the way to train. Marking the whole workout done stays available from the day-list row and the item sheet as a manual override. It then shows every exercise of its version as done, and unticking one makes the rest explicit.
+- **Finishing.** When the last exercise is ticked, the card holds **"Strength workout complete · 5 of 5 exercises ✓"** for about 4 seconds, or until "What's next ›", then "Do this next" moves on.
+- **Guide.** ⓘ (or the exercise's name) opens the exercise guide (09) and never changes completion.
+- **Touch targets.** Every tick target is at least 48 dp.

@@ -95,6 +95,8 @@ It's signed with Expo's debug keystore, which is fine for sideloading but not fo
 
 The Daily Log opens on **Do this next**, the next thing your plan prescribes for now. Tick it off and the app moves to the next one. The rest of the day is grouped by morning, midday, afternoon, evening and anytime. Alternatives that meet the same need (for example VR boxing, heavy bag or battle ropes for tonight's conditioning) count once, whichever you do. Strength sessions list their exercises, with your limitations' substitutes applied, and have a short version for busy days. See [contract 08](docs/design-contracts/08-daily-prescription.md).
 
+When a strength workout is next, the card stays compact: the workout, your progress and the **next exercise**. Tick it when it's done and the next one appears. Expand the card for the whole list, or to choose the **Full** or **Short** version. Ticking the last exercise completes the workout, which still counts as one task for the day. Ticks survive restarts and can be corrected later from the workout's details.
+
 Tap a meal (anywhere but its circle) to see exactly what to prepare: each ingredient with its target amount and an everyday measure such as "~¾ cup", how to make it, and its energy and protein. When a meal is next, the same list is right on the **Do this next** card. Everything comes from the plan, so any meal can be described without an app change. The circle ticks the meal off.
 
 Tap any exercise for an illustrated guide: step-by-step pictures, the equipment you have for it, and how to do it, with today's sets and reps. Closing it leaves the day exactly as it was. See [contract 09](docs/design-contracts/09-exercise-guides.md).

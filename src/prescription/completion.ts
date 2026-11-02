@@ -32,9 +32,10 @@ export function snapshotOf(p: Prescription, planId: string, planRevision: number
 
 export type CompletionChange = { activityId: string; log: ActivityLog | null; event: CompletionEvent };
 
-type Ctx = { planId: string; date: string; now: string; current: ActivityLog | undefined; item: PrescriptionItem };
+export type CompletionCtx = { planId: string; date: string; now: string; current: ActivityLog | undefined; item: PrescriptionItem };
+type Ctx = CompletionCtx;
 
-function change(ctx: Ctx, activityId: string, label: string, purpose: string | null, log: ActivityLog | null, action: CompletionEvent['action'], variant: CompletionEvent['variant']): CompletionChange {
+export function change(ctx: Ctx, activityId: string, label: string, purpose: string | null, log: ActivityLog | null, action: CompletionEvent['action'], variant: CompletionEvent['variant']): CompletionChange {
   return {
     activityId,
     log,
@@ -80,6 +81,8 @@ export function setDone(ctx: Ctx, activity: Activity, done: boolean, variant: 'f
   const log: ActivityLog = {
     activityId: activity.id, status: 'done', count, labelSnapshot: activity.label, updatedAt: ctx.now, variant,
     ...(ctx.item.requirement ? { requirementId: ctx.item.requirement.id } : {}),
+    // Whole-workout "done" (a manual override, #28) keeps any exercise ticks already recorded.
+    ...(ctx.current?.exercisesDone ? { exercisesDone: ctx.current.exercisesDone } : {}),
   };
   return change(ctx, activity.id, activity.label, purpose, log, 'complete', variant);
 }

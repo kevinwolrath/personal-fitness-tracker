@@ -32,7 +32,7 @@ it('migrations are idempotent and set user_version', async () => {
   const db = nodeSqlite(new DatabaseSync(':memory:'));
   await migrate(db);
   await migrate(db);
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 3 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 4 });
 });
 
 it('migrates an existing version-1 database without losing data (plan becomes origin "seed")', async () => {
@@ -58,5 +58,24 @@ it('migrates an existing version-1 database without losing data (plan becomes or
   expect(await store.configHistory()).toEqual([]);
   expect(await store.completionEvents('p', '2026-10-01')).toEqual([]);
   expect((await store.getDay('p', '2026-10-01')).activities.walk).toEqual({ activityId: 'walk', status: 'done', count: 0, labelSnapshot: 'Walk', updatedAt: 't' });
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 3 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 4 });
+});
+
+it('migrates a version-3 database (before #28): exercise ticks are additive, nothing is lost', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const db = nodeSqlite(raw);
+  // Run migrations 1–3 exactly as shipped, then stop at version 3 with data in it.
+  await migrate(db);
+  raw.exec(`ALTER TABLE activity_log DROP COLUMN exercises_done; PRAGMA user_version = 3;`);
+  raw.exec(`INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant)
+    VALUES ('p', '2026-10-01', 'resistance', 'done', 0, 'Strength workout', 't', 'short');`);
+  const store = await SqliteTrackingStore.open(db);
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 4 });
+  expect((await store.getDay('p', '2026-10-01')).activities.resistance).toEqual({
+    activityId: 'resistance', status: 'done', count: 0, labelSnapshot: 'Strength workout', updatedAt: 't', variant: 'short',
+  });
+  await store.setActivity('p', '2026-10-02', 'resistance', {
+    activityId: 'resistance', status: 'pending', count: 0, labelSnapshot: 'Strength workout', updatedAt: 't', variant: 'full', exercisesDone: ['full:0:kettlebell_squat'],
+  });
+  expect((await store.getDay('p', '2026-10-02')).activities.resistance.exercisesDone).toEqual(['full:0:kettlebell_squat']);
 });

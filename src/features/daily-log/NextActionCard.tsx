@@ -8,9 +8,7 @@ import { partLabels } from '../../prescription/windows';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { colors, radius, space, touch, type } from '../../ui/theme';
-import type { PrescribedExercise } from '../../prescription/session';
 import { MealDetails } from './MealDetails';
-import { SessionExercises } from './SessionExercises';
 
 type Props = {
   /** The active plan: a meal's ingredients and amounts come from it (#26). */
@@ -20,8 +18,6 @@ type Props = {
   logs: Record<string, ActivityLog | undefined>;
   onAdvance: (item: PrescriptionItem, a: Activity) => void;
   onDetails: (item: PrescriptionItem) => void;
-  /** Opens the exercise guide for a prescribed exercise (contract 09). */
-  onOpenExercise?: (e: PrescribedExercise) => void;
 };
 
 function whenLabel(n: NextAction): string {
@@ -42,7 +38,8 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
 }
 
 /** "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08). */
-export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetails, onOpenExercise }: Props) {
+/** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
+export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetails }: Props) {
   if (!next) {
     return (
       <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
@@ -53,7 +50,6 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
     );
   }
   const { item } = next;
-  const session = item.session;
   // A meal that's next shows what to eat right here: no extra tap (#26).
   const meal = item.activity ? mealView(plan, item.activity) : null;
   return (
@@ -63,13 +59,8 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
         {item.label}
       </Text>
       <Text style={styles.sub} testID="next-action-when">
-        {[whenLabel(next), session?.minutes ? `${session.minutes} min` : null, item.detail].filter(Boolean).join(' · ')}
+        {[whenLabel(next), item.detail].filter(Boolean).join(' · ')}
       </Text>
-      {session && (
-        <View style={styles.session}>
-          <SessionExercises exercises={session.exercises} testID="next-action-session" onOpen={onOpenExercise} />
-        </View>
-      )}
       {meal && (
         <View style={styles.meal}>
           <MealDetails meal={meal} variant="card" testID="next-action-meal" />
@@ -90,7 +81,7 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
           ))
         )}
         <Pressable onPress={() => onDetails(item)} style={styles.details} accessibilityRole="button" accessibilityLabel={`${item.label} options`}>
-          <Text style={styles.detailsText}>{session?.short ? 'Short version, skip and more' : 'Skip and more'}</Text>
+          <Text style={styles.detailsText}>Skip and more</Text>
         </Pressable>
       </View>
     </View>
@@ -103,7 +94,6 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: colors.onAccent },
   sub: { ...type.detail, color: colors.onInkMuted },
   meal: { marginTop: space.sm },
-  session: { backgroundColor: colors.surface, borderRadius: radius.md, padding: space.md, marginTop: space.sm },
   actions: { gap: space.sm, marginTop: space.md },
   details: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   detailsText: { color: colors.onInkMuted, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },

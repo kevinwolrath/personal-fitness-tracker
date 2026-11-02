@@ -22,6 +22,9 @@ import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
+import { WorkoutCard } from './WorkoutCard';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
+import { sessionProgress, switchNeedsConfirm, type ChecklistRow, type Variant } from '../../prescription/exercises';
 import { RequirementRow } from './RequirementRow';
 import { partLabels, partOrder } from '../../prescription/windows';
 import type { PrescriptionItem } from '../../prescription/prescribe';
@@ -73,6 +76,17 @@ export function DayLogScreen() {
   const editable = date <= today;
 
   const [sheetItem, setSheetItem] = useState<PrescriptionItem | null>(null);
+  // Workout card (#28): collapsed by default; remembered per day and item for this app session.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const expandKey = (item: PrescriptionItem) => `${date}|${item.key}`;
+  // A workout just finished from the card: hold "complete · 5/5" briefly before "Do this next" moves on.
+  const [held, setHeld] = useState<string | null>(null);
+  useEffect(() => {
+    if (!held) return;
+    const t = setTimeout(() => setHeld(null), 4000);
+    return () => clearTimeout(t);
+  }, [held]);
+  const [pendingSwitch, setPendingSwitch] = useState<{ item: PrescriptionItem; variant: Variant } | null>(null);
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
   const [dayTypeOpen, setDayTypeOpen] = useState(false);
@@ -91,6 +105,18 @@ export function DayLogScreen() {
     tap();
     actions.advance(item, a);
   };
+  const tickExercise = (item: PrescriptionItem, row: ChecklistRow) => {
+    if (!editable || !item.activity) return;
+    tap();
+    const c = actions.tickExercise(item, item.activity, row.key, !row.done);
+    if (c.event.action === 'complete' && date === today) setHeld(item.key);
+  };
+  const chooseVariant = (item: PrescriptionItem, variant: Variant) => {
+    if (!editable || !item.activity || !item.session) return;
+    if (switchNeedsConfirm(item.session, records.activities[item.key])) setPendingSwitch({ item, variant });
+    else actions.chooseVariant(item, item.activity, variant);
+  };
+
   const toggleSkip = (item: PrescriptionItem) => {
     const skipped = item.state === 'skipped';
     actions.setSkipped(item, !skipped);
@@ -115,6 +141,7 @@ export function DayLogScreen() {
         log={records.activities[item.key]}
         showTime={item.window.part !== 'anytime'}
         note={budgetNote[item.key]}
+        exerciseProgress={item.session ? sessionProgress(item.session, records.activities[item.key]) : null}
         editable={editable}
         isNext={next?.item.key === item.key}
         onPress={() => press(item, item.activity!)}
@@ -148,7 +175,27 @@ export function DayLogScreen() {
 
         {date === today && (
           <View style={styles.firstBlock}>
-            <NextActionCard plan={plan} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onOpenExercise={setGuideFor} />
+            {(() => {
+              const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
+              const workout = heldItem ?? (next?.item.session && next.item.activity ? next.item : undefined);
+              if (!workout) {
+                return <NextActionCard plan={plan} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
+              }
+              return (
+                <WorkoutCard
+                  item={workout}
+                  progress={sessionProgress(workout.session!, records.activities[workout.key])}
+                  expanded={!!expanded[expandKey(workout)]}
+                  onToggleExpanded={() => setExpanded((e) => ({ ...e, [expandKey(workout)]: !e[expandKey(workout)] }))}
+                  onTick={(row) => tickExercise(workout, row)}
+                  onChooseVariant={(v) => chooseVariant(workout, v)}
+                  onOpenExercise={setGuideFor}
+                  onDetails={() => setSheetItem(workout)}
+                  completed={!!heldItem}
+                  onDismissCompleted={() => setHeld(null)}
+                />
+              );
+            })()}
           </View>
         )}
 
@@ -194,6 +241,19 @@ export function DayLogScreen() {
         onSetDone={(item, a, done, variant) => actions.setDone(item, a, done, variant)}
         onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
         plan={plan}
+        onTickExercise={tickExercise}
+        onChooseVariant={chooseVariant}
+      />
+      <ConfirmDialog
+        visible={!!pendingSwitch}
+        title={pendingSwitch?.variant === 'short' ? 'Switch to the short version?' : 'Switch to the full version?'}
+        message="The exercises you've ticked stay saved with this version. The other version has its own checklist, because its sets and reps differ."
+        confirmLabel="Switch"
+        onCancel={() => setPendingSwitch(null)}
+        onConfirm={() => {
+          if (pendingSwitch?.item.activity) actions.chooseVariant(pendingSwitch.item, pendingSwitch.item.activity, pendingSwitch.variant);
+          setPendingSwitch(null);
+        }}
       />
       <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
       <MeasureSheet

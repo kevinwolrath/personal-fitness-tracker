@@ -13,7 +13,8 @@ import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { space, type } from '../../ui/theme';
 import { MealDetails } from './MealDetails';
-import { SessionExercises } from './SessionExercises';
+import { ExerciseChecklist, VersionSwitch } from './ExerciseChecklist';
+import { sessionProgress, type ChecklistRow, type Variant } from '../../prescription/exercises';
 import { ModalHeader } from '../../ui/ModalHeader';
 
 type Props = {
@@ -23,12 +24,15 @@ type Props = {
   onClose: () => void;
   onSetDone: (item: PrescriptionItem, a: Activity, done: boolean, variant?: 'full' | 'short') => void;
   onSetSkipped: (item: PrescriptionItem, skipped: boolean) => void;
+  /** Tick/untick one exercise of a session (#28); works on any editable day, so past days can be corrected. */
+  onTickExercise: (item: PrescriptionItem, row: ChecklistRow) => void;
+  onChooseVariant: (item: PrescriptionItem, v: Variant) => void;
   /** The active plan: meal details and exercise guides are rendered from it. */
   plan: Plan;
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan }: Props) {
+export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, onTickExercise, onChooseVariant }: Props) {
   const exerciseConfig = plan.exercise;
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const act = (fn: () => void) => () => {
@@ -37,6 +41,8 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
   };
   const a = item?.activity;
   const meal = a ? mealView(plan, a) : null;
+  const session = item?.session;
+  const progress = item && session ? sessionProgress(session, logs[item.key]) : null;
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';
   return (
     <Sheet visible={!!item} onClose={() => {
@@ -58,16 +64,28 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
               </View>
             )}
 
-            {item.session && (
+            {session && progress && (
               <View style={styles.block}>
-                <Text style={type.section}>Full session{item.session.minutes ? ` · ${item.session.minutes} min` : ''}</Text>
-                <SessionExercises exercises={item.session.exercises} testID="sheet-session" onOpen={setGuideFor} />
-                {item.session.short && (
-                  <>
-                    <Text style={[type.section, styles.gap]}>Short version{item.session.short.minutes ? ` · ${item.session.short.minutes} min` : ''}</Text>
-                    <SessionExercises exercises={item.session.short.exercises} testID="sheet-session-short" onOpen={setGuideFor} />
-                  </>
+                <Text style={type.section}>
+                  {progress.done} of {progress.total} exercises
+                </Text>
+                {progress.hasShort && (
+                  <VersionSwitch
+                    progress={progress}
+                    fullMinutes={session.minutes}
+                    shortMinutes={session.short?.minutes}
+                    editable={editable}
+                    onChoose={(v) => onChooseVariant(item, v)}
+                  />
                 )}
+                <ExerciseChecklist
+                  rows={progress.rows}
+                  nextKey={progress.next?.key}
+                  editable={editable && item.state !== 'skipped'}
+                  onToggle={(row) => onTickExercise(item, row)}
+                  onOpen={setGuideFor}
+                  testID="sheet-session"
+                />
               </View>
             )}
 
@@ -76,17 +94,19 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
                 <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
               ) : item.kind === 'activity' && a ? (
                 <>
-                  <Button
-                    title={item.state === 'done' ? 'Mark not done' : item.session?.short ? 'Done (full session)' : 'Mark done'}
-                    disabled={!editable}
-                    onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
-                  />
-                  {item.session?.short && item.state !== 'done' && (
+                  {session && progress ? (
+                    // A retrospective override: the card and checklist are the way to train (#28).
                     <Button
-                      title={`Done (short version${item.session.short.minutes ? `, ${item.session.short.minutes} min` : ''})`}
+                      title={item.state === 'done' ? 'Mark not done' : `Mark whole workout done (${progress.variant === 'short' ? 'short' : 'full'})`}
                       variant="secondary"
                       disabled={!editable}
-                      onPress={act(() => onSetDone(item, a, true, 'short'))}
+                      onPress={act(() => onSetDone(item, a, item.state !== 'done', progress.variant))}
+                    />
+                  ) : (
+                    <Button
+                      title={item.state === 'done' ? 'Mark not done' : 'Mark done'}
+                      disabled={!editable}
+                      onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
                     />
                   )}
                   <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />

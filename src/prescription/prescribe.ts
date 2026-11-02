@@ -56,7 +56,7 @@ function stateOf(log: ActivityLog | undefined): ItemState {
   if (!log) return 'pending';
   if (log.status === 'done') return 'done';
   if (log.status === 'skipped') return 'skipped';
-  return log.count > 0 ? 'partial' : 'pending';
+  return log.count > 0 || (log.exercisesDone?.length ?? 0) > 0 ? 'partial' : 'pending';
 }
 
 const isResolved = (s: ItemState) => s === 'done' || s === 'skipped';

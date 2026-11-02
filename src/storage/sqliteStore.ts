@@ -68,6 +68,8 @@ const migrations = [
    CREATE TABLE day_snapshot (
      plan_id TEXT NOT NULL, date TEXT NOT NULL, plan_revision INTEGER NOT NULL, prescribed TEXT NOT NULL,
      updated_at TEXT NOT NULL, PRIMARY KEY (plan_id, date));`,
+  // 4 (#28): exercise-level ticks within a session, as a JSON array of exercise keys. Additive only.
+  `ALTER TABLE activity_log ADD COLUMN exercises_done TEXT;`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -122,7 +124,7 @@ const toObservation = (r: ObservationRow): Observation => ({
 
 type ActivityRow = {
   plan_id: string; date: string; activity_id: string; status: ActivityLog['status']; count: number; label_snapshot: string; updated_at: string;
-  variant: ActivityLog['variant'] | null; requirement_id: string | null;
+  variant: ActivityLog['variant'] | null; requirement_id: string | null; exercises_done?: string | null;
 };
 const toActivity = (a: ActivityRow): ActivityLogRecord => ({
   planId: a.plan_id,
@@ -134,6 +136,7 @@ const toActivity = (a: ActivityRow): ActivityLogRecord => ({
   updatedAt: a.updated_at,
   ...(a.variant ? { variant: a.variant } : {}),
   ...(a.requirement_id ? { requirementId: a.requirement_id } : {}),
+  ...(a.exercises_done ? { exercisesDone: JSON.parse(a.exercises_done) as string[] } : {}),
 });
 type EventRow = {
   id: string; plan_id: string; date: string; activity_id: string; requirement_id: string | null; action: CompletionEvent['action'];
@@ -218,12 +221,13 @@ export class SqliteTrackingStore implements TrackingStore {
 
   private async upsertActivity(a: ActivityLogRecord): Promise<void> {
     await this.db.runAsync(
-      `INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant, requirement_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant, requirement_id, exercises_done)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(plan_id, date, activity_id) DO UPDATE SET status = excluded.status, count = excluded.count,
          label_snapshot = excluded.label_snapshot, updated_at = excluded.updated_at,
-         variant = excluded.variant, requirement_id = excluded.requirement_id`,
-      [a.planId, a.date, a.activityId, a.status, a.count, a.labelSnapshot, a.updatedAt, a.variant ?? null, a.requirementId ?? null],
+         variant = excluded.variant, requirement_id = excluded.requirement_id, exercises_done = excluded.exercises_done`,
+      [a.planId, a.date, a.activityId, a.status, a.count, a.labelSnapshot, a.updatedAt, a.variant ?? null, a.requirementId ?? null,
+       a.exercisesDone ? JSON.stringify(a.exercisesDone) : null],
     );
   }
 

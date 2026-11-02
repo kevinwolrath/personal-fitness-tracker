@@ -72,7 +72,7 @@ Completing, undoing or skipping anything recomputes it immediately. The time is 
 
 ## Home screen (Daily Log, today)
 
-1. **Do this next** card: the next action's label and window ("Now · 8:30 am", "Anytime today", "Was due 12:00 pm", "Next up at …"), its session exercises, and one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
+1. **Do this next** card: the next action's label and window ("Now · 8:30 am", "Anytime today", "Was due 12:00 pm", "Next up at …"), its session exercises, or for a meal what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
 2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the next item has an accent bar.
 3. The item sheet: full and short sessions, **Done (full session)**, **Done (short version, N min)**, alternatives, skip and restore.
 

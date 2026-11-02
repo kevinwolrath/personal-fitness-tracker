@@ -26,7 +26,8 @@
     "formatVersion": {
       "enum": [
         1,
-        2
+        2,
+        3
       ]
     },
     "id": {
@@ -570,6 +571,21 @@
         },
         "satisfies": {
           "$ref": "#/$defs/id"
+        },
+        "ingredients": {
+          "description": "formatVersion 3, meals only. What goes into the meal.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/ingredient"
+          }
+        },
+        "preparation": {
+          "description": "formatVersion 3, meals only. How to make the meal.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
         }
       }
     },
@@ -1108,84 +1124,155 @@
           "$ref": "#/$defs/time"
         }
       }
-    }
-  },
-  "if": {
-    "properties": {
-      "formatVersion": {
-        "const": 1
+    },
+    "ingredient": {
+      "description": "One ingredient of a meal (formatVersion 3). measure is the plan's everyday wording, shown as written; the app never converts units.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "grams": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 5000
+        },
+        "ml": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 5000
+        },
+        "measure": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        }
       }
     }
   },
-  "then": {
-    "allOf": [
-      {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "profile"
-              ],
-              "type": "object"
-            },
-            {
-              "required": [
-                "exercise"
-              ],
-              "type": "object"
-            },
-            {
-              "required": [
-                "requirements"
-              ],
-              "type": "object"
-            }
-          ]
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "const": 1
+          }
         }
       },
-      {
+      "then": {
+        "allOf": [
+          {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "profile"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "required": [
+                    "exercise"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "required": [
+                    "requirements"
+                  ],
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          {
+            "properties": {
+              "activities": {
+                "items": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "purpose"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "required": [
+                          "when"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "required": [
+                          "after"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "required": [
+                          "session"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "required": [
+                          "satisfies"
+                        ],
+                        "type": "object"
+                      }
+                    ]
+                  }
+                },
+                "type": "array"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "enum": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "then": {
         "properties": {
           "activities": {
+            "type": "array",
             "items": {
               "not": {
                 "anyOf": [
                   {
+                    "type": "object",
                     "required": [
-                      "purpose"
-                    ],
-                    "type": "object"
+                      "ingredients"
+                    ]
                   },
                   {
+                    "type": "object",
                     "required": [
-                      "when"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "after"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "session"
-                    ],
-                    "type": "object"
-                  },
-                  {
-                    "required": [
-                      "satisfies"
-                    ],
-                    "type": "object"
+                      "preparation"
+                    ]
                   }
                 ]
               }
-            },
-            "type": "array"
+            }
           }
         }
       }
-    ]
-  }
+    }
+  ]
 }

@@ -57,7 +57,7 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
    - removed fields read "cleared: …", never "→ —".
 
    Only sections that change are listed (see 02, "Configure layout"); the others are named in one line as staying as they are.
-7. **Apply:** only on **Apply N changes**. The new plan revision (origin `config`) and a history entry are written atomically.
+7. **Apply:** only on **Apply N changes**. The result is always the current plan format (formatVersion 3), so meals can carry `ingredients` and `preparation` (03). The new plan revision (origin `config`) and a history entry are written atomically.
 8. **No partial state:** any failure means nothing is written. Omitted sections are preserved exactly, because patches act on the raw JSON, not on the parsed plan.
 
 ## History, undo, seed and export

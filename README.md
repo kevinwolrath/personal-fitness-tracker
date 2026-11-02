@@ -93,6 +93,8 @@ This builds a debug APK inside Docker (`docker/android.Dockerfile`) and writes `
 
 The Daily Log opens on **Do this next**, the next thing your plan prescribes for now. Tick it off and the app moves to the next one. The rest of the day is grouped by morning, midday, afternoon, evening and anytime. Alternatives that meet the same need (for example VR boxing, heavy bag or battle ropes for tonight's conditioning) count once, whichever you do. Strength sessions list their exercises, with your limitations' substitutes applied, and have a short version for busy days. See [contract 08](docs/design-contracts/08-daily-prescription.md).
 
+Tap a meal (anywhere but its circle) to see exactly what to prepare: each ingredient with its target amount and an everyday measure such as "~¾ cup", how to make it, and its energy and protein. When a meal is next, the same list is right on the **Do this next** card. Everything comes from the plan, so any meal can be described without an app change. The circle ticks the meal off.
+
 Tap any exercise for an illustrated guide: step-by-step pictures, the equipment you have for it, and how to do it, with today's sets and reps. Closing it leaves the day exactly as it was. See [contract 09](docs/design-contracts/09-exercise-guides.md).
 
 ## Configure with AI
@@ -101,4 +103,4 @@ Daily Log → ☰ → **Configure with AI**. Copy the instructions into ChatGPT 
 
 ## Changing the plan
 
-Day to day, use **Configure with AI** (above). To change the bundled default for fresh installs, edit `plans/seed.plan.json`, keeping it valid against `docs/design-contracts/plan.schema.json`. `npm test` checks this. Then bump `revision`. Installed apps pick up a higher revision of the same plan `id` on next launch, unless the user has already changed their configuration in the app, which is never overwritten. Tracking history is always kept.
+Day to day, use **Configure with AI** (above). If you've already changed your configuration in the app, the new default lunch won't replace it: paste `fixtures/config/lunch.update.json` into **Configure with AI** to add the lunch's ingredients and preparation. To change the bundled default for fresh installs, edit `plans/seed.plan.json`, keeping it valid against `docs/design-contracts/plan.schema.json`. `npm test` checks this. Then bump `revision`. Installed apps pick up a higher revision of the same plan `id` on next launch, unless the user has already changed their configuration in the app, which is never overwritten. Tracking history is always kept.

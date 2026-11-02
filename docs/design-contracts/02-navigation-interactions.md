@@ -65,7 +65,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | `/(tabs)/progress` | **Progress** tab | Goal progress, measurement trend, recent days (read-mostly) |
 | `/(tabs)/plan` | **Plan** tab | Read-only week overview of the loaded plan, plus plan-package actions (import, replace, export data) |
 | Measure sheet | Sheet | Enter a value for one measurement (numeric keypad) |
-| Activity sheet | Sheet | Activity details and secondary actions: done/not done, skip, restore. It's never required for the happy path |
+| Activity sheet | Sheet | Activity details and secondary actions: done/not done, skip, restore. For a meal it shows **What to prepare** (ingredient, target amount and the plan's everyday measure), **How to make it**, and the meal's energy/protein (#26). Content scrolls inside the sheet (max 92 % of the screen) so the actions stay reachable. It's never required for the happy path |
 | Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
 | `/import` | Modal | Screenshot import (contract 06) |
@@ -83,7 +83,8 @@ The log shows **one day at a time**. Its screen header (see Layout layers): `‹
 
 | Action | Primary (tap) | Gesture shortcut | Why the gesture is (or isn't) justified |
 |---|---|---|---|
-| Complete or uncomplete a `check` activity | Tap the row body | None | One tap is already minimal. A swipe would be slower. |
+| Complete or uncomplete a `check` activity | Tap the row body. **Meals:** tap the completion circle (48 dp) | None | One tap is already minimal. A swipe would be slower. A meal row holds drill-down information (what to prepare), so completion gets its own explicit control (#26). |
+| See what a meal is (ingredients, amounts, preparation, energy/protein) | **Meals:** tap anywhere on the row except the circle; the `›` marks it. Opens the activity sheet. Viewing never completes anything, and closing returns to the same scroll position | Long-press | "What exactly am I eating, and how much?" is one tap from any day: past, today or future. |
 | Advance a `count` activity | Tap the next segment of the segmented row (for example ●●○) | None | Tapping segments shows progress and is one tap per unit. |
 | Skip an activity (record it as deliberately not done) | Open the activity sheet → **Skip** (any activity, required or optional) | None in V1. Also exposed as the row's `skip` accessibility action | Issue #3 asked for no gesture dependencies unless genuinely required. The swipe row needs gesture-handler + reanimated, so it's deferred until skip frequency justifies it. |
 | Undo done or skipped | Tap the row again (done → not done; tapping a skipped row marks it done), **Undo** in the skip toast, or **Restore** in the sheet | None | — |

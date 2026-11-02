@@ -1,10 +1,12 @@
-# 03 · Plan package format (`pft-plan`, formatVersion 1–2)
+# 03 · Plan package format (`pft-plan`, formatVersion 1–3)
 
 A **plan package** is a single JSON file describing a fitness plan. The app renders whatever valid plan is loaded and has no built-in plan of its own. The machine-readable contract is [`plan.schema.json`](plan.schema.json) (JSON Schema 2020-12). This document defines semantics and the rules the schema cannot express.
 
 Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 
-**formatVersion 2** adds the optional `profile` and `exercise` sections (contract 07) and the daily-prescription fields: activity `purpose`, `when`, `after`, `session` and `satisfies`, and plan-level `requirements` (contract 08). A formatVersion 1 plan must not contain them. Everything else below applies to both versions.
+**formatVersion 2** adds the optional `profile` and `exercise` sections (contract 07) and the daily-prescription fields: activity `purpose`, `when`, `after`, `session` and `satisfies`, and plan-level `requirements` (contract 08). A formatVersion 1 plan must not contain them.
+
+**formatVersion 3** (#26) adds what a meal is made of: activity `ingredients` and `preparation`, for meals only. A formatVersion 1 or 2 plan must not contain them. Older versions still load unchanged, and Configure with AI writes formatVersion 3. Everything else below applies to every version.
 
 ## Design limits (deliberate)
 
@@ -52,6 +54,10 @@ One list covers exercise, meals and habits, so that a single timeline renders th
 | `tracking` | `{type:"check"}` | `check` is a single done or not-done. `{type:"count", target: 2–12, unitLabel}` is done when count reaches target, for example 3 rounds. |
 | `nutrition` | | **Meals only.** Map of `nutrition.targets[].id` to the amount this meal contributes. |
 | `flexible` | `false` | **Meals only.** The amount isn't fixed. The row shows the remaining budget instead of values (see below). Must not also have `nutrition`. |
+| `ingredients` | | **Meals only, formatVersion 3.** What to prepare: 1–20 items, each `{ name, grams?, ml?, measure? }`. Each item needs at least one of the three. `grams`/`ml` are the target amount. `measure` is the plan's everyday wording for people without scales ("~¾ cup", "1 scoop", "as needed"). The app shows it **exactly as written and never converts units**, because cup conversions aren't precise. |
+| `preparation` | | **Meals only, formatVersion 3.** How to make the meal, in the plan's words (≤ 400 characters), e.g. how much water to add. |
+
+A meal's energy and protein come from its existing `nutrition` map, shown in the plan's units ("≈ 1,780 kJ · 42 g protein"). There are no separate calorie fields.
 
 ## Resolving a day (how the app renders data)
 

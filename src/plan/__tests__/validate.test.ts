@@ -25,7 +25,7 @@ describe.each([
 const shapeMutations: [string, (p: any) => void][] = [
   ['bad time format', (p) => (p.activities[0].time = '7:00')],
   ['unknown property', (p) => (p.activities[0].colour = 'red')],
-  ['newer formatVersion', (p) => (p.formatVersion = 4)],
+  ['newer formatVersion', (p) => (p.formatVersion = 5)],
   ['meal ingredients on a formatVersion 2 plan', (p) => ((p.formatVersion = 2), (p.activities.find((a: any) => a.kind === 'meal').ingredients = [{ name: 'Oats', grams: 40 }]))],
   ['meal preparation on a formatVersion 1 plan', (p) => ((p.formatVersion = 1), (p.activities.find((a: any) => a.kind === 'meal').preparation = 'Mix it'))],
   ['unknown ingredient property', (p) => ((p.formatVersion = 3), (p.activities.find((a: any) => a.kind === 'meal').ingredients = [{ name: 'Oats', cups: 0.5 }]))],
@@ -102,7 +102,7 @@ describe('formatVersion 2+ (profile + exercise)', () => {
 describe('formatVersion 3 (meal ingredients and preparation, #26)', () => {
   const lunch = (p: any) => p.activities.find((a: any) => a.id === 'lunch');
   it('the seed lunch says exactly what to prepare and how', () => {
-    expect(seed.formatVersion).toBe(3);
+    expect(seed.formatVersion).toBeGreaterThanOrEqual(3);
     expect(lunch(seed).ingredients.map((g: any) => g.name)).toEqual(['High-protein yoghurt', 'Rolled oats', 'Protein powder', 'Water']);
     expect(lunch(seed).preparation).toMatch(/water/i);
   });

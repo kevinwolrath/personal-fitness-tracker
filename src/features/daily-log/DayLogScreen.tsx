@@ -148,7 +148,7 @@ export function DayLogScreen() {
 
         {date === today && (
           <View style={styles.firstBlock}>
-            <NextActionCard next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onOpenExercise={setGuideFor} />
+            <NextActionCard plan={plan} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onOpenExercise={setGuideFor} />
           </View>
         )}
 
@@ -193,7 +193,7 @@ export function DayLogScreen() {
         onClose={() => setSheetItem(null)}
         onSetDone={(item, a, done, variant) => actions.setDone(item, a, done, variant)}
         onSetSkipped={(item, skipped) => (skipped ? toggleSkip(item) : actions.setSkipped(item, false))}
-        exerciseConfig={plan.exercise}
+        plan={plan}
       />
       <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
       <MeasureSheet

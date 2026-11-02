@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import { formatClock, formatDuration } from '../../format';
+import { mealView } from '../../plan/meals';
 import type { Activity, Plan } from '../../plan/schema';
 import type { PrescribedExercise } from '../../prescription/session';
 import type { PrescriptionItem } from '../../prescription/prescribe';
@@ -11,6 +12,7 @@ import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { space, type } from '../../ui/theme';
+import { MealDetails } from './MealDetails';
 import { SessionExercises } from './SessionExercises';
 import { ModalHeader } from '../../ui/ModalHeader';
 
@@ -21,18 +23,20 @@ type Props = {
   onClose: () => void;
   onSetDone: (item: PrescriptionItem, a: Activity, done: boolean, variant?: 'full' | 'short') => void;
   onSetSkipped: (item: PrescriptionItem, skipped: boolean) => void;
-  /** Equipment and limitations used to describe exercise guides. */
-  exerciseConfig?: Plan['exercise'];
+  /** The active plan: meal details and exercise guides are rendered from it. */
+  plan: Plan;
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, exerciseConfig }: Props) {
+export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan }: Props) {
+  const exerciseConfig = plan.exercise;
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const act = (fn: () => void) => () => {
     fn();
     onClose();
   };
   const a = item?.activity;
+  const meal = a ? mealView(plan, a) : null;
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';
   return (
     <Sheet visible={!!item} onClose={() => {
@@ -46,57 +50,66 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
             {[when, a ? formatDuration(a.duration) : null, item.required ? null : 'Optional', item.detail].filter(Boolean).join(' · ')}
           </Text>
 
-          {item.session && (
-            <View style={styles.block}>
-              <Text style={type.section}>Full session{item.session.minutes ? ` · ${item.session.minutes} min` : ''}</Text>
-              <SessionExercises exercises={item.session.exercises} testID="sheet-session" onOpen={setGuideFor} />
-              {item.session.short && (
+          <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} testID="item-sheet-scroll">
+            {meal && (
+              <View style={styles.block}>
+                {meal.ingredients.length > 0 && <Text style={type.section}>What to prepare</Text>}
+                <MealDetails meal={meal} variant="sheet" testID="meal-details" />
+              </View>
+            )}
+
+            {item.session && (
+              <View style={styles.block}>
+                <Text style={type.section}>Full session{item.session.minutes ? ` · ${item.session.minutes} min` : ''}</Text>
+                <SessionExercises exercises={item.session.exercises} testID="sheet-session" onOpen={setGuideFor} />
+                {item.session.short && (
+                  <>
+                    <Text style={[type.section, styles.gap]}>Short version{item.session.short.minutes ? ` · ${item.session.short.minutes} min` : ''}</Text>
+                    <SessionExercises exercises={item.session.short.exercises} testID="sheet-session-short" onOpen={setGuideFor} />
+                  </>
+                )}
+              </View>
+            )}
+
+            <View style={styles.actions}>
+              {item.state === 'skipped' ? (
+                <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
+              ) : item.kind === 'activity' && a ? (
                 <>
-                  <Text style={[type.section, styles.gap]}>Short version{item.session.short.minutes ? ` · ${item.session.short.minutes} min` : ''}</Text>
-                  <SessionExercises exercises={item.session.short.exercises} testID="sheet-session-short" onOpen={setGuideFor} />
+                  <Button
+                    title={item.state === 'done' ? 'Mark not done' : item.session?.short ? 'Done (full session)' : 'Mark done'}
+                    disabled={!editable}
+                    onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
+                  />
+                  {item.session?.short && item.state !== 'done' && (
+                    <Button
+                      title={`Done (short version${item.session.short.minutes ? `, ${item.session.short.minutes} min` : ''})`}
+                      variant="secondary"
+                      disabled={!editable}
+                      onPress={act(() => onSetDone(item, a, true, 'short'))}
+                    />
+                  )}
+                  <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
+                </>
+              ) : (
+                <>
+                  {item.options.map((o) => {
+                    const isDone = logs[o.id]?.status === 'done';
+                    return (
+                      <Button
+                        key={o.id}
+                        title={isDone ? `Undo ${o.label}` : `Done with ${o.label}`}
+                        variant={isDone ? 'secondary' : 'primary'}
+                        disabled={!editable || (item.state === 'done' && !isDone)}
+                        onPress={act(() => onSetDone(item, o, !isDone))}
+                      />
+                    );
+                  })}
+                  <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
                 </>
               )}
             </View>
-          )}
-
-          <View style={styles.actions}>
-            {item.state === 'skipped' ? (
-              <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
-            ) : item.kind === 'activity' && a ? (
-              <>
-                <Button
-                  title={item.state === 'done' ? 'Mark not done' : item.session?.short ? 'Done (full session)' : 'Mark done'}
-                  disabled={!editable}
-                  onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
-                />
-                {item.session?.short && item.state !== 'done' && (
-                  <Button
-                    title={`Done (short version${item.session.short.minutes ? `, ${item.session.short.minutes} min` : ''})`}
-                    variant="secondary"
-                    disabled={!editable}
-                    onPress={act(() => onSetDone(item, a, true, 'short'))}
-                  />
-                )}
-                <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
-              </>
-            ) : (
-              <>
-                {item.options.map((o) => {
-                  const isDone = logs[o.id]?.status === 'done';
-                  return (
-                    <Button
-                      key={o.id}
-                      title={isDone ? `Undo ${o.label}` : `Done with ${o.label}`}
-                      variant={isDone ? 'secondary' : 'primary'}
-                      disabled={!editable || (item.state === 'done' && !isDone)}
-                      onPress={act(() => onSetDone(item, o, !isDone))}
-                    />
-                  );
-                })}
-                <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
-              </>
-            )}
-          </View>
+          </ScrollView>
         </View>
       )}
       {/* Nested so closing the guide returns to this sheet (contract 09). */}
@@ -106,7 +119,9 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
 }
 
 const styles = StyleSheet.create({
-  body: { paddingBottom: space.md, gap: space.md },
+  body: { paddingBottom: space.md, gap: space.md, flexShrink: 1 },
+  scroll: { flexShrink: 1 },
+  scrollContent: { gap: space.md },
   center: { textAlign: 'center' },
   block: { gap: space.sm },
   gap: { marginTop: space.md },

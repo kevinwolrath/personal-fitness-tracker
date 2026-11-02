@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.lg,
     paddingHorizontal: space.xl,
     paddingBottom: space.xl,
+    maxHeight: '92%', // tall content scrolls inside the sheet rather than pushing it off screen
   },
   fill: { height: '92%' },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginVertical: space.sm },

@@ -166,6 +166,10 @@ describe('preview', () => {
     delete lunch0.nutrition;
     const { nextRaw, update, raw } = apply(fixture('lunch'), before);
     expect(nextRaw.formatVersion).toBe(3); // the update upgrades the plan format
+    // Lunch-only: every other meal is byte-identical (merge by id).
+    const others = (r: any) => JSON.stringify(r.activities.filter((a: any) => a.id !== 'lunch'));
+    expect(others(nextRaw)).toBe(others(raw));
+    expect(previewUpdate(raw, nextRaw, update).find((s) => s.section === 'nutrition')!.lines).toHaveLength(1);
     const lines = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
     const lunch = lines.find((t) => t.startsWith('Fixed lunch'))!;
     expect(lunch).toContain('ingredients High-protein yoghurt 200 g (~¾ cup), Rolled oats 40 g (~½ cup)');
@@ -276,5 +280,46 @@ describe('persistence, history, undo and the seed', () => {
   it('an untouched seed still upgrades to a newer seed revision', async () => {
     const store = await setup();
     expect((await loadActivePlan(store, { ...seed, revision: 99, title: 'New seed' })).title).toBe('New seed');
+  });
+});
+
+describe('merge by id (#26): change one list item without resending the list', () => {
+  const snack = { id: 'snack', kind: 'meal', label: 'Fixed snack', detail: 'Apple and cheese', when: 'afternoon', after: ['lunch'], purpose: 'nutrition' };
+  it('replaces the item with the same id in place and leaves the rest untouched', () => {
+    const { nextRaw, raw } = apply(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { meals: { merge: [snack] } } } }));
+    const ids = (r: any) => r.activities.map((a: any) => a.id);
+    expect(ids(nextRaw)).toEqual(ids(raw)); // same order
+    expect(nextRaw.activities.find((a: any) => a.id === 'snack').detail).toBe('Apple and cheese');
+    expect(JSON.stringify(nextRaw.activities.filter((a: any) => a.id !== 'snack'))).toBe(JSON.stringify(raw.activities.filter((a: any) => a.id !== 'snack')));
+  });
+  it('adds an item with a new id', () => {
+    const breakfast = { id: 'breakfast', kind: 'meal', label: 'Breakfast', time: '07:30', ingredients: [{ name: 'Eggs', measure: '2' }] };
+    const { nextRaw } = apply(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { meals: { merge: [breakfast] } } } }));
+    expect(nextRaw.activities.filter((a: any) => a.kind === 'meal').map((a: any) => a.id)).toEqual(['lunch', 'snack', 'dinner', 'breakfast']);
+  });
+  it('validates merged items like any other (and the merged plan as a whole)', () => {
+    const bad = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { meals: { merge: [{ ...snack, kind: 'exercise' }] } } } }));
+    expect(bad.ok).toBe(false);
+    const p = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { meals: { merge: [{ ...snack, ingredients: [{ name: 'Apple' }] }] } } } }));
+    if (!p.ok) throw new Error(p.errors.join());
+    const a = applyConfigUpdate(baseRaw(), p.update);
+    expect(a.ok).toBe(false);
+    if (!a.ok) expect(a.errors.join()).toMatch(/needs grams, ml or a measure/);
+  });
+  it('a meal cannot replace an exercise with the same id: that is a duplicate, and nothing is applied', () => {
+    const p = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { meals: { merge: [{ ...snack, id: 'dog-walk' }] } } } }));
+    if (!p.ok) throw new Error(p.errors.join());
+    const a = applyConfigUpdate(baseRaw(), p.update);
+    expect(a.ok).toBe(false);
+    if (!a.ok) expect(a.errors.join()).toMatch(/duplicate activity id "dog-walk"/);
+  });
+  it('only id-keyed lists accept merge', () => {
+    const p = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { equipment: { merge: [{ type: 'kettlebell' }] } } } }));
+    expect(p.ok).toBe(false);
+  });
+  it('the AI instructions explain merge and mark the lists that take it', () => {
+    const text = buildAiInstructions(baseRaw(), '2026-11-02');
+    expect(text).toContain('{ "merge": [items] }');
+    expect(text).toMatch(/- meals \(merge by id\):/);
   });
 });

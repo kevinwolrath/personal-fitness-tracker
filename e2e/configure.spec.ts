@@ -168,7 +168,7 @@ test('configuration changes are included in the full export', async ({ page }) =
   await applyButton(page).click();
   await page.getByRole('button', { name: 'Close' }).click();
   const doc = await exportAllData(page);
-  expect(doc.plans[0]).toMatchObject({ origin: 'config', plan: { formatVersion: 2, exercise: { constraints: { gymMembership: false } } } });
+  expect(doc.plans[0]).toMatchObject({ origin: 'config', plan: { formatVersion: 3, exercise: { constraints: { gymMembership: false } } } });
   expect(doc.configChanges).toHaveLength(1);
   expect(doc.configChanges[0]).toMatchObject({ sections: ['exercise'] });
 });

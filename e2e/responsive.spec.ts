@@ -170,3 +170,24 @@ test('the app menu and the export confirmation fit at every width', async ({ pag
     expect(await layoutProblems(page), `confirm at ${width}px`).toEqual([]);
   }
 });
+
+test('meal details (sheet and "Do this next" card) fit at every width', async ({ page }) => {
+  await openAt(page, '2026-11-02T12:10:00+11:00'); // lunch is next
+  await expect(page.getByTestId('next-action-meal')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `card at ${width}px`).toEqual([]);
+  }
+  await page.getByTestId('activity-lunch').getByRole('button', { name: 'Fixed lunch details' }).click();
+  await expect(page.getByTestId('meal-details')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 700 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `sheet at ${width}px`).toEqual([]);
+    // The sheet's actions stay reachable: the content scrolls inside the sheet.
+    await page.getByTestId('item-sheet-scroll').evaluate((el) => (el as HTMLElement).scrollTo({ top: 10000, behavior: 'instant' }));
+    await expect(page.getByRole('button', { name: 'Mark done' })).toBeInViewport();
+    await page.getByTestId('item-sheet-scroll').evaluate((el) => (el as HTMLElement).scrollTo({ top: 0, behavior: 'instant' }));
+  }
+});

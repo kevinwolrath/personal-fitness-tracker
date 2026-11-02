@@ -1,0 +1,99 @@
+name: Deploy Android to Google Play Internal
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: Optional override; must be higher than every version code currently in Google Play
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: personal-fitness-tracker-google-play
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-internal:
+    # Dedicated Personal Fitness Tracker runner on .45. No GitHub-hosted runner fallback.
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
+    timeout-minutes: 60
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Resolve next Android version code from Google Play
+        id: version_code
+        shell: powershell
+        env:
+          ANDROID_PACKAGE_NAME: com.questspire.personalfitnesstracker
+          REQUESTED_VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          node scripts/resolve-android-version-code.js
+          if ($LASTEXITCODE -ne 0) { throw "Google Play version-code resolution failed ($LASTEXITCODE)" }
+
+      - name: Build signed AAB in Docker and deploy to INTERNAL
+        shell: powershell
+        env:
+          ANDROID_VERSION_CODE: ${{ steps.version_code.outputs.value }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $required = @(
+            'ANDROID_KEYSTORE_BASE64',
+            'ANDROID_KEYSTORE_PASSWORD',
+            'ANDROID_KEY_ALIAS',
+            'ANDROID_KEY_PASSWORD',
+            'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON',
+            'ANDROID_VERSION_CODE'
+          )
+          foreach ($name in $required) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item "Env:$name").Value)) {
+              throw "Required value for $name is missing. See docs/google-play-deploy.md."
+            }
+          }
+
+          Write-Host "DEPLOY TARGET: Google Play INTERNAL testing"
+          Write-Host "Package: com.questspire.personalfitnesstracker"
+          Write-Host "versionCode: $env:ANDROID_VERSION_CODE"
+
+          $secretDir = Join-Path $env:RUNNER_TEMP "pft-play-$([guid]::NewGuid())"
+          New-Item -ItemType Directory -Path $secretDir | Out-Null
+          $keyFile = Join-Path $secretDir 'personal-fitness-tracker-upload.jks'
+          $serviceFile = Join-Path $secretDir 'google-play-service-account.json'
+
+          try {
+            [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
+            [IO.File]::WriteAllText($serviceFile, $env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, [Text.UTF8Encoding]::new($false))
+
+            docker build --pull -f docker/android-play.Dockerfile -t pft-google-play:$env:GITHUB_RUN_ID .
+            if ($LASTEXITCODE -ne 0) { throw "Docker build failed ($LASTEXITCODE)" }
+
+            docker run --rm `
+              --env ANDROID_KEYSTORE_PASSWORD `
+              --env ANDROID_KEY_ALIAS `
+              --env ANDROID_KEY_PASSWORD `
+              --env ANDROID_VERSION_CODE `
+              --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
+              --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
+              --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `
+              pft-google-play:$env:GITHUB_RUN_ID
+            if ($LASTEXITCODE -ne 0) { throw "Google Play Docker deployment failed ($LASTEXITCODE)" }
+          }
+          finally {
+            Remove-Item -Recurse -Force $secretDir -ErrorAction SilentlyContinue
+            docker image rm pft-google-play:$env:GITHUB_RUN_ID 2>$null | Out-Null
+          }

@@ -17,10 +17,11 @@
       "typedRoutes": true
     },
     "android": {
-      "package": "com.kevinwolrath.personalfitnesstracker"
+      "package": "com.questspire.personalfitnesstracker",
+      "versionCode": 1
     },
     "ios": {
-      "bundleIdentifier": "com.kevinwolrath.personalfitnesstracker"
+      "bundleIdentifier": "com.questspire.personalfitnesstracker"
     },
     "web": {
       "bundler": "metro",

@@ -27,7 +27,8 @@
       "enum": [
         1,
         2,
-        3
+        3,
+        4
       ]
     },
     "id": {
@@ -586,6 +587,14 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 400
+        },
+        "notifications": {
+          "description": "formatVersion 4. Local reminders for this activity; absent or empty means none.",
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/notification"
+          }
         }
       }
     },
@@ -1154,6 +1163,35 @@
           "maxLength": 40
         }
       }
+    },
+    "notification": {
+      "description": "One local reminder (formatVersion 4). Exactly one of offsetMinutes (from the activity's start: its time, or the start of its day part) or at (HH:MM).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "body"
+      ],
+      "properties": {
+        "offsetMinutes": {
+          "type": "integer",
+          "minimum": -720,
+          "maximum": 720
+        },
+        "at": {
+          "$ref": "#/$defs/time"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
+      }
     }
   },
   "allOf": [
@@ -1267,6 +1305,34 @@
                       "preparation"
                     ]
                   }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "enum": [
+              1,
+              2,
+              3
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "activities": {
+            "type": "array",
+            "items": {
+              "not": {
+                "type": "object",
+                "required": [
+                  "notifications"
                 ]
               }
             }

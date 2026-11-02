@@ -45,6 +45,10 @@ Rules:
 - Same `id`, same or lower `revision`: ask before replacing.
 - Different `id`: ask before replacing. Records for the old plan are kept, but they're hidden until that plan is re-imported.
 
+## Device preferences
+
+- Choices about this phone (currently only **reminders on/off**, contract 10) live in device storage (`src/platform/preferences.ts`: the keystore natively, `localStorage` on web). They aren't plan data, tracking history or part of the export. A plan change can't alter them.
+
 ## Export and backup
 
 - **Export all data** (app menu, after a confirmation) writes the full-history `pft-export` v1 JSON defined in contract 06: everything from the earliest record through today, with provenance. It's shared through the native share sheet on native and downloaded on web.

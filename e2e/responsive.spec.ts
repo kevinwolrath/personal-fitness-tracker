@@ -142,6 +142,7 @@ test('evening next-action card with alternatives and a part-done requirement fit
 test('the exercise guide (long instructions, substitution note, caution) fits at every width', async ({ page }) => {
   await seedPlan(page, require('../fixtures/plans/prescription-example.plan.json'));
   await openAt(page, '2026-11-02T15:00:00+11:00');
+  await page.getByTestId('workout-expand').click();
   for (const name of [/^Hammer curl/, /^Overhead press/, /^Lat pulldown/]) {
     await page.getByTestId('next-action-session').getByRole('button', { name }).click();
     await expect(page.getByTestId('exercise-guide')).toBeVisible();

@@ -61,7 +61,8 @@ test('each exercise has its own guide, and closing returns to the workout sheet 
   await expect(guide(page)).toHaveCount(0);
   await expect(page.getByTestId('sheet-session')).toBeVisible();
 
-  await page.getByTestId('sheet-session-short').getByRole('button', { name: /^Kettlebell squat/ }).click();
+  await page.getByRole('radio', { name: 'Short · 10 min' }).click(); // the short version's own list (#28)
+  await page.getByTestId('sheet-session').getByRole('button', { name: /^Kettlebell squat/ }).click();
   await expect(page.getByTestId('guide-title')).toHaveText('Kettlebell squat');
   await expect(page.getByTestId('guide-position')).toHaveText('1 / 2'); // always starts on the first step
   await expect(page.getByTestId('guide-caption')).not.toHaveText(pulldownCaption!);
@@ -73,6 +74,7 @@ test('each exercise has its own guide, and closing returns to the workout sheet 
 test('substitutes and exercises without a guide degrade gracefully', async ({ page }) => {
   await seedPlan(page, example);
   await openAt(page, at('15:00'));
+  await page.getByTestId('workout-expand').click();
   const session = page.getByTestId('next-action-session');
 
   await session.getByRole('button', { name: /^Hammer curl/ }).click();

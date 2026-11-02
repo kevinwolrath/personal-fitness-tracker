@@ -16,7 +16,8 @@
       "typedRoutes": true
     },
     "android": {
-      "package": "com.questspire.personalfitnesstracker"
+      "package": "com.questspire.personalfitnesstracker",
+      "versionCode": 1
     },
     "ios": {
       "bundleIdentifier": "com.questspire.personalfitnesstracker"

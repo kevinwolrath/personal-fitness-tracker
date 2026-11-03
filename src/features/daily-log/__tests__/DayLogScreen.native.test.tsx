@@ -402,6 +402,31 @@ describe('Health Connect (#36)', () => {
     expect(screen.getByTestId('day-progress')).toBeTruthy();
   });
 
+  it('revoking sleep only: steps refresh, the last sleep values are kept, no new request (#43)', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    await waitFor(() => expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/));
+
+    // Sleep revoked in Health Connect; steps still allowed and changed; the sleep data there changed too.
+    hc().granted = ALL.filter((t) => t !== 'SleepSession');
+    hc().stepsByDay['2026-11-05'] = 8100;
+    hc().records.SleepSession = [];
+    const readsBefore = (jest.requireMock('react-native-health-connect') as any).readRecords.mock.calls.length;
+    fireEvent.press(screen.getByText('Sync now'));
+    await settle();
+
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/8,100/));
+    expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/Not allowed/);
+    const reads = (jest.requireMock('react-native-health-connect') as any).readRecords.mock.calls.slice(readsBefore).map((c: any[]) => c[0]);
+    expect(reads).not.toContain('SleepSession');
+    expect(hc().requests).toHaveLength(1);
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('recorded-sleep_duration')).toHaveTextContent(/7h 45m/));
+    expect(hc().writes).toEqual([]);
+  });
+
   it('refusing access: nothing is read, the sheet says so, and it never asks again by itself', async () => {
     hc().grantOnRequest = [];
     const first = await launch();

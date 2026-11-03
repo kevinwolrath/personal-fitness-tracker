@@ -18,6 +18,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
 - **Syncing:** on app start, on return to the foreground and on **Sync now**. There is no background sync and no changes token.
   - **Window:** each sync re-reads a window of local days ending today: **30** until a sync has completed, then **7**. It replaces this integration's observations for those days and the types read, in one transaction (`TrackingStore.replaceIntegrationObservations`).
   - **Idempotent:** re-running a sync changes nothing. Edits and deletions made in other apps within the window show up here.
+  - **Partial access:** only allowed types are read, and only types read successfully are replaced. If one type is revoked between syncs (for example sleep, while steps stays allowed), the next sync refreshes the others and keeps that type's last imported values; the sheet shows it as "Not allowed" and the app doesn't ask again (#43).
   - **Errors:** a type that fails to read is skipped, and its stored values stay. A failed sync is recorded and shown in the sheet and the menu row. It never blocks the app or the Daily Log.
 - **Never overwrites the user:** manual entries and screenshot imports are separate records and are never changed by a sync.
   - **Precedence:** on the same day, the Weight tile shows a value the user entered or confirmed before an imported one (`latestObservation`). Recorded rows list them first.

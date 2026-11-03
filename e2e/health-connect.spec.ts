@@ -184,6 +184,34 @@ test('a failing read never blocks the app; the other types still sync and the fa
   await expect(page.getByTestId('next-action')).toBeVisible();
 });
 
+test('revoking one type keeps its imported values while the others refresh (#43)', async ({ page }) => {
+  await installHealthConnect(page);
+  await openAt(page, MONDAY);
+  await connect(page);
+  const sleepBefore = (await imported(page)).find((o) => o.id === 'hc:sleep:2026-11-02');
+  expect(sleepBefore.value).toBe(465);
+
+  // In Health Connect's own settings: sleep turned off, steps still allowed. Steps went up; the sleep data
+  // there also changed, so a wrong re-read of sleep would show.
+  const f = await fixture(page);
+  f.granted = ALL.filter((t) => t !== 'sleep');
+  f.data.steps[0].value = 8100;
+  f.data.sleep = [];
+  await setFixture(page, f);
+  await page.getByRole('button', { name: 'Sync now' }).click();
+
+  await expect(page.getByTestId('hc-today-steps')).toContainText('8,100'); // still allowed: refreshed
+  await expect(page.getByTestId('hc-today-sleep')).toContainText('Not allowed');
+  const after = await fixture(page);
+  expect(after.reads[after.reads.length - 1].types).not.toContain('sleep'); // not read at all
+  expect(after.requests).toBe(1); // never asked again by itself
+  expect((await imported(page)).find((o) => o.id === 'hc:sleep:2026-11-02')).toEqual(sleepBefore); // kept, unchanged
+
+  await close(page);
+  await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7h 45m');
+  await expect(page.getByTestId('recorded-steps')).toContainText('8,100');
+});
+
 test('refused, then allowed later in Health Connect: picked up on the next app open without asking again', async ({ page }) => {
   await installHealthConnect(page, { grantOnRequest: [] });
   await openAt(page, MONDAY);

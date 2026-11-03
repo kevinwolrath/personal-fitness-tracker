@@ -194,6 +194,35 @@ test('meal details (sheet and "Do this next" card) fit at every width', async ({
   }
 });
 
+test('energy in both units (#39): the Daily Log, a recorded value and the Settings sheet fit at every width', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pft.display.energy', 'both'));
+  await seedRecords(page, {
+    observations: [
+      {
+        id: 'te', date: '2026-11-02', metric: 'total_energy', value: 13180, unit: 'kJ', kind: 'observed', label: null, note: null,
+        recordedAt: '2026-11-02T08:00:00+11:00',
+        source: { type: 'screenshot', app: 'samsung-health', capturedAt: null, confidence: 0.9, importId: 'imp', assetId: 'a', evidence: '3,150 cal', edited: false },
+      },
+    ],
+  });
+  await openAt(page, '2026-11-02T12:10:00+11:00'); // lunch is next: its energy line is on the card
+  await expect(page.getByTestId('next-action-meal-nutrition')).toHaveText('≈ 1,780 kJ / 425 kcal · 42 g protein');
+  await expect(page.getByTestId('recorded-total_energy')).toContainText('13,180 kJ / 3,150 kcal');
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 1400 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `day at ${width}px`).toEqual([]);
+  }
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByTestId('menu-settings').click();
+  await expect(page.getByTestId('settings-sheet')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 700 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `settings at ${width}px`).toEqual([]);
+  }
+});
+
 test('times never truncate: uppercase AM/PM and a larger system text size, at every width (#34)', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'en-US', timezoneId: 'Australia/Melbourne', isMobile: true, hasTouch: true });
   const page = await context.newPage();

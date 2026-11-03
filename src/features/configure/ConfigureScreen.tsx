@@ -20,8 +20,8 @@ const listWords = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(
  * sections that change, and there is one primary action at a time. Apply lives in a fixed bottom bar.
  */
 export function ConfigureScreen() {
-  const { store, reloadPlan } = useApp();
-  const s = useConfigSession(store, reloadPlan);
+  const { store, reloadPlan, energy } = useApp();
+  const s = useConfigSession(store, reloadPlan, energy);
   const [copied, setCopied] = useState(false);
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -128,7 +128,7 @@ export function ConfigureScreen() {
         {!previewing && (
           <View style={styles.step}>
             <Text style={type.section}>Your configuration</Text>
-            {summarizeConfig(s.raw).map((sec) => (
+            {summarizeConfig(s.raw, energy).map((sec) => (
               <View key={sec.section} style={styles.summarySection} testID={`summary-${sec.section}`}>
                 <Text style={styles.sectionTitle}>{sec.title}</Text>
                 {sec.lines.map((l, i) => (

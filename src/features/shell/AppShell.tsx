@@ -14,6 +14,8 @@ import { handOffScreenshots, pickScreenshots } from '../import/useImportSession'
 import { AppMenu, type AppMenuItem } from './AppMenu';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
+import { SettingsSheet } from '../settings/SettingsSheet';
+import { energyDisplayDetail } from '../../energy';
 
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
@@ -30,9 +32,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function Shell({ children }: { children: ReactNode }) {
-  const { store } = useApp();
+  const { store, energy } = useApp();
   const reminders = useReminders();
   const [remindersOpen, setRemindersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const now = new Date();
   // The open Daily Log day, so an import defaults to it (contract 06).
   const params = useGlobalSearchParams<{ date?: string }>();
@@ -67,6 +70,7 @@ function Shell({ children }: { children: ReactNode }) {
       detail: remindersStatus(reminders, now.getHours() * 60 + now.getMinutes()),
       onSelect: () => setRemindersOpen(true),
     },
+    { key: 'settings', label: 'Settings', detail: energyDisplayDetail(energy), onSelect: () => setSettingsOpen(true) },
     { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
   ];
 
@@ -94,6 +98,7 @@ function Shell({ children }: { children: ReactNode }) {
       </SafeAreaView>
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
+      <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ConfirmDialog
         visible={confirmExport}
         title="Export all fitness data?"

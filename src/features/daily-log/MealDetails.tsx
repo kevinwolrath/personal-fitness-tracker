@@ -1,3 +1,4 @@
+import { speakEnergy } from '../../energy';
 import { StyleSheet, Text, View } from 'react-native';
 import type { MealView } from '../../plan/meals';
 import { colors, space, type } from '../../ui/theme';
@@ -38,7 +39,11 @@ export function MealDetails({ meal, variant, testID }: { meal: MealView; variant
         </View>
       ) : null}
       {meal.nutrition ? (
-        <Text style={onInk ? styles.nutritionOnInk : styles.nutrition} testID={testID && `${testID}-nutrition`}>
+        <Text
+          style={onInk ? styles.nutritionOnInk : styles.nutrition}
+          accessibilityLabel={speakEnergy(meal.nutrition)}
+          testID={testID && `${testID}-nutrition`}
+        >
           {meal.nutrition}
         </Text>
       ) : null}

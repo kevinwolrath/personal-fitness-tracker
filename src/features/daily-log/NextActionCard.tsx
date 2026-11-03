@@ -1,3 +1,4 @@
+import type { EnergyDisplay } from '../../energy';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatClock } from '../../format';
 import { mealView } from '../../plan/meals';
@@ -18,6 +19,8 @@ type Props = {
   logs: Record<string, ActivityLog | undefined>;
   onAdvance: (item: PrescriptionItem, a: Activity) => void;
   onDetails: (item: PrescriptionItem) => void;
+  /** How energy is shown (#39). */
+  energy: EnergyDisplay;
 };
 
 function whenLabel(n: NextAction): string {
@@ -39,7 +42,7 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
 
 /** "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08). */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
-export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetails }: Props) {
+export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetails, energy }: Props) {
   if (!next) {
     return (
       <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
@@ -51,7 +54,7 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
   }
   const { item } = next;
   // A meal that's next shows what to eat right here: no extra tap (#26).
-  const meal = item.activity ? mealView(plan, item.activity) : null;
+  const meal = item.activity ? mealView(plan, item.activity, energy) : null;
   return (
     <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
       <Text style={styles.eyebrow}>Do this next</Text>

@@ -1,3 +1,4 @@
+import type { EnergyDisplay } from '../../energy';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useState } from 'react';
 import { previewUpdate, type SectionPreview } from '../../config/diff';
@@ -14,7 +15,7 @@ export type CheckState =
   | { kind: 'preview'; sections: SectionPreview[]; nextRaw: RawPlan; touched: SectionName[]; payload: unknown; changeCount: number };
 
 /** Copy → paste → check → preview → apply (contract 07). Nothing is written until `apply`. */
-export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise<void>) {
+export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise<void>, energy: EnergyDisplay) {
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [history, setHistory] = useState<ConfigChange[]>([]);
   const [text, setText] = useState('');
@@ -57,7 +58,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (!parsed.ok) return setCheck({ kind: 'invalid', errors: parsed.errors });
     const applied = applyConfigUpdate(raw, parsed.update);
     if (!applied.ok) return setCheck({ kind: 'invalid', errors: applied.errors });
-    const sections = previewUpdate(raw, applied.nextRaw, parsed.update);
+    const sections = previewUpdate(raw, applied.nextRaw, parsed.update, energy);
     setCheck({
       kind: 'preview',
       sections,
@@ -66,7 +67,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       payload: parsed.json,
       changeCount: sections.reduce((n, s) => n + s.lines.length, 0),
     });
-  }, [raw, text]);
+  }, [raw, text, energy]);
 
   const apply = useCallback(async () => {
     if (!stored || check.kind !== 'preview' || !check.changeCount) return;

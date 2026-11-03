@@ -7,6 +7,17 @@ import { secrets } from './secrets';
  */
 const REMINDERS = 'pft.reminders.enabled';
 const ENERGY = 'pft.display.energy';
+const HC_SYNC = 'pft.healthConnect.sync';
+
+/** The last Health Connect sync on this phone (#36). Device state, never plan data. */
+export type HcSyncState = {
+  at: string;
+  ok: boolean;
+  days: number;
+  failed: string[];
+  /** A sync has completed at least once: later syncs re-read 7 days instead of 30. */
+  firstDone: boolean;
+};
 
 export const preferences = {
   async remindersEnabled(): Promise<boolean> {
@@ -22,5 +33,17 @@ export const preferences = {
   },
   async setEnergyDisplay(d: EnergyDisplay): Promise<void> {
     await secrets.set(ENERGY, d);
+  },
+  /** Null until the first sync has finished: the next sync then reads 30 days instead of 7. */
+  async healthConnectSync(): Promise<HcSyncState | null> {
+    try {
+      const raw = await secrets.get(HC_SYNC);
+      return raw ? (JSON.parse(raw) as HcSyncState) : null;
+    } catch {
+      return null;
+    }
+  },
+  async setHealthConnectSync(s: HcSyncState): Promise<void> {
+    await secrets.set(HC_SYNC, JSON.stringify(s));
   },
 };

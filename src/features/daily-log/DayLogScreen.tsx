@@ -42,7 +42,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  * Contains layout and generic copy only — every plan word comes from data.
  */
 export function DayLogScreen() {
-  const { store, plan, energy } = useApp();
+  const { store, plan, energy, dataVersion } = useApp();
   const today = useToday();
   const params = useLocalSearchParams<{ date?: string; focus?: string }>();
   const date: LocalDate = isLocalDate(params.date) ? params.date : today;
@@ -50,7 +50,7 @@ export function DayLogScreen() {
     (d: LocalDate) => router.setParams({ date: d === today ? undefined : d }),
     [today],
   );
-  const { day, prescription, progress, nextAt, records, latestMeasurement, actions, reload } = useDay(store, plan, date);
+  const { day, prescription, progress, nextAt, records, latestMeasurement, actions, reload } = useDay(store, plan, date, dataVersion);
   const nowMinutes = useNowMinutes();
   // "Do this next" is about the present, so it only shows on today (contract 08).
   const next = date === today ? nextAt(nowMinutes) : null;

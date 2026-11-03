@@ -81,6 +81,9 @@ export function ObservationSheet(p: {
   onRemove: (o: Observation) => void;
 }) {
   const o = p.observation;
+  // Imported values belong to their source (Health Connect, #36): changed or deleted there, never here.
+  const imported = o?.source.type === 'integration';
+  const editable = p.editable && !imported;
   const def = o ? metricDef(o.metric) : undefined;
   // Energy is corrected in the unit shown first (#39) and stored back in its stored unit (kJ).
   const stored: EnergyUnit = o?.unit === 'kcal' ? 'kcal' : 'kJ';
@@ -108,9 +111,9 @@ export function ObservationSheet(p: {
         <View style={styles.sheet}>
           <ModalHeader
             title={observationLabel(o)}
-            dismiss={{ label: p.editable ? 'Cancel' : 'Close', onPress: p.onClose }}
+            dismiss={{ label: editable ? 'Cancel' : 'Close', onPress: p.onClose }}
             confirm={
-              p.editable
+              editable
                 ? {
                     label: 'Save',
                     disabled: !valid,
@@ -124,11 +127,16 @@ export function ObservationSheet(p: {
             }
           />
           {o.kind === 'inferred' && <Text style={[type.detail, styles.center]}>Calculated from other values, not measured.</Text>}
+          {imported && (
+            <Text style={[type.detail, styles.center]} testID="observation-imported-note">
+              Imported from Health Connect. Change or delete it there. A value you enter yourself is kept and shown first.
+            </Text>
+          )}
           <View style={styles.inputRow}>
             <TextInput
               value={text}
               onChangeText={setText}
-              editable={p.editable}
+              editable={editable}
               keyboardType="decimal-pad"
               style={styles.input}
               accessibilityLabel={`${observationLabel(o)} value in ${unitWord(shownUnit)}`}
@@ -145,7 +153,7 @@ export function ObservationSheet(p: {
               </View>
             ))}
           </View>
-          {p.editable && (
+          {editable && (
             <Button
               title="Remove"
               variant="secondary"

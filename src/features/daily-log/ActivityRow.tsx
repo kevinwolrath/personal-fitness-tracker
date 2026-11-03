@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View, type AccessibilityActionEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions, type AccessibilityActionEvent } from 'react-native';
 import { formatClock, formatDuration } from '../../format';
 import type { Activity } from '../../plan/schema';
 import type { ActivityLog } from '../../storage/types';
@@ -21,6 +21,9 @@ type Props = {
 };
 
 export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle, exerciseProgress }: Props) {
+  // The time column keeps rows aligned at 70 dp, scaled with the system font size; it grows rather than truncating (#34).
+  const { fontScale } = useWindowDimensions();
+  const timeWidth = Math.ceil(70 * Math.max(1, fontScale));
   const status = log?.status ?? 'pending';
   const done = status === 'done';
   const skipped = status === 'skipped';
@@ -54,7 +57,7 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
   const body = (
     <>
       {showTime && (
-        <Text style={[styles.time, (done || skipped) && styles.textDone]} numberOfLines={1}>
+        <Text style={[styles.time, { minWidth: timeWidth }, (done || skipped) && styles.textDone]} numberOfLines={1} testID={`time-${a.id}`}>
           {time ?? ''}
         </Text>
       )}
@@ -163,7 +166,8 @@ const styles = StyleSheet.create({
   markSkipped: { borderStyle: 'dashed' },
   tick: { color: colors.onAccent, fontWeight: '900', fontSize: 15 },
   dash: { color: colors.faint, fontWeight: '900', fontSize: 16, lineHeight: 18 },
-  time: { width: 70, fontSize: 14, fontWeight: '600', color: colors.muted, ...type.number },
+  // Never a fixed width: "12:00 PM" (uppercase locales) or a larger system font must fit, never "12:00 P…" (#34).
+  time: { flexShrink: 0, fontSize: 14, fontWeight: '600', color: colors.muted, ...type.number },
   text: { flex: 1 },
   meta: { marginTop: 2 },
   textDone: { color: colors.faint },

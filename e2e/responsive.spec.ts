@@ -38,7 +38,8 @@ async function layoutProblems(page: Page): Promise<string[]> {
       }
       // Text wider than its own box is clipped (unless deliberately truncated with an ellipsis).
       const isLeafText = el.childElementCount === 0 && (el.textContent ?? '').trim() !== '';
-      const inStrict = [...strict].some((id) => el.closest(`[data-testid="${id}"]`));
+      // Row times are strict too (#34): "12:00 P…" is never acceptable.
+      const inStrict = [...strict].some((id) => el.closest(`[data-testid="${id}"]`)) || !!el.closest('[data-testid^="time-"]');
       if (isLeafText && el.scrollWidth > el.clientWidth + 1 && (style.textOverflow !== 'ellipsis' || inStrict)) {
         problems.push(`clipped text: "${describe(el)}" needs ${el.scrollWidth}px, has ${el.clientWidth}px`);
       }
@@ -191,4 +192,19 @@ test('meal details (sheet and "Do this next" card) fit at every width', async ({
     await expect(page.getByRole('button', { name: 'Mark done' })).toBeInViewport();
     await page.getByTestId('item-sheet-scroll').evaluate((el) => (el as HTMLElement).scrollTo({ top: 0, behavior: 'instant' }));
   }
+});
+
+test('times never truncate: uppercase AM/PM and a larger system text size, at every width (#34)', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'en-US', timezoneId: 'Australia/Melbourne', isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  await openAt(page, MONDAY);
+  await expect(page.getByTestId('time-lunch')).toHaveText('12:00 PM');
+  // A larger system font (Android's font scale ≈ 1.3) on the time text.
+  await page.addStyleTag({ content: '[data-testid^="time-"] { font-size: 18px !important; }' });
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `at ${width}px`).toEqual([]);
+  }
+  await context.close();
 });

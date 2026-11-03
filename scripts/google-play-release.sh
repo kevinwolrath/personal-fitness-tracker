@@ -16,7 +16,7 @@ TRACK=internal
 
 echo "Google Play target: package=$PACKAGE track=$TRACK versionCode=$ANDROID_VERSION_CODE"
 echo "Generating clean Android project..."
-npx expo prebuild --platform android --no-install --non-interactive
+CI=1 npx expo prebuild --platform android --no-install
 
 # Expo's generated release config uses the debug key by default. Replace it with a
 # signing config whose secrets are supplied only at container runtime.
@@ -59,9 +59,11 @@ AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
 # Verify the generated Gradle project still targets the immutable Play package.
-grep -q 'applicationId "com.questspire.personalfitnesstracker"' android/app/build.gradle || {
-  echo "Unexpected Android applicationId; refusing to upload" >&2; exit 1;
-}
+if ! grep -Eq 'applicationId[[:space:]]+["'"'']com\.questspire\.personalfitnesstracker["'"'']' android/app/build.gradle; then
+  echo "Unexpected Android applicationId; refusing to upload" >&2
+  grep -n 'applicationId' android/app/build.gradle || true
+  exit 1
+fi
 
 echo "Uploading signed AAB to Google Play INTERNAL testing only..."
 fastlane supply \

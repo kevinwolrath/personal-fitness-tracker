@@ -1,3 +1,4 @@
+import { formatEnergy, formatEnergyBound, type EnergyDisplay } from './energy';
 import { parseLocalDate, type LocalDate } from './plan/dates';
 import type { Measurement, NutritionTarget, Plan } from './plan/schema';
 
@@ -15,19 +16,20 @@ export function formatMeasurement(plan: Plan, m: Measurement, value: number): st
   return `${number(value, m.decimals)}${unit ? ` ${unit}` : ''}`;
 }
 
-export function targetUnit(plan: Plan, quantity: NutritionTarget['quantity']): string {
-  return quantity === 'energy' ? plan.units.energy : 'g';
+/**
+ * A daily target, e.g. "Energy ≤ 7,530 kJ / 1,800 kcal" or "Protein 160–180 g". Energy follows the device's
+ * energy display (#39); plan amounts are written in the plan's `units.energy`.
+ */
+export function formatTarget(plan: Plan, t: NutritionTarget, energy: EnergyDisplay): string {
+  if (t.quantity === 'energy') return `${t.label} ${formatEnergyBound(t, plan.units.energy, energy)}`;
+  if (t.min !== undefined && t.max !== undefined) return `${t.label} ${number(t.min)}–${number(t.max)} g`;
+  if (t.max !== undefined) return `${t.label} ≤ ${number(t.max)} g`;
+  return `${t.label} ≥ ${number(t.min!)} g`;
 }
 
-export function formatTarget(plan: Plan, t: NutritionTarget): string {
-  const u = targetUnit(plan, t.quantity);
-  if (t.min !== undefined && t.max !== undefined) return `${t.label} ${number(t.min)}–${number(t.max)} ${u}`;
-  if (t.max !== undefined) return `${t.label} ≤ ${number(t.max)} ${u}`;
-  return `${t.label} ≥ ${number(t.min!)} ${u}`;
-}
-
-export const formatAmount = (plan: Plan, quantity: NutritionTarget['quantity'], n: number) =>
-  `${number(n)} ${targetUnit(plan, quantity)}`;
+/** A plan amount: energy in the chosen unit(s) (from the plan's unit), grams as written. */
+export const formatAmount = (plan: Plan, quantity: NutritionTarget['quantity'], n: number, energy: EnergyDisplay) =>
+  quantity === 'energy' ? formatEnergy(n, plan.units.energy, energy) : `${number(n)} g`;
 
 /** Plan "HH:MM" → locale time, e.g. "8:30 am". */
 export function formatClock(hhmm: string): string {

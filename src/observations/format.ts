@@ -1,3 +1,4 @@
+import { formatEnergy, type EnergyDisplay } from '../energy';
 import type { Plan } from '../plan/schema';
 import { metricDef } from './metrics';
 import type { Observation } from './types';
@@ -12,8 +13,8 @@ export function observationLabel(o: Observation): string {
   return metricDef(o.metric)?.label ?? o.label ?? o.metric;
 }
 
-/** Display an observation in the plan's units where the plan has a preference (kg/lb, kJ/kcal, cm/in). */
-export function formatObservationValue(o: Observation, plan: Plan): string {
+/** Display an observation in the plan's units (kg/lb, cm/in) and the device's energy display (kJ, kcal or both, #39). */
+export function formatObservationValue(o: Observation, plan: Plan, energy: EnergyDisplay): string {
   const def = metricDef(o.metric);
   if (!def) return `${num(o.value, 2)}${o.unit ? ` ${o.unit}` : ''}`;
   switch (def.dimension) {
@@ -28,7 +29,7 @@ export function formatObservationValue(o: Observation, plan: Plan): string {
     case 'length':
       return `${num(fromCanonical(o.value, plan.units.length, 'length') ?? o.value, 1)} ${plan.units.length}`;
     case 'energy':
-      return `${num(Math.round(fromCanonical(o.value, plan.units.energy, 'energy') ?? o.value), 0)} ${plan.units.energy}`;
+      return formatEnergy(o.value, o.unit === 'kcal' ? 'kcal' : 'kJ', energy);
     case 'count':
     case 'score':
       return num(o.value, 0);

@@ -39,13 +39,13 @@ describe('dayLabels (en-AU)', () => {
 
 describe('observation display', () => {
   it('formats by metric in the plan units', () => {
-    expect(formatObservationValue(obs({}), plan)).toBe('13,765');
-    expect(formatObservationValue(obs({ metric: 'sleep_duration', value: 465, unit: 'min' }), plan)).toBe('7h 45m');
-    expect(formatObservationValue(obs({ metric: 'weight', value: 97.25, unit: 'kg' }), plan)).toBe('97.25 kg');
-    expect(formatObservationValue(obs({ metric: 'weight', value: 45.359237, unit: 'kg' }), lbPlan)).toBe('100 lb');
-    expect(formatObservationValue(obs({ metric: 'weight_change', value: -2.55, unit: 'kg' }), plan)).toBe('-2.55 kg');
-    expect(formatObservationValue(obs({ metric: 'total_energy', value: 8368, unit: 'kJ' }), lbPlan)).toBe('2,000 kcal');
-    expect(formatObservationValue(obs({ metric: 'other', label: 'VO2 max', value: 41, unit: 'ml/kg/min' }), plan)).toBe('41 ml/kg/min');
+    expect(formatObservationValue(obs({}), plan, 'kJ')).toBe('13,765');
+    expect(formatObservationValue(obs({ metric: 'sleep_duration', value: 465, unit: 'min' }), plan, 'kJ')).toBe('7h 45m');
+    expect(formatObservationValue(obs({ metric: 'weight', value: 97.25, unit: 'kg' }), plan, 'kJ')).toBe('97.25 kg');
+    expect(formatObservationValue(obs({ metric: 'weight', value: 45.359237, unit: 'kg' }), lbPlan, 'kJ')).toBe('100 lb');
+    expect(formatObservationValue(obs({ metric: 'weight_change', value: -2.55, unit: 'kg' }), plan, 'kJ')).toBe('-2.55 kg');
+    expect(formatObservationValue(obs({ metric: 'total_energy', value: 8368, unit: 'kJ' }), lbPlan, 'kcal')).toBe('2,000 kcal');
+    expect(formatObservationValue(obs({ metric: 'other', label: 'VO2 max', value: 41, unit: 'ml/kg/min' }), plan, 'kJ')).toBe('41 ml/kg/min');
   });
   it('labels and describes provenance', () => {
     expect(observationLabel(obs({ metric: 'exercise_session', label: 'Weights' }))).toBe('Weights');

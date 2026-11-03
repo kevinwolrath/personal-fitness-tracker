@@ -57,6 +57,13 @@
   "jest": {
     "projects": [
       {
+        "displayName": "scripts",
+        "testEnvironment": "node",
+        "testMatch": [
+          "<rootDir>/scripts/__tests__/*.test.js"
+        ]
+      },
+      {
         "displayName": "unit",
         "preset": "jest-expo",
         "testEnvironment": "node",

@@ -82,30 +82,8 @@ cd ..
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
-upload() {
-  fastlane supply \
-    --aab "$AAB" \
-    --package_name "$PACKAGE" \
-    --track "$TRACK" \
-    --release_status "$1" \
-    --json_key "$GOOGLE_PLAY_SERVICE_ACCOUNT_FILE" \
-    --skip_upload_apk true \
-    --skip_upload_metadata true \
-    --skip_upload_changelogs true \
-    --skip_upload_images true \
-    --skip_upload_screenshots true
-}
-
 echo "Uploading signed AAB to Google Play INTERNAL testing only..."
-LOG=$(mktemp)
-if upload completed 2>&1 | tee "$LOG"; [ "${PIPESTATUS[0]}" -eq 0 ]; then
-  echo "Google Play internal upload complete."
-elif grep -qi 'draft app' "$LOG"; then
-  # An app that has never been published (still in Play Console setup) only accepts draft releases.
-  # Same AAB, no rebuild: upload it as a draft, then roll it out in Play Console.
-  echo "Play only accepts draft releases for this app yet; uploading the same AAB as a DRAFT internal release..."
-  upload draft
-  echo "Uploaded as a DRAFT internal release. Finish it in Play Console: Testing > Internal testing > Edit release > Roll out."
-else
-  exit 1
-fi
+# Resumable, chunked upload that survives dropped connections (scripts/upload-play-bundle.js). The track is
+# fixed to internal inside that script; an app that has never been published gets a DRAFT internal release.
+AAB_PATH="$AAB" ANDROID_PACKAGE_NAME="$PACKAGE" node /app/scripts/upload-play-bundle.js
+echo "Google Play internal upload complete."

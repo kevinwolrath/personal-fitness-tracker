@@ -22,10 +22,10 @@ Energy observations are stored in kJ. How they're *shown* (kJ, kcal or both) is 
 | Field | Meaning |
 |---|---|
 | `type` | `manual`, `screenshot` or `integration` |
-| `app` | Source app slug (`fitbit`, `renpho`, …); null for manual |
+| `app` | Source app slug (`fitbit`, `renpho`, `samsung-health`, …, or a package name as an integration reports it); null for manual |
 | `capturedAt` | When the source was captured (screenshot EXIF time, ISO with offset) |
 | `confidence` | Extractor confidence 0–1; null for manual |
-| `importId`, `assetId` | The import session and the screenshot within it |
+| `importId`, `assetId` | The import session and the screenshot within it. For an integration, `importId` names it (`health-connect`, contract 12) and `assetId` is null |
 | `evidence` | The on-screen text the value came from, or the calculation for inferred values |
 | `edited` | The user changed the extracted value before saving |
 

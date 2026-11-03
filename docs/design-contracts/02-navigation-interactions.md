@@ -54,6 +54,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | Item | Does |
 |---|---|
 | **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
+| **Health Connect** | Opens the Health Connect sheet: connect (read-only, the only permission request), status, today's imported values with their source, **Sync now** and **Manage in Health Connect** (contract 12). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
 | **Settings** | Opens the Settings sheet: device preferences, for now **Energy units** (kJ, kcal or both). The detail line states the current choice, e.g. "Energy in kJ" (contract 11). |

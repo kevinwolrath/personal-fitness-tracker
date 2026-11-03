@@ -71,4 +71,4 @@ Enforcement in this repo:
 - The plan is data. No plan content or personal data in UI code (contract 01).
 - Business rules live in pure modules (`src/plan`, `src/prescription`, `src/config`, `src/observations`, `src/exercises`), not in components.
 - Storage changes are additive, numbered migrations, tested against the previous schema (contract 04).
-- No CI build runs in GitHub Actions. The APK is built locally with `scripts/build-apk.ps1`.
+- Builds never run on GitHub-hosted runners. The test APK is built locally with `scripts/build-apk.ps1`. The Google Play internal release (`.github/workflows/google-play-internal.yml`, `docs/google-play-deploy.md`) runs only on Kevin's self-hosted runner on .45 (`personal-fitness-tracker-deploy`); it is started by hand, never on push.

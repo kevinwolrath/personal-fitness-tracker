@@ -11,17 +11,18 @@ The workflow `.github/workflows/google-play-internal.yml` is **manual only** and
 
 Configure these repository Actions secrets:
 
-- `ANDROID_UPLOAD_KEYSTORE_B64` — base64 of `personal-fitness-tracker-upload.jks`
+These are the names the workflow reads (`.github/workflows/google-play-internal.yml`, job `env`):
+
+- `ANDROID_KEYSTORE_BASE64` — base64 of `personal-fitness-tracker-upload.jks`
 - `ANDROID_UPLOAD_KEYSTORE_PASSWORD` — keystore password
 - `ANDROID_UPLOAD_KEY_ALIAS` — `personal-fitness-tracker` (or the alias actually used when the key was generated)
 - `ANDROID_UPLOAD_KEY_PASSWORD` — key password
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_B64` — base64 of the Google Play service-account JSON key
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` — the Google Play service-account JSON key, as plain JSON text
 
-PowerShell examples for producing the two base64 values locally (do not commit or paste the output into issues/logs):
+PowerShell example for producing the keystore's base64 value locally (do not commit or paste the output into issues/logs):
 
 ```powershell
 [Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\SigningKeys\personal-fitness-tracker-upload.jks')) | Set-Clipboard
-[Convert]::ToBase64String([IO.File]::ReadAllBytes('C:\SigningKeys\google-play-service-account.json')) | Set-Clipboard
 ```
 
 The workflow decodes these only into a unique directory under `RUNNER_TEMP`, bind-mounts them read-only into the Docker container, and removes the temporary directory in a `finally` block.
@@ -38,20 +39,32 @@ The workflow decodes these only into a unique directory under `RUNNER_TEMP`, bin
 
 GitHub → Actions → **Deploy Android to Google Play Internal** → **Run workflow**.
 
-The job prints the package, fixed `internal` target and generated versionCode before building/uploading. The release then appears under Play Console → Testing → Internal testing.
+The job prints the package, fixed `internal` target and versionCode before building. The container then:
+
+1. generates the Android project (`expo prebuild`) and points the **release** build type at the upload key;
+2. checks, before the ~25 minute Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
+3. builds the signed AAB;
+4. uploads it with `scripts/upload-play-bundle.js`: a resumable upload in 8 MiB chunks that, when the connection drops, asks Google how much arrived and continues from there (up to 8 attempts with backoff), then releases it to the internal track and commits.
+
+The release then appears under Play Console → Testing → Internal testing. If the app has never been published, Play only accepts draft releases: the script then creates a **draft** internal release, and the log says so; roll it out in Play Console.
 
 ## Versioning
 
-The workflow uses current UTC Unix epoch seconds as Android `versionCode`. It is monotonically increasing for normal manual runs and remains below Android's maximum versionCode until 2038. The user-facing Expo `version` is not changed by the workflow.
+`scripts/resolve-android-version-code.js` asks Google Play for every version code already used (bundles, APKs and every track's releases) and uses the highest plus one, or the workflow's optional `version_code` input if that is higher. `app.json`'s `versionCode` is only the floor. The user-facing Expo `version` is not changed by the workflow.
 
 ## Troubleshooting
 
-- **Job never starts:** confirm `.45` is online and has labels `self-hosted`, `Windows`, `X64`, `.45`.
+- **Job never starts:** confirm `.45` is online and has labels `self-hosted`, `Windows`, `X64`, `personal-fitness-tracker-deploy` (runner name `personal-trainer`).
 - **Missing secret:** the workflow fails before Docker build and names the missing environment mapping.
 - **Signing failure:** verify alias and both passwords against the upload keystore with `keytool -list` locally.
 - **Play authentication/permission failure:** verify the service account is linked/granted access to this Play Console app and Internal testing releases.
-- **Version code already used:** run the workflow again; a new epoch-seconds versionCode is generated.
+- **Version code already used:** run the workflow again; the resolver picks the next unused code from Play.
+- **"Unexpected Android applicationId" / "Generated versionCode" / "Release build type is signed with …":** the generated Gradle project isn't what the script expects (usually an Expo template change). It fails before the build; the log prints the lines it found.
+- **Upload "kept failing after 8 attempts":** the network between `.45` and Google kept dropping. Check the connection and run again.
+- **Upload refused for the signing key:** the keystore in the secrets isn't the upload key registered in Play Console (Setup → App signing).
 
 ## Deliberate constraints
 
 There is no `push`, `pull_request` or schedule trigger; no GitHub-hosted runner; no `upload-artifact`/`download-artifact`; no production track option; and no AAB is retained as a GitHub artifact. Build and Play upload happen in the same Docker-backed job on `.45`.
+
+The release scripts are tested with `npx jest --selectProjects scripts` (part of `npm test`), against a local fake of the Play API that also drops connections mid-upload.

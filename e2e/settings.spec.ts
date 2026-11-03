@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, openAt, seedRecords } from './helpers';
+import { MONDAY, expandToFullDay, openAt, seedRecords } from './helpers';
 
 /** Issue #39: Settings → Energy units (kJ, kcal or both). A device preference; stored values never change. */
 
@@ -117,5 +117,13 @@ test.describe('visual', () => {
     await choose(page, 'Both');
     await expect(page.getByTestId('next-action-meal-nutrition')).toHaveText('≈ 1,780 kJ / 425 kcal · 42 g protein');
     await expect(page).toHaveScreenshot('today-both-units.png');
+  });
+  test('today-both-units-full', async ({ page }) => {
+    await seedRecords(page, { observations: [activeEnergy] });
+    await openAt(page, MONDAY);
+    await choose(page, 'Both');
+    await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,530 kJ / 1,800 kcal');
+    await expandToFullDay(page);
+    await expect(page).toHaveScreenshot('today-both-units-full.png');
   });
 });

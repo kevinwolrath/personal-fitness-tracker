@@ -144,9 +144,16 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                 return (
                   <View key={t} style={styles.row} testID={`hc-today-${t}`}>
                     <Text style={styles.rowLabel}>{hcTypeLabel[t]}</Text>
-                    <Text style={[type.detail, styles.rowValue]} numberOfLines={2}>
-                      {v.source ? `${v.text} · ${v.source}` : v.text}
-                    </Text>
+                    <View style={styles.rowRight}>
+                      <Text style={[type.detail, styles.rowValue, v.source && styles.value]} numberOfLines={1}>
+                        {v.text}
+                      </Text>
+                      {v.source && (
+                        <Text style={[type.detail, styles.rowValue]} numberOfLines={1}>
+                          {v.source}
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 );
               })}
@@ -173,12 +180,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    minHeight: 44,
+    minHeight: 52,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.line,
   },
-  rowLabel: { ...type.body, flex: 1 },
-  rowValue: { flexShrink: 1, textAlign: 'right' },
+  rowLabel: { ...type.body, flexShrink: 0 },
+  rowRight: { flex: 1, minWidth: 0, alignItems: 'flex-end', paddingVertical: space.xs },
+  rowValue: { maxWidth: '100%', textAlign: 'right' },
+  value: { color: colors.ink, fontWeight: '600' },
   status: { minHeight: 56, justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   statusTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
   hint: { marginTop: space.sm },

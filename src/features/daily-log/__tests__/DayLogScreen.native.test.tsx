@@ -356,8 +356,8 @@ describe('Health Connect (#36)', () => {
     await settle();
     expect(hc().requests).toHaveLength(1);
     expect(hc().requests[0]).toEqual(ALL.map((recordType) => ({ accessType: 'read', recordType })));
-    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214 · Samsung Health/));
-    expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kg · Withings/);
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214Samsung Health/));
+    expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kgWithings/);
     expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/);
     expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/Walk 32m/);
 

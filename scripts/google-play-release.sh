@@ -41,14 +41,38 @@ replacement = needle + '''        release {
         }
 '''
 s = s.replace(needle, replacement, 1)
-old = 'signingConfig signingConfigs.debug'
-if old not in s:
+# Point the RELEASE build type at the upload key. Expo's template also has a debug build type with the same
+# line, and it comes first, so replacing the first match would leave the release AAB signed with the debug key.
+import re
+build_types = s.index('buildTypes {')
+release_type = re.compile(r'(\n\s*release\s*\{[^}]*?)signingConfig signingConfigs\.debug')
+m = release_type.search(s, build_types)
+if not m:
     raise SystemExit('Expected Expo release signingConfig was not found; refusing to guess')
-s = s.replace(old, 'signingConfig signingConfigs.release', 1)
+s = s[:m.start()] + m.group(1) + 'signingConfig signingConfigs.release' + s[m.end():]
 # Override generated versionCode without changing the user-facing app version.
 s = s.replace('versionCode 1', f'versionCode {__import__("os").environ["ANDROID_VERSION_CODE"]}', 1)
 p.write_text(s)
 PY
+
+# Verify the generated Gradle project BEFORE the long build, so a mismatch fails in seconds.
+# Expo writes Groovy strings with single quotes; accept either quote style.
+GRADLE=android/app/build.gradle
+require_gradle() {
+  if ! grep -Eq "$1" "$GRADLE"; then
+    echo "$2; refusing to build" >&2
+    grep -nE "$3" "$GRADLE" >&2 || true
+    exit 1
+  fi
+}
+require_gradle "applicationId[[:space:]]+['\"]${PACKAGE//./\\.}['\"]" "Unexpected Android applicationId" 'applicationId'
+require_gradle "versionCode[[:space:]]+${ANDROID_VERSION_CODE}([^0-9]|\$)" "Generated versionCode is not $ANDROID_VERSION_CODE" 'versionCode'
+# The release build type itself (not the debug one) must use the upload key.
+RELEASE_SIGNING=$(awk '/buildTypes[[:space:]]*\{/{bt=1} bt && /^[[:space:]]*release[[:space:]]*\{/{rel=1} rel && /signingConfig[[:space:]]/{print $2; exit}' "$GRADLE")
+if [ "$RELEASE_SIGNING" != "signingConfigs.release" ]; then
+  echo "Release build type is signed with '${RELEASE_SIGNING:-nothing}', not the upload key; refusing to build" >&2
+  exit 1
+fi
 
 export ANDROID_KEYSTORE_FILE="$KEYSTORE"
 cd android
@@ -58,22 +82,30 @@ cd ..
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
-# Verify the generated Gradle project still targets the immutable Play package.
-if ! grep -Eq 'applicationId[[:space:]]+["'"'']com\.questspire\.personalfitnesstracker["'"'']' android/app/build.gradle; then
-  echo "Unexpected Android applicationId; refusing to upload" >&2
-  grep -n 'applicationId' android/app/build.gradle || true
-  exit 1
-fi
+upload() {
+  fastlane supply \
+    --aab "$AAB" \
+    --package_name "$PACKAGE" \
+    --track "$TRACK" \
+    --release_status "$1" \
+    --json_key "$GOOGLE_PLAY_SERVICE_ACCOUNT_FILE" \
+    --skip_upload_apk true \
+    --skip_upload_metadata true \
+    --skip_upload_changelogs true \
+    --skip_upload_images true \
+    --skip_upload_screenshots true
+}
 
 echo "Uploading signed AAB to Google Play INTERNAL testing only..."
-fastlane supply \
-  --aab "$AAB" \
-  --package_name "$PACKAGE" \
-  --track "$TRACK" \
-  --json_key "$GOOGLE_PLAY_SERVICE_ACCOUNT_FILE" \
-  --skip_upload_apk true \
-  --skip_upload_metadata true \
-  --skip_upload_images true \
-  --skip_upload_screenshots true
-
-echo "Google Play internal upload complete."
+LOG=$(mktemp)
+if upload completed 2>&1 | tee "$LOG"; [ "${PIPESTATUS[0]}" -eq 0 ]; then
+  echo "Google Play internal upload complete."
+elif grep -qi 'draft app' "$LOG"; then
+  # An app that has never been published (still in Play Console setup) only accepts draft releases.
+  # Same AAB, no rebuild: upload it as a draft, then roll it out in Play Console.
+  echo "Play only accepts draft releases for this app yet; uploading the same AAB as a DRAFT internal release..."
+  upload draft
+  echo "Uploaded as a DRAFT internal release. Finish it in Play Console: Testing > Internal testing > Edit release > Roll out."
+else
+  exit 1
+fi

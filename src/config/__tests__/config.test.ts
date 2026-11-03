@@ -169,8 +169,8 @@ describe('preview', () => {
     // Lunch-only: every other meal is byte-identical (merge by id).
     const others = (r: any) => JSON.stringify(r.activities.filter((a: any) => a.id !== 'lunch'));
     expect(others(nextRaw)).toBe(others(raw));
-    expect(previewUpdate(raw, nextRaw, update).find((s) => s.section === 'nutrition')!.lines).toHaveLength(1);
-    const lines = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
+    expect(previewUpdate(raw, nextRaw, update, 'kJ').find((s) => s.section === 'nutrition')!.lines).toHaveLength(1);
+    const lines = previewUpdate(raw, nextRaw, update, 'kJ').flatMap((s) => s.lines.map((l) => l.text));
     const lunch = lines.find((t) => t.startsWith('Fixed lunch'))!;
     expect(lunch).toContain('ingredients High-protein yoghurt 200 g (~¾ cup), Rolled oats 40 g (~½ cup)');
     expect(lunch).toContain('Water (as needed)');
@@ -179,7 +179,7 @@ describe('preview', () => {
 
   it('reads in plain language: units, thousands separators, labels, and no "—" (#21)', () => {
     const { nextRaw, update, raw } = apply(fixture('combined'));
-    const all = previewUpdate(raw, nextRaw, update).flatMap((s) => s.lines.map((l) => l.text));
+    const all = previewUpdate(raw, nextRaw, update, 'kJ').flatMap((s) => s.lines.map((l) => l.text));
     expect(all).toContain('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
     // The seed lunch now carries ingredients (#26); this older update replaces the meal without them.
     expect(all.find((t) => t.startsWith('Fixed lunch at 12:00:'))).toMatch(/energy 1,780 kJ, protein 42 g → energy 2,100 kJ, protein 55 g; cleared: purpose, ingredients, preparation and reminders$/);
@@ -189,7 +189,7 @@ describe('preview', () => {
 
   it('lists supplied sections with readable changes and marks the rest untouched', () => {
     const { nextRaw, update, raw } = apply(fixture('real-world-exercise'));
-    const preview = previewUpdate(raw, nextRaw, update);
+    const preview = previewUpdate(raw, nextRaw, update, 'kJ');
     expect(preview.map((s) => [s.section, s.supplied])).toEqual([
       ['profile', false], ['goals', false], ['nutrition', false], ['exercise', true], ['schedule', false], ['tracking', false],
     ]);
@@ -218,7 +218,7 @@ describe('preview', () => {
       },
     });
     const { nextRaw, update } = apply(text, base);
-    const lines = previewUpdate(base, nextRaw, update).find((s) => s.section === 'exercise')!.lines.map((l) => `${l.kind} ${l.text}`);
+    const lines = previewUpdate(base, nextRaw, update, 'kJ').find((s) => s.section === 'exercise')!.lines.map((l) => `${l.kind} ${l.text}`);
     expect(lines).toEqual(['change Biceps curl: status avoid → caution', 'remove Removed hammer curl']);
   });
 });

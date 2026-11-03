@@ -56,6 +56,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
+| **Settings** | Opens the Settings sheet: device preferences, for now **Energy units** (kJ, kcal or both). The detail line states the current choice, e.g. "Energy in kJ" (contract 11). |
 | **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
 
 The menu closes before its item runs. On iOS, the item runs once the sheet has dismissed, because iOS can't present a picker, an alert or a modal route over a closing sheet. On web it runs inside the tap, so the browser allows the file picker.

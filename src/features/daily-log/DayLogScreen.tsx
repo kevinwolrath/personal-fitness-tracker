@@ -42,7 +42,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  * Contains layout and generic copy only — every plan word comes from data.
  */
 export function DayLogScreen() {
-  const { store, plan } = useApp();
+  const { store, plan, energy } = useApp();
   const today = useToday();
   const params = useLocalSearchParams<{ date?: string; focus?: string }>();
   const date: LocalDate = isLocalDate(params.date) ? params.date : today;
@@ -114,10 +114,10 @@ export function DayLogScreen() {
   const budgetNote = useMemo(() => {
     if (!day.flexibleBudget) return {} as Record<string, string>;
     const text = day.flexibleBudget.lines
-      .map((l) => `≈ ${formatAmount(plan, l.quantity, l.remaining)} ${l.quantity === 'energy' ? 'left' : `${l.label.toLowerCase()} to go`}`)
+      .map((l) => `≈ ${formatAmount(plan, l.quantity, l.remaining, energy)} ${l.quantity === 'energy' ? 'left' : `${l.label.toLowerCase()} to go`}`)
       .join(' · ');
     return { [day.flexibleBudget.activityId]: text };
-  }, [day.flexibleBudget, plan]);
+  }, [day.flexibleBudget, plan, energy]);
 
   const press = (item: PrescriptionItem, a: Activity) => {
     tap();
@@ -197,7 +197,7 @@ export function DayLogScreen() {
               const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
               const workout = heldItem ?? (next?.item.session && next.item.activity ? next.item : undefined);
               if (!workout) {
-                return <NextActionCard plan={plan} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
+                return <NextActionCard plan={plan} energy={energy} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
               }
               return (
                 <WorkoutCard
@@ -226,7 +226,7 @@ export function DayLogScreen() {
             editable={editable}
             onLog={setSheetMeasurement}
           />
-          <TargetsLine plan={plan} targets={day.targets} />
+          <TargetsLine plan={plan} targets={day.targets} energy={energy} />
         </View>
 
         {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
@@ -241,7 +241,7 @@ export function DayLogScreen() {
         ))}
 
         <View style={styles.block}>
-          <RecordedSection plan={plan} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
+          <RecordedSection plan={plan} energy={energy} observations={recorded} outsidePlan={outsidePlan} onOpen={setSheetObservation} />
         </View>
 
       </ScrollView>
@@ -252,6 +252,7 @@ export function DayLogScreen() {
       </SafeAreaView>
 
       <ItemSheet
+        energy={energy}
         item={sheetItem && (prescription.items.find((i) => i.key === sheetItem.key) ?? null)}
         logs={records.activities}
         editable={editable}
@@ -297,6 +298,7 @@ export function DayLogScreen() {
       />
       <ObservationSheet
         plan={plan}
+        energy={energy}
         observation={sheetObservation}
         editable={editable}
         onClose={() => setSheetObservation(null)}

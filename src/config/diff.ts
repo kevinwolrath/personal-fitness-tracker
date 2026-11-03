@@ -1,3 +1,4 @@
+import { formatEnergy, formatEnergyBound, type EnergyDisplay, type EnergyUnit } from '../energy';
 import { fieldOf, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 import type { ConfigUpdate } from './update';
 
@@ -15,15 +16,22 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const list = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /**
- * How the preview formats amounts, from the plan being previewed: the user's energy unit and the
- * nutrition targets (so { energy: 2100, protein: 55 } reads "energy 2,100 kJ, protein 55 g").
+ * How the preview formats amounts, from the plan being previewed: the unit its energy numbers are written in,
+ * the device's energy display (#39) and the nutrition targets (so { energy: 2100, protein: 55 } reads
+ * "energy 2,100 kJ, protein 55 g", or "energy 2,100 kJ / 502 kcal, …" with both units shown).
  * Set by previewUpdate for the duration of one preview.
  */
-type FormatContext = { energyUnit: string; targets: Map<string, { label: string; quantity: string }>; activityNames: Map<string, string> };
-let fmt: FormatContext = { energyUnit: 'kJ', targets: new Map(), activityNames: new Map() };
+type FormatContext = {
+  energyUnit: EnergyUnit;
+  display: EnergyDisplay;
+  targets: Map<string, { label: string; quantity: string }>;
+  activityNames: Map<string, string>;
+};
+let fmt: FormatContext = { energyUnit: 'kJ', display: 'kJ', targets: new Map(), activityNames: new Map() };
 
 const num = (n: number) => n.toLocaleString('en-AU', { maximumFractionDigits: 2 });
-const amount = (quantity: string | undefined, n: number) => `${num(n)}${quantity === 'energy' ? ` ${fmt.energyUnit}` : quantity === 'grams' ? ' g' : ''}`;
+const amount = (quantity: string | undefined, n: number) =>
+  quantity === 'energy' ? formatEnergy(n, fmt.energyUnit, fmt.display) : `${num(n)}${quantity === 'grams' ? ' g' : ''}`;
 
 /** Plain-language names for plan fields that don't read well as split words. */
 const fieldLabels: Record<string, string> = {
@@ -105,7 +113,9 @@ type Describer = {
 };
 
 const targetRange = (i: Item) =>
-  i.min !== undefined && i.max !== undefined
+  i.quantity === 'energy'
+    ? formatEnergyBound(i, fmt.energyUnit, fmt.display)
+    : i.min !== undefined && i.max !== undefined
     ? `${num(i.min)}–${amount(i.quantity, i.max)}`
     : i.max !== undefined
       ? `≤ ${amount(i.quantity, i.max)}`
@@ -205,12 +215,12 @@ function diffValue(path: string, title: string, before: unknown, after: unknown)
 }
 
 /** Human-readable preview for every section: supplied ones with their changes, others marked untouched. */
-export function previewUpdate(currentRaw: RawPlan, nextRaw: RawPlan, update: ConfigUpdate): SectionPreview[] {
-  return withFormat(nextRaw, () => previewSections(currentRaw, nextRaw, update));
+export function previewUpdate(currentRaw: RawPlan, nextRaw: RawPlan, update: ConfigUpdate, display: EnergyDisplay): SectionPreview[] {
+  return withFormat(nextRaw, display, () => previewSections(currentRaw, nextRaw, update));
 }
 
-/** Run `fn` with amounts formatted for `plan` (its energy unit, target units and activity names). */
-export function withFormat<T>(plan: RawPlan, fn: () => T): T {
+/** Run `fn` with amounts formatted for `plan` (its energy unit, target units and activity names) in the energy display. */
+export function withFormat<T>(plan: RawPlan, display: EnergyDisplay, fn: () => T): T {
   const previous = fmt;
   const raw = plan as {
     units?: { energy?: string };
@@ -218,7 +228,8 @@ export function withFormat<T>(plan: RawPlan, fn: () => T): T {
     exercise?: { activityTypes?: { id: string; label: string }[] };
   };
   fmt = {
-    energyUnit: raw.units?.energy ?? 'kJ',
+    energyUnit: raw.units?.energy === 'kcal' ? 'kcal' : 'kJ',
+    display,
     targets: new Map((raw.nutrition?.targets ?? []).map((t) => [t.id, t])),
     activityNames: new Map((raw.exercise?.activityTypes ?? []).map((a) => [a.id, a.label])),
   };

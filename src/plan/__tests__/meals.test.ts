@@ -8,7 +8,7 @@ const byId = (id: string) => plan.activities.find((a) => a.id === id)!;
 
 describe('mealView (#26)', () => {
   it('renders the seed lunch from the plan: amounts, the plan’s own measures, preparation and nutrition', () => {
-    expect(mealView(plan, byId('lunch'))).toEqual({
+    expect(mealView(plan, byId('lunch'), 'kJ')).toEqual({
       ingredients: [
         { name: 'High-protein yoghurt', amount: '200 g', measure: '~¾ cup' },
         { name: 'Rolled oats', amount: '40 g', measure: '~½ cup' },
@@ -30,7 +30,7 @@ describe('mealView (#26)', () => {
           : a,
       ),
     });
-    expect(mealView(p, p.activities.find((a) => a.id === 'lunch')!)).toEqual({
+    expect(mealView(p, p.activities.find((a) => a.id === 'lunch')!, 'kcal')).toEqual({
       ingredients: [
         { name: 'Rice', amount: '150 g', measure: '1 cup cooked' },
         { name: 'Milk', amount: '250 ml', measure: null },
@@ -41,9 +41,9 @@ describe('mealView (#26)', () => {
   });
 
   it('nothing to show for non-meals, or meals without ingredients, preparation or nutrition', () => {
-    expect(mealView(plan, byId('resistance'))).toBeNull();
-    expect(mealView(plan, byId('dinner'))).toBeNull(); // flexible: the row shows the budget instead
+    expect(mealView(plan, byId('resistance'), 'kJ')).toBeNull();
+    expect(mealView(plan, byId('dinner'), 'kJ')).toBeNull(); // flexible: the row shows the budget instead
     const g = planSchema.parse(generic);
-    expect(g.activities.filter((a) => a.kind === 'meal').map((a) => mealView(g, a)?.ingredients.length ?? 0).every((n) => n === 0)).toBe(true);
+    expect(g.activities.filter((a) => a.kind === 'meal').map((a) => mealView(g, a, 'kJ')?.ingredients.length ?? 0).every((n) => n === 0)).toBe(true);
   });
 });

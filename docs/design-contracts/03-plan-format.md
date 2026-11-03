@@ -30,7 +30,7 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 | Field | Req | Notes |
 |---|---|---|
 | `title`, `description` | title | Shown on the Plan tab. |
-| `units` | ✓ | Display units for `mass` (kg/lb), `energy` (kJ/kcal) and `length` (cm/in). All values in the plan are expressed in these units. The app doesn't convert in V1. |
+| `units` | ✓ | Units for `mass` (kg/lb), `energy` (kJ/kcal) and `length` (cm/in). All values in the plan are expressed in these units. Mass and length are shown as written. Energy is shown in the device's energy display (kJ, kcal or both), converted from `units.energy` at display time only; until the user picks a display, it is this unit (contract 11). |
 | `dayTypes` | ✓ | 1–7 named variants of a day, for example `home`, `office`, `weekend`. |
 | `schedule` | ✓ | Default day type for each weekday, `mon` to `sun`, all required. |
 | `measurements` | | Values the user records. `quantity` is `mass`, `length` or `number` (with `unitLabel`). `cadence` is `{every:"day"}` or `{every:"week", on:"sun"}`. |

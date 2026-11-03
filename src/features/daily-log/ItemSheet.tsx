@@ -1,3 +1,4 @@
+import type { EnergyDisplay } from '../../energy';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { buildGuide } from '../../exercises/guide';
@@ -29,10 +30,12 @@ type Props = {
   onChooseVariant: (item: PrescriptionItem, v: Variant) => void;
   /** The active plan: meal details and exercise guides are rendered from it. */
   plan: Plan;
+  /** How energy is shown (#39). */
+  energy: EnergyDisplay;
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, onTickExercise, onChooseVariant }: Props) {
+export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant }: Props) {
   const exerciseConfig = plan.exercise;
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const act = (fn: () => void) => () => {
@@ -40,7 +43,7 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
     onClose();
   };
   const a = item?.activity;
-  const meal = a ? mealView(plan, a) : null;
+  const meal = a ? mealView(plan, a, energy) : null;
   const session = item?.session;
   const progress = item && session ? sessionProgress(session, logs[item.key]) : null;
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';

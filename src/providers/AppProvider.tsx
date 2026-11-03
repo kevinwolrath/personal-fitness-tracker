@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import type { EnergyDisplay } from '../energy';
 import { loadActivePlan } from '../plan/bootstrap';
+import { preferences } from '../platform/preferences';
 import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
@@ -11,6 +13,13 @@ type AppData = {
   plan: Plan;
   /** Re-read the active plan after it changed (e.g. a configuration update was applied or undone). */
   reloadPlan: () => Promise<void>;
+  /**
+   * How energy is shown on this phone (#39): a device preference, never plan data. Until the user picks one it
+   * is the plan's own `units.energy`, so nothing changes for anyone who hasn't chosen.
+   */
+  energy: EnergyDisplay;
+  /** Applies immediately everywhere and is remembered across restarts. Stored values never change. */
+  setEnergy: (d: EnergyDisplay) => void;
 };
 const AppContext = createContext<AppData | null>(null);
 
@@ -23,13 +32,16 @@ export function useApp(): AppData {
 /** Opens storage and loads the active plan (installing the seed on first run). */
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { error: string } | null>(null);
+  const [chosenEnergy, setChosenEnergy] = useState<EnergyDisplay | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const store = await openStore();
-      const plan = await loadActivePlan(store);
-      if (!cancelled) setState({ store, plan });
+      const [plan, energy] = await Promise.all([loadActivePlan(store), preferences.energyDisplay().catch(() => null)]);
+      if (cancelled) return;
+      setChosenEnergy(energy);
+      setState({ store, plan });
     })().catch((e: unknown) => !cancelled && setState({ error: e instanceof Error ? e.message : String(e) }));
     return () => {
       cancelled = true;
@@ -41,7 +53,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const stored = await state.store.getActivePlan();
     if (stored) setState({ store: state.store, plan: planSchema.parse(JSON.parse(stored.json)) });
   }, [state]);
-  const value = useMemo(() => (state && !('error' in state) ? { ...state, reloadPlan } : null), [state, reloadPlan]);
+  const setEnergy = useCallback((d: EnergyDisplay) => {
+    setChosenEnergy(d);
+    preferences.setEnergyDisplay(d).catch(() => undefined); // still applies for this session if storage fails
+  }, []);
+  const value = useMemo(
+    () => (state && !('error' in state) ? { ...state, reloadPlan, energy: chosenEnergy ?? state.plan.units.energy, setEnergy } : null),
+    [state, reloadPlan, chosenEnergy, setEnergy],
+  );
 
   if (!state) {
     return (

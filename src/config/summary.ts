@@ -1,3 +1,4 @@
+import type { EnergyDisplay } from '../energy';
 import { describeItem, describeLimitation, withFormat } from './diff';
 import { readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 
@@ -6,8 +7,8 @@ export type SectionSummary = { section: SectionName; title: string; lines: strin
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Inspectable, read-only summary of the current configuration (no settings UI). Pure. */
-export function summarizeConfig(raw: RawPlan): SectionSummary[] {
-  return withFormat(raw, () => summarize(raw));
+export function summarizeConfig(raw: RawPlan, display: EnergyDisplay): SectionSummary[] {
+  return withFormat(raw, display, () => summarize(raw));
 }
 
 function summarize(raw: RawPlan): SectionSummary[] {

@@ -56,7 +56,7 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 4. **Validate sections:** each is checked strictly against its patch schema, and every error is reported at once with its path (for example `fitnessConfigUpdate.exercise.equipment[0].type: …`).
 5. **Merge and validate:** the update is merged onto a **copy** of the stored raw plan JSON, then the whole result is validated, including cross-section rules (for example a meal's nutrition keys must be existing targets, or modalities must exist).
 6. **Preview:** a human-readable change list per section (`src/config/diff.ts`), in plain language:
-   - amounts use the app's own formatting (thousands separators, the user's energy unit, `g`);
+   - amounts use the app's own formatting (thousands separators, energy in the device's energy display, `g`; contract 11);
    - fields have plain names ("time of day", "sessions a week");
    - activity ids show their configured labels;
    - removed fields read "cleared: …", never "→ —".

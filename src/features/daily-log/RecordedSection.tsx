@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { convertEnergy, entryUnit, roundEnergy, speakEnergy, unitWord, type EnergyDisplay, type EnergyUnit } from '../../energy';
 import { formatObservationValue, observationLabel, observationSource } from '../../observations/format';
 import { metricDef } from '../../observations/metrics';
 import type { Observation } from '../../observations/types';
@@ -18,6 +19,7 @@ import { TextButton } from './Sheets';
  */
 export function RecordedSection(p: {
   plan: Plan;
+  energy: EnergyDisplay;
   observations: Observation[];
   outsidePlan: ActivityLog[];
   onOpen: (o: Observation) => void;
@@ -35,7 +37,7 @@ export function RecordedSection(p: {
             onPress={() => p.onOpen(o)}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={`${observationLabel(o)} ${formatObservationValue(o, p.plan)}, ${observationSource(o)}. Details`}
+            accessibilityLabel={speakEnergy(`${observationLabel(o)} ${formatObservationValue(o, p.plan, p.energy)}, ${observationSource(o)}. Details`)}
             testID={`recorded-${o.metric}`}
           >
             <View style={styles.text}>
@@ -47,7 +49,7 @@ export function RecordedSection(p: {
               </Text>
             </View>
             <Text style={[styles.value, o.kind === 'inferred' && styles.inferred]} numberOfLines={1}>
-              {formatObservationValue(o, p.plan)}
+              {formatObservationValue(o, p.plan, p.energy)}
             </Text>
             <Text style={styles.chevron}>›</Text>
           </Pressable>
@@ -71,6 +73,7 @@ export function RecordedSection(p: {
 /** Provenance plus correction (edit value / remove) for one observation. */
 export function ObservationSheet(p: {
   plan: Plan;
+  energy: EnergyDisplay;
   observation: Observation | null;
   editable: boolean;
   onClose: () => void;
@@ -78,13 +81,18 @@ export function ObservationSheet(p: {
   onRemove: (o: Observation) => void;
 }) {
   const o = p.observation;
+  const def = o ? metricDef(o.metric) : undefined;
+  // Energy is corrected in the unit shown first (#39) and stored back in its stored unit (kJ).
+  const stored: EnergyUnit = o?.unit === 'kcal' ? 'kcal' : 'kJ';
+  const editUnit: EnergyUnit | null = def?.dimension === 'energy' ? entryUnit(p.energy) : null;
+  const initial = o ? String(editUnit ? roundEnergy(convertEnergy(o.value, stored, editUnit), editUnit) : o.value) : '';
   const [text, setText] = useState('');
   useEffect(() => {
-    if (o) setText(String(o.value));
-  }, [o]);
+    setText(initial);
+  }, [initial]);
   const n = Number(text.trim().replace(',', '.'));
   const valid = text.trim() !== '' && Number.isFinite(n) && (n >= 0 || o?.metric === 'weight_change');
-  const def = o ? metricDef(o.metric) : undefined;
+  const shownUnit = editUnit ?? o?.unit ?? '';
   const facts = o
     ? [
         ['Source', observationSource(o)],
@@ -107,7 +115,8 @@ export function ObservationSheet(p: {
                     label: 'Save',
                     disabled: !valid,
                     onPress: () => {
-                      p.onCorrect(o, n);
+                      // Unchanged text never rewrites the stored value (it was rounded for display).
+                      if (text.trim() !== initial) p.onCorrect(o, editUnit ? convertEnergy(n, editUnit, stored) : n);
                       p.onClose();
                     },
                   }
@@ -122,10 +131,10 @@ export function ObservationSheet(p: {
               editable={p.editable}
               keyboardType="decimal-pad"
               style={styles.input}
-              accessibilityLabel={`${observationLabel(o)} value in ${o.unit}`}
+              accessibilityLabel={`${observationLabel(o)} value in ${unitWord(shownUnit)}`}
               testID="observation-input"
             />
-            <Text style={styles.unit}>{o.unit === 'count' || o.unit === 'score' ? '' : o.unit}</Text>
+            <Text style={styles.unit}>{shownUnit === 'count' || shownUnit === 'score' ? '' : shownUnit}</Text>
           </View>
           {def?.dimension === 'duration' && valid && <Text style={[type.detail, styles.center]}>{formatMinutes(n)}</Text>}
           <View style={styles.facts}>

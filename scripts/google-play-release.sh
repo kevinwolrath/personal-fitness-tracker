@@ -59,7 +59,8 @@ AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
 # Verify the generated Gradle project still targets the immutable Play package.
-grep -q 'applicationId "com.questspire.personalfitnesstracker"' android/app/build.gradle || {
+# Expo/Gradle may emit applicationId using either single or double quotes.
+grep -Eq "applicationId[[:space:]]+['\"]com\.questspire\.personalfitnesstracker['\"]" android/app/build.gradle || {
   echo "Unexpected Android applicationId; refusing to upload" >&2; exit 1;
 }
 

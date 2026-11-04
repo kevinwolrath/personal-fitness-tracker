@@ -132,6 +132,43 @@ export function describeTrackingStore(
       expect((await again.snapshot()).imports).toEqual([session]);
     });
 
+    it('replaces only one integration\'s records on the synced days and metrics, atomically (#36)', async () => {
+      const hc = (id: string, metric: string, date: string, value: number) =>
+        obs(id, metric, date, value, '2026-11-02T08:00:00+11:00', {
+          unit: metric === 'steps' ? 'count' : 'kg',
+          source: { type: 'integration', app: 'samsung-health', capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false },
+        });
+      const manual = obs('m', 'weight', '2026-11-02', 97.1, '2026-11-02T07:00:00+11:00');
+      const shot = obs('s', 'steps', '2026-11-02', 9000, '2026-11-02T09:00:00+11:00', {
+        unit: 'count',
+        source: { type: 'screenshot', app: 'fitbit', capturedAt: null, confidence: 0.9, importId: 'imp', assetId: 'a', evidence: '9,000', edited: false },
+      });
+      const older = hc('hc:steps:2026-10-01', 'steps', '2026-10-01', 4000); // outside the window
+      await store.addObservations([manual, shot, older, hc('hc:steps:2026-11-02', 'steps', '2026-11-02', 5000), hc('hc:steps:2026-11-01', 'steps', '2026-11-01', 7000), hc('hc:weight:2026-11-02', 'weight', '2026-11-02', 97.4)]);
+
+      // A re-sync of steps for the last two days: one value changed, one deleted in Health Connect. Weight not read.
+      await store.replaceIntegrationObservations('health-connect', ['2026-11-01', '2026-11-02'], ['steps'], [hc('hc:steps:2026-11-02', 'steps', '2026-11-02', 6214)]);
+      const again = await reopen();
+      const ids = async (date: string) => (await again.getDay('p', date)).observations.map((o) => `${o.id}=${o.value}`).sort();
+      expect(await ids('2026-11-02')).toEqual(['hc:steps:2026-11-02=6214', 'hc:weight:2026-11-02=97.4', 'm=97.1', 's=9000']);
+      expect(await ids('2026-11-01')).toEqual([]); // deleted in Health Connect → gone here
+      expect(await ids('2026-10-01')).toEqual(['hc:steps:2026-10-01=4000']); // other days untouched
+      // Re-running the same sync is idempotent.
+      await again.replaceIntegrationObservations('health-connect', ['2026-11-01', '2026-11-02'], ['steps'], [hc('hc:steps:2026-11-02', 'steps', '2026-11-02', 6214)]);
+      expect(await ids('2026-11-02')).toEqual(['hc:steps:2026-11-02=6214', 'hc:weight:2026-11-02=97.4', 'm=97.1', 's=9000']);
+    });
+
+    it('a value the user entered beats an imported one on the same day, whatever its time (#36)', async () => {
+      const imported = obs('hc:weight:2026-11-02', 'weight', '2026-11-02', 97.4, '2026-11-02T20:00:00+11:00', {
+        source: { type: 'integration', app: 'withings', capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false },
+      });
+      await store.addObservations([imported, obs('m', 'weight', '2026-11-02', 97.1, '2026-11-02T07:00:00+11:00')]);
+      expect((await store.latestObservation('weight', '2026-11-02'))?.id).toBe('m');
+      // On a later day with only an imported value, the imported value is the latest.
+      await store.addObservations([{ ...imported, id: 'hc:weight:2026-11-03', date: '2026-11-03' }]);
+      expect((await store.latestObservation('weight', '2026-11-03'))?.id).toBe('hc:weight:2026-11-03');
+    });
+
     it('snapshot holds everything; restore into an empty store reproduces it exactly', async () => {
       await store.setActivePlan({ planId: 'p', revision: 2, formatVersion: 1, json: '{"id":"p"}', importedAt: 't' });
       await store.setActivity('p', '2025-12-31', 'walk', log('walk', { status: 'skipped' }));

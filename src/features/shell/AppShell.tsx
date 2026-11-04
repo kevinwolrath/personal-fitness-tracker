@@ -15,6 +15,8 @@ import { AppMenu, type AppMenuItem } from './AppMenu';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 import { SettingsSheet } from '../settings/SettingsSheet';
+import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
+import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
 import { energyDisplayDetail } from '../../energy';
 
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -26,7 +28,9 @@ const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <RemindersProvider>
-      <Shell>{children}</Shell>
+      <HealthConnectProvider>
+        <Shell>{children}</Shell>
+      </HealthConnectProvider>
     </RemindersProvider>
   );
 }
@@ -36,6 +40,8 @@ function Shell({ children }: { children: ReactNode }) {
   const reminders = useReminders();
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const healthConnect = useHealthConnect();
+  const [healthConnectOpen, setHealthConnectOpen] = useState(false);
   const now = new Date();
   // The open Daily Log day, so an import defaults to it (contract 06).
   const params = useGlobalSearchParams<{ date?: string }>();
@@ -63,6 +69,7 @@ function Shell({ children }: { children: ReactNode }) {
   };
   const items: AppMenuItem[] = [
     { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
+    { key: 'health-connect', label: 'Health Connect', detail: healthConnectStatus(healthConnect), onSelect: () => setHealthConnectOpen(true) },
     { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
     {
       key: 'reminders',
@@ -99,6 +106,7 @@ function Shell({ children }: { children: ReactNode }) {
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />
       <ConfirmDialog
         visible={confirmExport}
         title="Export all fitness data?"

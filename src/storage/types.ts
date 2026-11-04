@@ -121,8 +121,17 @@ export interface TrackingStore {
 
   addObservations(observations: Observation[]): Promise<void>;
   removeObservation(id: string): Promise<void>;
-  /** Latest **observed** (never inferred) value on or before `date`: latest date, then latest recordedAt. */
+  /**
+   * Latest **observed** (never inferred) value on or before `date`: latest date; on that date a value the user
+   * entered or confirmed beats an integration's (#36); then latest recordedAt.
+   */
   latestObservation(metric: string, onOrBefore: LocalDate): Promise<Observation | null>;
+  /**
+   * Replace one integration's observations (`source.importId`) for these dates and metrics with `observations`,
+   * atomically (#36). Only that integration's records on those days and metrics are removed: manual entries,
+   * screenshot imports, other days and metrics that weren't read are never touched.
+   */
+  replaceIntegrationObservations(importId: string, dates: LocalDate[], metrics: string[], observations: Observation[]): Promise<void>;
   /** Save an import session and its confirmed observations together (all or nothing). */
   saveImport(session: ImportSession, observations: Observation[]): Promise<void>;
 

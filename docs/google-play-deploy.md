@@ -68,3 +68,18 @@ The release then appears under Play Console → Testing → Internal testing. If
 There is no `push`, `pull_request` or schedule trigger; no GitHub-hosted runner; no `upload-artifact`/`download-artifact`; no production track option; and no AAB is retained as a GitHub artifact. Build and Play upload happen in the same Docker-backed job on `.45`.
 
 The release scripts are tested with `npx jest --selectProjects scripts` (part of `npm test`), against a local fake of the Play API that also drops connections mid-upload.
+
+## Health Connect (#36)
+
+The app reads health data from Android Health Connect, read only (contract 12). Play Console needs the following before a release with it goes beyond internal testing. It may hold that release, or the permissions, until they are approved.
+
+- **App content → Health apps:** declare exactly these permissions and their use:
+  - `READ_STEPS`: daily step total in the Daily Log;
+  - `READ_ACTIVE_CALORIES_BURNED`: daily active energy;
+  - `READ_EXERCISE`: workouts (type and minutes);
+  - `READ_WEIGHT`: weight tile and progress;
+  - `READ_SLEEP`: time asleep.
+
+  No write, background or history permission is requested.
+- **Privacy policy URL:** required for health permissions. It must say that health data is read from Health Connect, stays on the device, isn't shared, and nothing is written back. The app's Health Connect permission screen links to it (the rationale intent is wired by the library's config plugin).
+- **Data safety:** "Health and fitness" data, collected and processed on the device, not shared, not required for the app to work.

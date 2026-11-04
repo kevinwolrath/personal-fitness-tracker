@@ -223,6 +223,49 @@ test('energy in both units (#39): the Daily Log, a recorded value and the Settin
   }
 });
 
+test('Health Connect (#36): the sheet in every state and an imported day fit at every width', async ({ page }) => {
+  const SH = 'com.sec.android.app.shealth';
+  const fixture = {
+    availability: 'available',
+    grantOnRequest: ['steps', 'active_energy', 'exercise', 'weight', 'sleep'],
+    granted: [],
+    data: {
+      steps: [{ date: '2026-11-02', value: 18342, origins: [SH] }],
+      activeKcal: [{ date: '2026-11-02', value: 3150, origins: [SH] }],
+      exercise: [
+        { id: 'e1', start: '2026-11-02T07:00:00+11:00', end: '2026-11-02T08:52:00+11:00', origin: 'com.example.very.long.package.name.tracker', title: 'Outdoor bike ride with the kids around the lake' },
+        { id: 'e2', start: '2026-11-02T18:00:00+11:00', end: '2026-11-02T18:40:00+11:00', origin: SH, exerciseType: 70 },
+      ],
+      weight: [{ id: 'w', time: '2026-11-02T06:58:00+11:00', kg: 101.35, origin: 'com.garmin.android.apps.connectmobile' }],
+      sleep: [{ id: 's', start: '2026-11-01T22:00:00+11:00', end: '2026-11-02T07:10:00+11:00', origin: SH }],
+    },
+  };
+  await page.addInitScript((json) => localStorage.getItem('pft.test.healthConnect') || localStorage.setItem('pft.test.healthConnect', json), JSON.stringify(fixture));
+  await page.addInitScript(() => localStorage.setItem('pft.display.energy', 'both'));
+  await openAt(page, MONDAY);
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await page.getByTestId('menu-health-connect').click();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `connect sheet at ${width}px`).toEqual([]);
+  }
+  await page.getByRole('button', { name: 'Connect Health Connect' }).click();
+  await expect(page.getByTestId('hc-today-exercise')).toContainText('2 workouts');
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `connected sheet at ${width}px`).toEqual([]);
+  }
+  await page.getByTestId('modal-dismiss').click();
+  await expect(page.getByTestId('recorded-steps')).toContainText('18,342');
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 1600 });
+    await page.waitForTimeout(50);
+    expect(await layoutProblems(page), `day at ${width}px`).toEqual([]);
+  }
+});
+
 test('times never truncate: uppercase AM/PM and a larger system text size, at every width (#34)', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'en-US', timezoneId: 'Australia/Melbourne', isMobile: true, hasTouch: true });
   const page = await context.newPage();

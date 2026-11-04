@@ -127,9 +127,23 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
+  async replaceIntegrationObservations(importId: string, dates: string[], metrics: string[], observations: Observation[]) {
+    if (!dates.length || !metrics.length) return;
+    const ds = new Set(dates);
+    const ms = new Set(metrics);
+    // One document write: atomic by construction.
+    this.update((d) => {
+      d.observations = d.observations.filter((o) => !(o.source.type === 'integration' && o.source.importId === importId && ds.has(o.date) && ms.has(o.metric)));
+      observations.forEach((o) => upsertById(d.observations, o));
+    });
+  }
+
   async latestObservation(metric: string, onOrBefore: string) {
     const candidates = this.read().observations.filter((o) => o.metric === metric && o.kind === 'observed' && o.date <= onOrBefore);
-    candidates.sort((a, b) => b.date.localeCompare(a.date) || b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id));
+    const imported = (o: Observation) => (o.source.type === 'integration' ? 1 : 0);
+    candidates.sort(
+      (a, b) => b.date.localeCompare(a.date) || imported(a) - imported(b) || b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id),
+    );
     return candidates[0] ?? null;
   }
 

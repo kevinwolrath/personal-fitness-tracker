@@ -51,7 +51,11 @@ describe('observation display', () => {
     expect(observationLabel(obs({ metric: 'exercise_session', label: 'Weights' }))).toBe('Weights');
     expect(observationLabel(obs({ metric: 'readiness_score' }))).toBe('Readiness');
     expect(observationSource(obs({}))).toBe('Entered');
-    expect(observationSource(obs({ source: screenshot('google-fit', true) }))).toBe('Google fit screenshot · edited');
+    expect(observationSource(obs({ source: screenshot('google-fit', true) }))).toBe('Google Fit screenshot · edited');
+    const hc = (app: string | null) => ({ type: 'integration' as const, app, capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false });
+    expect(observationSource(obs({ source: hc('samsung-health') }))).toBe('Health Connect · Samsung Health');
+    expect(observationSource(obs({ source: hc('com.example.tracker') }))).toBe('Health Connect · com.example.tracker');
+    expect(observationSource(obs({ source: hc(null) }))).toBe('Health Connect');
     expect(observationSource(obs({ kind: 'inferred', source: screenshot('renpho') }))).toBe('Calculated · Renpho screenshot');
   });
 });

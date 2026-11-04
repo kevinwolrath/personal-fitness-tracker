@@ -36,7 +36,8 @@ Rules:
 - A missing `activity_log` row means "not done". Undo deletes the row (or sets `count` back).
 - `labelSnapshot` keeps history readable after a plan revision renames or removes an activity.
 - **Editable window:** today and any past day, so history can be corrected. Future days are view-only in the UI. The data layer doesn't enforce this.
-- Observations may have several entries per day and per metric, from several sources. The latest **observed** one is "the value for that day"; inferred values are never used as measurements.
+- Observations may have several entries per day and per metric, from several sources. The latest **observed** one is "the value for that day", except that a value the user entered or confirmed beats an integration's on the same day (contract 12). Inferred values are never used as measurements.
+- An integration's records are replaced only through `replaceIntegrationObservations(importId, dates, metrics, observations)`: one transaction that removes that integration's records for those days and metrics, then saves the new ones. Nothing else is touched.
 
 ## Plan replacement
 
@@ -47,7 +48,7 @@ Rules:
 
 ## Device preferences
 
-- Choices about this phone (currently only **reminders on/off**, contract 10) live in device storage (`src/platform/preferences.ts`: the keystore natively, `localStorage` on web). They aren't plan data, tracking history or part of the export. A plan change can't alter them.
+- Choices about this phone (**reminders on/off**, contract 10; **energy display**, contract 11; the last **Health Connect sync**, contract 12) live in device storage (`src/platform/preferences.ts`: the keystore natively, `localStorage` on web). They aren't plan data, tracking history or part of the export. A plan change can't alter them.
 
 ## Export and backup
 

@@ -52,3 +52,61 @@ jest.mock('expo-secure-store', () => {
     }),
   };
 });
+
+// Android Health Connect (#36) as an in-memory stand-in with the library's API shape. Tests drive it through
+// `global.__healthConnect`: status, what a permission request grants, aggregates per day and raw records.
+// It records every call, so tests can prove nothing is ever written (`writes` must stay empty).
+jest.mock('react-native-health-connect', () => {
+  const state = {
+    status: 3,
+    grantOnRequest: [],
+    granted: [],
+    stepsByDay: {},
+    kcalByDay: {},
+    records: { ExerciseSession: [], Weight: [], SleepSession: [] },
+    failRecordTypes: [],
+    requests: [],
+    writes: [],
+    openedSettings: 0,
+  };
+  global.__healthConnect = state;
+  const day = (iso) => {
+    const d = new Date(iso);
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  };
+  const fail = (t) => {
+    if (state.failRecordTypes.includes(t)) throw new Error(`read ${t} failed`);
+  };
+  return {
+    SdkAvailabilityStatus: { SDK_UNAVAILABLE: 1, SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED: 2, SDK_AVAILABLE: 3 },
+    getSdkStatus: jest.fn(async () => state.status),
+    initialize: jest.fn(async () => true),
+    getGrantedPermissions: jest.fn(async () => state.granted.map((recordType) => ({ accessType: 'read', recordType }))),
+    requestPermission: jest.fn(async (perms) => {
+      state.requests.push(perms);
+      state.granted = [...new Set([...state.granted, ...perms.map((p) => p.recordType).filter((t) => state.grantOnRequest.includes(t))])];
+      return state.granted.map((recordType) => ({ accessType: 'read', recordType }));
+    }),
+    aggregateRecord: jest.fn(async ({ recordType, timeRangeFilter }) => {
+      fail(recordType);
+      const d = day(timeRangeFilter.startTime);
+      if (recordType === 'Steps') return { COUNT_TOTAL: state.stepsByDay[d] ?? 0, dataOrigins: state.stepsByDay[d] ? ['com.sec.android.app.shealth'] : [] };
+      const kcal = state.kcalByDay[d] ?? 0;
+      return { ACTIVE_CALORIES_TOTAL: { inKilocalories: kcal }, dataOrigins: kcal ? ['com.sec.android.app.shealth'] : [] };
+    }),
+    readRecords: jest.fn(async (recordType, { timeRangeFilter }) => {
+      fail(recordType);
+      const from = new Date(timeRangeFilter.startTime).getTime();
+      const to = new Date(timeRangeFilter.endTime).getTime();
+      const at = (r) => new Date(r.time ?? r.startTime).getTime();
+      return { records: (state.records[recordType] ?? []).filter((r) => at(r) >= from && at(r) < to) };
+    }),
+    insertRecords: jest.fn(async (r) => state.writes.push(['insert', r])),
+    deleteRecordsByUuids: jest.fn(async (...a) => state.writes.push(['delete', a])),
+    deleteRecordsByTimeRange: jest.fn(async (...a) => state.writes.push(['delete', a])),
+    openHealthConnectSettings: jest.fn(() => {
+      state.openedSettings += 1;
+    }),
+  };
+});

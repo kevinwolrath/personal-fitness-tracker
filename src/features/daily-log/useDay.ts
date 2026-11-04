@@ -45,7 +45,8 @@ export function useNowMinutes(): number {
  * One day's prescription + tracking records, with optimistic actions (contract 02 "Feedback").
  * Writes go to the store immediately; on failure the day is reloaded from storage.
  */
-export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
+/** `dataVersion` changes when records change outside this hook (a Health Connect sync): the day reloads quietly. */
+export function useDay(store: TrackingStore, plan: Plan, date: LocalDate, dataVersion = 0) {
   const [records, setRecords] = useState<DayRecords | null>(null);
   const [previous, setPrevious] = useState<Record<string, Observation | null>>({});
   const current = useRef<DayRecords>(emptyDay);
@@ -68,6 +69,12 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate) {
     setRecords(null);
     load();
   }, [load]);
+
+  // Records changed elsewhere (a sync): reload in place, without blanking the day.
+  const firstVersion = useRef(dataVersion);
+  useEffect(() => {
+    if (dataVersion !== firstVersion.current) load();
+  }, [dataVersion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = useCallback(
     (next: DayRecords, persist: () => Promise<void>) => {

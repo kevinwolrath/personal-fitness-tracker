@@ -299,3 +299,155 @@ describe('reminders (#30)', () => {
     expect(await screen.findByTestId('modal-title')).toHaveTextContent('Fixed snack'); // its details sheet is open
   });
 });
+
+describe('Health Connect (#36)', () => {
+  // The library mock (test/jest.native-setup.js) is created on first require.
+  const hc = () => (jest.requireMock('react-native-health-connect'), (global as any).__healthConnect);
+  const settle = () =>
+    act(async () => {
+      for (let i = 0; i < 80; i++) await Promise.resolve();
+    });
+  const SAMSUNG = 'com.sec.android.app.shealth';
+  // Health Connect returns instants; these are local times on 4–5 Nov in whatever zone the test runs in.
+  const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString();
+  const ALL = ['Steps', 'ActiveCaloriesBurned', 'ExerciseSession', 'Weight', 'SleepSession'];
+  beforeEach(() => {
+    Object.assign(hc(), {
+      status: 3,
+      grantOnRequest: ALL,
+      granted: [],
+      stepsByDay: { '2026-11-05': 6214, '2026-11-04': 9001 },
+      kcalByDay: { '2026-11-05': 320 },
+      records: {
+        ExerciseSession: [{ startTime: at(5, 7, 30), endTime: at(5, 8, 2), exerciseType: 79, metadata: { id: 'ex1', dataOrigin: SAMSUNG } }],
+        Weight: [{ time: at(5, 6, 58), weight: { inKilograms: 82.4 }, metadata: { id: 'w1', dataOrigin: 'com.withings.wiscale2' } }],
+        SleepSession: [{ startTime: at(4, 23), endTime: at(5, 6, 45), metadata: { id: 's1', dataOrigin: SAMSUNG } }],
+      },
+      failRecordTypes: [],
+      requests: [],
+      writes: [],
+      openedSettings: 0,
+    });
+    (global as any).__secureStore.clear();
+  });
+
+  if (Platform.OS !== 'android') {
+    it('is not available on iOS, and the app works as usual', async () => {
+      await launch();
+      await settle();
+      await chooseFromMenu('Health Connect');
+      expect(await screen.findByTestId('hc-unsupported')).toBeTruthy();
+      expect(hc().requests).toHaveLength(0);
+    });
+    return;
+  }
+
+  it('never asks or reads on launch before the user connects', async () => {
+    await launch();
+    await settle();
+    expect(hc().requests).toHaveLength(0);
+    expect(screen.queryByTestId('recorded-steps')).toBeNull();
+  });
+
+  it('Connect asks for exactly the five read permissions, imports into the Daily Log with sources, and writes nothing', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    expect(hc().requests).toHaveLength(1);
+    expect(hc().requests[0]).toEqual(ALL.map((recordType) => ({ accessType: 'read', recordType })));
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214Samsung Health/));
+    expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kgWithings/);
+    expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/);
+    expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/Walk 32m/);
+
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    // The Daily Log shows them in its existing places: Recorded rows and the Weight tile.
+    await waitFor(() => expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/6,214/));
+    expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/Health Connect · Samsung Health/);
+    expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/82\.4/);
+    expect(hc().writes).toEqual([]);
+  });
+
+  it('a value entered by hand wins over the imported one, and a re-sync never overwrites it', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/82\.4/));
+
+    fireEvent.press(screen.getByTestId('measurement-weight'));
+    fireEvent.changeText(await screen.findByLabelText(/Weight in kg/), '81.9');
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/81\.9/));
+
+    // Sync again (foreground return): the manual value still shows; both records are kept.
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Sync now'));
+    await settle();
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/81\.9/));
+  });
+
+  it('a type that fails to read doesn’t stop the others, and the app keeps working', async () => {
+    hc().failRecordTypes = ['SleepSession'];
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    await waitFor(() => expect(screen.getByTestId('hc-sync-status')).toHaveTextContent(/Last sync didn't finish/));
+    expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214/);
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    expect(screen.getByTestId('day-progress')).toBeTruthy();
+  });
+
+  it('revoking sleep only: steps refresh, the last sleep values are kept, no new request (#43)', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    await waitFor(() => expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/));
+
+    // Sleep revoked in Health Connect; steps still allowed and changed; the sleep data there changed too.
+    hc().granted = ALL.filter((t) => t !== 'SleepSession');
+    hc().stepsByDay['2026-11-05'] = 8100;
+    hc().records.SleepSession = [];
+    const readsBefore = (jest.requireMock('react-native-health-connect') as any).readRecords.mock.calls.length;
+    fireEvent.press(screen.getByText('Sync now'));
+    await settle();
+
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/8,100/));
+    expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/Not allowed/);
+    const reads = (jest.requireMock('react-native-health-connect') as any).readRecords.mock.calls.slice(readsBefore).map((c: any[]) => c[0]);
+    expect(reads).not.toContain('SleepSession');
+    expect(hc().requests).toHaveLength(1);
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('recorded-sleep_duration')).toHaveTextContent(/7h 45m/));
+    expect(hc().writes).toEqual([]);
+  });
+
+  it('refusing access: nothing is read, the sheet says so, and it never asks again by itself', async () => {
+    hc().grantOnRequest = [];
+    const first = await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    expect(await screen.findByTestId('hc-refused')).toBeTruthy();
+    first.unmount();
+    await act(async () => {});
+    await launch();
+    await settle();
+    expect(hc().requests).toHaveLength(1);
+    expect(screen.queryByTestId('recorded-steps')).toBeNull();
+  });
+
+  it('Health Connect missing: the sheet offers to install it; nothing else changes', async () => {
+    hc().status = 1;
+    await launch();
+    await settle();
+    await chooseFromMenu('Health Connect');
+    expect(await screen.findByTestId('hc-install')).toHaveTextContent(/isn’t installed/);
+    expect(screen.getByText('Get Health Connect')).toBeTruthy();
+  });
+});

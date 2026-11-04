@@ -265,10 +265,22 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync('DELETE FROM observation WHERE id = ?', [id]);
   }
 
+  async replaceIntegrationObservations(importId: string, dates: string[], metrics: string[], observations: Observation[]): Promise<void> {
+    if (!dates.length || !metrics.length) return;
+    const marks = (n: number) => Array(n).fill('?').join(', ');
+    await this.transaction(async () => {
+      await this.db.runAsync(
+        `DELETE FROM observation WHERE source_type = 'integration' AND import_id = ? AND date IN (${marks(dates.length)}) AND metric IN (${marks(metrics.length)})`,
+        [importId, ...dates, ...metrics],
+      );
+      for (const o of observations) await this.upsertObservation(o);
+    });
+  }
+
   async latestObservation(metric: string, onOrBefore: string): Promise<Observation | null> {
     const r = await this.db.getFirstAsync<ObservationRow>(
       `SELECT * FROM observation WHERE metric = ? AND kind = 'observed' AND date <= ?
-       ORDER BY date DESC, recorded_at DESC, id DESC LIMIT 1`,
+       ORDER BY date DESC, (source_type = 'integration') ASC, recorded_at DESC, id DESC LIMIT 1`,
       [metric, onOrBefore],
     );
     return r ? toObservation(r) : null;

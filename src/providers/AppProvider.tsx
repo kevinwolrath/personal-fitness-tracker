@@ -20,6 +20,9 @@ type AppData = {
   energy: EnergyDisplay;
   /** Applies immediately everywhere and is remembered across restarts. Stored values never change. */
   setEnergy: (d: EnergyDisplay) => void;
+  /** Bumped when records change outside a screen's own actions (a Health Connect sync), so open days reload. */
+  dataVersion: number;
+  notifyDataChanged: () => void;
 };
 const AppContext = createContext<AppData | null>(null);
 
@@ -33,6 +36,8 @@ export function useApp(): AppData {
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { error: string } | null>(null);
   const [chosenEnergy, setChosenEnergy] = useState<EnergyDisplay | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
+  const notifyDataChanged = useCallback(() => setDataVersion((v) => v + 1), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,8 +63,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     preferences.setEnergyDisplay(d).catch(() => undefined); // still applies for this session if storage fails
   }, []);
   const value = useMemo(
-    () => (state && !('error' in state) ? { ...state, reloadPlan, energy: chosenEnergy ?? state.plan.units.energy, setEnergy } : null),
-    [state, reloadPlan, chosenEnergy, setEnergy],
+    () => (state && !('error' in state) ? { ...state, reloadPlan, energy: chosenEnergy ?? state.plan.units.energy, setEnergy, dataVersion, notifyDataChanged } : null),
+    [state, reloadPlan, chosenEnergy, setEnergy, dataVersion, notifyDataChanged],
   );
 
   if (!state) {

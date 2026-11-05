@@ -427,6 +427,22 @@ describe('Health Connect (#36)', () => {
     expect(hc().writes).toEqual([]);
   });
 
+  it('a failed permission check is reported, not shown as "not connected"; imported values stay (#44)', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214/));
+    const lib = jest.requireMock('react-native-health-connect') as any;
+    lib.getGrantedPermissions.mockRejectedValueOnce(new Error('binder died'));
+    fireEvent.press(screen.getByText('Sync now'));
+    await settle();
+    expect(await screen.findByTestId('hc-check-failed')).toHaveTextContent(/Nothing was changed/);
+    expect(screen.queryByText('Connect Health Connect')).toBeNull(); // still connected
+    expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214/);
+    expect(hc().requests).toHaveLength(1); // no re-ask
+  });
+
   it('refusing access: nothing is read, the sheet says so, and it never asks again by itself', async () => {
     hc().grantOnRequest = [];
     const first = await launch();

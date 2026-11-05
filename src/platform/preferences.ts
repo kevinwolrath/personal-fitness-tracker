@@ -1,4 +1,5 @@
 import { isEnergyDisplay, type EnergyDisplay } from '../energy';
+import type { HcTypeResult } from '../observations/healthConnect';
 import { secrets } from './secrets';
 
 /**
@@ -17,6 +18,8 @@ export type HcSyncState = {
   failed: string[];
   /** A sync has completed at least once: later syncs re-read 7 days instead of 30. */
   firstDone: boolean;
+  /** Per type: read / couldn't read / not allowed, with counts and dates only (#44). Missing in older states. */
+  types?: Record<string, HcTypeResult>;
 };
 
 export const preferences = {

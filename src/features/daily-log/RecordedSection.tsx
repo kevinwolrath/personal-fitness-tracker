@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { convertEnergy, entryUnit, roundEnergy, speakEnergy, unitWord, type EnergyDisplay, type EnergyUnit } from '../../energy';
-import { formatObservationValue, observationLabel, observationSource } from '../../observations/format';
+import { formatObservationValue, observationLabel, observationSource, sourcePackages } from '../../observations/format';
 import { metricDef } from '../../observations/metrics';
 import type { Observation } from '../../observations/types';
 import { formatMinutes } from '../../observations/units';
@@ -99,6 +99,8 @@ export function ObservationSheet(p: {
   const facts = o
     ? [
         ['Source', observationSource(o)],
+        // Troubleshooting only (#44): the raw ID of an app Health Connect didn't name.
+        sourcePackages(o.source.app).length ? ['App ID', sourcePackages(o.source.app).join(', ')] : null,
         o.source.evidence ? ['Read from', `“${o.source.evidence}”`] : null,
         o.source.confidence !== null ? ['Confidence', `${Math.round(o.source.confidence * 100)}%`] : null,
         o.source.capturedAt ? ['Captured', new Date(o.source.capturedAt).toLocaleString()] : null,

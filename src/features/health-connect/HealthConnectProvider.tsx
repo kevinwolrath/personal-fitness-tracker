@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AppState } from 'react-native';
-import { HC_IMPORT_ID, mapHealthConnect, syncDates, type HcType } from '../../observations/healthConnect';
+import { HC_IMPORT_ID, mapHealthConnect, summarizeRead, syncDates, type HcType } from '../../observations/healthConnect';
 import { toLocalDate } from '../../plan/dates';
 import { healthConnect, type HcAvailability } from '../../platform/healthConnect';
 import { preferences, type HcSyncState } from '../../platform/preferences';
@@ -17,6 +17,8 @@ export type HealthConnectState = {
   syncing: boolean;
   /** The last Connect allowed nothing. */
   refused: boolean;
+  /** Checking permissions failed on the last open (#44): the connection is unknown, not "off". */
+  checkFailed: boolean;
   /** Ask for read access (the only place the app asks), then sync. */
   connect: () => Promise<void>;
   /** Re-read the last 7 days now (30 if nothing has synced yet). Never throws. */
@@ -46,6 +48,7 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
   const [sync, setSync] = useState<HcSyncState | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [refused, setRefused] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
   const chain = useRef<Promise<void>>(Promise.resolve());
   const syncRef = useRef<HcSyncState | null>(null);
 
@@ -60,10 +63,17 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
         const { read, failed } = await healthConnect.read(types, dates);
         const mapped = mapHealthConnect(read, dates, localIsoTimestamp());
         await store.replaceIntegrationObservations(HC_IMPORT_ID, dates, mapped.metrics, mapped.observations);
-        next = { at: localIsoTimestamp(), ok: failed.length === 0, days: dates.length, failed, firstDone: (previous?.firstDone ?? false) || mapped.metrics.length > 0 };
+        next = {
+          at: localIsoTimestamp(),
+          ok: failed.length === 0,
+          days: dates.length,
+          failed,
+          firstDone: (previous?.firstDone ?? false) || mapped.metrics.length > 0,
+          types: summarizeRead(read, failed, types, dates),
+        };
         notifyDataChanged();
       } catch {
-        next = { at: localIsoTimestamp(), ok: false, days: dates.length, failed: types, firstDone: previous?.firstDone ?? false };
+        next = { at: localIsoTimestamp(), ok: false, days: dates.length, failed: types, firstDone: previous?.firstDone ?? false, types: summarizeRead({}, types, types, dates) };
       }
       syncRef.current = next;
       setSync(next);
@@ -80,7 +90,15 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
         const a = await healthConnect.availability();
         setAvailability(a);
         if (a !== 'available') return setGranted([]);
-        const g = await healthConnect.granted().catch(() => [] as HcType[]);
+        let g: HcType[];
+        try {
+          g = await healthConnect.granted();
+          setCheckFailed(false);
+        } catch {
+          // Don't show "not connected" because a check failed: keep what we knew and say so (#44).
+          setCheckFailed(true);
+          return;
+        }
         setGranted(g);
         await runSync(g);
       })
@@ -122,12 +140,13 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
       sync,
       syncing,
       refused,
+      checkFailed,
       connect,
       syncNow: refresh,
       openSettings: healthConnect.openSettings,
       openInstall: healthConnect.openInstall,
     }),
-    [availability, granted, sync, syncing, refused, connect, refresh],
+    [availability, granted, sync, syncing, refused, checkFailed, connect, refresh],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -27,8 +27,9 @@ function when(iso: string): string {
 }
 
 /** The menu row's detail line. */
-export function healthConnectStatus(s: Pick<HealthConnectState, 'availability' | 'granted' | 'sync' | 'syncing'>): string {
+export function healthConnectStatus(s: Pick<HealthConnectState, 'availability' | 'granted' | 'sync' | 'syncing'> & { checkFailed?: boolean }): string {
   if (s.availability === null) return 'Checking…';
+  if (s.checkFailed && s.availability === 'available') return "Couldn't check Health Connect";
   if (s.availability === 'unsupported') return 'Not available on this device';
   if (s.availability === 'not_installed') return 'Not installed';
   if (s.availability === 'update_required') return 'Needs an update';
@@ -58,10 +59,18 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
     };
   }, [visible, connected, store, plan.id, dataVersion]);
 
-  const value = (t: HcType): { text: string; source: string | null } => {
+  const result = (t: HcType) => hc.sync?.types?.[t];
+  /** Today's value, or why there is none (#44): not allowed, couldn't read, none in Health Connect, none today. */
+  const value = (t: HcType): { text: string; source: string | null; missing?: boolean } => {
     if (!hc.granted.includes(t)) return { text: 'Not allowed', source: null };
     const os = today.filter((o) => o.metric === hcMetric[t]);
-    if (!os.length) return { text: 'Nothing today', source: null };
+    if (!os.length) {
+      const r = result(t);
+      if (r?.status === 'failed') return { text: "Couldn't read · try Sync now", source: null };
+      if (r?.status === 'ok' && r.count === 0) return { text: `None in Health Connect · last ${hc.sync?.days ?? 7} days`, source: null, missing: true };
+      if (r?.status === 'ok' && r.latest) return { text: 'None today', source: `Latest ${formatShortDate(r.latest)}`, missing: true };
+      return { text: 'Nothing today', source: null, missing: true };
+    }
     const src = [...new Set(os.map((o) => (o.source.app ? appName(o.source.app) : null)).filter(Boolean))].join(', ') || null;
     if (t === 'exercise') {
       const text = os.length === 1 ? `${observationLabel(os[0])} ${formatMinutes(os[0].value)}` : `${os.length} workouts · ${formatMinutes(os.reduce((n, o) => n + o.value, 0))}`;
@@ -75,6 +84,11 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
       <ModalHeader title="Health Connect" dismiss={{ label: 'Close', onPress: onClose }} />
       <View style={styles.body} testID="health-connect-sheet">
         {hc.availability === null && <Text style={type.detail}>Checking…</Text>}
+        {hc.checkFailed && hc.availability === 'available' && (
+          <View style={styles.note} testID="hc-check-failed">
+            <Text style={styles.noteText}>Couldn’t check Health Connect’s permissions just now. Nothing was changed: your imported values stay. It tries again when you reopen the app.</Text>
+          </View>
+        )}
 
         {hc.availability === 'unsupported' && (
           <Text style={type.body} testID="hc-unsupported">
@@ -104,9 +118,10 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
               {hcTypes.map((t) => (
                 <View key={t} style={styles.row}>
                   <Text style={styles.rowLabel}>{hcTypeLabel[t]}</Text>
-                  <Text style={type.detail}>{whatIsRead[t]}</Text>
+                  <Text style={[type.detail, styles.whatValue]}>{whatIsRead[t]}</Text>
                 </View>
               ))}
+              <Text style={[type.detail, styles.hint]}>Not imported: body fat and other measurements.</Text>
             </View>
             {hc.refused && (
               <View style={styles.note} testID="hc-refused">
@@ -133,7 +148,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                   : hc.sync
                     ? hc.sync.ok
                       ? `Last synced ${toLocalDate(new Date(hc.sync.at)) === toLocalDate(new Date()) ? 'today at ' : ''}${when(hc.sync.at)} · ${hc.sync.days} days checked`
-                      : `Last sync didn't finish (${when(hc.sync.at)}). It tries again when you open the app.`
+                      : `Last sync didn't finish (${when(hc.sync.at)})${hc.sync.failed.length ? `: couldn't read ${hc.sync.failed.map((t) => hcTypeLabel[t as HcType].toLowerCase()).join(', ')}` : ''}. It tries again when you open the app.`
                     : 'Not synced yet'}
               </Text>
             </View>
@@ -157,7 +172,16 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                   </View>
                 );
               })}
+              {hcTypes.some((t) => hc.granted.includes(t) && value(t).missing) && (
+                <Text style={[type.detail, styles.hint]} testID="hc-missing-help">
+                  Something another app shows isn’t here? It hasn’t reached Health Connect yet. In Health Connect, check under App
+                  permissions that the app may write it, then open that app so it shares.
+                </Text>
+              )}
               <Text style={[type.detail, styles.hint]}>A value you enter yourself is kept and shown first.</Text>
+              <Text style={[type.detail, styles.hint]} testID="hc-not-imported">
+                Not imported: body fat and other measurements.
+              </Text>
             </View>
             <Button title="Sync now" variant="secondary" onPress={hc.syncNow} disabled={hc.syncing} />
             <Pressable onPress={hc.openSettings} style={styles.link} accessibilityRole="button" testID="hc-manage">
@@ -187,6 +211,7 @@ const styles = StyleSheet.create({
   rowLabel: { ...type.body, flexShrink: 0 },
   rowRight: { flex: 1, minWidth: 0, alignItems: 'flex-end', paddingVertical: space.xs },
   rowValue: { maxWidth: '100%', textAlign: 'right' },
+  whatValue: { flex: 1, textAlign: 'right' },
   value: { color: colors.ink, fontWeight: '600' },
   status: { minHeight: 56, justifyContent: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   statusTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },

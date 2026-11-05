@@ -82,12 +82,31 @@ const knownApps: Record<string, string> = {
   'com.xiaomi.wearable': 'mi-fitness',
   'com.mi.health': 'mi-fitness',
   'com.polar.polarflow': 'polar-flow',
-  'com.google.android.apps.healthdata': 'health-connect',
   'com.google.android.apps.wear.companion': 'pixel-watch',
 };
 
-/** Provenance app for a data origin: a known slug, else the package name as reported. */
-export const appForOrigin = (origin: string | undefined): string | null => (origin ? (knownApps[origin] ?? origin) : null);
+/**
+ * Health Connect's own on-device recording (the phone's step counter and similar, #44). Its data origin is the
+ * Health Connect module itself, e.g. "com.android.healthconnect.phone.<id>" or the Health Connect app.
+ */
+const isPhoneOrigin = (origin: string) => origin.startsWith('com.android.healthconnect') || origin === 'com.google.android.apps.healthdata' || origin === 'android';
+
+/** Provenance app for a data origin: a known slug, "phone" for on-device recording, else the package as reported. */
+export const appForOrigin = (origin: string | undefined): string | null => {
+  if (!origin) return null;
+  if (knownApps[origin]) return knownApps[origin];
+  return isPhoneOrigin(origin) ? 'phone' : origin;
+};
+
+/**
+ * All the sources of a daily total (#44: steps can come from Fitbit and the phone at once), as one provenance
+ * value: slugs joined with ",", named apps first, then the phone, then unknown packages. Null when none.
+ */
+export function appsForOrigins(origins: string[]): string | null {
+  const rank = (a: string) => (a === 'phone' ? 1 : a.includes('.') ? 2 : 0);
+  const apps = [...new Set(origins.map(appForOrigin).filter((a): a is string => !!a))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return apps.length ? apps.join(',') : null;
+}
 
 /** Health Connect exercise types (ExerciseType constants) → readable labels. Unknown types read "Workout". */
 const exerciseLabels: Record<number, string> = {
@@ -149,8 +168,8 @@ function union(spans: Span[]): Span[] {
 const total = (spans: Span[]) => spans.reduce((n, [a, b]) => n + (b - a), 0);
 const overlap = (a: Span, b: Span) => Math.max(0, Math.min(a[1], b[1]) - Math.max(a[0], b[0]));
 
-function source(origin: string | undefined, capturedAt: string | null): Provenance {
-  return { type: 'integration', app: appForOrigin(origin), capturedAt, confidence: null, importId: HC_IMPORT_ID, assetId: null, evidence: null, edited: false };
+function source(app: string | null, capturedAt: string | null): Provenance {
+  return { type: 'integration', app, capturedAt, confidence: null, importId: HC_IMPORT_ID, assetId: null, evidence: null, edited: false };
 }
 
 function observation(id: string, date: LocalDate, metric: MetricId, value: number, unit: string, label: string | null, src: Provenance, recordedAt: string): Observation {
@@ -197,7 +216,7 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
     metrics.push('steps');
     for (const d of read.steps) {
       if (!inWindow.has(d.date) || d.value <= 0) continue;
-      out.push(observation(`hc:steps:${d.date}`, d.date, 'steps', Math.round(d.value), 'count', null, source(d.origins[0], null), recordedAt));
+      out.push(observation(`hc:steps:${d.date}`, d.date, 'steps', Math.round(d.value), 'count', null, source(appsForOrigins(d.origins), null), recordedAt));
     }
   }
   if (read.activeKcal) {
@@ -205,7 +224,7 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
     for (const d of read.activeKcal) {
       if (!inWindow.has(d.date) || d.value <= 0) continue;
       // Stored canonically in kJ (contract 06); shown in the user's energy display (contract 11).
-      out.push(observation(`hc:active_energy:${d.date}`, d.date, 'active_energy', d.value * KJ_PER_KCAL, 'kJ', null, source(d.origins[0], null), recordedAt));
+      out.push(observation(`hc:active_energy:${d.date}`, d.date, 'active_energy', d.value * KJ_PER_KCAL, 'kJ', null, source(appsForOrigins(d.origins), null), recordedAt));
     }
   }
   if (read.exercise) {
@@ -215,7 +234,7 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
       const min = Math.round(minutes(ms(s.end) - ms(s.start)));
       if (!inWindow.has(date) || min < 1) continue;
       const label = s.title?.trim() || exerciseLabel(s.exerciseType);
-      out.push(observation(`hc:exercise:${s.id}`, date, 'exercise_session', min, 'min', label, source(s.origin, s.start), recordedAt));
+      out.push(observation(`hc:exercise:${s.id}`, date, 'exercise_session', min, 'min', label, source(appForOrigin(s.origin), s.start), recordedAt));
     }
   }
   if (read.weight) {
@@ -229,7 +248,7 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
     }
     for (const [date, w] of latest) {
       if (!inWindow.has(date)) continue;
-      out.push(observation(`hc:weight:${date}`, date, 'weight', Math.round(w.kg * 100) / 100, 'kg', null, source(w.origin, w.time), recordedAt));
+      out.push(observation(`hc:weight:${date}`, date, 'weight', Math.round(w.kg * 100) / 100, 'kg', null, source(appForOrigin(w.origin), w.time), recordedAt));
     }
   }
   if (read.sleep) {
@@ -245,9 +264,49 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
       const min = Math.round(minutes(total(union(sessions.flatMap(asleepSpans)))));
       if (min < 1) continue;
       const main = [...sessions].sort((a, b) => ms(b.end) - ms(b.start) - (ms(a.end) - ms(a.start)))[0];
-      out.push(observation(`hc:sleep:${date}`, date, 'sleep_duration', min, 'min', null, source(main.origin, main.end), recordedAt));
+      out.push(observation(`hc:sleep:${date}`, date, 'sleep_duration', min, 'min', null, source(appForOrigin(main.origin), main.end), recordedAt));
     }
   }
 
   return { observations: out.sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)), metrics };
+}
+
+/**
+ * What one sync found per type (#44), so the app can tell "none in Health Connect" from "not allowed" and
+ * "couldn't read". Counts and dates only: no health values.
+ */
+export type HcTypeResult = {
+  status: 'ok' | 'failed' | 'not_allowed';
+  /** Records (or days with a daily total) Health Connect returned for the synced days. */
+  count: number;
+  /** Local date of the latest one, or null when there were none. */
+  latest: LocalDate | null;
+};
+
+export function summarizeRead(
+  read: HcRead,
+  failed: HcType[],
+  granted: HcType[],
+  dates: LocalDate[],
+  localDateOf: (iso: string) => LocalDate = (iso) => toLocalDate(new Date(iso)),
+): Record<HcType, HcTypeResult> {
+  const inWindow = new Set(dates);
+  const summary = (days: LocalDate[]) => {
+    const ds = days.filter((d) => inWindow.has(d)).sort();
+    return { count: ds.length, latest: ds[ds.length - 1] ?? null };
+  };
+  const found: Record<HcType, LocalDate[] | undefined> = {
+    steps: read.steps?.filter((d) => d.value > 0).map((d) => d.date),
+    active_energy: read.activeKcal?.filter((d) => d.value > 0).map((d) => d.date),
+    exercise: read.exercise?.map((s) => localDateOf(s.start)),
+    weight: read.weight?.filter((w) => w.kg > 0).map((w) => localDateOf(w.time)),
+    sleep: read.sleep?.map((s) => localDateOf(s.end)),
+  };
+  return Object.fromEntries(
+    hcTypes.map((t): [HcType, HcTypeResult] => {
+      if (!granted.includes(t)) return [t, { status: 'not_allowed', count: 0, latest: null }];
+      if (failed.includes(t) || !found[t]) return [t, { status: 'failed', count: 0, latest: null }];
+      return [t, { status: 'ok', ...summary(found[t]!) }];
+    }),
+  ) as Record<HcType, HcTypeResult>;
 }

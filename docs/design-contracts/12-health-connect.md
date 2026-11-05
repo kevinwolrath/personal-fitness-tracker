@@ -4,7 +4,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
 
 ## Rules
 
-- **Read only.** The app never writes, updates or deletes anything in Health Connect. The manifest declares exactly five permissions, and no WRITE permission and no background or history permission:
+- **Read only.** The app never writes, updates or deletes anything in Health Connect. The manifest declares exactly six permissions (body fat added in #46), and no WRITE permission and no background or history permission:
 
   | Permission | Why it's needed |
   |---|---|
@@ -12,11 +12,12 @@ Imports what the phone already records: steps, active energy, workouts, weight a
   | `android.permission.health.READ_ACTIVE_CALORIES_BURNED` | Daily active energy, shown in the energy display (contract 11) |
   | `android.permission.health.READ_EXERCISE` | Workouts (type and minutes), shown under Recorded |
   | `android.permission.health.READ_WEIGHT` | Weight, in the Daily Log's Weight tile and progress |
+  | `android.permission.health.READ_BODY_FAT` | Body fat %, shown under Recorded (#46) |
   | `android.permission.health.READ_SLEEP` | Time asleep, shown under Recorded |
 
 - **Asking:** the app asks only when the user taps **Connect Health Connect**. It never asks on launch, and never asks again by itself after a refusal. Partial grants are fine: only allowed types are read.
 - **Syncing:** on app start, on return to the foreground and on **Sync now**. There is no background sync and no changes token.
-  - **Window:** each sync re-reads a window of local days ending today: **30** until a sync has completed, then **7**. It replaces this integration's observations for those days and the types read, in one transaction (`TrackingStore.replaceIntegrationObservations`).
+  - **Window:** each sync re-reads a window of local days ending today: **30** until a sync has completed; after that the last **7** days, or **from the day of the last fully successful sync** if that's earlier, at most **90** days (#46). A gap of any length up to 90 days closes itself on the next open. Only a sync that read every allowed type moves that start, so a partial or failed sync's gap is re-read next time. It replaces this integration's observations for those days and the types read, in one transaction (`TrackingStore.replaceIntegrationObservations`).
   - **Idempotent:** re-running a sync changes nothing. Edits and deletions made in other apps within the window show up here.
   - **Per-type results (#44):** each sync records, per type, whether it was read, couldn't be read, or isn't allowed, with how many records (or days with a total) Health Connect returned and the latest date. These are counts and dates only, never health values, and stored on the device. A successful sync therefore never hides a gap: with no value today, a row says **"Not allowed"**, **"Couldn't read · try Sync now"**, **"None in Health Connect · last N days"** or **"None today · Latest <date>"**. The status line names any type that couldn't be read. When a type has nothing, a help line explains that the data hasn't reached Health Connect and where to check the source app's write access.
   - **Permission check fails** (reading the granted permissions errors on open): the last known connection and imported values stay, the sheet says the check failed, and nothing is shown as "not connected".
@@ -36,6 +37,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
 | Active energy | `active_energy` in kJ, id `hc:active_energy:<date>` | Daily aggregate in kcal × 4.184 |
 | Workouts | `exercise_session` in minutes, label = title or type, id `hc:exercise:<record id>` | Raw sessions on their local start day. Sessions from different apps that overlap by more than half of the shorter one are the same workout: the longer one is kept |
 | Weight | `weight` in kg, id `hc:weight:<date>` | Raw records: the latest of each local day |
+| Body fat (#46) | `body_fat` in %, id `hc:body_fat:<date>` | Raw records: the latest of each local day; values outside 0–100 % are dropped |
 | Sleep | `sleep_duration` in minutes, id `hc:sleep:<date>` | Raw sessions on their local **wake-up** day. Asleep stages only (sleeping, light, deep, REM) when the session has stages, else its whole length. Overlapping sessions from different apps are merged, not added |
 
 Provenance: `type: integration`, `importId: health-connect`, `app` = the originating app, `capturedAt` for timed records (#44):
@@ -46,12 +48,15 @@ Provenance: `type: integration`, `importId: health-connect`, `app` = the origina
 
 Labels read **"Health Connect · Fitbit + this phone"**.
 
-**Not imported:** body fat and every other measurement outside the five types. Both sheet states say so ("Not imported: body fat and other measurements"). Adding one needs another READ permission and a Play declaration change.
+**Not imported:** every other measurement outside the six types (heart rate, blood pressure, …). Both sheet states say so ("Not imported: other measurements, such as heart rate"). Adding one needs another READ permission and a Play declaration change.
+
+**A type added later** (body fat, #46) isn't requested by itself from someone already connected: its row says "Not allowed" until they turn it on in Health Connect (**Manage in Health Connect**), where every declared permission is listed.
 
 ## UI (option A, app shell layer)
 
 - **Menu → Health Connect**, under Import from screenshots. The detail line is one of: "Off · steps, energy, workouts, weight and sleep", "Connected · synced 7:42 am", "Syncing…", "Last sync didn't finish", "Not installed", "Not available on this device".
-- **Sheet, not connected:** what is read (the five types), **Connect Health Connect** (the one primary action), and "The last 30 days come in first". After a refusal: "Nothing was allowed…" and **Open Health Connect**.
+- **Sheet, not connected:** what is read (the six types), **Connect Health Connect** (the one primary action), and "The last 30 days come in first". After a refusal: "Nothing was allowed…" and **Open Health Connect**.
+- **The sheet scrolls** when its content is taller than the screen (#46), so every action stays reachable.
 - **Sheet, connected:**
   - the last sync and how many days it checked;
   - **Today**: each type's value and source app, or "Not allowed" or "Nothing today";
@@ -69,7 +74,7 @@ Labels read **"Health Connect · Fitbit + this phone"**.
 
 Before a release that includes this reaches testers, Play Console needs:
 
-1. **App content → Health apps declaration:** declare the five read permissions above, each with its use (the table). No write access.
+1. **App content → Health apps declaration:** declare the six read permissions above, each with its use (the table). No write access.
 2. **Privacy policy URL** (App content → Privacy policy). It must cover the health data read, that it stays on the device, and that nothing is shared or written back.
 3. **Data safety:** declare "Health and fitness" data collected, processed on the device, not shared.
 

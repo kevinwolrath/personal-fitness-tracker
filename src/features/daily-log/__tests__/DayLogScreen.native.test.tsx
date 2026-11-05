@@ -310,7 +310,7 @@ describe('Health Connect (#36)', () => {
   const SAMSUNG = 'com.sec.android.app.shealth';
   // Health Connect returns instants; these are local times on 4–5 Nov in whatever zone the test runs in.
   const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString();
-  const ALL = ['Steps', 'ActiveCaloriesBurned', 'ExerciseSession', 'Weight', 'SleepSession'];
+  const ALL = ['Steps', 'ActiveCaloriesBurned', 'ExerciseSession', 'Weight', 'BodyFat', 'SleepSession'];
   beforeEach(() => {
     Object.assign(hc(), {
       status: 3,
@@ -321,6 +321,7 @@ describe('Health Connect (#36)', () => {
       records: {
         ExerciseSession: [{ startTime: at(5, 7, 30), endTime: at(5, 8, 2), exerciseType: 79, metadata: { id: 'ex1', dataOrigin: SAMSUNG } }],
         Weight: [{ time: at(5, 6, 58), weight: { inKilograms: 82.4 }, metadata: { id: 'w1', dataOrigin: 'com.withings.wiscale2' } }],
+        BodyFat: [{ time: at(5, 6, 58), percentage: 32.8, metadata: { id: 'bf1', dataOrigin: 'com.withings.wiscale2' } }],
         SleepSession: [{ startTime: at(4, 23), endTime: at(5, 6, 45), metadata: { id: 's1', dataOrigin: SAMSUNG } }],
       },
       failRecordTypes: [],

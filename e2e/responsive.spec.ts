@@ -227,7 +227,7 @@ test('Health Connect (#36): the sheet in every state and an imported day fit at 
   const SH = 'com.sec.android.app.shealth';
   const fixture = {
     availability: 'available',
-    grantOnRequest: ['steps', 'active_energy', 'exercise', 'weight', 'sleep'],
+    grantOnRequest: ['steps', 'active_energy', 'exercise', 'weight', 'body_fat', 'sleep'],
     granted: [],
     data: {
       steps: [{ date: '2026-11-02', value: 18342, origins: [SH] }],
@@ -257,6 +257,13 @@ test('Health Connect (#36): the sheet in every state and an imported day fit at 
     await page.waitForTimeout(50);
     expect(await layoutProblems(page), `connected sheet at ${width}px`).toEqual([]);
   }
+  // Six types and the notes are taller than a small phone: the sheet scrolls, so its actions stay reachable (#46).
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.waitForTimeout(100);
+  const manage = page.getByRole('button', { name: 'Manage in Health Connect' });
+  await manage.scrollIntoViewIfNeeded();
+  expect(await page.getByTestId('health-connect-sheet').evaluate((el) => (el as HTMLElement).scrollTop)).toBeGreaterThan(0); // the sheet scrolled
+  await expect(manage).toBeInViewport();
   await page.getByTestId('modal-dismiss').click();
   await expect(page.getByTestId('recorded-steps')).toContainText('18,342');
   for (const width of WIDTHS) {

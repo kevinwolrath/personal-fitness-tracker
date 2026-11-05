@@ -214,9 +214,54 @@ describe('#44: Fitbit weight, source labels, per-type results', () => {
       active_energy: { status: 'failed', count: 0, latest: null },
       exercise: { status: 'ok', count: 1, latest: '2026-11-03' },
       weight: { status: 'ok', count: 0, latest: null },
+      body_fat: { status: 'not_allowed', count: 0, latest: null },
       sleep: { status: 'ok', count: 1, latest: today },
     });
     expect(summarizeRead({}, [], ['steps'], window7).weight).toEqual({ status: 'not_allowed', count: 0, latest: null });
     expect(JSON.stringify(r)).not.toMatch(/1698|95\.5/); // no health values in diagnostics
+  });
+});
+
+describe('#46: body fat and automatic backfill', () => {
+  const local = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString();
+
+  it('body fat: the latest reading of each local day, as %, with its source; out-of-range values are dropped', () => {
+    const { observations, metrics } = mapHealthConnect(
+      {
+        bodyFat: [
+          { id: 'a', time: local(5, 7, 48), percent: 32.84, origin: 'com.fitbit.FitbitMobile' },
+          { id: 'b', time: local(5, 6, 0), percent: 33.1, origin: 'com.fitbit.FitbitMobile' },
+          { id: 'c', time: local(4, 7, 0), percent: 0, origin: 'com.fitbit.FitbitMobile' },
+          { id: 'd', time: local(3, 7, 0), percent: 140, origin: 'com.fitbit.FitbitMobile' },
+        ],
+      },
+      syncDates('2026-11-05', false),
+      local(5, 10, 54),
+    );
+    expect(metrics).toEqual(['body_fat']);
+    expect(observations.map((o) => [o.id, o.date, o.metric, o.value, o.unit, o.source.app])).toEqual([
+      ['hc:body_fat:2026-11-05', '2026-11-05', 'body_fat', 32.8, '%', 'fitbit'],
+    ]);
+  });
+
+  it('a normal sync reads 7 days; the first sync 30', () => {
+    expect(syncDates('2026-11-05', false, '2026-11-04')).toHaveLength(7);
+    expect(syncDates('2026-11-05', false, '2026-11-05')).toHaveLength(7);
+    expect(syncDates('2026-11-05', false, null)).toHaveLength(7);
+    expect(syncDates('2026-11-05', true, '2026-10-01')).toHaveLength(30);
+  });
+
+  it('after a gap longer than a week, it reads from the day of the last full sync (inclusive)', () => {
+    const d = syncDates('2026-11-05', false, '2026-10-24'); // 12 days ago
+    expect(d[0]).toBe('2026-10-24');
+    expect(d[d.length - 1]).toBe('2026-11-05');
+    expect(d).toHaveLength(13);
+  });
+
+  it('a very long gap is capped at 90 days, across a month boundary and DST', () => {
+    const d = syncDates('2026-11-05', false, '2026-03-01');
+    expect(d).toHaveLength(90);
+    expect(d[89]).toBe('2026-11-05');
+    expect(syncDates('2026-04-06', false, '2026-03-30')).toHaveLength(8); // spans the April DST change
   });
 });

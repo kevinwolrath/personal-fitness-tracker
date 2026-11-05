@@ -109,13 +109,45 @@ it('is one continuous log: step back, jump via the date sheet, return to Today',
   await waitFor(() => expect(screen.getByTestId('day-title')).toHaveTextContent('Today'));
 });
 
-it('shows the next action and ticks it off from the card (native)', async () => {
+/** Move the clock to a local time today and let the minute timer fire (#51). */
+async function at(h: number, m: number) {
+  jest.setSystemTime(new Date(2026, 10, 5, h, m - 1)); // the next minute tick lands just after h:m
+  await act(async () => jest.advanceTimersByTime(61_000));
+}
+
+it('before anything is due, "Up next" is a compact preview: no meal, no Done (#51)', async () => {
   await launch();
-  // Thursday 09:00, office day: nothing due yet and no anytime work, so the earliest item is next.
+  // Thursday 09:00, office day: lunch (12:00) is the next item but isn't due until 11:45.
+  expect(screen.getByTestId('up-next-title')).toHaveTextContent('Fixed lunch');
+  expect(screen.getByTestId('up-next-when')).toHaveTextContent(/Up next · 12:00/i);
+  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 3 h/);
+  expect(screen.queryByTestId('next-action')).toBeNull();
+  expect(screen.queryByTestId('next-action-meal-ingredients')).toBeNull();
+  expect(screen.queryByLabelText('Done: Fixed lunch')).toBeNull();
+  // Weight stays on screen with the card.
+  expect(screen.getByTestId('measurement-weight')).toBeTruthy();
+});
+
+it('Details on "Up next" allows completing early, deliberately (#51)', async () => {
+  await launch();
+  fireEvent.press(screen.getByLabelText('Up next details: Fixed lunch'));
+  expect(await screen.findByTestId('meal-details')).toBeTruthy();
+  expect(screen.getByTestId('day-progress')).toHaveTextContent('0 of 5 done'); // opening never completes
+});
+
+it('becomes the full card when due, updates with the clock, and moves on after Done (#51)', async () => {
+  await launch();
+  await at(11, 44);
+  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 16 min/);
+  await at(11, 45); // meals are due 15 min before
+  expect(screen.queryByTestId('up-next')).toBeNull();
   expect(screen.getByTestId('next-action-title')).toHaveTextContent('Fixed lunch');
-  expect(screen.getByTestId('next-action-when')).toHaveTextContent(/Next up at 12:00/i);
+  expect(screen.getByTestId('next-action-when')).toHaveTextContent(/In 15 min · 12:00/i);
+  await at(12, 0);
+  expect(screen.getByTestId('next-action-when')).toHaveTextContent(/Now · 12:00/i);
   fireEvent.press(screen.getByLabelText('Done: Fixed lunch'));
   await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 5 done'));
+  // The lunch walk (12:30, exercise: due from 12:00) is due now.
   await waitFor(() => expect(screen.getByTestId('next-action-title')).toHaveTextContent('Lunch walk'));
 });
 
@@ -199,7 +231,7 @@ it('meal rows (#26): the body opens what to prepare without completing it; the c
   await launch();
   fireEvent.press(screen.getByLabelText('Fixed lunch details'));
   const details = await screen.findByTestId('meal-details');
-  expect(within(details).getByText('High-protein yoghurt')).toBeTruthy(); // the card shows it too: lunch is next
+  expect(within(details).getByText('High-protein yoghurt')).toBeTruthy();
   expect(within(details).getByText('~¾ cup')).toBeTruthy();
   expect(screen.getByTestId('meal-details-preparation')).toHaveTextContent(/Add water as needed/);
   expect(screen.getByTestId('day-progress')).toHaveTextContent('0 of 5 done'); // viewing never completes
@@ -210,8 +242,9 @@ it('meal rows (#26): the body opens what to prepare without completing it; the c
   await waitFor(() => expect(screen.getByTestId('day-progress')).toHaveTextContent('1 of 5 done'));
 });
 
-it('"Do this next" shows the lunch ingredients on the card (#26)', async () => {
-  await launch(); // Thursday 09:00: lunch is next
+it('"Do this next" shows the lunch ingredients on the card once lunch is due (#26, #51)', async () => {
+  await launch();
+  await at(11, 50);
   expect(screen.getByTestId('next-action-meal-ingredients')).toHaveTextContent(/Rolled oats/);
   expect(screen.getByTestId('next-action-meal-nutrition')).toHaveTextContent('≈ 1,780 kJ · 42 g protein');
 });

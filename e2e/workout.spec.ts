@@ -8,6 +8,8 @@ const DAY = 'weight-loss-v1|2026-11-02';
 const store = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!));
 const schoolRunDone = { [DAY]: { 'school-run-am': { activityId: 'school-run-am', status: 'done', count: 0, labelSnapshot: 'School run', updatedAt: 't' } } };
 const card = (page: Page) => page.getByTestId('next-action');
+/** The top slot's title: "Do this next" when something is due, "Up next" otherwise (#51). */
+const slotTitle = (page: Page) => page.getByTestId(/^(next-action|up-next)-title$/);
 const summary = (page: Page) => page.getByTestId('workout-summary');
 const checklist = (page: Page) => page.getByTestId('next-action-session');
 const tickNext = (page: Page) => checklist(page).getByRole('checkbox', { checked: false }).first().click();
@@ -70,7 +72,7 @@ test('the last tick completes the workout: "complete · 5 of 5" is shown, then "
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 7 done');
   await expect(row(page, 'resistance').getByRole('checkbox')).toBeChecked();
   await page.getByRole('button', { name: "Show what's next" }).click();
-  await expect(page.getByTestId('next-action-title')).not.toHaveText(/Strength workout/);
+  await expect(slotTitle(page)).not.toHaveText(/Strength workout/);
 
   const events = (await store(page)).completionEvents.filter((e: any) => e.activityId === 'resistance').map((e: any) => e.action);
   expect(events).toEqual(['tick', 'tick', 'tick', 'tick', 'complete']);
@@ -79,7 +81,7 @@ test('the last tick completes the workout: "complete · 5 of 5" is shown, then "
 test('the completed card also moves on by itself after a moment', async ({ page }) => {
   for (let i = 0; i < 5; i++) await tickNext(page);
   await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout complete');
-  await expect(page.getByTestId('next-action-title')).not.toHaveText(/Strength workout/, { timeout: 7000 });
+  await expect(slotTitle(page)).not.toHaveText(/Strength workout/, { timeout: 7000 });
 });
 
 test('unticking a finished exercise in the details sheet reopens the workout; history keeps both', async ({ page }) => {
@@ -128,7 +130,7 @@ test('ticks in the details sheet correct a past day', async ({ page }) => {
 test('whole-workout completion stays as a manual override in the list', async ({ page }) => {
   await row(page, 'resistance').getByRole('checkbox').click();
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 7 done');
-  await expect(page.getByTestId('next-action-title')).not.toHaveText(/Strength workout/);
+  await expect(slotTitle(page)).not.toHaveText(/Strength workout/);
 });
 
 test.describe('visual', () => {

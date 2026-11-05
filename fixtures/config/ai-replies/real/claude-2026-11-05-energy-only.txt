@@ -1,0 +1,1 @@
+{"fitnessConfigUpdate":{"schemaVersion":1,"nutrition":{"targets":{"merge":[{"id":"energy","label":"Energy","quantity":"energy","max":7300}]}}}}

@@ -49,6 +49,8 @@ ${bare({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section>
 
 Sections you can change: ${sectionNames.join(', ')}. Always include "fitnessConfigUpdate" and "schemaVersion": ${CONFIG_SCHEMA_VERSION}.
 
+The update must contain EVERY change we agreed in this conversation, in the right sections, and nothing else. Before sending, check it against my requests one by one.
+
 Rules (the app rejects updates that break them):
 1. Include ONLY the sections you are changing. A missing section is left exactly as it is. Never repeat unchanged sections.
 2. Inside a section, include ONLY the fields you are changing. Each field you include REPLACES that whole field. Lists marked "merge by id" also accept { "merge": [items] }: each item replaces the existing one with the same id, or is added if the id is new, and every other item stays exactly as it is. Prefer merge when changing or adding one or two items (for example one meal). Otherwise, send the complete new list.

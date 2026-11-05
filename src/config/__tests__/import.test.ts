@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import seed from '../../../plans/seed.plan.json';
 import { prepareUpdate } from '../import';
@@ -297,5 +297,22 @@ describe('curly quotes (#47)', () => {
     const r = ok(text);
     expect(r.update.sections.exercise).toEqual({ goals: ['fitness', 'strength'] });
     expect(r.notes.join(' ')).not.toMatch(/curly/);
+  });
+});
+
+describe('real AI replies (fixtures/config/ai-replies/real)', () => {
+  const dir = join(__dirname, '../../../fixtures/config/ai-replies/real');
+  const files = readdirSync(dir).filter((f) => f.endsWith('.txt'));
+  it('there are real replies to test', () => expect(files.length).toBeGreaterThan(0));
+  it.each(files)('%s', (file) => {
+    const text = readFileSync(join(dir, file), 'utf8');
+    const expectation = JSON.parse(readFileSync(join(dir, file.replace(/\.txt$/, '.expect.json')), 'utf8'));
+    const r = parseConfigUpdate(text);
+    expect(r.ok).toBe(expectation.imports);
+    if (r.ok) {
+      expect(Object.keys(r.update.sections).sort()).toEqual([...expectation.sections].sort());
+      const applied = applyConfigUpdate(seed as any, r.update);
+      expect(applied.ok).toBe(true);
+    } else expect(r.errors.join('\n')).toContain(expectation.error);
   });
 });

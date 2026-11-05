@@ -1,0 +1,1 @@
+{"fitnessConfigUpdate":{"schemaVersion":1,"nutrition":{"targets":{"merge":[{"id":"energy","label":"Energy","quantity":"energy","max":7300}]}},"exercise":{"limitations":[{"movement":"biceps_curl","status":"avoid","reason":"aggravates elbow"},{"movement":"hammer_curl","status":"caution","reason":"wrist pain"}]}}}

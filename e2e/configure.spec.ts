@@ -173,6 +173,66 @@ test('configuration changes are included in the full export', async ({ page }) =
   expect(doc.configChanges[0]).toMatchObject({ sections: ['exercise'] });
 });
 
+/** #47: paste a whole chat reply, imperfect JSON and all; nothing about JSON needed. */
+const aiReply = (name: string) => readFileSync(`e2e/../fixtures/config/ai-replies/${name}.txt`, 'utf8');
+async function openConfigureSeed(page: Page) {
+  await openAt(page, MONDAY);
+  await chooseFromMenu(page, 'Configure with AI');
+  await expect(page.getByRole('heading', { name: 'Configure with AI' })).toBeVisible();
+}
+
+test('#47: a messy reply imports: one quiet line says what was fixed; Details lists it; apply works', async ({ page }) => {
+  await openConfigureSeed(page);
+  await checkUpdate(page, aiReply('gemini')); // heading, ```JSON fence, trailing commas, bullet list after
+  const fixes = page.getByTestId('config-fixes');
+  await expect(fixes).toContainText(/Fixed automatically: \d+ formatting problems in what the AI sent/);
+  await expect(fixes).not.toContainText('trailing comma'); // details stay out of the way…
+  await fixes.getByRole('button', { name: 'Details' }).click();
+  await expect(fixes).toContainText('trailing comma'); // …until asked for
+  await expect(fixes).toContainText('code block');
+  await applyButton(page).click();
+  await expect(page.getByTestId('config-preview')).toHaveCount(0);
+  const plan = await storedPlan(page);
+  expect(plan.nutrition.targets.find((t: any) => t.id === 'energy').max).toBe(7300);
+  expect(plan.exercise.limitations).toEqual([{ movement: 'biceps_curl', status: 'avoid', reason: 'elbow discomfort, keep it gentle' }]);
+});
+
+test('#47: a clean update shows no repair line', async ({ page }) => {
+  await openConfigureSeed(page);
+  await checkUpdate(page, JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { eatingWindow: { start: '11:30', end: '19:30' } } } }));
+  await expect(page.getByTestId('config-preview')).toBeVisible();
+  await expect(page.getByTestId('config-fixes')).toHaveCount(0);
+});
+
+test('#47: a cut-off reply: says so, shows what was complete, copies details for the AI, changes nothing', async ({ page }) => {
+  await openConfigureSeed(page);
+  const before = JSON.stringify(await storedPlan(page));
+  await checkUpdate(
+    page,
+    'Here you go:\n```json\n{"fitnessConfigUpdate": {"schemaVersion": 1, "nutrition": {"eatingWindow": {"start": "11:30", "end": "19:30"}}, "exercise": {"limitations": [{"movement": "biceps_curl", "status": "avo',
+  );
+  const errors = page.getByTestId('config-errors');
+  await expect(errors).toContainText('cut off');
+  await expect(page.getByTestId('config-recoverable')).toContainText('Complete in what you pasted, not applied: Nutrition (eatingWindow)');
+  await expect(page.getByRole('button', { name: /^Apply/ })).toHaveCount(0);
+  await errors.getByRole('button', { name: 'Copy details for the AI' }).click();
+  await expect(errors.getByRole('button', { name: 'Copied: paste it to the AI' })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/could not be imported/);
+  expect(copied).toMatch(/Near line \d+, column \d+/);
+  expect(copied).toMatch(/resend the whole update/);
+  expect(JSON.stringify(await storedPlan(page))).toBe(before);
+});
+
+test('#47: curly quotes from a chat app import', async ({ page }) => {
+  await openConfigureSeed(page);
+  const curly = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { eatingWindow: { start: '11:30', end: '19:30' } } } }).replace(/"/g, (_m, i, str) => (str[i - 1] === ':' || str[i - 1] === '{' || str[i - 1] === ',' ? '\u201C' : '\u201D'));
+  await checkUpdate(page, curly);
+  await page.getByTestId('config-fixes').getByRole('button', { name: 'Details' }).click();
+  await expect(page.getByTestId('config-fixes')).toContainText('curly quotes');
+  await expect(applyButton(page)).toBeVisible();
+});
+
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
   test('configure-start', async ({ page }) => {
@@ -186,5 +246,19 @@ test.describe('visual', () => {
     await expect(page).toHaveScreenshot('configure-preview.png');
     await openSection(page, 'nutrition');
     await expect(page).toHaveScreenshot('configure-preview-open.png');
+  });
+  test('configure-fixes (#47: a messy reply, repairs collapsed)', async ({ page }) => {
+    await openConfigureSeed(page);
+    await checkUpdate(page, aiReply('gemini'));
+    await expect(page.getByTestId('config-fixes')).toBeVisible();
+    await expect(page).toHaveScreenshot('configure-fixes.png');
+    await page.getByTestId('config-fixes').getByRole('button', { name: 'Details' }).click();
+    await expect(page).toHaveScreenshot('configure-fixes-open.png');
+  });
+  test('configure-error-copy (#47: a cut-off reply)', async ({ page }) => {
+    await openConfigureSeed(page);
+    await checkUpdate(page, '{"fitnessConfigUpdate": {"schemaVersion": 1, "nutrition": {"eatingWindow": {"start": "11:30", "end": "19:30"}}, "exercise": {"limitations": [{"movement": "biceps_curl", "status": "avo');
+    await expect(page.getByTestId('config-errors')).toBeVisible();
+    await expect(page).toHaveScreenshot('configure-error-copy.png');
   });
 });

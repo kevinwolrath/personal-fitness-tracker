@@ -1,3 +1,4 @@
+import { importDiagnostics } from '../../config/import';
 import type { EnergyDisplay } from '../../energy';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useState } from 'react';
@@ -11,8 +12,10 @@ import type { ConfigChange, StoredPlan, TrackingStore } from '../../storage/type
 
 export type CheckState =
   | { kind: 'idle' }
-  | { kind: 'invalid'; errors: string[] }
-  | { kind: 'preview'; sections: SectionPreview[]; nextRaw: RawPlan; touched: SectionName[]; payload: unknown; changeCount: number };
+  /** recoverable: sections complete before a cut (never applied); diagnostics: copyable text for the AI (#47). */
+  | { kind: 'invalid'; errors: string[]; recoverable: string[]; diagnostics: string }
+  /** notes: what the import fixed automatically (#47), shown behind "Details". */
+  | { kind: 'preview'; sections: SectionPreview[]; nextRaw: RawPlan; touched: SectionName[]; payload: unknown; changeCount: number; notes: string[] };
 
 /** Copy → paste → check → preview → apply (contract 07). Nothing is written until `apply`. */
 export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise<void>, energy: EnergyDisplay) {
@@ -55,9 +58,11 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
   const runCheck = useCallback(() => {
     if (!raw) return;
     const parsed = parseConfigUpdate(text);
-    if (!parsed.ok) return setCheck({ kind: 'invalid', errors: parsed.errors });
+    if (!parsed.ok) return setCheck({ kind: 'invalid', errors: parsed.errors, recoverable: parsed.recoverable, diagnostics: parsed.diagnostics });
     const applied = applyConfigUpdate(raw, parsed.update);
-    if (!applied.ok) return setCheck({ kind: 'invalid', errors: applied.errors });
+    if (!applied.ok) {
+      return setCheck({ kind: 'invalid', errors: applied.errors, recoverable: [], diagnostics: importDiagnostics(text, { errors: applied.errors, notes: parsed.notes }) });
+    }
     const sections = previewUpdate(raw, applied.nextRaw, parsed.update, energy);
     setCheck({
       kind: 'preview',
@@ -66,6 +71,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       touched: applied.touched,
       payload: parsed.json,
       changeCount: sections.reduce((n, s) => n + s.lines.length, 0),
+      notes: parsed.notes,
     });
   }, [raw, text, energy]);
 
@@ -95,5 +101,10 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     }
   }, [stored, history, store, reloadPlan, refresh]);
 
-  return { stored, raw, history, text, check, busy, copyInstructions, pasteFromClipboard, editText, runCheck, apply, undoLatest };
+  /** Copy the failed import's details for the AI (#47). */
+  const copyDiagnostics = useCallback(async () => {
+    if (check.kind === 'invalid') await Clipboard.setStringAsync(check.diagnostics);
+  }, [check]);
+
+  return { stored, raw, history, text, check, busy, copyInstructions, pasteFromClipboard, editText, runCheck, apply, undoLatest, copyDiagnostics };
 }

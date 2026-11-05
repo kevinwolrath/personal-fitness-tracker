@@ -3,7 +3,7 @@ import { resolveDay, type ResolvedDay } from '../plan/resolveDay';
 import type { Activity, Plan, Purpose, Requirement } from '../plan/schema';
 import type { ActivityLog, DayRecords } from '../storage/types';
 import { prescribeSession, type PrescribedSession } from './session';
-import { windowFor, type Window } from './windows';
+import { leadMinutesFor, windowFor, type Window } from './windows';
 
 /**
  * Today's prescription (contract 08): the concrete actions for one date, derived deterministically from
@@ -84,7 +84,7 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
       detail: a.detail,
       purpose: a.purpose ?? null,
       required: a.required,
-      window: windowFor({ time: a.time, when: a.when, durationMaxMinutes: durationMax(a) }),
+      window: windowFor({ time: a.time, when: a.when, durationMaxMinutes: durationMax(a), leadMinutes: leadMinutesFor(plan, a.kind, a.leadMinutes) }),
       order: order.get(a.id) ?? 0,
       state: stateOf(log),
       activity: a,
@@ -109,7 +109,9 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
     const started = options.find((o) => (logs[o.id]?.count ?? 0) > 0);
     const state: ItemState = own?.status === 'skipped' ? 'skipped' : done ? 'done' : started ? 'partial' : 'pending';
     const lead = done ?? started;
-    const optionWindows = options.map((o) => windowFor({ time: o.time, when: o.when, durationMaxMinutes: durationMax(o) }));
+    const optionWindows = options.map((o) =>
+      windowFor({ time: o.time, when: o.when, durationMaxMinutes: durationMax(o), leadMinutes: leadMinutesFor(plan, o.kind, r.leadMinutes ?? o.leadMinutes) }),
+    );
     items.push({
       key,
       kind: 'requirement',
@@ -119,8 +121,8 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
       required: r.required,
       window:
         r.time || r.when
-          ? windowFor({ time: r.time, when: r.when })
-          : optionWindows.sort((x, y) => x.start - y.start || x.end - y.end)[0],
+          ? windowFor({ time: r.time, when: r.when, leadMinutes: leadMinutesFor(plan, options[0].kind, r.leadMinutes) })
+          : optionWindows.sort((x, y) => x.at - y.at || x.start - y.start || x.end - y.end)[0],
       order: Math.min(...options.map((o) => order.get(o.id) ?? 0)),
       state,
       requirement: r,
@@ -134,7 +136,8 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
     });
   }
 
-  items.sort((x, y) => x.window.start - y.window.start || x.order - y.order);
+  // Listed by scheduled time (not by when they become due, which depends on lead times).
+  items.sort((x, y) => x.window.at - y.window.at || x.order - y.order);
   const counted = items.filter((i) => i.required && i.state !== 'skipped');
   const doneCount = counted.filter((i) => i.state === 'done').length;
   return { date, day, items, progress: { done: doneCount, total: counted.length, complete: counted.length > 0 && doneCount === counted.length } };

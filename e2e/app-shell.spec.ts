@@ -32,11 +32,11 @@ test('the menu is in the same place on any day', async ({ page }) => {
   expect(await where()).toEqual(today);
 });
 
-test('vertical budget: "Do this next" starts within 200 px on a 390 × 844 phone', async ({ page }) => {
+test('vertical budget: "Do this next" / "Up next" starts within 200 px on a 390 × 844 phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const at of [MONDAY, THURSDAY]) {
     await openAt(page, at);
-    const card = (await page.getByTestId('next-action').boundingBox())!;
+    const card = (await page.getByTestId(/^(next-action|up-next)$/).boundingBox())!;
     expect(card.y, at).toBeLessThanOrEqual(200);
   }
 });

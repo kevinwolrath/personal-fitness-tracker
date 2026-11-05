@@ -36,7 +36,7 @@ The AI configuration protocol (07) edits all of these. Requirements are a `sched
   - The scheduler knows purposes and requirements, never activity names. There is no VR-boxing logic.
 - **States:** `pending`, `partial` (count started), `done` or `skipped`. Skipping a requirement skips it as a unit.
 - **Windows** (minutes since local midnight):
-  - Exact `time`: from 30 min before until its duration (at least 60 min) has passed.
+  - Exact `time`: **due** from its lead time before the time until its duration (at least 60 min) has passed (#51). Lead time precedence: item `leadMinutes` > plan `timing.leadMinutes[kind]` > format default (meal 15, habit 15, exercise 30; 03). A requirement uses its own `leadMinutes`, else the lead for its alternatives' kind.
   - Day parts: morning 06:00–11:00, lunch 11:00–14:00, afternoon 14:00–17:30, evening 17:30–22:00.
   - Anytime: the whole day.
   - A requirement without its own window uses its earliest option's window.
@@ -45,7 +45,7 @@ The AI configuration protocol (07) edits all of these. Requirements are a `sched
   - `avoid` with no substitute: flagged.
   - `caution`: flagged.
   - The short version is processed the same way.
-- **Order and progress:** items are ordered by window start, then plan order. Progress counts required, non-skipped items, with a requirement counting as one.
+- **Order and progress:** items are ordered by scheduled time (the exact time, or the day part's start; anytime first in sort, shown last), then plan order. Lead times never reorder the list. Progress counts required, non-skipped items, with a requirement counting as one.
 
 ## Next action (`nextAction`, pure)
 
@@ -58,10 +58,11 @@ The AI configuration protocol (07) edits all of these. Requirements are a `sched
   5. optional, anytime
   6. optional, overdue
   7. upcoming (earliest first)
-- **Ties:** window start, then plan order.
+- **Ties:** when it becomes due, then scheduled time, then plan order.
 - **Status shown:** `now` / `anytime` / `overdue` / `later`.
+- **Due vs upcoming (#51):** `now`, `anytime` and `overdue` are **due**. `later` is only chosen when nothing is due, and is a preview: it never shows completion controls or a meal's details.
 
-Completing, undoing or skipping anything recomputes it immediately. The time is re-read every minute and when the app returns to the foreground.
+Completing, undoing or skipping anything recomputes it immediately. The local date and time are read together, at every minute boundary (including midnight, so the day rolls over while the app is open) and when the app returns to the foreground.
 
 ## Completion log (contract 04)
 
@@ -72,7 +73,9 @@ Completing, undoing or skipping anything recomputes it immediately. The time is 
 
 ## Home screen (Daily Log, today)
 
-1. **Do this next** card: the next action's label and window ("Now · 8:30 am", "Anytime today", "Was due 12:00 pm", "Next up at …"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
+1. **Up next / Do this next** (one slot, content layer):
+   - **Nothing due:** a compact ink **Up next** card: "Up next · 12:00 pm", the label, "In 4 h 30 min · detail", and **Details**, which opens the item sheet (meal details, early Done, Skip). No meal checklist and no Done on the card. It's small enough that Weight and the measurements stay on screen. No second "Up next" is shown while something is due.
+   - **Due:** the full **Do this next** card: the label and window ("In 15 min · 12:00 pm" inside the lead time, "Now · 8:30 am", "Anytime today", "Was due 12:00 pm"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
 2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the next item has an accent bar.
 3. The item sheet: for a session, the Full/Short switch and the exercise checklist (ticks on any editable day, so past days can be corrected), plus **Mark whole workout done** as a retrospective override; alternatives, skip and restore.
 

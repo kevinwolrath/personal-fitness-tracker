@@ -1,6 +1,6 @@
 import type { EnergyDisplay } from '../../energy';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { formatClock } from '../../format';
+import { formatClock, formatCountdown } from '../../format';
 import { mealView } from '../../plan/meals';
 import type { Activity, Plan } from '../../plan/schema';
 import type { NextAction } from '../../prescription/nextAction';
@@ -15,6 +15,8 @@ type Props = {
   /** The active plan: a meal's ingredients and amounts come from it (#26). */
   plan: Plan;
   next: NextAction | null;
+  /** Local minutes since midnight: for the countdown to an upcoming item and "in 15 min" once it's due (#51). */
+  nowMinutes: number;
   progress: { done: number; total: number };
   logs: Record<string, ActivityLog | undefined>;
   onAdvance: (item: PrescriptionItem, a: Activity) => void;
@@ -23,9 +25,13 @@ type Props = {
   energy: EnergyDisplay;
 };
 
-function whenLabel(n: NextAction): string {
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function whenLabel(n: NextAction, nowMinutes: number): string {
   const w = n.item.window;
   const at = w.time ? formatClock(w.time) : partLabels[w.part];
+  // Due but not yet at its time (inside the lead window): say how soon (#51).
+  if (n.status === 'now' && w.time && nowMinutes < w.at) return `${sentence(formatCountdown(w.at - nowMinutes))} · ${at}`;
   if (n.status === 'now') return w.time ? `Now · ${at}` : `Now · ${at.toLowerCase()}`;
   if (n.status === 'anytime') return 'Anytime today';
   if (n.status === 'overdue') return w.time ? `Was due ${at}` : `Was due this ${at.toLowerCase()}`;
@@ -40,9 +46,12 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
   return 'Done';
 }
 
-/** "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08). */
+/**
+ * "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08).
+ * When nothing is due it shrinks to a compact "Up next" preview with a countdown and Details (#51).
+ */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
-export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetails, energy }: Props) {
+export function NextActionCard({ plan, next, nowMinutes, progress, logs, onAdvance, onDetails, energy }: Props) {
   if (!next) {
     return (
       <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
@@ -53,6 +62,33 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
     );
   }
   const { item } = next;
+  // Nothing is due yet (#51): a compact preview only. No meal, no Done; early completion or skipping is in Details.
+  if (next.status === 'later') {
+    const w = item.window;
+    const at = w.time ? formatClock(w.time) : partLabels[w.part].toLowerCase();
+    return (
+      <View style={[styles.card, styles.compact]} testID="up-next" accessibilityLiveRegion="polite">
+        <View style={styles.compactText}>
+          <Text style={styles.eyebrow} testID="up-next-when">{`Up next · ${at}`}</Text>
+          <Text style={styles.compactTitle} accessibilityRole="header" testID="up-next-title" numberOfLines={2}>
+            {item.label}
+          </Text>
+          <Text style={styles.sub} numberOfLines={1} testID="up-next-countdown">
+            {[sentence(formatCountdown(w.at - nowMinutes)), item.detail].filter(Boolean).join(' · ')}
+          </Text>
+        </View>
+        <Pressable
+          onPress={() => onDetails(item)}
+          style={({ pressed }) => [styles.compactDetails, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Up next details: ${item.label}`}
+          testID="up-next-details"
+        >
+          <Text style={styles.compactDetailsText}>Details</Text>
+        </Pressable>
+      </View>
+    );
+  }
   // A meal that's next shows what to eat right here: no extra tap (#26).
   const meal = item.activity ? mealView(plan, item.activity, energy) : null;
   return (
@@ -62,7 +98,7 @@ export function NextActionCard({ plan, next, progress, logs, onAdvance, onDetail
         {item.label}
       </Text>
       <Text style={styles.sub} testID="next-action-when">
-        {[whenLabel(next), item.detail].filter(Boolean).join(' · ')}
+        {[whenLabel(next, nowMinutes), item.detail].filter(Boolean).join(' · ')}
       </Text>
       {meal && (
         <View style={styles.meal}>
@@ -98,6 +134,12 @@ const styles = StyleSheet.create({
   sub: { ...type.detail, color: colors.onInkMuted },
   meal: { marginTop: space.sm },
   actions: { gap: space.sm, marginTop: space.md },
+  compact: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md },
+  compactText: { flex: 1, gap: 2 },
+  compactTitle: { fontSize: 19, fontWeight: '800', color: colors.onAccent },
+  compactDetails: { minHeight: touch, paddingHorizontal: space.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.inkRaised, alignItems: 'center', justifyContent: 'center' },
+  compactDetailsText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+  pressed: { opacity: 0.75 },
   details: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   detailsText: { color: colors.onInkMuted, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
 });

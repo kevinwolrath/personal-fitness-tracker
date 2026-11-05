@@ -13,32 +13,41 @@ import { newId, type ActivityLog, type DayRecords, type TrackingStore } from '..
 
 const emptyDay: DayRecords = { activities: {}, dayTypeOverride: null, observations: [], quickLogs: [] };
 
-/** Today's local date, refreshed when the app returns to the foreground. */
-export function useToday(): LocalDate {
-  const [today, setToday] = useState(() => toLocalDate(new Date()));
-  useEffect(() => {
-    const sub = AppState.addEventListener('change', (s) => s === 'active' && setToday(toLocalDate(new Date())));
-    return () => sub.remove();
-  }, []);
-  return today;
+export type Clock = { today: LocalDate; nowMinutes: number };
+
+/** The local date and minute of `d` (pure; exported for tests). */
+export function clockAt(d: Date): Clock {
+  return { today: toLocalDate(d), nowMinutes: d.getHours() * 60 + d.getMinutes() };
 }
 
-/** Local minutes since midnight, refreshed every minute and on returning to the foreground. */
-export function useNowMinutes(): number {
-  const read = () => {
-    const d = new Date();
-    return d.getHours() * 60 + d.getMinutes();
-  };
-  const [now, setNow] = useState(read);
+/**
+ * Local date and minute as one value, so a day rollover never pairs the new date with yesterday's time (#51).
+ * Updates at each minute boundary (including midnight) and when the app returns to the foreground.
+ */
+export function useClock(): Clock {
+  const [clock, setClock] = useState(() => clockAt(new Date()));
   useEffect(() => {
-    const t = setInterval(() => setNow(read()), 60_000);
-    const sub = AppState.addEventListener('change', (s) => s === 'active' && setNow(read()));
+    const refresh = () =>
+      setClock((prev) => {
+        const next = clockAt(new Date());
+        return next.today === prev.today && next.nowMinutes === prev.nowMinutes ? prev : next;
+      });
+    let timer: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      const now = new Date();
+      timer = setTimeout(() => {
+        refresh();
+        arm();
+      }, 60_000 - (now.getSeconds() * 1000 + now.getMilliseconds()) + 50);
+    };
+    arm();
+    const sub = AppState.addEventListener('change', (s) => s === 'active' && refresh());
     return () => {
-      clearInterval(t);
+      clearTimeout(timer);
       sub.remove();
     };
   }, []);
-  return now;
+  return clock;
 }
 
 /**

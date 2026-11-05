@@ -12,7 +12,7 @@ The configuration is not a second store. It's a sectioned view over the active p
 | `goals` | `targets` | `goals` |
 | `nutrition` | `targets`, `eatingWindow`, `meals` | `nutrition.targets`, `nutrition.eatingWindow`, activities with `kind: "meal"` |
 | `exercise` | `goals`, `equipment`, `limitations`, `substitutions`, `activityTypes`, `strength`, `conditioning`, `constraints` | `exercise.*` |
-| `schedule` | `dayTypes`, `week`, `requirements`, `activities` | `dayTypes`, `schedule`, `requirements` (08), activities that aren't meals |
+| `schedule` | `dayTypes`, `week`, `requirements`, `activities`, `timing` | `dayTypes`, `schedule`, `requirements` (08), activities that aren't meals, `timing` (due times, 08) |
 | `tracking` | `measurements`, `quickLogs` | `measurements`, `quickLogs` |
 
 Field shapes and enums are in `plan.schema.json` (`$defs.exercise`, `$defs.profile`) and `src/plan/schema.ts`. Section/field mapping is in `src/config/sections.ts`. New areas extend this table: add a field or section, and the same protocol, importer, preview and instructions pick it up. No separate import system is needed.
@@ -81,7 +81,7 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
    - removed fields read "cleared: …", never "→ —".
 
    Only sections that change are listed (see 02, "Configure layout"); the others are named in one line as staying as they are.
-7. **Apply:** only on **Apply N changes**. The result is always the current plan format (formatVersion 4), so meals can carry `ingredients` and `preparation` and any activity can carry `notifications` (03, 10). The AI can add, change or remove reminders, and a merge by id changes one activity's reminders without touching the others. **Turning reminders on or off is not configuration:** it's a device preference the update protocol can't express, so an update never enables or disables them. The new plan revision (origin `config`) and a history entry are written atomically.
+7. **Apply:** only on **Apply N changes**. The result is always the current plan format (formatVersion 5), so items can carry `leadMinutes`, the plan can carry `timing` (08), meals can carry `ingredients` and `preparation` and any activity can carry `notifications` (03, 10). The AI can add, change or remove reminders, and a merge by id changes one activity's reminders without touching the others. **Turning reminders on or off is not configuration:** it's a device preference the update protocol can't express, so an update never enables or disables them. The new plan revision (origin `config`) and a history entry are written atomically.
 8. **No partial state:** any failure means nothing is written. Omitted sections are preserved exactly, because patches act on the raw JSON, not on the parsed plan.
 
 ## History, undo, seed and export

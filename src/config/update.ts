@@ -102,7 +102,7 @@ export function applyConfigUpdate(currentRaw: RawPlan, update: ConfigUpdate): Ap
       } else field.write(next, copy);
     }
   }
-  next.formatVersion = 4; // updates always produce the current format (a superset of the older ones)
+  next.formatVersion = 5; // updates always produce the current format (a superset of the older ones)
   next.revision = (Number(currentRaw.revision) || 0) + 1;
 
   const result = validatePlan(next);

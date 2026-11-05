@@ -22,6 +22,7 @@ import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
+import { isDue } from '../../prescription/nextAction';
 import { useReminders } from '../reminders/RemindersProvider';
 import { WorkoutCard } from './WorkoutCard';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
@@ -31,7 +32,7 @@ import { partLabels, partOrder } from '../../prescription/windows';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import { TargetsLine } from './TargetsLine';
 import { Toast, type ToastState } from '../../ui/Toast';
-import { useDay, useNowMinutes, useToday } from './useDay';
+import { useClock, useDay } from './useDay';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -43,7 +44,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  */
 export function DayLogScreen() {
   const { store, plan, energy, dataVersion } = useApp();
-  const today = useToday();
+  const { today, nowMinutes } = useClock();
   const params = useLocalSearchParams<{ date?: string; focus?: string }>();
   const date: LocalDate = isLocalDate(params.date) ? params.date : today;
   const setDate = useCallback(
@@ -51,7 +52,6 @@ export function DayLogScreen() {
     [today],
   );
   const { day, prescription, progress, nextAt, records, latestMeasurement, actions, reload } = useDay(store, plan, date, dataVersion);
-  const nowMinutes = useNowMinutes();
   // "Do this next" is about the present, so it only shows on today (contract 08).
   const next = date === today ? nextAt(nowMinutes) : null;
 
@@ -195,9 +195,10 @@ export function DayLogScreen() {
           <View style={styles.firstBlock}>
             {(() => {
               const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
-              const workout = heldItem ?? (next?.item.session && next.item.activity ? next.item : undefined);
+              // A workout's checklist only appears once it's due; before that it's an "Up next" preview like any item (#51).
+              const workout = heldItem ?? (isDue(next) && next?.item.session && next.item.activity ? next.item : undefined);
               if (!workout) {
-                return <NextActionCard plan={plan} energy={energy} next={next} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
+                return <NextActionCard plan={plan} energy={energy} next={next} nowMinutes={nowMinutes} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
               }
               return (
                 <WorkoutCard

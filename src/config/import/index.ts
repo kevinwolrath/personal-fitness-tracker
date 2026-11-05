@@ -59,17 +59,21 @@ export function prepareUpdate(text: string): Prepared {
 
   const rp = repair(ex.text);
   const notes = [...ex.notes, ...rp.notes];
+  // Curly quotes were converted but the result still doesn't read: say so rather than guess further.
+  const quoteHint = ex.curlyQuotes
+    ? ['The curly quotes (“ ”) in this update are ambiguous where it fails. Ask the AI to resend it with straight quotes (").']
+    : [];
   if (!rp.ok) {
     let recoverable: string[] = [];
     if (rp.recoverableText) {
       const p = parseJson(rp.recoverableText);
       if (p.ok) recoverable = describeSections(canonicalize(p.value, walkSchema).value);
     }
-    return { ok: false, errors: rp.errors.map((e) => e.message), notes, recoverable, problems: rp.errors, text: rp.text };
+    return { ok: false, errors: [...rp.errors.map((e) => e.message), ...quoteHint], notes, recoverable, problems: rp.errors, text: rp.text };
   }
 
   const ps = parseJson(rp.text);
-  if (!ps.ok) return { ok: false, errors: [ps.error], notes, recoverable: [], problems: [{ message: ps.error, offset: ps.offset }], text: rp.text };
+  if (!ps.ok) return { ok: false, errors: [ps.error, ...quoteHint], notes, recoverable: [], problems: [{ message: ps.error, offset: ps.offset }], text: rp.text };
 
   const cn = canonicalize(ps.value, walkSchema);
   const allNotes = [...notes, ...ps.notes, ...cn.notes];

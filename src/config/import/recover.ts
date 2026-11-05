@@ -7,11 +7,11 @@ import { lineCol, tokenize, type Token } from './scan';
  */
 
 export const MAX_INPUT_CHARS = 200_000;
-const KEY = /"fitnessConfigUpdate"/i;
+const KEY = /["\u201C\u201D]fitnessConfigUpdate["\u201C\u201D]/i;
 
 export type Problem = { message: string; offset?: number };
 export type Recovered =
-  | { ok: true; text: string; notes: string[] }
+  | { ok: true; text: string; notes: string[]; curlyQuotes?: boolean }
   | { ok: false; errors: Problem[]; notes: string[]; text?: string; recoverableText?: string };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -26,6 +26,84 @@ function fencedBlocks(text: string): { body: string; start: number; end: number 
     if (m[0].length === 0) re.lastIndex++;
   }
   return out;
+}
+
+const CURLY = new Set(['\u201C', '\u201D', '\u201E', '\u201F']); // “ ” „ ‟ (never the apostrophes ‘ ’)
+const VALUE_START = /["\u201C\u201D\u201E\u201F{\[\-0-9tfnTFN}\]]/;
+
+/**
+ * Curly double quotes used as JSON delimiters (some chat apps "smarten" quotes), #47. Walks the update with the
+ * roles of quotes in mind:
+ * - outside a string, a curly quote opens a string (→ ");
+ * - inside a string opened by a curly quote, a curly quote closes it only where a JSON delimiter follows (: , } ]
+ *   or the end, and after a comma the next thing must be a key or a value); anywhere else it is text and kept;
+ * - inside a string opened by a straight quote, curly quotes are text and kept; a straight quote inside a curly
+ *   string is text and escaped.
+ * Apostrophes and single curly quotes are never touched. Stops when the update's outermost bracket closes, so
+ * prose after it is left alone. Mixed straight and curly quotes are fine. If the result still doesn't parse, the
+ * import says the quotes were ambiguous instead of guessing further.
+ */
+export function normalizeQuotes(src: string, depth0: number): { text: string; converted: number } {
+  let out = '';
+  let converted = 0;
+  let depth = depth0;
+  let started = depth0 > 0;
+  let mode: 'out' | 'straight' | 'curly' = 'out';
+  const closesHere = (i: number) => {
+    let j = i + 1;
+    while (j < src.length && /\s/.test(src[j])) j++;
+    if (j >= src.length) return true;
+    const c = src[j];
+    if (c === ':' || c === '}' || c === ']') return true;
+    if (c !== ',') return false;
+    j++;
+    while (j < src.length && /\s/.test(src[j])) j++;
+    return j >= src.length || VALUE_START.test(src[j]);
+  };
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (mode === 'out') {
+      if (started && depth === 0) return { text: out + src.slice(i), converted };
+      if (c === '{' || c === '[') {
+        depth++;
+        started = true;
+      } else if (c === '}' || c === ']') depth--;
+      if (c === '"') mode = 'straight';
+      else if (CURLY.has(c)) {
+        mode = 'curly';
+        converted++;
+        out += '"';
+        continue;
+      }
+      out += c;
+    } else if (mode === 'straight') {
+      if (c === '\\') {
+        out += c + (src[i + 1] ?? '');
+        i++;
+        continue;
+      }
+      if (c === '"') mode = 'out';
+      out += c;
+    } else {
+      if (c === '\\') {
+        out += c + (src[i + 1] ?? '');
+        i++;
+        continue;
+      }
+      if (c === '"') {
+        out += '\\"'; // a straight quote inside a curly-quoted string is text
+        continue;
+      }
+      if (CURLY.has(c) && closesHere(i)) {
+        mode = 'out';
+        converted++;
+        out += '"';
+        continue;
+      }
+      out += c;
+    }
+  }
+  return { text: out, converted };
 }
 
 /** Step 1: the one candidate update in the pasted text. */
@@ -61,6 +139,11 @@ export function extract(raw: string): Recovered {
     missingOpen = true;
   } else start = braceAt;
   if (text.slice(0, start).trim() && !blocks.length) notes.push('Ignored the text before the update.');
+  const quotes = normalizeQuotes(text.slice(start), missingOpen ? 1 : 0);
+  if (quotes.converted) {
+    text = text.slice(0, start) + quotes.text;
+    notes.push(`Converted ${plural(quotes.converted, 'curly quote')} (“ ”) to straight quotes; quotes inside text were kept.`);
+  }
 
   // Find where it ends: the matching close of the first "{", string-aware. A cut-off update runs to the end.
   const tokens = tokenize(text.slice(start));
@@ -85,7 +168,7 @@ export function extract(raw: string): Recovered {
   rest = closers;
 
   if (missingOpen) notes.push('Added the missing opening { at the start.');
-  return { ok: true, text: (missingOpen ? '{' : '') + text.slice(start, end) + rest, notes };
+  return { ok: true, text: (missingOpen ? '{' : '') + text.slice(start, end) + rest, notes, curlyQuotes: quotes.converted > 0 };
 }
 
 type Frame = { open: '{' | '['; state: 'key' | 'colon' | 'value' | 'after' };

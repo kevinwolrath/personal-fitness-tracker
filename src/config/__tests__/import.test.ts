@@ -256,3 +256,46 @@ describe('diagnostics to copy for the AI', () => {
     expect(r.diagnostics).toMatch(/resend the whole update/);
   });
 });
+
+describe('curly quotes (#47)', () => {
+  const L = '“';
+  const R = '”';
+  const c = (s: string) => `${L}${s}${R}`;
+
+  it('all-curly delimiters are converted; quotes and apostrophes inside text are kept', () => {
+    const text = `{${c('fitnessConfigUpdate')}: {${c('schemaVersion')}: 1, ${c('exercise')}: {${c('limitations')}: [{${c('movement')}: ${c('biceps_curl')}, ${c('status')}: ${c('avoid')}, ${c('reason')}: ${c(`Doctor’s advice: ${c('go gentle')} for now`)}}]}}}`;
+    const r = ok(text);
+    expect(r.update.sections.exercise).toEqual({ limitations: [{ movement: 'biceps_curl', status: 'avoid', reason: `Doctor’s advice: ${c('go gentle')} for now` }] });
+    expect(r.notes.join(' ')).toMatch(/Converted \d+ curly quotes \(“ ”\) to straight quotes; quotes inside text were kept/);
+  });
+
+  it('mixed straight and curly delimiters are recoverable', () => {
+    const text = `{"fitnessConfigUpdate": {"schemaVersion": 1, ${c('exercise')}: {"goals": [${c('fitness')}, "strength"]}}}`;
+    expect(ok(text).update.sections.exercise).toEqual({ goals: ['fitness', 'strength'] });
+  });
+
+  it('curly quotes inside a straight-quoted string are text, untouched', () => {
+    const text = `{"fitnessConfigUpdate": {"schemaVersion": 1, "exercise": {"limitations": [{"movement": "biceps_curl", "status": "avoid", "reason": "He said ${c('stop')}, then left"}]}}}`;
+    expect(ok(text).update.sections.exercise).toMatchObject({ limitations: [{ reason: `He said ${c('stop')}, then left` }] });
+    expect(ok(text).notes.join(' ')).not.toMatch(/curly/);
+  });
+
+  it('a straight quote inside a curly-quoted string is kept as text', () => {
+    const text = `{${c('fitnessConfigUpdate')}: {${c('schemaVersion')}: 1, ${c('exercise')}: {${c('limitations')}: [{${c('movement')}: ${c('biceps_curl')}, ${c('status')}: ${c('avoid')}, ${c('reason')}: ${c('the "slow" way')}}]}}}`;
+    expect(ok(text).update.sections.exercise).toMatchObject({ limitations: [{ reason: 'the "slow" way' }] });
+  });
+
+  it('ambiguous curly quotes are rejected with a useful error, never guessed', () => {
+    // The inner ” after "yes" is followed by a comma and another quote: it reads as a closing quote, and the rest breaks.
+    const text = `{${c('fitnessConfigUpdate')}: {${c('schemaVersion')}: 1, ${c('exercise')}: {${c('limitations')}: [{${c('movement')}: ${c('biceps_curl')}, ${c('status')}: ${c('avoid')}, ${c('reason')}: ${L}He said ${c('yes')}, ${c('no')} and left${R}}]}}}`;
+    const r = fails(text);
+    expect(r.errors.join('\n')).toMatch(/curly quotes \(“ ”\) in this update are ambiguous.*straight quotes/);
+  });
+
+  it('curly quotes in the prose around the update are left alone', () => {
+    const text = `Here’s the ${c('update')} you asked for:\n${compact}\nI hope it’s ${c('right')}.`;
+    const r = ok(text);
+    expect(r.update.sections.exercise).toEqual({ goals: ['fitness', 'strength'] });
+    expect(r.notes.join(' ')).not.toMatch(/curly/);
+  });
+});

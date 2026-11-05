@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ChangeLine, SectionPreview } from '../../config/diff';
@@ -23,6 +23,9 @@ export function ConfigureScreen() {
   const { store, reloadPlan, energy } = useApp();
   const s = useConfigSession(store, reloadPlan, energy);
   const [copied, setCopied] = useState(false);
+  const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
+  // A new check result means new details: the copy button starts over.
+  useEffect(() => setDiagnosticsCopied(false), [s.check]);
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   if (!s.raw) {
@@ -109,10 +112,23 @@ export function ConfigureScreen() {
                 • {e}
               </Text>
             ))}
+            {s.check.recoverable.length > 0 && (
+              <Text style={type.detail} testID="config-recoverable">
+                Complete in what you pasted, not applied: {s.check.recoverable.join('; ')}.
+              </Text>
+            )}
+            <Button
+              title={diagnosticsCopied ? 'Copied: paste it to the AI' : 'Copy details for the AI'}
+              variant="secondary"
+              onPress={async () => {
+                await s.copyDiagnostics();
+                setDiagnosticsCopied(true);
+              }}
+            />
           </View>
         )}
 
-        {s.check.kind === 'preview' && <Preview sections={s.check.sections} />}
+        {s.check.kind === 'preview' && <Preview sections={s.check.sections} notes={s.check.notes} />}
 
         {!previewing && latest && (
           <View style={styles.panel} testID="config-history">
@@ -178,8 +194,9 @@ function DoneRow(p: { label: string; action: string; actionLabel: string; onPres
 }
 
 /** Only the sections that change, one row each; open a row to see every change in it. */
-function Preview({ sections }: { sections: SectionPreview[] }) {
+function Preview({ sections, notes }: { sections: SectionPreview[]; notes: string[] }) {
   const [open, setOpen] = useState<string | null>(null);
+  const [showFixes, setShowFixes] = useState(false);
   const changing = sections.filter((s) => s.supplied && s.lines.length);
   const unchanged = sections.filter((s) => !s.supplied || !s.lines.length).map((s) => s.title.toLowerCase());
   return (
@@ -187,6 +204,25 @@ function Preview({ sections }: { sections: SectionPreview[] }) {
       <Text style={type.section} accessibilityRole="header">
         What changes
       </Text>
+      {notes.length > 0 && (
+        <View testID="config-fixes">
+          {/* Option A (#47): one quiet line; what was repaired is one tap away, never in the way. */}
+          <View style={styles.fixesRow}>
+            <Text style={[type.detail, styles.flex]}>
+              Fixed automatically: {notes.length} formatting problem{notes.length > 1 ? 's' : ''} in what the AI sent.
+            </Text>
+            <Pressable onPress={() => setShowFixes(!showFixes)} style={styles.fixesToggle} accessibilityRole="button" aria-expanded={showFixes}>
+              <Text style={styles.fixesToggleText}>{showFixes ? 'Hide' : 'Details'}</Text>
+            </Pressable>
+          </View>
+          {showFixes &&
+            notes.map((n, i) => (
+              <Text key={i} style={[type.detail, styles.fixLine]} selectable>
+                • {n}
+              </Text>
+            ))}
+        </View>
+      )}
       {changing.length ? (
         <View style={styles.list}>
           {changing.map((sec, i) => {
@@ -273,6 +309,10 @@ const styles = StyleSheet.create({
   panel: { backgroundColor: colors.surface, borderRadius: radius.md, padding: space.lg, gap: space.sm },
   errorPanel: { borderWidth: 2, borderColor: colors.ink },
   errorText: { fontSize: 14, color: colors.ink, lineHeight: 20 },
+  fixesRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch },
+  fixesToggle: { minHeight: touch, justifyContent: 'center' },
+  fixesToggleText: { fontSize: 15, fontWeight: '700', color: colors.accent },
+  fixLine: { marginBottom: space.xs },
   list: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
   item: { paddingHorizontal: space.lg, paddingBottom: space.xs, gap: 4 },
   itemDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },

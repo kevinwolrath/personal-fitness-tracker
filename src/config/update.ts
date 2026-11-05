@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { validatePlan } from '../plan/validate';
 import type { Plan } from '../plan/schema';
+import { importDiagnostics, prepareUpdate } from './import';
 import { CONFIG_SCHEMA_VERSION, fieldOf, isMerge, mergeById, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
 
 /** A validated update: which sections, and within each, which fields (null = clear). */
@@ -9,7 +10,14 @@ export type ConfigUpdate = {
   sections: Partial<Record<SectionName, Record<string, unknown>>>;
 };
 
-export type ParseResult = { ok: true; update: ConfigUpdate; json: unknown } | { ok: false; errors: string[] };
+/**
+ * `notes`: what the import repaired or normalised before validating (#47), shown with the preview so nothing is
+ * changed silently. On failure, `recoverable` names sections that were complete before the problem (never applied)
+ * and `diagnostics` is copyable text for the AI.
+ */
+export type ParseResult =
+  | { ok: true; update: ConfigUpdate; json: unknown; notes: string[] }
+  | { ok: false; errors: string[]; notes: string[]; recoverable: string[]; diagnostics: string };
 
 const ENVELOPE = 'fitnessConfigUpdate';
 
@@ -21,25 +29,20 @@ function zodErrors(prefix: string, error: z.ZodError): string[] {
 }
 
 /**
- * Deterministic payload parsing (contract 07). Accepts the JSON on its own, or exactly one fenced
- * ```json block (chat apps wrap code that way). Never interprets prose.
+ * Deterministic payload parsing (contract 07). The text goes through the fault-tolerant import first
+ * (src/config/import: extract → repair → parse → canonicalise, every change reported), then the same strict
+ * validation as always. Never interprets prose, never evaluates anything, never applies a partial update.
  */
 export function parseConfigUpdate(text: string): ParseResult {
-  const trimmed = text.trim();
-  if (!trimmed) return { ok: false, errors: ['Paste the update the AI gave you.'] };
+  const prepared = prepareUpdate(text);
+  if (!prepared.ok) return { ok: false, errors: prepared.errors, notes: prepared.notes, recoverable: prepared.recoverable, diagnostics: importDiagnostics(text, prepared) };
+  const r = validateEnvelope(prepared.value);
+  if (r.ok) return { ...r, notes: prepared.notes };
+  return { ok: false, errors: r.errors, notes: prepared.notes, recoverable: [], diagnostics: importDiagnostics(text, { errors: r.errors, notes: prepared.notes }) };
+}
 
-  let jsonText = trimmed;
-  const fences = [...trimmed.matchAll(/```[a-zA-Z]*\s*\n?([\s\S]*?)```/g)];
-  if (fences.length > 1) return { ok: false, errors: ['Found more than one code block. Paste only the one update block.'] };
-  if (fences.length === 1) jsonText = fences[0][1].trim();
-
-  let json: unknown;
-  try {
-    json = JSON.parse(jsonText);
-  } catch (e) {
-    return { ok: false, errors: [`This isn't valid JSON (${e instanceof Error ? e.message : 'parse error'}). Ask the AI to resend the update as one JSON code block.`] };
-  }
-
+/** The strict checks on the parsed object: envelope, schema version, sections, every field. */
+function validateEnvelope(json: unknown): { ok: true; update: ConfigUpdate; json: unknown } | { ok: false; errors: string[] } {
   if (typeof json !== 'object' || json === null || Array.isArray(json) || !(ENVELOPE in json)) {
     return { ok: false, errors: [`Expected an object with a "${ENVELOPE}" key at the top level.`] };
   }

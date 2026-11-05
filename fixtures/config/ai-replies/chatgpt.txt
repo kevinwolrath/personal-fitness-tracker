@@ -1,0 +1,44 @@
+Sure! Here's your update:
+
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "nutrition": { // nutrition changes
+      "targets": {
+        "merge": [
+          {
+            "id": "energy",
+            "label": "Energy",
+            "quantity": "energy",
+            "max": 7300
+          }
+        ]
+      },
+      "meals": {
+        "merge": [
+          {
+            "id": "snack",
+            "kind": "meal",
+            "label": "Fixed snack",
+            "when": "afternoon",
+            "nutrition": {
+              "energy": 900,
+              "protein": 30
+            }
+          }
+        ]
+      }
+    },
+    "exercise": {
+      "limitations": [
+        {
+          "movement": "biceps_curl",
+          "status": "avoid",
+          "reason": "elbow discomfort, keep it gentle"
+        }
+      ]
+    }
+  }
+}
+
+Let me know if you'd like any other changes.

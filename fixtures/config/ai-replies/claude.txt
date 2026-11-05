@@ -1,0 +1,46 @@
+Here's the update for the app. It lowers your energy target, moves the snack to the afternoon and marks biceps curls as something to avoid.
+
+```json
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "nutrition": {
+      "targets": {
+        "merge": [
+          {
+            "id": "energy",
+            "label": "Energy",
+            "quantity": "energy",
+            "max": 7300
+          }
+        ]
+      },
+      "meals": {
+        "merge": [
+          {
+            "id": "snack",
+            "kind": "meal",
+            "label": "Fixed snack",
+            "when": "afternoon",
+            "nutrition": {
+              "energy": 900,
+              "protein": 30
+            }
+          }
+        ]
+      }
+    },
+    "exercise": {
+      "limitations": [
+        {
+          "movement": "biceps_curl",
+          "status": "avoid",
+          "reason": "elbow discomfort, keep it gentle"
+        }
+      ]
+    }
+  }
+}
+```
+
+Paste it into the app and check the preview before applying.

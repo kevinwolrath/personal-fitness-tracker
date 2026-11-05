@@ -12,10 +12,12 @@ import {
 import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan } from './sections';
 
 const fence = (json: unknown) => '```json\n' + JSON.stringify(json, null, 2) + '\n```';
+/** An example reply exactly as the AI should send it: the bare object, one line, no fence (#47). */
+const bare = (json: unknown) => JSON.stringify(json);
 
 /**
- * The text the user pastes into ChatGPT or Claude (contract 07). Plain text and JSON only, no
- * provider-specific features, so any chat assistant can follow it. Generated from the live
+ * The text the user pastes into any chat assistant (contract 07; tested with Claude, Gemini and ChatGPT reply
+ * styles, #47). Plain text and JSON only, no provider-specific features, so any assistant can follow it. Generated from the live
  * configuration and the app's own schema enums, so it can't drift from what the importer accepts.
  */
 export function buildAiInstructions(raw: RawPlan, today: string): string {
@@ -41,15 +43,17 @@ ${fence({ schemaVersion: CONFIG_SCHEMA_VERSION, ...config })}
 
 ## Update format
 
-Reply with exactly one JSON code block and nothing else inside it:
+When I say I'm done, your whole reply is ONE JSON object and nothing else: start with { and end with }. No code block, no Markdown, no words before or after it. Shape:
 
-${fence({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section>': { '<field>': '<new value>' } } })}
+${bare({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section>': { '<field>': '<new value>' } } })}
+
+Sections you can change: ${sectionNames.join(', ')}. Always include "fitnessConfigUpdate" and "schemaVersion": ${CONFIG_SCHEMA_VERSION}.
 
 Rules (the app rejects updates that break them):
 1. Include ONLY the sections you are changing. A missing section is left exactly as it is. Never repeat unchanged sections.
 2. Inside a section, include ONLY the fields you are changing. Each field you include REPLACES that whole field. Lists marked "merge by id" also accept { "merge": [items] }: each item replaces the existing one with the same id, or is added if the id is new, and every other item stays exactly as it is. Prefer merge when changing or adding one or two items (for example one meal). Otherwise, send the complete new list.
 3. To clear an optional field, set it to null (only where marked "may be null").
-4. Use exactly the field names, enum values and id formats listed here. Unknown fields or values are errors. No comments, no trailing commas, and numbers as numbers, not strings.
+4. Use exactly the field names, enum values and id formats listed here, in the same letter case. Unknown fields or values are errors. Plain JSON: double quotes, no comments, no trailing commas, numbers as numbers (not strings), and each field only once.
 5. Keep ids stable. Use lower-case-hyphen ids for plan items (meals, activities, targets, goals, measurements), and snake_case ids for movements and activity types (e.g. "hammer_curl").
 6. Use the units of the current configuration (profile.units). Weights for equipment are always kg (weightsKg).
 7. Times are 24-hour "HH:MM". Weekdays are mon tue wed thu fri sat sun.
@@ -78,9 +82,11 @@ ${fieldDocs}
 
 ## Examples
 
+Each example is a complete reply.
+
 Exercise only (nutrition and everything else stay unchanged):
 
-${fence({
+${bare({
   fitnessConfigUpdate: {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     exercise: {
@@ -95,16 +101,25 @@ ${fence({
 
 Nutrition only:
 
-${fence({
+${bare({
   fitnessConfigUpdate: {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     nutrition: { targets: [{ id: 'energy', label: 'Energy', quantity: 'energy', max: 7300 }, { id: 'protein', label: 'Protein', quantity: 'grams', min: 160, max: 180 }] },
   },
 })}
 
+Changing one meal without resending the others (merge by id):
+
+${bare({
+  fitnessConfigUpdate: {
+    schemaVersion: CONFIG_SCHEMA_VERSION,
+    nutrition: { meals: { merge: [{ id: 'snack', kind: 'meal', label: 'Afternoon snack', when: 'afternoon', nutrition: { energy: 900, protein: 30 } }] } },
+  },
+})}
+
 Nutrition and exercise together:
 
-${fence({
+${bare({
   fitnessConfigUpdate: {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     nutrition: { eatingWindow: { start: '11:30', end: '19:30' } },

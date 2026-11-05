@@ -104,7 +104,7 @@ describe('rejecting bad payloads with actionable errors', () => {
   const env = (body: unknown) => JSON.stringify({ fitnessConfigUpdate: body });
   it.each([
     ['empty', '', /Paste the update/],
-    ['prose only', 'Sure! I updated your exercise settings.', /isn't valid JSON/],
+    ['prose only', 'Sure! I updated your exercise settings.', /No update found/],
     ['two code blocks', '```json\n{}\n```\n```json\n{}\n```', /more than one code block/],
     ['missing envelope', JSON.stringify({ exercise: {} }), /"fitnessConfigUpdate" key/],
     ['extra top-level key', JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { goals: ['fitness'] } }, note: 'hi' }), /Unexpected top-level key: note/],
@@ -234,9 +234,16 @@ describe('AI session instructions', () => {
     expect(text).toMatch(/avoid, caution, allowed/);
   });
   it('every example update in the instructions passes the importer (protocol is self-consistent)', () => {
-    const blocks = [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => m[1]).filter((b) => b.includes('"fitnessConfigUpdate"') && !b.includes('<section>'));
-    expect(blocks).toHaveLength(3);
+    // Examples are complete replies: the bare object on one line, exactly as the AI should send it (#47).
+    const blocks = [...text.matchAll(/^\{"fitnessConfigUpdate".*\}$/gm)].map((m) => m[0]).filter((b) => !b.includes('<section>'));
+    expect(blocks).toHaveLength(4);
     for (const b of blocks) expect(() => apply(b)).not.toThrow();
+  });
+  it('asks for the bare JSON object only, names every section, and still shows the current config (#47)', () => {
+    expect(text).toMatch(/your whole reply is ONE JSON object and nothing else/);
+    expect(text).toMatch(/No code block, no Markdown/);
+    expect(text).toMatch(/Sections you can change: profile, goals, nutrition, exercise, schedule, tracking/);
+    expect(text).toMatch(/same letter case/);
   });
   it('is plain text with no provider-specific features', () => {
     expect(text).not.toMatch(/function call|tool_use|ChatGPT|Claude/i);

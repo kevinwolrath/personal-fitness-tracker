@@ -54,13 +54,24 @@ const appNames: Record<string, string> = {
   'pixel-watch': 'Pixel Watch',
 };
 
-/** A source app's display name: known apps by name, others from their slug ("renpho" → "Renpho"). */
+/**
+ * A source's display name: known apps by name; "phone" (Health Connect's own on-device recording) as "This phone";
+ * an unknown package name as "Another app", never the raw ID (#44); other slugs from their words ("renpho" →
+ * "Renpho"). Several sources ("fitbit,phone") read "Fitbit + this phone".
+ */
 export function appName(slug: string): string {
-  if (appNames[slug]) return appNames[slug];
-  // An unknown Health Connect origin is a package name ("com.example.tracker"): shown exactly as reported.
-  if (slug.includes('.')) return slug;
-  return slug.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  const one = (x: string, first: boolean) => {
+    if (appNames[x]) return appNames[x];
+    if (x === 'phone') return first ? 'This phone' : 'this phone';
+    if (x.includes('.')) return first ? 'Another app' : 'another app';
+    return x.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  };
+  const parts = [...new Set(slug.split(',').filter(Boolean).map((x, i) => one(x, i === 0)))];
+  return parts.join(' + ');
 }
+
+/** Raw package names behind a source, for troubleshooting in a value's details; empty when all are named. */
+export const sourcePackages = (slug: string | null): string[] => (slug ?? '').split(',').filter((x) => x.includes('.'));
 
 /**
  * "Fitbit screenshot", "Entered", "Fitbit screenshot · edited", "Health Connect · Samsung Health", plus

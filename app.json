@@ -32,6 +32,7 @@
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_EXERCISE",
         "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_BODY_FAT",
         "android.permission.health.READ_SLEEP"
       ],
       "versionCode": 1

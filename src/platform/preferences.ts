@@ -18,6 +18,8 @@ export type HcSyncState = {
   failed: string[];
   /** A sync has completed at least once: later syncs re-read 7 days instead of 30. */
   firstDone: boolean;
+  /** The local day of the last sync in which every allowed type was read (#46): the next sync backfills from it. */
+  lastFullSync?: string;
   /** Per type: read / couldn't read / not allowed, with counts and dates only (#44). Missing in older states. */
   types?: Record<string, HcTypeResult>;
 };

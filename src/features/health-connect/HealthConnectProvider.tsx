@@ -56,7 +56,11 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
     async (types: HcType[]) => {
       if (!types.length) return;
       const previous = syncRef.current ?? (await preferences.healthConnectSync());
-      const dates = syncDates(toLocalDate(new Date()), !previous?.firstDone);
+      const today = toLocalDate(new Date());
+      // Backfill from the last fully successful sync (#46). States saved before #46 have no lastFullSync: use the
+      // day of their last sync when it fully succeeded.
+      const lastFull = previous?.lastFullSync ?? (previous?.ok ? toLocalDate(new Date(previous.at)) : null);
+      const dates = syncDates(today, !previous?.firstDone, lastFull);
       setSyncing(true);
       let next: HcSyncState;
       try {
@@ -70,10 +74,12 @@ export function HealthConnectProvider({ children }: { children: ReactNode }) {
           failed,
           firstDone: (previous?.firstDone ?? false) || mapped.metrics.length > 0,
           types: summarizeRead(read, failed, types, dates),
+          // Only a sync that read every allowed type moves the backfill start; otherwise its gap is re-read.
+          lastFullSync: failed.length === 0 ? today : (lastFull ?? undefined),
         };
         notifyDataChanged();
       } catch {
-        next = { at: localIsoTimestamp(), ok: false, days: dates.length, failed: types, firstDone: previous?.firstDone ?? false, types: summarizeRead({}, types, types, dates) };
+        next = { at: localIsoTimestamp(), ok: false, days: dates.length, failed: types, firstDone: previous?.firstDone ?? false, types: summarizeRead({}, types, types, dates), lastFullSync: lastFull ?? undefined };
       }
       syncRef.current = next;
       setSync(next);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatTimestamp, formatShortDate } from '../../format';
 import { HC_IMPORT_ID, hcMetric, hcTypeLabel, hcTypes, type HcType } from '../../observations/healthConnect';
 import { appName, formatObservationValue, observationLabel } from '../../observations/format';
@@ -18,6 +18,7 @@ const whatIsRead: Record<HcType, string> = {
   active_energy: 'daily total',
   exercise: 'type and minutes',
   weight: 'one per day',
+  body_fat: 'one per day',
   sleep: 'time asleep, by the day you wake',
 };
 
@@ -82,7 +83,8 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
   return (
     <Sheet visible={visible} onClose={onClose} label="Health Connect">
       <ModalHeader title="Health Connect" dismiss={{ label: 'Close', onPress: onClose }} />
-      <View style={styles.body} testID="health-connect-sheet">
+      {/* Tall content (six types, notes) scrolls inside the sheet so every action stays reachable (#46). */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} testID="health-connect-sheet">
         {hc.availability === null && <Text style={type.detail}>Checking…</Text>}
         {hc.checkFailed && hc.availability === 'available' && (
           <View style={styles.note} testID="hc-check-failed">
@@ -121,7 +123,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                   <Text style={[type.detail, styles.whatValue]}>{whatIsRead[t]}</Text>
                 </View>
               ))}
-              <Text style={[type.detail, styles.hint]}>Not imported: body fat and other measurements.</Text>
+              <Text style={[type.detail, styles.hint]}>Not imported: other measurements, such as heart rate.</Text>
             </View>
             {hc.refused && (
               <View style={styles.note} testID="hc-refused">
@@ -180,7 +182,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
               )}
               <Text style={[type.detail, styles.hint]}>A value you enter yourself is kept and shown first.</Text>
               <Text style={[type.detail, styles.hint]} testID="hc-not-imported">
-                Not imported: body fat and other measurements.
+                Not imported: other measurements, such as heart rate.
               </Text>
             </View>
             <Button title="Sync now" variant="secondary" onPress={hc.syncNow} disabled={hc.syncing} />
@@ -192,12 +194,13 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
             </Text>
           </View>
         )}
-      </View>
+      </ScrollView>
     </Sheet>
   );
 }
 
 const styles = StyleSheet.create({
+  scroll: { flexShrink: 1 },
   body: { gap: space.md, paddingBottom: space.md },
   group: { gap: space.md },
   row: {

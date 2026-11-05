@@ -13,9 +13,9 @@ import type { Observation, Provenance } from './types';
 /** Marks every observation that came from Health Connect (`source.importId`), so a sync replaces only its own. */
 export const HC_IMPORT_ID = 'health-connect';
 
-/** The data types read: exactly the five permissions requested, nothing more. */
-export type HcType = 'steps' | 'active_energy' | 'exercise' | 'weight' | 'sleep';
-export const hcTypes: HcType[] = ['steps', 'active_energy', 'exercise', 'weight', 'sleep'];
+/** The data types read: exactly the six permissions requested, nothing more (body fat added in #46). */
+export type HcType = 'steps' | 'active_energy' | 'exercise' | 'weight' | 'body_fat' | 'sleep';
+export const hcTypes: HcType[] = ['steps', 'active_energy', 'exercise', 'weight', 'body_fat', 'sleep'];
 
 /** Health Connect record type per data type (also the READ_* permission each needs). */
 export const hcRecordType = {
@@ -23,6 +23,7 @@ export const hcRecordType = {
   active_energy: 'ActiveCaloriesBurned',
   exercise: 'ExerciseSession',
   weight: 'Weight',
+  body_fat: 'BodyFat',
   sleep: 'SleepSession',
 } as const satisfies Record<HcType, string>;
 
@@ -31,6 +32,7 @@ export const hcMetric: Record<HcType, MetricId> = {
   active_energy: 'active_energy',
   exercise: 'exercise_session',
   weight: 'weight',
+  body_fat: 'body_fat',
   sleep: 'sleep_duration',
 };
 
@@ -39,12 +41,15 @@ export const hcTypeLabel: Record<HcType, string> = {
   active_energy: 'Active energy',
   exercise: 'Workouts',
   weight: 'Weight',
+  body_fat: 'Body fat',
   sleep: 'Sleep',
 };
 
 /** Days re-read on every sync (today included), and on the first sync after connecting (decision 3). */
 export const SYNC_DAYS = 7;
 export const FIRST_SYNC_DAYS = 30;
+/** Longest automatic backfill after a gap (#46), so a long absence doesn't mean hundreds of reads on open. */
+export const MAX_BACKFILL_DAYS = 90;
 
 /** A daily total Health Connect aggregated (it dedupes overlapping apps by the user's priority order). */
 export type HcDayTotal = { date: LocalDate; value: number; origins: string[] };
@@ -52,6 +57,8 @@ export type HcSleepStage = { start: string; end: string; stage: number };
 /** An interval record: an exercise session or a sleep session. Times are ISO instants. */
 export type HcSession = { id: string; start: string; end: string; origin: string; exerciseType?: number; title?: string; stages?: HcSleepStage[] };
 export type HcWeight = { id: string; time: string; kg: number; origin: string };
+/** A body fat reading: percent of body weight, 0–100 (#46). */
+export type HcBodyFat = { id: string; time: string; percent: number; origin: string };
 
 /** What one sync read. A type that is missing wasn't read (not allowed, or reading it failed). */
 export type HcRead = {
@@ -60,14 +67,26 @@ export type HcRead = {
   activeKcal?: HcDayTotal[];
   exercise?: HcSession[];
   weight?: HcWeight[];
+  bodyFat?: HcBodyFat[];
   sleep?: HcSession[];
 };
 
-/** The local days a sync covers, oldest first, ending today. */
-export function syncDates(today: LocalDate, firstSync: boolean): LocalDate[] {
-  const n = firstSync ? FIRST_SYNC_DAYS : SYNC_DAYS;
+/**
+ * The local days a sync covers, oldest first, ending today: 30 on the first sync; otherwise the last 7 days, or
+ * from the day of the last fully successful sync if that's earlier (#46: a gap closes itself), at most 90 days.
+ */
+export function syncDates(today: LocalDate, firstSync: boolean, lastFullSync?: LocalDate | null): LocalDate[] {
+  let n = firstSync ? FIRST_SYNC_DAYS : SYNC_DAYS;
+  if (!firstSync && lastFullSync && lastFullSync < today) {
+    const sinceDays = Math.round((Date.UTC(...ymd(today)) - Date.UTC(...ymd(lastFullSync))) / 86400000) + 1;
+    n = Math.min(MAX_BACKFILL_DAYS, Math.max(SYNC_DAYS, sinceDays));
+  }
   return Array.from({ length: n }, (_, i) => addDays(today, i - n + 1));
 }
+const ymd = (d: LocalDate): [number, number, number] => {
+  const [y, m, day] = d.split('-').map(Number);
+  return [y, m - 1, day];
+};
 
 /** Common Health Connect data origins (package names) → the app slug stored in provenance. */
 const knownApps: Record<string, string> = {
@@ -251,6 +270,20 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
       out.push(observation(`hc:weight:${date}`, date, 'weight', Math.round(w.kg * 100) / 100, 'kg', null, source(appForOrigin(w.origin), w.time), recordedAt));
     }
   }
+  if (read.bodyFat) {
+    metrics.push('body_fat');
+    // One per day, like weight: the latest reading of the day (#46).
+    const latest = new Map<LocalDate, HcBodyFat>();
+    for (const b of read.bodyFat) {
+      const date = localDateOf(b.time);
+      const cur = latest.get(date);
+      if (b.percent > 0 && b.percent <= 100 && (!cur || ms(b.time) > ms(cur.time))) latest.set(date, b);
+    }
+    for (const [date, b] of latest) {
+      if (!inWindow.has(date)) continue;
+      out.push(observation(`hc:body_fat:${date}`, date, 'body_fat', Math.round(b.percent * 10) / 10, '%', null, source(appForOrigin(b.origin), b.time), recordedAt));
+    }
+  }
   if (read.sleep) {
     metrics.push('sleep_duration');
     // A night belongs to the day you wake up. Sessions from different apps are merged, not added.
@@ -300,6 +333,7 @@ export function summarizeRead(
     active_energy: read.activeKcal?.filter((d) => d.value > 0).map((d) => d.date),
     exercise: read.exercise?.map((s) => localDateOf(s.start)),
     weight: read.weight?.filter((w) => w.kg > 0).map((w) => localDateOf(w.time)),
+    body_fat: read.bodyFat?.filter((b) => b.percent > 0).map((b) => localDateOf(b.time)),
     sleep: read.sleep?.map((s) => localDateOf(s.end)),
   };
   return Object.fromEntries(

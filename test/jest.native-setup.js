@@ -63,7 +63,7 @@ jest.mock('react-native-health-connect', () => {
     granted: [],
     stepsByDay: {},
     kcalByDay: {},
-    records: { ExerciseSession: [], Weight: [], SleepSession: [] },
+    records: { ExerciseSession: [], Weight: [], BodyFat: [], SleepSession: [] },
     failRecordTypes: [],
     requests: [],
     writes: [],

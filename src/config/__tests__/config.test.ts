@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import seed from '../../../plans/seed.plan.json';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
-import { loadActivePlan } from '../../plan/bootstrap';
+import { installSeedPlan, loadActivePlan } from '../../plan/bootstrap';
 import { previewUpdate } from '../diff';
 import { buildAiInstructions } from '../instructions';
 import { readConfig, sectionNames, type RawPlan } from '../sections';
@@ -47,7 +47,7 @@ describe('applying updates', () => {
     const strip = ({ exercise: _e, formatVersion: _f, revision: _r, ...rest }: RawPlan) => JSON.stringify(rest);
     expect(strip(nextRaw)).toBe(strip(raw));
     expect(nextRaw.exercise.limitations).toContainEqual({ movement: 'biceps_curl', status: 'avoid', reason: 'aggravates elbow' });
-    expect(nextRaw).toMatchObject({ formatVersion: 5, revision: seed.revision + 1 });
+    expect(nextRaw).toMatchObject({ formatVersion: 6, revision: seed.revision + 1 });
   });
 
   it('nutrition-only payload leaves exercise (and the rest) untouched', () => {
@@ -165,7 +165,7 @@ describe('preview', () => {
     delete lunch0.preparation;
     delete lunch0.nutrition;
     const { nextRaw, update, raw } = apply(fixture('lunch'), before);
-    expect(nextRaw.formatVersion).toBe(5); // the update upgrades the plan format
+    expect(nextRaw.formatVersion).toBe(6); // the update upgrades the plan format
     // Lunch-only: every other meal is byte-identical (merge by id).
     const others = (r: any) => JSON.stringify(r.activities.filter((a: any) => a.id !== 'lunch'));
     expect(others(nextRaw)).toBe(others(raw));
@@ -236,7 +236,7 @@ describe('AI session instructions', () => {
   it('every example update in the instructions passes the importer (protocol is self-consistent)', () => {
     // Examples are complete replies: the bare object on one line, exactly as the AI should send it (#47).
     const blocks = [...text.matchAll(/^\{"fitnessConfigUpdate".*\}$/gm)].map((m) => m[0]).filter((b) => !b.includes('<section>'));
-    expect(blocks).toHaveLength(4);
+    expect(blocks).toHaveLength(5);
     for (const b of blocks) expect(() => apply(b)).not.toThrow();
   });
   it('asks for the bare JSON object only, names every section, and still shows the current config (#47)', () => {
@@ -253,7 +253,7 @@ describe('AI session instructions', () => {
 describe('persistence, history, undo and the seed', () => {
   async function setup() {
     const store = new KeyValueTrackingStore(new MemoryKeyValue());
-    await loadActivePlan(store);
+    await installSeedPlan(store); // an existing install running the bundled seed
     return store;
   }
 
@@ -262,7 +262,7 @@ describe('persistence, history, undo and the seed', () => {
     const before = (await store.getActivePlan())!;
     const { nextRaw, touched } = apply(fixture('real-world-exercise'), JSON.parse(before.json));
     const after = await commitConfigUpdate(store, before, nextRaw, touched, { any: 'payload' });
-    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 5 });
+    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 6 });
     const [change] = await store.configHistory();
     expect(change).toMatchObject({ sections: ['exercise'], fromRevision: before.revision, toRevision: after.revision, previousPlanJson: before.json });
 
@@ -280,13 +280,13 @@ describe('persistence, history, undo and the seed', () => {
     const { nextRaw, touched } = apply(fixture('real-world-exercise'), JSON.parse(before.json));
     await commitConfigUpdate(store, before, nextRaw, touched, {});
     const plan = await loadActivePlan(store, { ...seed, revision: 99, title: 'New seed' });
-    expect(plan.title).toBe(seed.title);
-    expect(plan.exercise?.equipment).toHaveLength(7);
+    expect(plan!.title).toBe(seed.title);
+    expect(plan!.exercise?.equipment).toHaveLength(7);
   });
 
   it('an untouched seed still upgrades to a newer seed revision', async () => {
     const store = await setup();
-    expect((await loadActivePlan(store, { ...seed, revision: 99, title: 'New seed' })).title).toBe('New seed');
+    expect((await loadActivePlan(store, { ...seed, revision: 99, title: 'New seed' }))!.title).toBe('New seed');
   });
 });
 

@@ -9,7 +9,8 @@ export type StoredPlan = {
   json: string;
   importedAt: string;
   /** Where this plan came from. Only an untouched `seed` may be replaced by a newer bundled seed. Missing = seed. */
-  origin?: 'seed' | 'config' | 'import';
+  /** `onboarding`: created by first-run setup (#49). */
+  origin?: 'seed' | 'config' | 'import' | 'onboarding';
 };
 
 /** One applied configuration update (contract 07): what changed, from what, and how to undo it. */

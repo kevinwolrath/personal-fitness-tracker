@@ -2,6 +2,7 @@
  * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1, 2 and 3).
  * formatVersion 3 adds meal `ingredients` and `preparation` (contract 03, #26).
  * formatVersion 4 adds activity `notifications`: plan-defined local reminders (contract 10, #30).
+ * formatVersion 5 adds due times: `leadMinutes` on activities and requirements, and plan-wide `timing` (contract 08, #51).
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
@@ -57,6 +58,17 @@ const sessionPlan = z.strictObject({
 /** Structured exercise session, with an optional short version ("I only have 10 minutes"). */
 export const sessionSchema = sessionPlan.extend({ short: sessionPlan.optional() });
 
+/**
+ * How many minutes before its scheduled time a timed item becomes due (formatVersion 5, contract 08, #51).
+ * Precedence: the item's own `leadMinutes` > the plan's `timing.leadMinutes[kind]` > the format default.
+ */
+export const leadMinutes = z.number().int().min(0).max(240);
+export const timingSchema = z.strictObject({
+  leadMinutes: z
+    .strictObject({ meal: leadMinutes.optional(), exercise: leadMinutes.optional(), habit: leadMinutes.optional() })
+    .optional(),
+});
+
 /** A daily need that any one of several activities can meet (e.g. high-intensity conditioning). */
 export const requirementSchema = z.strictObject({
   id,
@@ -66,6 +78,8 @@ export const requirementSchema = z.strictObject({
   required: z.boolean().default(true),
   when: z.enum(dayParts).optional(),
   time: time.optional(),
+  // formatVersion 5 (#51):
+  leadMinutes: leadMinutes.optional(),
 });
 
 /** One ingredient of a meal (formatVersion 3). `measure` is the plan's everyday wording, shown as written: the app never converts units. */
@@ -119,6 +133,9 @@ const activity = z.strictObject({
   // formatVersion 4 (#30):
   /** Local reminders for this activity. Absent or empty: no reminder. */
   notifications: z.array(notification).max(3).optional(),
+  // formatVersion 5 (#51):
+  /** Minutes before `time` this becomes due. Absent: the plan's `timing`, then the format default for its kind. */
+  leadMinutes: leadMinutes.optional(),
 });
 
 const measurement = z.strictObject({
@@ -252,7 +269,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -273,7 +290,15 @@ export const planSchema = z.strictObject({
   profile: profileSection.optional(),
   exercise: exerciseSection.optional(),
   requirements: z.array(requirementSchema).max(20).optional(),
+  // formatVersion 5 (#51):
+  timing: timingSchema.optional(),
 }).superRefine((p, ctx) => {
+  if (p.formatVersion < 5) {
+    const need = '"leadMinutes" needs formatVersion 5';
+    if (p.timing !== undefined) ctx.addIssue({ code: 'custom', path: ['timing'], message: '"timing" needs formatVersion 5' });
+    p.activities.forEach((a, i) => a.leadMinutes !== undefined && ctx.addIssue({ code: 'custom', path: ['activities', i, 'leadMinutes'], message: need }));
+    p.requirements?.forEach((r, i) => r.leadMinutes !== undefined && ctx.addIssue({ code: 'custom', path: ['requirements', i, 'leadMinutes'], message: need }));
+  }
   if (p.formatVersion === 1) {
     for (const key of ['profile', 'exercise', 'requirements'] as const) {
       if (p[key] !== undefined) ctx.addIssue({ code: 'custom', path: [key], message: `"${key}" needs formatVersion 2` });

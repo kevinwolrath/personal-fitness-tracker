@@ -1,4 +1,4 @@
-# 03 · Plan package format (`pft-plan`, formatVersion 1–4)
+# 03 · Plan package format (`pft-plan`, formatVersion 1–5)
 
 A **plan package** is a single JSON file describing a fitness plan. The app renders whatever valid plan is loaded and has no built-in plan of its own. The machine-readable contract is [`plan.schema.json`](plan.schema.json) (JSON Schema 2020-12). This document defines semantics and the rules the schema cannot express.
 
@@ -8,7 +8,9 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 
 **formatVersion 3** (#26) adds what a meal is made of: activity `ingredients` and `preparation`, for meals only. A formatVersion 1 or 2 plan must not contain them. Older versions still load unchanged.
 
-**formatVersion 4** (#30) adds activity `notifications`: plan-defined local reminders (contract 10). A formatVersion 1–3 plan must not contain them. Configure with AI writes formatVersion 4. Everything else below applies to every version.
+**formatVersion 4** (#30) adds activity `notifications`: plan-defined local reminders (contract 10). A formatVersion 1–3 plan must not contain them.
+
+**formatVersion 5** (#51) adds due times: activity and requirement `leadMinutes`, and the plan-level `timing` section (contract 08). A formatVersion 1–4 plan must not contain them; such plans load unchanged and use the format defaults. Configure with AI writes formatVersion 5. Everything else below applies to every version.
 
 ## Design limits (deliberate)
 
@@ -38,6 +40,7 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 | `nutrition.targets` | | Daily targets with `min` and/or `max`. `quantity` is `energy` (plan energy unit) or `grams`. Optional `appliesTo`. |
 | `nutrition.eatingWindow` | | `start`/`end` `HH:MM`. Display only. |
 | `activities` | ✓ | Everything that appears in the day list, including meals (see below). |
+| `timing` | | **formatVersion 5.** `{ leadMinutes: { meal?, exercise?, habit? } }`: how many minutes before its exact `time` an item of that kind becomes due on Today (contract 08). Whole minutes, 0–240. Absent kinds use the format defaults: **meal 15, habit 15, exercise 30**. |
 | `quickLogs` | | At most 2 one-tap event loggers. Each tap records a timestamp. Kept in the format, storage and export. The Daily Log has had no quick-log buttons since #15, and the seed plan (revision 3) defines none. |
 
 ## Activities
@@ -58,6 +61,7 @@ One list covers exercise, meals and habits, so that a single timeline renders th
 | `flexible` | `false` | **Meals only.** The amount isn't fixed. The row shows the remaining budget instead of values (see below). Must not also have `nutrition`. |
 | `ingredients` | | **Meals only, formatVersion 3.** What to prepare: 1–20 items, each `{ name, grams?, ml?, measure? }`. Each item needs at least one of the three. `grams`/`ml` are the target amount. `measure` is the plan's everyday wording for people without scales ("~¾ cup", "1 scoop", "as needed"). The app shows it **exactly as written and never converts units**, because cup conversions aren't precise. |
 | `notifications` | none | **formatVersion 4.** Up to 3 reminders, each `{ offsetMinutes \| at, title, body }`: `offsetMinutes` counts from the activity's `time` or its day part's start (negative = before; not allowed on "anytime" activities), `at` is `"HH:MM"`. Absent or `[]` means no reminder. Whether reminders are switched on is a device preference, never plan data (10). |
+| `leadMinutes` | plan `timing`, else format default | **formatVersion 5.** Minutes before this activity's `time` that it becomes due (0–240). Precedence: this value > the plan's `timing.leadMinutes[kind]` > the format default. Ignored without a `time`. Requirements take the same field for their own `time` and their alternatives. |
 | `preparation` | | **Meals only, formatVersion 3.** How to make the meal, in the plan's words (≤ 400 characters), e.g. how much water to add. |
 
 A meal's energy and protein come from its existing `nutrition` map, shown in the plan's units ("≈ 1,780 kJ · 42 g protein"). There are no separate calorie fields.

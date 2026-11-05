@@ -47,7 +47,7 @@ describe('applying updates', () => {
     const strip = ({ exercise: _e, formatVersion: _f, revision: _r, ...rest }: RawPlan) => JSON.stringify(rest);
     expect(strip(nextRaw)).toBe(strip(raw));
     expect(nextRaw.exercise.limitations).toContainEqual({ movement: 'biceps_curl', status: 'avoid', reason: 'aggravates elbow' });
-    expect(nextRaw).toMatchObject({ formatVersion: 4, revision: seed.revision + 1 });
+    expect(nextRaw).toMatchObject({ formatVersion: 5, revision: seed.revision + 1 });
   });
 
   it('nutrition-only payload leaves exercise (and the rest) untouched', () => {
@@ -165,7 +165,7 @@ describe('preview', () => {
     delete lunch0.preparation;
     delete lunch0.nutrition;
     const { nextRaw, update, raw } = apply(fixture('lunch'), before);
-    expect(nextRaw.formatVersion).toBe(4); // the update upgrades the plan format
+    expect(nextRaw.formatVersion).toBe(5); // the update upgrades the plan format
     // Lunch-only: every other meal is byte-identical (merge by id).
     const others = (r: any) => JSON.stringify(r.activities.filter((a: any) => a.id !== 'lunch'));
     expect(others(nextRaw)).toBe(others(raw));
@@ -262,7 +262,7 @@ describe('persistence, history, undo and the seed', () => {
     const before = (await store.getActivePlan())!;
     const { nextRaw, touched } = apply(fixture('real-world-exercise'), JSON.parse(before.json));
     const after = await commitConfigUpdate(store, before, nextRaw, touched, { any: 'payload' });
-    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 4 });
+    expect(after).toMatchObject({ revision: before.revision + 1, origin: 'config', formatVersion: 5 });
     const [change] = await store.configHistory();
     expect(change).toMatchObject({ sections: ['exercise'], fromRevision: before.revision, toRevision: after.revision, previousPlanJson: before.json });
 

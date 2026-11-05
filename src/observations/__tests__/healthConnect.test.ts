@@ -1,5 +1,5 @@
 import { KJ_PER_KCAL } from '../../energy';
-import { HC_IMPORT_ID, appForOrigin, dedupeSessions, exerciseLabel, mapHealthConnect, syncDates, type HcRead, type HcSession } from '../healthConnect';
+import { HC_IMPORT_ID, appForOrigin, appsForOrigins, dedupeSessions, exerciseLabel, mapHealthConnect, summarizeRead, syncDates, type HcRead, type HcSession } from '../healthConnect';
 
 const AT = '2026-11-03T07:42:00+11:00';
 // Times below carry the local offset, so the local date is the ISO date.
@@ -126,5 +126,97 @@ describe('mapping Health Connect data to observations (#36)', () => {
   it('mapping the same read twice gives identical observations (a re-sync replaces, never duplicates)', () => {
     const read: HcRead = { steps: [{ date: '2026-11-03', value: 6214, origins: [SAMSUNG] }], weight: [{ id: 'w', time: '2026-11-03T07:00:00+11:00', kg: 82.4, origin: SAMSUNG }] };
     expect(map(read)).toEqual(map(read));
+  });
+});
+
+describe('#44: Fitbit weight, source labels, per-type results', () => {
+  // Local wall-clock times in whatever zone the test runs in; the default localDateOf is the device's local day.
+  const local = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString();
+  const today = '2026-11-05';
+  const window7 = syncDates(today, false);
+
+  it('a 7:48 am Fitbit weight read by a 10:54 am sync is imported for that local day', () => {
+    const { observations } = mapHealthConnect(
+      { weight: [{ id: 'fw', time: local(5, 7, 48), kg: 95.5, origin: 'com.fitbit.FitbitMobile' }] },
+      window7,
+      local(5, 10, 54),
+    );
+    expect(observations).toHaveLength(1);
+    expect(observations[0]).toMatchObject({ id: 'hc:weight:2026-11-05', date: '2026-11-05', metric: 'weight', value: 95.5, unit: 'kg' });
+    expect(observations[0].source).toMatchObject({ type: 'integration', app: 'fitbit', capturedAt: local(5, 7, 48) });
+  });
+
+  it('local day, not UTC: an early-morning and a late-evening weigh-in land on their own local days', () => {
+    const { observations } = mapHealthConnect(
+      {
+        weight: [
+          { id: 'a', time: local(5, 0, 5), kg: 95.4, origin: 'com.fitbit.FitbitMobile' },
+          { id: 'b', time: local(4, 23, 55), kg: 95.9, origin: 'com.fitbit.FitbitMobile' },
+        ],
+      },
+      window7,
+      local(5, 10, 54),
+    );
+    expect(observations.map((o) => [o.date, o.value])).toEqual([
+      ['2026-11-04', 95.9],
+      ['2026-11-05', 95.4],
+    ]);
+  });
+
+  it('the window is inclusive: its first day and today are both in; the day before is out', () => {
+    expect(window7[0]).toBe('2026-10-30');
+    expect(window7[6]).toBe(today);
+    const { observations } = mapHealthConnect(
+      {
+        weight: [
+          { id: 'first', time: local(30 - 31, 6), kg: 1, origin: 'x' }, // 30 Oct (day 0 of Nov is 31 Oct)
+          { id: 'before', time: local(29 - 31, 6), kg: 1, origin: 'x' }, // 29 Oct
+        ],
+      },
+      window7,
+      local(5, 10, 54),
+    );
+    expect(observations.map((o) => o.date)).toEqual(['2026-10-30']);
+  });
+
+  it('the phone’s own recording is "phone"; Fitbit is named; unknown packages are kept raw for the details only', () => {
+    expect(appForOrigin('com.android.healthconnect.phone.j26a4212')).toBe('phone');
+    expect(appForOrigin('com.google.android.apps.healthdata')).toBe('phone');
+    expect(appForOrigin('com.fitbit.FitbitMobile')).toBe('fitbit');
+    expect(appForOrigin('com.example.tracker')).toBe('com.example.tracker');
+  });
+
+  it('a daily total keeps all its sources: named apps first, then the phone, then unknown apps', () => {
+    expect(appsForOrigins(['com.android.healthconnect.phone.j26a4212', 'com.fitbit.FitbitMobile'])).toBe('fitbit,phone');
+    expect(appsForOrigins(['com.example.tracker', 'com.android.healthconnect.phone.x', 'com.fitbit.FitbitMobile'])).toBe('fitbit,phone,com.example.tracker');
+    expect(appsForOrigins([])).toBeNull();
+    const { observations } = mapHealthConnect(
+      { steps: [{ date: today, value: 1698, origins: ['com.android.healthconnect.phone.j26a4212', 'com.fitbit.FitbitMobile'] }] },
+      window7,
+      local(5, 10, 54),
+    );
+    expect(observations[0].source.app).toBe('fitbit,phone');
+  });
+
+  it('per-type results tell "none in Health Connect", "not allowed" and "couldn’t read" apart, with counts and dates only', () => {
+    const read: HcRead = {
+      steps: [
+        { date: today, value: 1698, origins: [] },
+        { date: '2026-11-04', value: 0, origins: [] },
+      ],
+      weight: [], // allowed and read: Health Connect has none
+      sleep: [{ id: 's', start: local(4, 23), end: local(5, 6, 47), origin: 'com.fitbit.FitbitMobile' }],
+      exercise: [{ id: 'e', start: local(3, 18), end: local(3, 18, 30), origin: 'x' }],
+    };
+    const r = summarizeRead(read, ['active_energy'], ['steps', 'active_energy', 'exercise', 'weight', 'sleep'], window7);
+    expect(r).toEqual({
+      steps: { status: 'ok', count: 1, latest: today },
+      active_energy: { status: 'failed', count: 0, latest: null },
+      exercise: { status: 'ok', count: 1, latest: '2026-11-03' },
+      weight: { status: 'ok', count: 0, latest: null },
+      sleep: { status: 'ok', count: 1, latest: today },
+    });
+    expect(summarizeRead({}, [], ['steps'], window7).weight).toEqual({ status: 'not_allowed', count: 0, latest: null });
+    expect(JSON.stringify(r)).not.toMatch(/1698|95\.5/); // no health values in diagnostics
   });
 });

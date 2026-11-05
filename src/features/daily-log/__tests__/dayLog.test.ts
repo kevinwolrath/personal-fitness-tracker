@@ -54,7 +54,10 @@ describe('observation display', () => {
     expect(observationSource(obs({ source: screenshot('google-fit', true) }))).toBe('Google Fit screenshot · edited');
     const hc = (app: string | null) => ({ type: 'integration' as const, app, capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false });
     expect(observationSource(obs({ source: hc('samsung-health') }))).toBe('Health Connect · Samsung Health');
-    expect(observationSource(obs({ source: hc('com.example.tracker') }))).toBe('Health Connect · com.example.tracker');
+    expect(observationSource(obs({ source: hc('com.example.tracker') }))).toBe('Health Connect · Another app');
+    expect(observationSource(obs({ source: hc('fitbit,phone') }))).toBe('Health Connect · Fitbit + this phone');
+    expect(observationSource(obs({ source: hc('phone') }))).toBe('Health Connect · This phone');
+    expect(observationSource(obs({ source: hc('fitbit,phone,com.a.b,com.c.d') }))).toBe('Health Connect · Fitbit + this phone + another app');
     expect(observationSource(obs({ source: hc(null) }))).toBe('Health Connect');
     expect(observationSource(obs({ kind: 'inferred', source: screenshot('renpho') }))).toBe('Calculated · Renpho screenshot');
   });

@@ -178,6 +178,8 @@ test('a failing read never blocks the app; the other types still sync and the fa
   await setFixture(page, f);
   await page.getByRole('button', { name: 'Sync now' }).click();
   await expect(page.getByTestId('hc-sync-status')).toContainText("Last sync didn't finish");
+  await expect(page.getByTestId('hc-sync-status')).toContainText("couldn't read sleep"); // which type, not just "didn't finish"
+  await expect(page.getByTestId('hc-today-weight')).toContainText('82.4 kg'); // the others still read
   await expect(page.getByTestId('hc-today-steps')).toContainText('7,000');
   await expect(page.getByTestId('hc-today-sleep')).toContainText('7h 45m'); // kept from the last good read
   await close(page);
@@ -210,6 +212,64 @@ test('revoking one type keeps its imported values while the others refresh (#43)
   await close(page);
   await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7h 45m');
   await expect(page.getByTestId('recorded-steps')).toContainText('8,100');
+});
+
+test('#44: weight not in Health Connect yet → says so; Fitbit exports it later → imported on the next sync', async ({ page }) => {
+  const PHONE = 'com.android.healthconnect.phone.j26a4212';
+  const FITBIT = 'com.fitbit.FitbitMobile';
+  await installHealthConnect(page, {
+    data: {
+      steps: [{ date: '2026-11-02', value: 1698, origins: [PHONE, FITBIT] }],
+      activeKcal: [{ date: '2026-11-02', value: 86, origins: [PHONE] }],
+      sleep: [{ id: 's', start: '2026-11-01T23:30:00+11:00', end: '2026-11-02T06:17:00+11:00', origin: FITBIT }],
+      weight: [], // Fitbit has it; Health Connect doesn't (yet)
+      exercise: [],
+    },
+  });
+  await openAt(page, MONDAY);
+  await connect(page);
+  // Readable sources, never a raw ID.
+  await expect(page.getByTestId('hc-today-steps')).toContainText('Fitbit + this phone');
+  await expect(page.getByTestId('hc-today-active_energy')).toContainText('This phone');
+  await expect(page.getByTestId('health-connect-sheet')).not.toContainText('com.android');
+  // Upstream absence is stated, not hidden behind "synced".
+  await expect(page.getByTestId('hc-today-weight')).toContainText('None in Health Connect · last 30 days');
+  await expect(page.getByTestId('hc-today-exercise')).toContainText('None in Health Connect');
+  await expect(page.getByTestId('hc-missing-help')).toContainText('hasn’t reached Health Connect yet');
+  await expect(page.getByTestId('hc-not-imported')).toContainText('body fat');
+
+  // Fitbit's export arrives later (7:48 am weigh-in); the next sync picks it up.
+  const f = await fixture(page);
+  f.data.weight = [{ id: 'fw', time: '2026-11-02T07:48:00+11:00', kg: 95.5, origin: FITBIT }];
+  await setFixture(page, f);
+  await page.getByRole('button', { name: 'Sync now' }).click();
+  await expect(page.getByTestId('hc-today-weight')).toContainText('95.5 kg');
+  await expect(page.getByTestId('hc-today-weight')).toContainText('Fitbit');
+  await close(page);
+  await expect(page.getByTestId('measurement-weight')).toContainText('95.5 kg');
+  await expect(page.getByTestId('measurement-weight')).toContainText('Health Connect · Fitbit');
+  await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Fitbit + this phone');
+});
+
+test('#44: none today, but earlier in the window → the latest date is shown', async ({ page }) => {
+  await installHealthConnect(page, {
+    data: { ...data, weight: [{ id: 'w0', time: '2026-10-31T07:00:00+11:00', kg: 96.1, origin: 'com.withings.wiscale2' }] },
+  });
+  await openAt(page, MONDAY);
+  await connect(page);
+  await expect(page.getByTestId('hc-today-weight')).toContainText('None today');
+  await expect(page.getByTestId('hc-today-weight')).toContainText('Latest Sat, 31 Oct');
+});
+
+test('#44: an unknown source app is "Another app" on screen; its ID is only in the value’s details', async ({ page }) => {
+  await installHealthConnect(page, { data: { ...data, steps: [{ date: '2026-11-02', value: 4000, origins: ['com.example.tracker'] }] } });
+  await openAt(page, MONDAY);
+  await connect(page);
+  await expect(page.getByTestId('hc-today-steps')).toContainText('Another app');
+  await close(page);
+  await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Another app');
+  await page.getByTestId('recorded-steps').click();
+  await expect(page.getByText('com.example.tracker')).toBeVisible(); // App ID, for troubleshooting
 });
 
 test('refused, then allowed later in Health Connect: picked up on the next app open without asking again', async ({ page }) => {
@@ -254,6 +314,22 @@ test.describe('visual', () => {
     await openAt(page, MONDAY);
     await connect(page);
     await expect(page).toHaveScreenshot('health-connect-on.png');
+  });
+  test('health-connect-missing (#44: weight not in Health Connect, steps from Fitbit + this phone)', async ({ page }) => {
+    await installHealthConnect(page, {
+      data: {
+        ...data,
+        steps: [{ date: '2026-11-02', value: 1698, origins: ['com.android.healthconnect.phone.j26a4212', 'com.fitbit.FitbitMobile'] }],
+        activeKcal: [{ date: '2026-11-02', value: 86, origins: ['com.android.healthconnect.phone.j26a4212'] }],
+        sleep: [{ id: 's', start: '2026-11-01T23:30:00+11:00', end: '2026-11-02T06:17:00+11:00', origin: 'com.fitbit.FitbitMobile' }],
+        weight: [],
+        exercise: [],
+      },
+    });
+    await openAt(page, MONDAY);
+    await connect(page);
+    await expect(page.getByTestId('hc-missing-help')).toBeVisible();
+    await expect(page).toHaveScreenshot('health-connect-missing.png');
   });
   test('today-health-connect-full', async ({ page }) => {
     await installHealthConnect(page);

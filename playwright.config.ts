@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
 
 /** Contract 05 reference viewports. Visual baselines are kept for `phone` only. */
@@ -14,6 +15,38 @@ const phone = (width: number, height: number) => ({
 const dev = process.env.E2E_DEV === '1';
 const port = dev ? 8091 : 8081;
 
+/**
+ * Every test starts as an existing install running the bundled seed plan (#49: a fresh install goes through
+ * first-run setup instead). Setup tests opt out with an empty storage state.
+ */
+const seedJson = readFileSync('plans/seed.plan.json', 'utf8');
+const seed = JSON.parse(seedJson);
+const seededStorage = {
+  cookies: [],
+  origins: [
+    {
+      origin: `http://localhost:${port}`,
+      localStorage: [
+        {
+          name: 'pft:tracking:v1',
+          value: JSON.stringify({
+            version: 1,
+            plan: { planId: seed.id, revision: seed.revision, formatVersion: seed.formatVersion, json: seedJson, importedAt: '2026-11-01T00:00:00.000Z', origin: 'seed' },
+            activities: {},
+            overrides: {},
+            observations: [],
+            quickLogs: [],
+            imports: [],
+            configChanges: [],
+            completionEvents: [],
+            daySnapshots: {},
+          }),
+        },
+      ],
+    },
+  ],
+};
+
 export default defineConfig({
   testDir: './e2e',
   testMatch: dev ? 'dev-smoke.spec.ts' : undefined,
@@ -22,7 +55,7 @@ export default defineConfig({
   reporter: [['list']],
   snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: 'disabled' } },
-  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure' },
+  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', storageState: seededStorage },
   projects: dev
     ? [{ name: 'phone', use: phone(390, 844) }]
     : [

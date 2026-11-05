@@ -287,3 +287,46 @@ test('times never truncate: uppercase AM/PM and a larger system text size, at ev
   }
   await context.close();
 });
+
+test.describe('first-run setup (#49)', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('every setup step fits at every width, with 44 px touch targets', async ({ page }) => {
+    await page.clock.setFixedTime(new Date(THURSDAY));
+    await page.goto('/');
+    const primary = page.getByTestId('setup-primary');
+    const steps: [string, () => Promise<void>][] = [
+      ['about', async () => {
+        await page.getByTestId('gender-prefer_not_to_say').click();
+        await page.getByTestId('age-60_plus').click();
+        await page.getByTestId('weight-120_plus').click();
+      }],
+      ['goals', async () => {
+        await page.getByRole('checkbox', { name: 'Lose a little weight' }).click();
+        await page.getByRole('checkbox', { name: 'Improve cardio' }).click();
+      }],
+      ['context', async () => {
+        await page.getByTestId('activity-already_training').click();
+        await page.getByTestId('place-no_equipment').click();
+      }],
+      ['generate', async () => {}],
+    ];
+    for (const [step, answer] of steps) {
+      await expect(page.getByTestId(`setup-${step}`)).toBeVisible();
+      await answer();
+      for (const width of WIDTHS) {
+        await page.setViewportSize({ width, height: 800 });
+        await page.waitForTimeout(50);
+        expect(await layoutProblems(page), `${step} at ${width}px`).toEqual([]);
+      }
+      const small = await page.evaluate(() =>
+        [...document.querySelectorAll('[role="button"], [role="radio"], [role="checkbox"], button')]
+          .map((el) => ({ el, r: el.getBoundingClientRect() }))
+          .filter(({ r }) => r.width > 0 && (r.width < 44 || r.height < 44))
+          .map(({ el, r }) => `${el.getAttribute('aria-label') ?? el.textContent} ${Math.round(r.width)}×${Math.round(r.height)}`),
+      );
+      expect(small, `${step} touch targets`).toEqual([]);
+      if (step !== 'generate') await primary.click();
+    }
+  });
+});

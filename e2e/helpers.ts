@@ -23,7 +23,9 @@ export const row = (page: Page, id: string) => page.getByTestId(`activity-${id}`
 export async function seedPlan(page: Page, plan: unknown) {
   await page.addInitScript((json) => {
     const key = 'pft:tracking:v1';
-    if (localStorage.getItem(key)) return;
+    // Once per test (sessionStorage survives reloads): later reloads keep what the app changed.
+    if (sessionStorage.getItem('pft:e2e:plan')) return;
+    sessionStorage.setItem('pft:e2e:plan', '1');
     const p = JSON.parse(json);
     localStorage.setItem(
       key,
@@ -48,13 +50,15 @@ export async function expandToFullDay(page: Page) {
   await page.setViewportSize({ width: page.viewportSize()!.width, height });
 }
 
-/** Seed tracking records (no plan: the bundled seed installs as normal) before the app boots. */
+/** Seed tracking records (keeping the plan already stored: the bundled seed, see playwright.config) before the app boots. */
 export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[] }) {
   await page.addInitScript((json) => {
     const key = 'pft:tracking:v1';
-    if (localStorage.getItem(key)) return;
+    if (sessionStorage.getItem('pft:e2e:records')) return;
+    sessionStorage.setItem('pft:e2e:records', '1');
     const r = JSON.parse(json);
-    localStorage.setItem(key, JSON.stringify({ version: 1, plan: null, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [] }));
+    const plan = JSON.parse(localStorage.getItem(key) ?? 'null')?.plan ?? null;
+    localStorage.setItem(key, JSON.stringify({ version: 1, plan, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [] }));
   }, JSON.stringify(records));
 }
 

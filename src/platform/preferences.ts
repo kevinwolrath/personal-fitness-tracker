@@ -9,6 +9,7 @@ import { secrets } from './secrets';
 const REMINDERS = 'pft.reminders.enabled';
 const ENERGY = 'pft.display.energy';
 const HC_SYNC = 'pft.healthConnect.sync';
+const SETUP_DRAFT = 'pft.setup.draft';
 
 /** The last Health Connect sync on this phone (#36). Device state, never plan data. */
 export type HcSyncState = {
@@ -50,5 +51,15 @@ export const preferences = {
   },
   async setHealthConnectSync(s: HcSyncState): Promise<void> {
     await secrets.set(HC_SYNC, JSON.stringify(s));
+  },
+  /** First-run setup answers so far (#49), so setup resumes after a restart. Small: answers and step only. */
+  async setupDraft(): Promise<string | null> {
+    return secrets.get(SETUP_DRAFT).catch(() => null);
+  },
+  async setSetupDraft(json: string): Promise<void> {
+    await secrets.set(SETUP_DRAFT, json);
+  },
+  async clearSetupDraft(): Promise<void> {
+    await secrets.remove(SETUP_DRAFT);
   },
 };

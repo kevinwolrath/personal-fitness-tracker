@@ -77,7 +77,7 @@ describe('prescribeDay', () => {
 
   it('classifies windows: exact time vs day part vs anytime', () => {
     const w = Object.fromEntries(p.items.map((i) => [i.key, i.window]));
-    expect(w.lunch).toEqual({ part: 'lunch', start: at('11:30'), end: at('13:00'), time: '12:00' });
+    expect(w.lunch).toEqual({ part: 'lunch', at: at('12:00'), start: at('11:45'), end: at('13:00'), time: '12:00' }); // meals: due 15 min before (#51)
     expect(w.breakfast).toMatchObject({ part: 'morning', start: at('06:00'), end: at('11:00') });
     expect(w.stretch).toMatchObject({ part: 'anytime', start: 0, end: 1440 });
   });

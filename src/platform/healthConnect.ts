@@ -1,5 +1,5 @@
 import { Linking, Platform } from 'react-native';
-import { hcRecordType, hcTypes, type HcDayTotal, type HcRead, type HcSession, type HcType, type HcWeight } from '../observations/healthConnect';
+import { hcRecordType, hcTypes, type HcBodyFat, type HcDayTotal, type HcRead, type HcSession, type HcType, type HcWeight } from '../observations/healthConnect';
 import { addDays, type LocalDate } from '../plan/dates';
 
 /**
@@ -128,6 +128,10 @@ export const healthConnect = {
         const rs = await readAll<Meta & { time: string; weight: { inKilograms: number } }>(hc, 'Weight', from, to);
         read.weight = rs.map((r): HcWeight => ({ id: r.metadata?.id ?? r.time, time: r.time, kg: r.weight.inKilograms, origin: r.metadata?.dataOrigin ?? '' }));
       },
+      body_fat: async () => {
+        const rs = await readAll<Meta & { time: string; percentage: number }>(hc, 'BodyFat', from, to);
+        read.bodyFat = rs.map((r): HcBodyFat => ({ id: r.metadata?.id ?? r.time, time: r.time, percent: r.percentage, origin: r.metadata?.dataOrigin ?? '' }));
+      },
       sleep: async () => {
         // A night that ends on the first day started the evening before: read from noon the day before.
         const sleepFrom = new Date(`${addDays(dates[0], -1)}T12:00:00`).toISOString();
@@ -155,6 +159,7 @@ export const healthConnect = {
       if (t === 'active_energy') delete read.activeKcal;
       if (t === 'exercise') delete read.exercise;
       if (t === 'weight') delete read.weight;
+      if (t === 'body_fat') delete read.bodyFat;
       if (t === 'sleep') delete read.sleep;
     }
     return { read, failed };

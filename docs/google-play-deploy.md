@@ -78,6 +78,7 @@ The app reads health data from Android Health Connect, read only (contract 12). 
   - `READ_ACTIVE_CALORIES_BURNED`: daily active energy;
   - `READ_EXERCISE`: workouts (type and minutes);
   - `READ_WEIGHT`: weight tile and progress;
+  - `READ_BODY_FAT`: body fat % (added in #46; **update an existing declaration** to include it);
   - `READ_SLEEP`: time asleep.
 
   No write, background or history permission is requested.

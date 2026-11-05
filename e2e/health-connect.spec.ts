@@ -10,7 +10,7 @@ import { MONDAY, expandToFullDay, openAt } from './helpers';
 const SAMSUNG = 'com.sec.android.app.shealth';
 const WITHINGS = 'com.withings.wiscale2';
 const KEY = 'pft.test.healthConnect';
-const ALL = ['steps', 'active_energy', 'exercise', 'weight', 'sleep'];
+const ALL = ['steps', 'active_energy', 'exercise', 'weight', 'body_fat', 'sleep'];
 
 const data = {
   steps: [
@@ -236,7 +236,7 @@ test('#44: weight not in Health Connect yet → says so; Fitbit exports it later
   await expect(page.getByTestId('hc-today-weight')).toContainText('None in Health Connect · last 30 days');
   await expect(page.getByTestId('hc-today-exercise')).toContainText('None in Health Connect');
   await expect(page.getByTestId('hc-missing-help')).toContainText('hasn’t reached Health Connect yet');
-  await expect(page.getByTestId('hc-not-imported')).toContainText('body fat');
+  await expect(page.getByTestId('hc-not-imported')).toContainText('other measurements');
 
   // Fitbit's export arrives later (7:48 am weigh-in); the next sync picks it up.
   const f = await fixture(page);
@@ -270,6 +270,59 @@ test('#44: an unknown source app is "Another app" on screen; its ID is only in t
   await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Another app');
   await page.getByTestId('recorded-steps').click();
   await expect(page.getByText('com.example.tracker')).toBeVisible(); // App ID, for troubleshooting
+});
+
+test('#46: body fat is imported like weight: one per day, with its source', async ({ page }) => {
+  await installHealthConnect(page, {
+    data: { ...data, bodyFat: [{ id: 'bf', time: '2026-11-02T07:48:00+11:00', percent: 32.8, origin: 'com.fitbit.FitbitMobile' }] },
+  });
+  await openAt(page, MONDAY);
+  await connect(page);
+  await expect(page.getByTestId('hc-today-body_fat')).toContainText('32.8 %');
+  await expect(page.getByTestId('hc-today-body_fat')).toContainText('Fitbit');
+  await close(page);
+  await expect(page.getByTestId('recorded-body_fat')).toContainText('32.8 %');
+  await expect(page.getByTestId('recorded-body_fat')).toContainText('Health Connect · Fitbit');
+});
+
+/** Already connected; the last full sync was 12 days before Monday 2 Nov. */
+async function returningAfterGap(page: Page, over: Record<string, unknown> = {}) {
+  await installHealthConnect(page, { granted: ALL, ...over });
+  await page.addInitScript(() =>
+    localStorage.getItem('pft.healthConnect.sync') ||
+    localStorage.setItem(
+      'pft.healthConnect.sync',
+      JSON.stringify({ at: '2026-10-21T08:00:00+11:00', ok: true, days: 7, failed: [], firstDone: true, lastFullSync: '2026-10-21' }),
+    ),
+  );
+}
+
+test('#46: after 12 days away, the next open backfills every day since the last sync; then back to 7', async ({ page }) => {
+  await returningAfterGap(page, { data: { ...data, steps: [...data.steps, { date: '2026-10-25', value: 9300, origins: [SAMSUNG] }] } });
+  await openAt(page, MONDAY);
+  await expect.poll(async () => (await fixture(page)).reads?.length ?? 0).toBe(1);
+  const first = (await fixture(page)).reads[0].dates;
+  expect(first[0]).toBe('2026-10-21');
+  expect(first).toHaveLength(13);
+  await expect.poll(async () => (await imported(page)).find((o) => o.id === 'hc:steps:2026-10-25')?.value).toBe(9300); // inside the gap
+  expect((await fixture(page)).requests ?? 0).toBe(0); // never asked
+
+  await openSheet(page);
+  await expect(page.getByTestId('hc-sync-status')).toContainText('13 days checked');
+  await page.getByRole('button', { name: 'Sync now' }).click();
+  await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
+  expect((await fixture(page)).reads[1].dates).toHaveLength(7);
+});
+
+test('#46: a sync that couldn’t read every type doesn’t move the backfill start', async ({ page }) => {
+  await returningAfterGap(page, { failTypes: ['sleep'] });
+  await openAt(page, MONDAY);
+  await expect.poll(async () => (await fixture(page)).reads?.length ?? 0).toBe(1);
+  await openSheet(page);
+  await expect(page.getByTestId('hc-sync-status')).toContainText("couldn't read sleep");
+  await page.getByRole('button', { name: 'Sync now' }).click();
+  await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
+  expect((await fixture(page)).reads[1].dates[0]).toBe('2026-10-21'); // the gap is still covered
 });
 
 test('refused, then allowed later in Health Connect: picked up on the next app open without asking again', async ({ page }) => {

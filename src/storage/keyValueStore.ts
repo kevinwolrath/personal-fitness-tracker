@@ -154,6 +154,18 @@ export class KeyValueTrackingStore implements TrackingStore {
       .sort((a, b) => a.date.localeCompare(b.date) || a.recordedAt.localeCompare(b.recordedAt) || a.id.localeCompare(b.id));
   }
 
+  async planHistory(planId: string) {
+    const d = this.read();
+    const activityLogs: ActivityLogRecord[] = Object.entries(d.activities).flatMap(([k, day]) => {
+      const key = splitKey(k);
+      return key.planId === planId ? Object.values(day).map((log) => ({ ...log, ...key })) : [];
+    });
+    const dayOverrides = Object.entries(d.overrides)
+      .map(([k, dayTypeId]) => ({ ...splitKey(k), dayTypeId }))
+      .filter((o) => o.planId === planId);
+    return { activityLogs: activityLogs.sort(byKey<ActivityLogRecord>('date', 'activityId')), dayOverrides: dayOverrides.sort(byKey('date')) };
+  }
+
   async saveImport(session: ImportSession, observations: Observation[]) {
     // One document write: atomic by construction.
     this.update((d) => {

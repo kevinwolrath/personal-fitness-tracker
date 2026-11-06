@@ -295,6 +295,17 @@ export class SqliteTrackingStore implements TrackingStore {
     return rows.map(toObservation);
   }
 
+  async planHistory(planId: string) {
+    const [acts, overrides] = await Promise.all([
+      this.db.getAllAsync<ActivityRow>('SELECT * FROM activity_log WHERE plan_id = ? ORDER BY date, activity_id', [planId]),
+      this.db.getAllAsync<{ plan_id: string; date: string; day_type_id: string }>('SELECT * FROM day_override WHERE plan_id = ? ORDER BY date', [planId]),
+    ]);
+    return {
+      activityLogs: acts.map(toActivity),
+      dayOverrides: overrides.map((o): DayOverrideRecord => ({ planId: o.plan_id, date: o.date, dayTypeId: o.day_type_id })),
+    };
+  }
+
   private async upsertImport(session: ImportSession): Promise<void> {
     await this.db.runAsync(
       'INSERT OR REPLACE INTO import_session (id, created_at, extractor, assets_json) VALUES (?, ?, ?, ?)',

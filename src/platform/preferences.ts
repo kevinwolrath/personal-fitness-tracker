@@ -10,6 +10,7 @@ const REMINDERS = 'pft.reminders.enabled';
 const ENERGY = 'pft.display.energy';
 const HC_SYNC = 'pft.healthConnect.sync';
 const SETUP_DRAFT = 'pft.setup.draft';
+const PROGRESS_CHARTS = 'pft.progress.charts';
 
 /** The last Health Connect sync on this phone (#36). Device state, never plan data. */
 export type HcSyncState = {
@@ -58,6 +59,18 @@ export const preferences = {
   },
   async setSetupDraft(json: string): Promise<void> {
     await secrets.set(SETUP_DRAFT, json);
+  },
+  /** Progress chart order and hidden charts (#52): a device choice, never plan data. */
+  async progressCharts(): Promise<{ order?: string[]; hidden?: string[] } | null> {
+    try {
+      const raw = await secrets.get(PROGRESS_CHARTS);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  async setProgressCharts(v: { order: string[]; hidden: string[] }): Promise<void> {
+    await secrets.set(PROGRESS_CHARTS, JSON.stringify(v));
   },
   async clearSetupDraft(): Promise<void> {
     await secrets.remove(SETUP_DRAFT);

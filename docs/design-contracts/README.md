@@ -19,6 +19,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 11 | [Settings & energy display](11-settings-energy-display.md) | The Settings sheet, device preferences, energy shown in kJ, kcal or both, conversion and rounding |
 | 12 | [Android Health Connect](12-health-connect.md) | Read-only import of steps, active energy, workouts, weight and sleep; permissions, sync, mapping, precedence, failure modes, Play declaration |
 | 13 | [First-run setup](13-first-run-setup.md) | The profile wizard for new installs: questions, the AI suggestion and its review, the basic no-AI profile, under-18s, resume, the nutrition seed hook |
+| 14 | [Progress](14-progress.md) | The Progress tab: range, this week vs last, measurement and weight-trend charts, calculated vs estimated vs measured values, editable chart order and visibility |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 

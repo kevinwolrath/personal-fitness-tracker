@@ -330,3 +330,24 @@ test.describe('first-run setup (#49)', () => {
     }
   });
 });
+
+test('Progress (#52) fits at every width, with the Edit charts sheet open too', async ({ page }) => {
+  await seedRecords(page, {
+    observations: Array.from({ length: 40 }, (_, i) => ({
+      id: `w${i}`, date: `2026-10-${String((i % 30) + 1).padStart(2, '0')}`, metric: 'weight', value: 99 - i * 0.05, unit: 'kg', kind: 'observed', label: null, note: null,
+      source: { type: 'manual', app: null, capturedAt: null, confidence: null, importId: null, assetId: null, evidence: null, edited: false }, recordedAt: '2026-10-01T07:00:00Z',
+    })),
+  });
+  await openAt(page, MONDAY);
+  await page.getByTestId('tab-bar').getByRole('tab', { name: 'Progress' }).click();
+  await expect(page.getByTestId('chart-weight')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(300); // charts re-measure their width after a resize (onLayout)
+    expect(await layoutProblems(page), `progress at ${width}px`).toEqual([]);
+  }
+  await page.getByTestId('edit-charts').click();
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.waitForTimeout(300);
+  expect(await layoutProblems(page), 'edit charts at 320px').toEqual([]);
+});

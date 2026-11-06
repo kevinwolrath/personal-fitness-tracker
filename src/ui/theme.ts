@@ -18,6 +18,8 @@ export const colors = {
   inkRaised: '#3A3833',
   /** Secondary text on ink surfaces. */
   onInkMuted: '#D9D5CC',
+  /** A second data series in charts (#52): distinct from ink and accent in hue and lightness. */
+  warm: '#B4561F',
   scrim: 'rgba(28, 27, 24, 0.32)',
 } as const;
 

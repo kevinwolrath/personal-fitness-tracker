@@ -147,6 +147,13 @@ export class KeyValueTrackingStore implements TrackingStore {
     return candidates[0] ?? null;
   }
 
+  async observationsFor(metrics: string[]) {
+    const want = new Set(metrics);
+    return this.read()
+      .observations.filter((o) => want.has(o.metric) && o.kind === 'observed')
+      .sort((a, b) => a.date.localeCompare(b.date) || a.recordedAt.localeCompare(b.recordedAt) || a.id.localeCompare(b.id));
+  }
+
   async saveImport(session: ImportSession, observations: Observation[]) {
     // One document write: atomic by construction.
     this.update((d) => {

@@ -10,7 +10,7 @@
 - **Ingestion is not a destination.** Manual entry, screenshot import and future integrations write canonical observations (contract 06). Each appears on its own effective date in the log.
 - **Editing:** today and every past date are fully correctable, including imported values (edit or remove from the observation sheet; provenance records the edit). Future dates are view-only planned days (contract 04).
 
-Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. The Daily Log is currently the only tab. The tab bar arrives with the second one, because a one-tab bar is clutter. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
+Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. Two tabs now: **Today** (the Daily Log) and **Progress** (#52, contract 14). The tab bar arrived with the second tab. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
 
 ## Layout layers (#19)
 
@@ -18,7 +18,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 | Layer | Owned by | Contains | Rules |
 |---|---|---|---|
-| **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu) on the left, then the app name | Rendered by the layout, never by a screen. Fixed at the top, outside any scroll view. Respects the top safe area. 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. |
+| **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu) on the left, then the app name. The bottom tab bar (#52): Today and Progress. | Rendered by the layout, never by a screen. The app bar is fixed at the top, outside any scroll view, and respects the top safe area: 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. The tab bar is fixed at the bottom (56 dp plus the bottom inset); sheets cover it. |
 | **Screen header** | The screen | For the Daily Log: the date row, then the day line (see below) | Scrolls with the content. Screens never add shell controls (menu, app title) to it. |
 | **Content** | The screen | For the Daily Log: **Do this next**, measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
 
@@ -66,7 +66,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Route (Expo Router) | Surface | Purpose |
 |---|---|---|
 | `/` (`?date=`) | **Daily Log** tab, the launch screen (opens on today) | One day of the continuous log: resolved plan, measurements, targets, recorded observations. Rendered inside the app shell. |
-| `/(tabs)/progress` | **Progress** tab | Goal progress, measurement trend, recent days (read-mostly) |
+| `/progress` | **Progress** tab | Measurement and weight-trend charts, read-only (contract 14) |
 | `/(tabs)/plan` | **Plan** tab | Read-only week overview of the loaded plan, plus plan-package actions (import, replace, export data) |
 | Measure sheet | Sheet | Enter a value for one measurement (numeric keypad) |
 | Activity sheet | Sheet | Activity details and secondary actions: done/not done, skip, restore. For a meal it shows **What to prepare** (ingredient, target amount and the plan's everyday measure), **How to make it**, and the meal's energy/protein (#26). Content scrolls inside the sheet (max 92 % of the screen) so the actions stay reachable. It's never required for the happy path |

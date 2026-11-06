@@ -19,9 +19,10 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 11 | [Settings & energy display](11-settings-energy-display.md) | The Settings sheet, device preferences, energy shown in kJ, kcal or both, conversion and rounding |
 | 12 | [Android Health Connect](12-health-connect.md) | Read-only import of steps, active energy, workouts, weight and sleep; permissions, sync, mapping, precedence, failure modes, Play declaration |
 | 13 | [First-run setup](13-first-run-setup.md) | The setup wizard: questions, the offline starter plan from bundled presets (exercise and sample meals), Exercise and Meals review with swaps, optional AI refinement, under-18s, resume, editing setup on an existing plan, the nutrition hook |
+| 14 | [Progress](14-progress.md) | The Progress tab: range, this week vs last, measurement and weight-trend charts, calculated vs estimated vs measured values, editable chart order and visibility |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 
 The first-pass proposal (screens, wireframes, gestures, scaffold changes, open questions) is in [`../first-pass-proposal.md`](../first-pass-proposal.md). It is a proposal, not a contract. Once it's agreed, the decisions belong in the contracts above.
 
-Status: agreed in #1, extended by #3, #5, #6, #7, #10, #12, #15, #19, #21, #26, #28, #30, #36, #39, #51, #49 and #53.
+Status: agreed in #1, extended by #3, #5, #6, #7, #10, #12, #15, #19, #21, #26, #28, #30, #36, #39, #51, #49, #53 and #52.

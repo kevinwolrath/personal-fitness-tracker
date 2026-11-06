@@ -286,6 +286,15 @@ export class SqliteTrackingStore implements TrackingStore {
     return r ? toObservation(r) : null;
   }
 
+  async observationsFor(metrics: string[]): Promise<Observation[]> {
+    if (!metrics.length) return [];
+    const rows = await this.db.getAllAsync<ObservationRow>(
+      `SELECT * FROM observation WHERE kind = 'observed' AND metric IN (${metrics.map(() => '?').join(', ')}) ORDER BY date ASC, recorded_at ASC, id ASC`,
+      metrics,
+    );
+    return rows.map(toObservation);
+  }
+
   private async upsertImport(session: ImportSession): Promise<void> {
     await this.db.runAsync(
       'INSERT OR REPLACE INTO import_session (id, created_at, extractor, assets_json) VALUES (?, ?, ?, ?)',

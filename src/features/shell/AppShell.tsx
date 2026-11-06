@@ -11,6 +11,7 @@ import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Toast, type ToastState } from '../../ui/Toast';
 import { colors, space, touch } from '../../ui/theme';
 import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
+import { TabBar } from './TabBar';
 import { AppMenu, type AppMenuItem } from './AppMenu';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
@@ -100,6 +101,7 @@ function Shell({ children }: { children: ReactNode }) {
       </SafeAreaView>
 
       <View style={styles.screen}>{children}</View>
+      <TabBar />
 
       <SafeAreaView edges={['bottom']} style={styles.toastDock} pointerEvents="box-none">
         <Toast toast={toast} onDone={clearToast} />

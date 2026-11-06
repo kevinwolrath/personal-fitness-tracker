@@ -243,34 +243,41 @@ export const exerciseSection = z.strictObject({
 });
 
 // ---- formatVersion 6: setup profile (#49) --------------------------------------------------
-export const genders = ['male', 'female', 'other', 'prefer_not_to_say'] as const;
-/** Age bands only: never a date of birth. `under_18` is recorded so the app never offers a personalised plan. */
-export const ageBands = ['under_18', '18_29', '30_39', '40_49', '50_59', '60_plus'] as const;
-/** Weight bands, defined in kg (shown in lb as well). A band is context for a plan, never a weigh-in. */
-export const weightBands = ['under_60', '60_79', '80_99', '100_119', '120_plus'] as const;
-export const fitnessGoals = ['maintain', 'lose_weight', 'gain_muscle', 'improve_cardio'] as const;
-export const trainingPlaces = ['home', 'gym', 'outdoors', 'no_equipment'] as const;
+export const genders = ['male', 'female', 'other'] as const;
+/** Age bands only, or an exact age (18+): never a date of birth. `under_18` means tracking only (#53). */
+export const ageBands = ['under_18', '18_39', '40_59', '60_plus'] as const;
+/** Weight bands, defined in kg (shown in lb as well). A band is a rough guide, never a weigh-in or a BMI. */
+export const weightBands = ['under_70', '70_99', '100_plus'] as const;
+export const fitnessGoals = ['maintain', 'gradual_loss', 'faster_loss', 'gain_muscle', 'improve_cardio'] as const;
 export const activityLevels = ['mostly_sitting', 'some_walking', 'active_job', 'already_training'] as const;
+export const equipmentKinds = ['none', 'bands', 'weights', 'gym'] as const;
+export const physicalLimits = ['knees', 'back', 'shoulders'] as const;
+export const dietaryNeeds = ['vegetarian', 'vegan', 'dairy_free', 'gluten_free', 'nut_allergy'] as const;
 export const profileV6Fields = [
-  'gender', 'ageBand', 'weightBand', 'weight', 'fitnessGoals', 'primaryGoal', 'daysPerWeek', 'sessionMinutes', 'trainingPlaces', 'activityLevel', 'considerations',
+  'gender', 'ageBand', 'age', 'weightBand', 'weight', 'fitnessGoals', 'daysPerWeek', 'activityLevel', 'equipment', 'physicalLimits', 'dietary', 'considerations',
 ] as const;
+
+/** The band an exact age falls in. */
+export const ageBandOf = (age: number): (typeof ageBands)[number] => (age < 18 ? 'under_18' : age < 40 ? '18_39' : age < 60 ? '40_59' : '60_plus');
 
 export const profileSection = z.strictObject({
   displayName: z.string().min(1).max(40).optional(),
   heightCm: z.number().min(50).max(260).optional(),
   notes: z.array(note).max(10).optional(),
-  // formatVersion 6 (#49): what the user told the app during setup. All optional.
+  // formatVersion 6 (#49, #53): what the user told the app during setup. All optional.
   gender: z.enum(genders).optional(),
   ageBand: z.enum(ageBands).optional(),
+  /** An exact age, only if the user chose to give one. */
+  age: z.number().int().min(18).max(120).optional(),
   weightBand: z.enum(weightBands).optional(),
   /** An exact weight given during setup, in `units.mass`. Context for the plan; never a recorded weigh-in. */
   weight: z.number().positive().max(700).optional(),
-  fitnessGoals: z.array(z.enum(fitnessGoals)).min(1).max(4).optional(),
-  primaryGoal: z.enum(fitnessGoals).optional(),
+  fitnessGoals: z.array(z.enum(fitnessGoals)).min(1).max(5).optional(),
   daysPerWeek: z.number().int().min(1).max(7).optional(),
-  sessionMinutes: z.number().int().min(5).max(240).optional(),
-  trainingPlaces: z.array(z.enum(trainingPlaces)).min(1).max(4).optional(),
   activityLevel: z.enum(activityLevels).optional(),
+  equipment: z.array(z.enum(equipmentKinds)).min(1).max(4).optional(),
+  physicalLimits: z.array(z.enum(physicalLimits)).min(1).max(3).optional(),
+  dietary: z.array(z.enum(dietaryNeeds)).min(1).max(5).optional(),
   /** Injuries, limits or food restrictions to work around, in the user's words. */
   considerations: z.string().min(1).max(200).optional(),
 });
@@ -328,9 +335,16 @@ export const planSchema = z.strictObject({
     }
   }
   const pr = p.profile;
-  if (pr?.fitnessGoals && new Set(pr.fitnessGoals).size !== pr.fitnessGoals.length) ctx.addIssue({ code: 'custom', path: ['profile', 'fitnessGoals'], message: 'each goal only once' });
-  if (pr?.trainingPlaces && new Set(pr.trainingPlaces).size !== pr.trainingPlaces.length) ctx.addIssue({ code: 'custom', path: ['profile', 'trainingPlaces'], message: 'each place only once' });
-  if (pr?.primaryGoal && !(pr.fitnessGoals ?? []).includes(pr.primaryGoal)) ctx.addIssue({ code: 'custom', path: ['profile', 'primaryGoal'], message: 'primaryGoal must be one of profile.fitnessGoals' });
+  const once = (key: 'fitnessGoals' | 'equipment' | 'physicalLimits' | 'dietary') => {
+    const xs = pr?.[key] as string[] | undefined;
+    if (xs && new Set(xs).size !== xs.length) ctx.addIssue({ code: 'custom', path: ['profile', key], message: 'each value only once' });
+  };
+  (['fitnessGoals', 'equipment', 'physicalLimits', 'dietary'] as const).forEach(once);
+  const goals = new Set(pr?.fitnessGoals ?? []);
+  if (goals.has('gradual_loss') && goals.has('faster_loss')) ctx.addIssue({ code: 'custom', path: ['profile', 'fitnessGoals'], message: 'choose gradual_loss or faster_loss, not both' });
+  if (goals.has('maintain') && (goals.has('gradual_loss') || goals.has('faster_loss'))) ctx.addIssue({ code: 'custom', path: ['profile', 'fitnessGoals'], message: 'maintain cannot be combined with weight loss' });
+  if (pr?.ageBand === 'under_18' && (goals.has('gradual_loss') || goals.has('faster_loss'))) ctx.addIssue({ code: 'custom', path: ['profile', 'fitnessGoals'], message: 'no weight-loss goals under 18' });
+  if (pr?.age !== undefined && pr.ageBand !== undefined && ageBandOf(pr.age) !== pr.ageBand) ctx.addIssue({ code: 'custom', path: ['profile', 'ageBand'], message: 'ageBand must match age' });
   if (pr?.weight !== undefined && pr.weightBand !== undefined) ctx.addIssue({ code: 'custom', path: ['profile', 'weightBand'], message: 'give either weight or weightBand, not both' });
   if (p.formatVersion < 5) {
     const need = '"leadMinutes" needs formatVersion 5';

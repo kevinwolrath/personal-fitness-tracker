@@ -12,7 +12,7 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 
 **formatVersion 5** (#51) adds due times: activity and requirement `leadMinutes`, and the plan-level `timing` section (contract 08). A formatVersion 1–4 plan must not contain them; such plans load unchanged and use the format defaults. 
 
-**formatVersion 6** (#49) adds the setup profile: `profile.gender`, `ageBand`, `weightBand`, `weight`, `fitnessGoals`, `primaryGoal`, `daysPerWeek`, `sessionMinutes`, `trainingPlaces`, `activityLevel` and `considerations` (contracts 07 and 13). A formatVersion 1–5 plan must not contain them. Configure with AI and first-run setup write formatVersion 6. Everything else below applies to every version.
+**formatVersion 6** (#49, #53) adds the setup profile: `profile.gender`, `ageBand`, `age`, `weightBand`, `weight`, `fitnessGoals`, `daysPerWeek`, `activityLevel`, `equipment`, `physicalLimits`, `dietary` and `considerations` (contracts 07 and 13). The rules: gradual and faster loss exclude each other and maintain; no weight-loss goal with `ageBand: under_18`; an `age` must match its `ageBand`; `weight` and `weightBand` can't both be set. A formatVersion 1–5 plan must not contain them. Configure with AI and setup write formatVersion 6. Everything else below applies to every version.
 
 ## Design limits (deliberate)
 

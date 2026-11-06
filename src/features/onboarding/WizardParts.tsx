@@ -15,11 +15,15 @@ export function WizardFrame(props: {
   sub: string;
   onSkip?: () => void;
   onBack?: () => void;
+  /** "Cancel" when Back leaves the wizard (Edit setup answers, first step). */
+  backLabel?: string;
+  /** Fixed controls between the header and the scrolling content (the review's tabs). */
+  above?: ReactNode;
   primary: { title: string; onPress: () => void; disabled?: boolean };
   children: ReactNode;
   testID: string;
 }) {
-  const { step, total, title, sub, onSkip, onBack, primary, children, testID } = props;
+  const { step, total, title, sub, onSkip, onBack, backLabel = 'Back', above, primary, children, testID } = props;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']} testID={testID}>
       <View style={styles.header}>
@@ -39,12 +43,14 @@ export function WizardFrame(props: {
         </Text>
         <Text style={styles.sub}>{sub}</Text>
       </View>
-      <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="setup-scroll">
+      {above ? <View style={styles.above}>{above}</View> : null}
+      {/* Keyed by screen: each step starts at the top instead of keeping the previous step's scroll position. */}
+      <ScrollView key={testID} style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="setup-scroll">
         {children}
       </ScrollView>
       <View style={styles.bar}>
         <View style={styles.back}>
-          <Button title="Back" variant="secondary" onPress={onBack} disabled={!onBack} accessibilityLabel="Back" />
+          <Button title={backLabel} variant="secondary" onPress={onBack} disabled={!onBack} accessibilityLabel={backLabel} />
         </View>
         <View style={styles.flex}>
           <Button title={primary.title} onPress={primary.onPress} disabled={primary.disabled} testID="setup-primary" />
@@ -116,6 +122,7 @@ export const styles = StyleSheet.create({
   bar: { flexDirection: 'row', gap: space.md, paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: space.md, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bg },
   back: { minWidth: 96 },
   question: { gap: space.sm },
+  above: { paddingHorizontal: space.xl, paddingTop: space.md, gap: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: { minHeight: touch, minWidth: touch, paddingHorizontal: space.lg, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },

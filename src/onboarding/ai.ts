@@ -21,13 +21,13 @@ export function buildSetupPrompt(starterRaw: RawPlan, d: Draft, today: string, s
   const nutrition = seed.prompt((starterRaw.profile ?? {}) as Record<string, unknown>);
   const intro = `# Fitness tracker: my first plan
 
-I've just installed a fitness tracker app and I'd like a simple, realistic starting plan. Here is what I told the app (anything missing, I chose not to say):
+I've just installed a fitness tracker app and I'd like help refining my starting plan. Here is what I told the app (anything missing, I chose not to say):
 
 ${told}
 
 Please:
 1. Ask me anything you need first, especially about health conditions, injuries and what I can realistically do. Don't guess about health limits.
-2. Then suggest a gentle starting plan: a weekly schedule of exercise and habits (schedule.activities), and anything useful in the exercise and profile sections. Keep it achievable and say what you assumed.
+2. The app already made me a starter plan (under "My current configuration" below). Suggest changes that suit me better: the weekly schedule (schedule.activities) and the exercise and profile sections. Keep it achievable, keep at least one rest day, and say what you assumed.
 3. This is a suggestion, not medical advice. If something I want needs a doctor or other health professional, tell me in the chat.
 ${nutrition ? `4. Nutrition:\n${nutrition}` : '4. Leave nutrition out completely. Don\'t suggest diets, meals or energy targets: the app sets up nutrition separately.'}
 

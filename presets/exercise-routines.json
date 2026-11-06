@@ -8,18 +8,60 @@
       "session": {
         "minutes": 25,
         "exercises": [
-          { "movement": "bodyweight_squat", "label": "Squat", "sets": 3, "reps": 10 },
-          { "movement": "incline_push_up", "label": "Incline push-up", "sets": 3, "reps": 8, "notes": "Hands on a bench or wall; lower the surface as it gets easier" },
-          { "movement": "glute_bridge", "label": "Glute bridge", "sets": 3, "reps": 12 },
-          { "movement": "reverse_lunge", "label": "Reverse lunge", "sets": 2, "reps": 8, "notes": "Each leg" },
-          { "movement": "dead_bug", "label": "Dead bug", "sets": 2, "reps": 10 }
+          {
+            "movement": "bodyweight_squat",
+            "label": "Squat",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "incline_push_up",
+            "label": "Incline push-up",
+            "sets": 3,
+            "reps": 8,
+            "notes": "Hands on a bench or wall; lower the surface as it gets easier"
+          },
+          {
+            "movement": "glute_bridge",
+            "label": "Glute bridge",
+            "sets": 3,
+            "reps": 12
+          },
+          {
+            "movement": "reverse_lunge",
+            "label": "Reverse lunge",
+            "sets": 2,
+            "reps": 8,
+            "notes": "Each leg"
+          },
+          {
+            "movement": "dead_bug",
+            "label": "Dead bug",
+            "sets": 2,
+            "reps": 10
+          }
         ],
         "short": {
           "minutes": 10,
           "exercises": [
-            { "movement": "bodyweight_squat", "label": "Squat", "sets": 2, "reps": 10 },
-            { "movement": "incline_push_up", "label": "Incline push-up", "sets": 2, "reps": 8 },
-            { "movement": "glute_bridge", "label": "Glute bridge", "sets": 2, "reps": 12 }
+            {
+              "movement": "bodyweight_squat",
+              "label": "Squat",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "incline_push_up",
+              "label": "Incline push-up",
+              "sets": 2,
+              "reps": 8
+            },
+            {
+              "movement": "glute_bridge",
+              "label": "Glute bridge",
+              "sets": 2,
+              "reps": 12
+            }
           ]
         }
       }
@@ -31,18 +73,58 @@
       "session": {
         "minutes": 25,
         "exercises": [
-          { "movement": "bodyweight_squat", "label": "Squat", "sets": 3, "reps": 12 },
-          { "movement": "band_row", "label": "Band row", "sets": 3, "reps": 12 },
-          { "movement": "band_chest_press", "label": "Band chest press", "sets": 3, "reps": 10 },
-          { "movement": "glute_bridge", "label": "Glute bridge", "sets": 3, "reps": 12 },
-          { "movement": "band_pull_apart", "label": "Band pull-apart", "sets": 2, "reps": 15 }
+          {
+            "movement": "bodyweight_squat",
+            "label": "Squat",
+            "sets": 3,
+            "reps": 12
+          },
+          {
+            "movement": "band_row",
+            "label": "Band row",
+            "sets": 3,
+            "reps": 12
+          },
+          {
+            "movement": "band_chest_press",
+            "label": "Band chest press",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "glute_bridge",
+            "label": "Glute bridge",
+            "sets": 3,
+            "reps": 12
+          },
+          {
+            "movement": "band_pull_apart",
+            "label": "Band pull-apart",
+            "sets": 2,
+            "reps": 15
+          }
         ],
         "short": {
           "minutes": 10,
           "exercises": [
-            { "movement": "bodyweight_squat", "label": "Squat", "sets": 2, "reps": 12 },
-            { "movement": "band_row", "label": "Band row", "sets": 2, "reps": 12 },
-            { "movement": "band_chest_press", "label": "Band chest press", "sets": 2, "reps": 10 }
+            {
+              "movement": "bodyweight_squat",
+              "label": "Squat",
+              "sets": 2,
+              "reps": 12
+            },
+            {
+              "movement": "band_row",
+              "label": "Band row",
+              "sets": 2,
+              "reps": 12
+            },
+            {
+              "movement": "band_chest_press",
+              "label": "Band chest press",
+              "sets": 2,
+              "reps": 10
+            }
           ]
         }
       }
@@ -54,18 +136,59 @@
       "session": {
         "minutes": 30,
         "exercises": [
-          { "movement": "kettlebell_squat", "label": "Goblet squat", "sets": 3, "reps": 10 },
-          { "movement": "dumbbell_row", "label": "One-arm row", "sets": 3, "reps": 10, "notes": "Each arm" },
-          { "movement": "floor_press", "label": "Floor press", "sets": 3, "reps": 10 },
-          { "movement": "romanian_deadlift", "label": "Romanian deadlift", "sets": 3, "reps": 10 },
-          { "movement": "farmer_carry", "label": "Farmer carry", "sets": 2, "seconds": 30 }
+          {
+            "movement": "kettlebell_squat",
+            "label": "Goblet squat",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "dumbbell_row",
+            "label": "One-arm row",
+            "sets": 3,
+            "reps": 10,
+            "notes": "Each arm"
+          },
+          {
+            "movement": "floor_press",
+            "label": "Floor press",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "romanian_deadlift",
+            "label": "Romanian deadlift",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "farmer_carry",
+            "label": "Farmer carry",
+            "sets": 2,
+            "seconds": 30
+          }
         ],
         "short": {
           "minutes": 10,
           "exercises": [
-            { "movement": "kettlebell_squat", "label": "Goblet squat", "sets": 2, "reps": 10 },
-            { "movement": "dumbbell_row", "label": "One-arm row", "sets": 2, "reps": 10 },
-            { "movement": "floor_press", "label": "Floor press", "sets": 2, "reps": 10 }
+            {
+              "movement": "kettlebell_squat",
+              "label": "Goblet squat",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "dumbbell_row",
+              "label": "One-arm row",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "floor_press",
+              "label": "Floor press",
+              "sets": 2,
+              "reps": 10
+            }
           ]
         }
       }
@@ -77,51 +200,159 @@
       "session": {
         "minutes": 40,
         "exercises": [
-          { "movement": "leg_press", "label": "Leg press", "sets": 3, "reps": 10 },
-          { "movement": "chest_press", "label": "Chest press", "sets": 3, "reps": 10 },
-          { "movement": "lat_pulldown", "label": "Lat pulldown", "sets": 3, "reps": 10 },
-          { "movement": "cable_row", "label": "Cable row", "sets": 3, "reps": 10 },
-          { "movement": "romanian_deadlift", "label": "Romanian deadlift", "sets": 3, "reps": 10 }
+          {
+            "movement": "leg_press",
+            "label": "Leg press",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "chest_press",
+            "label": "Chest press",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "lat_pulldown",
+            "label": "Lat pulldown",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "cable_row",
+            "label": "Cable row",
+            "sets": 3,
+            "reps": 10
+          },
+          {
+            "movement": "romanian_deadlift",
+            "label": "Romanian deadlift",
+            "sets": 3,
+            "reps": 10
+          }
         ],
         "short": {
           "minutes": 15,
           "exercises": [
-            { "movement": "leg_press", "label": "Leg press", "sets": 2, "reps": 10 },
-            { "movement": "chest_press", "label": "Chest press", "sets": 2, "reps": 10 },
-            { "movement": "lat_pulldown", "label": "Lat pulldown", "sets": 2, "reps": 10 }
+            {
+              "movement": "leg_press",
+              "label": "Leg press",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "chest_press",
+              "label": "Chest press",
+              "sets": 2,
+              "reps": 10
+            },
+            {
+              "movement": "lat_pulldown",
+              "label": "Lat pulldown",
+              "sets": 2,
+              "reps": 10
+            }
           ]
         }
       }
     }
   ],
   "cardio": {
-    "walk": { "label": "Brisk walk", "detail": "A pace where talking is possible but singing isn't", "minutes": 30 },
-    "longWalk": { "label": "Longer walk", "detail": "Easy pace", "minutes": 45 },
-    "steady": { "label": "Steady cardio", "detail": "Walk, cycle, swim or row; build up 5 minutes a week", "minutes": 25 },
-    "stretch": { "label": "Easy stretch", "detail": "Recovery: gentle mobility", "minutes": 10 }
+    "walk": {
+      "label": "Brisk walk",
+      "detail": "A pace where talking is possible but singing isn't",
+      "minutes": 30
+    },
+    "longWalk": {
+      "label": "Longer walk",
+      "detail": "Easy pace",
+      "minutes": 45
+    },
+    "steady": {
+      "label": "Steady cardio",
+      "detail": "Walk, cycle, swim or row; build up 5 minutes a week",
+      "minutes": 25
+    },
+    "stretch": {
+      "label": "Easy stretch",
+      "detail": "Recovery: gentle mobility",
+      "minutes": 10
+    },
+    "intervals": {
+      "label": "Cardio intervals",
+      "detail": "Alternate 2 minutes brisk with 1 minute easy: walk, cycle or row",
+      "minutes": 25
+    }
   },
   "limitations": {
     "knees": {
       "reason": "Knees: easier variations",
-      "avoid": ["reverse_lunge", "leg_press"],
+      "avoid": [
+        "reverse_lunge",
+        "leg_press"
+      ],
       "substitutions": [
-        { "instead": "reverse_lunge", "use": ["glute_bridge"] },
-        { "instead": "leg_press", "use": ["glute_bridge"] }
+        {
+          "instead": "reverse_lunge",
+          "use": [
+            "glute_bridge"
+          ]
+        },
+        {
+          "instead": "leg_press",
+          "use": [
+            "glute_bridge"
+          ]
+        }
       ]
     },
     "back": {
       "reason": "Back: avoid loaded hinges",
-      "avoid": ["romanian_deadlift"],
-      "substitutions": [{ "instead": "romanian_deadlift", "use": ["glute_bridge"] }]
+      "avoid": [
+        "romanian_deadlift"
+      ],
+      "substitutions": [
+        {
+          "instead": "romanian_deadlift",
+          "use": [
+            "glute_bridge"
+          ]
+        }
+      ]
     },
     "shoulders": {
       "reason": "Shoulders: avoid pressing until it feels fine",
-      "avoid": ["incline_push_up", "floor_press", "chest_press", "band_chest_press"],
+      "avoid": [
+        "incline_push_up",
+        "floor_press",
+        "chest_press",
+        "band_chest_press"
+      ],
       "substitutions": [
-        { "instead": "incline_push_up", "use": ["band_pull_apart"] },
-        { "instead": "floor_press", "use": ["band_pull_apart"] },
-        { "instead": "chest_press", "use": ["band_pull_apart"] },
-        { "instead": "band_chest_press", "use": ["band_pull_apart"] }
+        {
+          "instead": "incline_push_up",
+          "use": [
+            "band_pull_apart"
+          ]
+        },
+        {
+          "instead": "floor_press",
+          "use": [
+            "band_pull_apart"
+          ]
+        },
+        {
+          "instead": "chest_press",
+          "use": [
+            "band_pull_apart"
+          ]
+        },
+        {
+          "instead": "band_chest_press",
+          "use": [
+            "band_pull_apart"
+          ]
+        }
       ]
     }
   }

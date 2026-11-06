@@ -76,6 +76,18 @@ export function describeTrackingStore(
       expect((await store.getDay('p', '2026-11-05')).dayTypeOverride).toBeNull();
     });
 
+    it('planHistory: one plan\'s activity logs and overrides only (#52)', async () => {
+      const log = (id: string) => ({ activityId: id, status: 'done' as const, count: 0, labelSnapshot: id, updatedAt: 't' });
+      await store.setActivity('p', '2026-11-02', 'walk', log('walk'));
+      await store.setActivity('p', '2026-11-01', 'gym', log('gym'));
+      await store.setActivity('other', '2026-11-02', 'walk', log('walk'));
+      await store.setDayOverride('p', '2026-11-03', 'office');
+      await store.setDayOverride('other', '2026-11-03', 'home');
+      const h = await store.planHistory('p');
+      expect(h.activityLogs.map((l) => [l.date, l.activityId, l.planId])).toEqual([['2026-11-01', 'gym', 'p'], ['2026-11-02', 'walk', 'p']]);
+      expect(h.dayOverrides).toEqual([{ planId: 'p', date: '2026-11-03', dayTypeId: 'office' }]);
+    });
+
     it('records observations and finds the latest observed value on or before a date', async () => {
       await store.addObservations([
         obs('a', 'weight', '2026-11-01', 98.4, '2026-11-01T07:00:00Z'),
@@ -93,6 +105,7 @@ export function describeTrackingStore(
       expect((await store.observationsFor(['weight'])).map((x) => x.id)).toEqual(['a', 'b', 'c', 'd']);
       expect((await store.observationsFor(['weight', 'steps'])).map((x) => x.id)).toEqual(['a', 'b', 'c', 's', 'd']);
       expect(await store.observationsFor([])).toEqual([]);
+
       expect((await store.getDay('p', '2026-11-02')).observations.map((x) => x.id)).toEqual(['b', 'c', 's']);
 
       // Correcting history: remove a past entry and add a new one.

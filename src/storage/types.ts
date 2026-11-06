@@ -129,6 +129,8 @@ export interface TrackingStore {
   latestObservation(metric: string, onOrBefore: LocalDate): Promise<Observation | null>;
   /** Every observed (never inferred) observation of these metrics, by date then recordedAt (#52 Progress). */
   observationsFor(metrics: string[]): Promise<Observation[]>;
+  /** One plan's activity logs and day-type overrides, by date (#52 Progress: workouts done vs scheduled). */
+  planHistory(planId: string): Promise<{ activityLogs: ActivityLogRecord[]; dayOverrides: DayOverrideRecord[] }>;
   /**
    * Replace one integration's observations (`source.importId`) for these dates and metrics with `observations`,
    * atomically (#36). Only that integration's records on those days and metrics are removed: manual entries,

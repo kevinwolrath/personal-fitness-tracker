@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { appName } from '../../observations/format';
 import { daysBetween, type Point } from '../../progress/series';
 import type { Series } from '../../progress/report';
@@ -29,7 +29,9 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
   const dates = all.map((p) => p.date).sort();
   const first = dates[0];
   const spanDays = Math.max(1, daysBetween(first, dates[dates.length - 1]));
-  const values = [...all.map((p) => p.value), ...(reference ? [reference.value] : [])];
+  const hasBars = series.some((s) => s.style === 'bars' && s.points.length);
+  // Bars grow from zero, so zero is always on the scale for them.
+  const values = [...all.map((p) => p.value), ...(reference ? [reference.value] : []), ...(hasBars ? [0] : [])];
   let lo = Math.min(...values);
   let hi = Math.max(...values);
   if (hi - lo < 1e-9) {
@@ -37,10 +39,13 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
     hi += 1;
   }
   const pad = (hi - lo) * 0.08;
-  lo -= pad;
+  // Bars start exactly at zero when nothing is negative.
+  lo = hasBars && lo >= 0 ? 0 : lo - pad;
   hi += pad;
   const innerW = Math.max(1, width - PAD.left - PAD.right);
-  const x = (d: string) => PAD.left + (daysBetween(first, d) / spanDays) * innerW;
+  // Weekly bars sit on their week's Monday; half a week of margin keeps the first and last bars inside.
+  const margin = hasBars ? 3.5 : 0;
+  const x = (d: string) => PAD.left + ((daysBetween(first, d) + margin) / (spanDays + 2 * margin)) * innerW;
   const y = (v: number) => PAD.top + ((hi - v) / (hi - lo)) * (H - PAD.top - PAD.bottom);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
@@ -69,7 +74,13 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
           ))}
           {reference ? <Line x1={0} x2={width} y1={y(reference.value)} y2={y(reference.value)} stroke={colors.muted} strokeWidth={1.5} strokeDasharray="5 4" /> : null}
           {series.map((s, i) =>
-            s.style === 'line' ? (
+            s.style === 'bars' ? (
+              s.points.map((p) => {
+                const bw = Math.max(4, Math.min(18, (innerW / (spanDays / 7 + 1)) * 0.5));
+                const top = Math.min(y(p.value), y(0));
+                return <Rect key={`${i}-${p.date}`} x={x(p.date) - bw / 2} y={top} width={bw} height={Math.max(1, Math.abs(y(0) - y(p.value)))} rx={2} fill={tones[s.tone]} opacity={0.85} />;
+              })
+            ) : s.style === 'line' ? (
               s.points.length > 1 ? (
                 <Polyline key={i} points={s.points.map((p) => `${x(p.date)},${y(p.value)}`).join(' ')} fill="none" stroke={tones[s.tone]} strokeWidth={2.5} strokeLinejoin="round" />
               ) : s.points.length === 1 ? (
@@ -97,7 +108,7 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
       <View style={styles.legend}>
         {series.filter((s) => s.points.length).map((s) => (
           <View key={s.label} style={styles.legendItem}>
-            <View style={[s.style === 'line' ? styles.swLine : styles.swDot, { backgroundColor: tones[s.tone] }]} />
+            <View style={[s.style === 'line' ? styles.swLine : s.style === 'bars' ? styles.swBar : styles.swDot, { backgroundColor: tones[s.tone] }]} />
             <Text style={styles.legendText}>{s.label}</Text>
           </View>
         ))}
@@ -122,6 +133,7 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   swDot: { width: 8, height: 8, borderRadius: 4 },
   swLine: { width: 14, height: 3, borderRadius: 2 },
+  swBar: { width: 8, height: 12, borderRadius: 2 },
   swDash: { backgroundColor: colors.muted, opacity: 0.6 },
   legendText: { fontSize: 12, color: colors.muted, flexShrink: 1 },
   picked: { marginTop: space.xs, fontSize: 13, color: colors.ink, fontWeight: '600' },

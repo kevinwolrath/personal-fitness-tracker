@@ -18,16 +18,18 @@ import { LineChart } from './LineChart';
  * last, then one card per chart in the user's order. Read-only: values are entered and corrected on Today.
  */
 export function ProgressScreen() {
-  const { store, plan, dataVersion } = useApp();
+  const { store, plan, energy, dataVersion } = useApp();
   const { today } = useClock();
   const [observations, setObservations] = useState<Observation[] | null>(null);
+  const [history, setHistory] = useState<Awaited<ReturnType<typeof store.planHistory>> | undefined>(undefined);
   const [range, setRange] = useState<RangeId>('30d');
   const [layout, setLayout] = useState(chartLayout(null));
   const [editing, setEditing] = useState(false);
 
   const load = useCallback(() => {
     store.observationsFor(progressMetrics).then(setObservations, () => setObservations([]));
-  }, [store]);
+    store.planHistory(plan.id).then(setHistory, () => setHistory(undefined));
+  }, [store, plan.id]);
   useEffect(load, [load, dataVersion]);
   useFocusEffect(load); // values logged on Today show when switching back
   useEffect(() => {
@@ -38,7 +40,7 @@ export function ProgressScreen() {
     preferences.setProgressCharts(next).catch(() => undefined);
   };
 
-  const report = useMemo(() => (observations ? progressReport(observations, plan, today, range) : null), [observations, plan, today, range]);
+  const report = useMemo(() => (observations ? progressReport(observations, plan, today, range, { energy, history }) : null), [observations, plan, today, range, energy, history]);
   const visible = layout.order.filter((id) => !layout.hidden.includes(id));
 
   return (
@@ -78,6 +80,10 @@ export function ProgressScreen() {
               <View style={styles.summaryRow}>
                 <Stat label="Weight (average)" c={report.summary.weight} unit={report.summary.mass} />
                 <Stat label="Waist" c={report.summary.waist} unit={report.summary.length} />
+                <View style={styles.stat}>
+                  <Text style={styles.statValue}>{String(report.summary.workouts.thisWeek ?? 0)}</Text>
+                  <Text style={styles.statLabel}>{`Workouts this week${report.summary.workouts.lastWeek !== null ? ` (${report.summary.workouts.lastWeek} last week)` : ''}`}</Text>
+                </View>
               </View>
             </View>
             {visible.map((id) => (
@@ -93,8 +99,8 @@ export function ProgressScreen() {
   );
 }
 
-function Stat({ label, c, unit }: { label: string; c: WeekCompare; unit: string }) {
-  const value = c.change !== null ? `${c.change > 0 ? '+' : c.change < 0 ? '−' : ''}${Math.abs(c.change).toFixed(1)} ${unit}` : c.thisWeek !== null ? `${c.thisWeek.toFixed(1)} ${unit}` : '—';
+function Stat({ label, c, unit, decimals = 1 }: { label: string; c: WeekCompare; unit: string; decimals?: number }) {
+  const value = (c.change !== null ? `${c.change > 0 ? '+' : c.change < 0 ? '−' : ''}${Math.abs(c.change).toFixed(decimals)} ${unit}` : c.thisWeek !== null ? `${c.thisWeek.toFixed(decimals)} ${unit}` : '—').trim();
   const sub = c.change !== null ? label : c.thisWeek !== null ? `${label}, no data last week` : `${label}, no data this week`;
   return (
     <View style={styles.stat}>
@@ -119,7 +125,7 @@ function ChartCard({ model }: { model: ChartModel }) {
         <>
           {model.headline ? <Text style={styles.headline}>{model.headline}</Text> : null}
           {model.sub ? <Text style={type.detail}>{model.sub}</Text> : null}
-          <LineChart series={model.series} unit={model.unit} reference={model.reference} decimals={model.id === 'rate' ? 2 : 1} testID={`chart-${model.id}-plot`} />
+          <LineChart series={model.series} unit={model.unit} reference={model.reference} decimals={model.id === 'rate' ? 2 : ['workouts', 'active-minutes', 'steps', 'energy', 'energy-balance', 'protein'].includes(model.id) ? 0 : 1} testID={`chart-${model.id}-plot`} />
           {model.note ? <Text style={styles.note}>{model.note}</Text> : null}
         </>
       )}

@@ -1,0 +1,36 @@
+{
+  "$comment": "Exercise inventory and muscle mappings (#56, approved by Kevin). Data only: the priority engine (coverage.ts) knows no exercise or muscle by name. equipment: any one of these types is enough; [] = no equipment (bodyweight).",
+  "inventoryVersion": 1,
+  "muscleGroups": [
+    { "id": "chest", "label": "Chest" },
+    { "id": "upper_back", "label": "Upper back" },
+    { "id": "lats", "label": "Lats" },
+    { "id": "shoulders", "label": "Shoulders" },
+    { "id": "biceps", "label": "Biceps" },
+    { "id": "triceps", "label": "Triceps" },
+    { "id": "forearms", "label": "Forearms" },
+    { "id": "core", "label": "Core/abdominals" },
+    { "id": "lower_back", "label": "Lower back" },
+    { "id": "glutes", "label": "Glutes" },
+    { "id": "quadriceps", "label": "Quadriceps" },
+    { "id": "hamstrings", "label": "Hamstrings" },
+    { "id": "calves", "label": "Calves" }
+  ],
+  "exercises": [
+    { "movement": "knuckle_push_up", "name": "Push-ups (knuckles)", "kind": "strength", "equipment": [], "primary": ["chest"], "secondary": ["triceps", "shoulders", "core"] },
+    { "movement": "chest_press", "name": "Chest press machine", "kind": "strength", "equipment": ["home_gym"], "primary": ["chest"], "secondary": ["triceps", "shoulders"] },
+    { "movement": "lat_pulldown", "name": "Lat pulldown", "kind": "strength", "equipment": ["home_gym"], "primary": ["lats"], "secondary": ["biceps", "upper_back"] },
+    { "movement": "one_arm_kettlebell_row", "name": "One-arm kettlebell row", "kind": "strength", "equipment": ["kettlebell"], "primary": ["upper_back", "lats"], "secondary": ["biceps", "core"] },
+    { "movement": "kettlebell_squat", "name": "Goblet squat", "kind": "strength", "equipment": ["kettlebell"], "primary": ["quadriceps", "glutes"], "secondary": ["core", "hamstrings"] },
+    { "movement": "leg_extension", "name": "Leg extension", "kind": "strength", "equipment": ["home_gym"], "primary": ["quadriceps"], "secondary": [] },
+    { "movement": "kettlebell_romanian_deadlift", "name": "Kettlebell Romanian deadlift", "kind": "strength", "equipment": ["kettlebell"], "primary": ["hamstrings", "glutes"], "secondary": ["lower_back", "core"] },
+    { "movement": "hammer_curl", "name": "Hammer curls", "kind": "strength", "equipment": ["dumbbells", "free_weights"], "primary": ["biceps"], "secondary": ["forearms"] },
+    { "movement": "overhead_press", "name": "Overhead press", "kind": "strength", "equipment": ["dumbbells", "free_weights", "kettlebell"], "primary": ["shoulders"], "secondary": ["triceps", "core"] },
+    { "movement": "plank", "name": "Plank", "kind": "strength", "equipment": [], "primary": ["core"], "secondary": ["shoulders"] },
+    { "movement": "straight_leg_raise", "name": "Straight-leg lying raises", "kind": "strength", "equipment": [], "primary": ["core"], "secondary": [] },
+    { "movement": "standing_calf_raise", "name": "Standing calf raises", "kind": "strength", "equipment": [], "primary": ["calves"], "secondary": [] },
+    { "movement": "heavy_bag", "name": "Heavy bag boxing", "kind": "conditioning", "equipment": ["heavy_bag"], "primary": ["shoulders"], "secondary": ["chest", "triceps", "core"] },
+    { "movement": "vr_boxing", "name": "VR boxing", "kind": "conditioning", "equipment": ["vr_headset"], "primary": ["shoulders"], "secondary": ["chest", "triceps", "core"] },
+    { "movement": "battle_ropes", "name": "Battle ropes", "kind": "conditioning", "equipment": ["battle_ropes"], "primary": ["shoulders"], "secondary": ["upper_back", "core", "forearms"] }
+  ]
+}

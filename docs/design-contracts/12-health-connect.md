@@ -86,7 +86,7 @@ The app can only import what Health Connect holds. To check where a value stoppe
 
 1. **Does Health Connect have it?** Open Health Connect (Settings → Security & privacy → Privacy → Health Connect, or the Health Connect app on Android 13) → **Data and access → Body measurements → Weight → See all entries**. Look for the entry, its time and its app.
 2. **Missing there:** the source app hasn't shared it. In Health Connect, **App permissions → Fitbit**: is **Weight** allowed under "Allow to write"? In the Fitbit app, check its Health Connect sharing. Open Fitbit to let it sync, then check again. Exports can be delayed. The app's 7-day re-read picks up a late record on the next open or **Sync now**.
-3. **Present there, missing here:** ☰ → Health Connect. "Not allowed" means turn on Weight for Personal Fitness Tracker in Health Connect → App permissions. "Couldn't read" means tap **Sync now**. "None in Health Connect" while step 1 shows the entry is an app bug: report it with the entry's time and app, not the value.
+3. **Present there, missing here:** ☰ → Health Connect. "Not allowed" means turn on Weight for Body Anvil in Health Connect → App permissions. "Couldn't read" means tap **Sync now**. "None in Health Connect" while step 1 shows the entry is an app bug: report it with the entry's time and app, not the value.
 
 **Test records** without a real scale: Google's **Health Connect Toolbox** app can insert records. Insert a Weight of 95.5 kg at 7:48 am today, then open this app (or tap **Sync now**). It appears in the Weight tile as "Health Connect · Health Connect Toolbox" (shown as "Another app" unless named) for today's local date. Delete it in Health Connect, sync again, and it disappears here.
 

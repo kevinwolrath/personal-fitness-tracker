@@ -1,6 +1,8 @@
-# Personal Fitness Tracker
+# Body Anvil
 
-A deliberately simple, local-first fitness diary for Android and iOS, built with Expo, React Native and TypeScript. The app renders a **plan package**, a versioned JSON file, rather than hard-coding a plan, and keeps one continuous **Daily Log** of what actually happened.
+_Hammer Out Your Destiny._ Formerly Personal Fitness Tracker. Internal identifiers (package ID, storage keys, `pft-*` formats, repository name) keep the old name on purpose (#59).
+
+A deliberately simple, local-first personal health app (planning, nutrition, activity and progress) for Android and iOS, built with Expo, React Native and TypeScript. The app renders a **plan package**, a versioned JSON file, rather than hard-coding a plan, and keeps one continuous **Daily Log** of what actually happened.
 
 **Architecture:** the Daily Log is the primary application surface. Today is the current date within that log. Every date uses the same underlying day view, canonical data model and editing behaviour. New capabilities extend the shared model and continuous history rather than creating isolated feature slices.
 

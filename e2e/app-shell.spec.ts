@@ -44,6 +44,16 @@ test('vertical budget: "Do this next" / "Up next" (or, with no card, the measure
   }
 });
 
+test('#59 the app bar names the app Body Anvil, with no tagline; the page title matches', async ({ page }) => {
+  await openAt(page, MONDAY);
+  await expect(page.getByTestId('app-bar').getByTestId('app-name')).toHaveText('Body Anvil');
+  await expect(page.getByTestId('app-bar')).not.toContainText(/Personal Fitness Tracker|Hammer Out Your Destiny/);
+  await expect(page).toHaveTitle(/Body Anvil/);
+  // Unchanged on another tab: the app bar is the shell, not the screen.
+  await page.getByRole('tab', { name: 'Progress' }).click();
+  await expect(page.getByTestId('app-name')).toHaveText('Body Anvil');
+});
+
 test('modal routes have their own header, not the app bar', async ({ page }) => {
   await openAt(page, MONDAY);
   await chooseFromMenu(page, 'Configure with AI');

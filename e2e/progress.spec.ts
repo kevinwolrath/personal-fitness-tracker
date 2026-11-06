@@ -78,11 +78,45 @@ test('a weigh-in logged on Today appears on Progress', async ({ page }) => {
   await expect(page.getByTestId('chart-weight')).toContainText('96.4 kg');
 });
 
+const activity = [
+  ...Array.from({ length: 21 }, (_, i) => ({ id: `s${i}`, date: day(-20 + i), metric: 'steps', value: 6000 + (i % 5) * 900, unit: 'count', kind: 'observed', label: null, note: null, source: { ...src, type: 'integration', app: 'fitbit', importId: 'health-connect' }, recordedAt: `${day(-20 + i)}T20:00:00Z` })),
+  ...Array.from({ length: 10 }, (_, i) => ({ id: `e${i}`, date: day(-9 + i), metric: 'energy_intake', value: 8000 + (i % 3) * 400, unit: 'kJ', kind: 'observed', label: null, note: null, source: src, recordedAt: `${day(-9 + i)}T20:00:00Z` })),
+  ...Array.from({ length: 10 }, (_, i) => ({ id: `t${i}`, date: day(-9 + i), metric: 'total_energy', value: 9500 + (i % 4) * 300, unit: 'kJ', kind: 'observed', label: null, note: null, source: { ...src, type: 'integration', app: 'fitbit', importId: 'health-connect' }, recordedAt: `${day(-9 + i)}T21:00:00Z` })),
+  ...Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, date: day(-9 + i), metric: 'protein_intake', value: 140 + (i % 4) * 10, unit: 'g', kind: 'observed', label: null, note: null, source: src, recordedAt: `${day(-9 + i)}T20:00:00Z` })),
+];
+const doneMonday = { 'weight-loss-v1|2026-11-02': { resistance: { activityId: 'resistance', status: 'done', count: 0, labelSnapshot: 'Strength workout', updatedAt: 't' } } };
+
+async function openPart2(page: Page) {
+  await seedRecords(page, { observations: [...observations, ...activity], activities: doneMonday });
+  await page.clock.setFixedTime(new Date(`${TODAY}T09:00:00+11:00`));
+  await page.goto('/');
+  await page.getByTestId('tab-bar').getByRole('tab', { name: 'Progress' }).click();
+  await expect(page.getByTestId('chart-workouts')).toBeAttached();
+}
+
+test('part 2: workouts done vs scheduled, steps, energy (estimates) and protein against the target', async ({ page }) => {
+  await openPart2(page);
+  await expect(page.getByTestId('chart-workouts')).toContainText(/This week: 1 of \d+ done/);
+  await expect(page.getByTestId('chart-steps')).toContainText('a day');
+  await expect(page.getByTestId('chart-energy')).toContainText('Estimate');
+  await expect(page.getByTestId('chart-energy')).toContainText(/kJ a day/);
+  await expect(page.getByTestId('chart-energy-balance')).toContainText('kJ/day');
+  await expect(page.getByTestId('chart-protein')).toContainText('target 160–180 g');
+  await expect(page.getByTestId('chart-active-minutes-empty')).toBeVisible();
+  await expect(page.getByTestId('progress-summary')).toContainText('1Workouts this week (0 last week)');
+});
+
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
   test('progress, 30 days', async ({ page }) => {
     await openProgress(page);
     await expect(page.getByTestId('chart-weight-plot')).toBeVisible();
     await expect(page).toHaveScreenshot('progress-30d.png');
+  });
+  test('progress, activity and nutrition charts', async ({ page }) => {
+    await openPart2(page);
+    await page.getByTestId('chart-workouts').evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.waitForTimeout(200);
+    await expect(page).toHaveScreenshot('progress-activity.png');
   });
 });

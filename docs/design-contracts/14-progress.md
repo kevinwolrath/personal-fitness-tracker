@@ -2,7 +2,7 @@
 
 The **Progress** tab, beside Today in the bottom tab bar (02), shows whether the plan is working. It is read-only: values are entered and corrected on Today (or imported), never here.
 
-The first delivery covers measurements and weight trends. Nutrition, activity, steps and Health Connect charts follow in a second PR.
+Delivered in two parts: measurements and weight trends (PR #64), then activity, energy and protein (part 2).
 
 ## Layout (option A)
 
@@ -11,7 +11,7 @@ The first delivery covers measurements and weight trends. Nutrition, activity, s
   - **Edit charts**;
   - the range: 7 days, 30 days (the default), 90 days or All.
 - **Content:**
-  - a **This week vs last** card: the change in the weekly average weight, and in the latest waist measurement;
+  - a **This week vs last** card: the change in the weekly average weight and in the latest waist measurement, and workouts done this week (with last week's count);
   - one card per chart, in the user's order;
   - a footnote: dots are values as recorded, lines are calculated, and nothing is filled in.
 - **Edit charts** is a sheet listing every chart with a show/hide switch and **Move up / Move down** buttons. There's no drag, so it works with screen readers.
@@ -30,6 +30,17 @@ The first delivery covers measurements and weight trends. Nutrition, activity, s
 | Goal | The plan's mass goal (dashed line) and the 7-day average | Projection is a date **range** from the trend ± its uncertainty, "a projection, not a promise". No projection when moving away or with too little data. |
 | Body fat | Scale readings (dots), **Estimate** | Fat and lean mass estimated on days with both a weight and a body-fat reading. Notes that consumer scales estimate. |
 
+## Charts (part 2: activity, energy and protein)
+
+| Chart | Shows | Rules |
+|---|---|---|
+| Workouts | Per week: sessions done (bars) and scheduled (dots) | A workout is a required plan item with a session, or a strength or conditioning purpose; walks and errands count in active minutes and steps instead. Scheduled is computed from the **current plan** with the day's day-type override; skipped isn't done. Sessions recorded by other apps are counted separately in the subtitle. |
+| Active minutes | Minutes per week (bars) | A wearable's active minutes for a day, or else that day's recorded workout durations, never both. |
+| Steps | Days (dots) and a 7-day average (line) | Distance over the range in the subtitle. |
+| Energy eaten vs burned | Eaten (logged or imported) and burned (a wearable), **Estimate** | In the phone's energy unit (11). Ticked planned meals never count as eaten. Says both are estimates. |
+| Energy balance | Weekly average of eaten minus burned (bars), **Estimate** | Only weeks with both. Says the weight trend is the better guide. |
+| Protein | Logged or imported protein (dots) against the plan's protein target minimum | Ticked planned meals never count. |
+
 - **Every chart:**
   - units and a legend;
   - an accessible one-sentence summary;
@@ -37,4 +48,4 @@ The first delivery covers measurements and weight trends. Nutrition, activity, s
 - **Tap to inspect** shows the nearest value's date, value and source: entered by you, imported from an app, from a screenshot, or calculated.
 - **No interpolation:** gaps stay gaps, and measured values are never drawn as continuous lines.
 - **Calculations** are pure functions in `src/progress/series.ts` and `src/progress/report.ts`.
-- **Data** comes from `store.observationsFor(metrics)`, which returns observed values only, never inferred ones.
+- **Data** comes from `store.observationsFor(metrics)`, which returns observed values only, never inferred ones, and `store.planHistory(planId)` (activity logs and day-type overrides) for workouts.

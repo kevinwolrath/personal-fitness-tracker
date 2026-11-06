@@ -7,6 +7,17 @@ The workflow `.github/workflows/google-play-internal.yml` is **manual only** and
 - Android package: `com.questspire.personalfitnesstracker`
 - Play track: `internal`
 
+The visible name is **Body Anvil** (#59). The package, upload key, alias and secret names keep the old name on purpose, so the same Play app updates in place. `src/repo/__tests__/identity.test.ts` guards them.
+
+## Release hold: Body Anvil rebrand
+
+**Don't run this workflow for a build named Body Anvil until all of these are done:**
+- the copy is approved (#59);
+- the artwork is approved (#60);
+- the name check is complete (IP Australia, and an exact Play title search).
+
+Listing text and checklist: [`docs/store/google-play-listing.md`](store/google-play-listing.md).
+
 ## GitHub Actions secrets
 
 Configure these repository Actions secrets:

@@ -1,0 +1,606 @@
+{
+  "$comment": "Bundled sample meals (#53): generic, affordable, varied. Hand-sized portions only (palm = protein, fist = vegetables or fruit, cupped hand = carbohydrate, thumb = fats). No energy or nutrient targets. 'contains' drives dietary and allergy filtering: a meal is only offered if it contains nothing the user excludes. Peanuts count as nuts for allergy safety. Tags are conservative (an optional or alternative ingredient counts). Filtering by ingredient type can't guarantee a meal is allergen-free: the app tells users to check labels. 'soy' and 'sesame' are recorded but not yet filterable. A qualified dietitian should review these before public release.",
+  "meals": [
+    {
+      "id": "oats-yoghurt-fruit",
+      "slot": "breakfast",
+      "label": "Oats with yoghurt and fruit",
+      "contains": [
+        "dairy",
+        "gluten"
+      ],
+      "ingredients": [
+        {
+          "name": "Rolled oats",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Yoghurt",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Fruit (banana, berries or apple)",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Seeds",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Soak or cook the oats in water, then top with yoghurt, fruit and seeds. Use certified gluten-free oats if needed; plant yoghurt makes it dairy-free."
+    },
+    {
+      "id": "eggs-toast-tomato",
+      "slot": "breakfast",
+      "label": "Eggs on toast with tomato",
+      "contains": [
+        "egg",
+        "gluten"
+      ],
+      "ingredients": [
+        {
+          "name": "Eggs",
+          "measure": "2 eggs (1 palm)"
+        },
+        {
+          "name": "Wholegrain toast",
+          "measure": "1–2 slices"
+        },
+        {
+          "name": "Tomato or spinach",
+          "measure": "1 fist"
+        }
+      ],
+      "preparation": "Scramble, poach or boil the eggs. Serve on toast with sliced tomato or wilted spinach."
+    },
+    {
+      "id": "tofu-scramble-potato",
+      "slot": "breakfast",
+      "label": "Tofu scramble with spinach and potato",
+      "contains": [
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Firm tofu",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Spinach or other greens",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Cooked potato",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Crumble the tofu into a hot pan with the oil, add turmeric, salt and pepper, then the greens and diced potato."
+    },
+    {
+      "id": "chia-pudding-fruit",
+      "slot": "breakfast",
+      "label": "Chia pudding with fruit",
+      "contains": [
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Chia seeds",
+          "measure": "1 thumb"
+        },
+        {
+          "name": "Soy milk or other plant milk",
+          "measure": "1 cup"
+        },
+        {
+          "name": "Fruit",
+          "measure": "1 fist"
+        }
+      ],
+      "preparation": "Stir the chia into the milk and leave it in the fridge overnight. Top with fruit. Soy milk gives the most protein."
+    },
+    {
+      "id": "rice-porridge-egg",
+      "slot": "breakfast",
+      "label": "Savoury rice porridge with egg and greens",
+      "contains": [
+        "egg"
+      ],
+      "ingredients": [
+        {
+          "name": "Cooked rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Egg",
+          "measure": "1–2 eggs"
+        },
+        {
+          "name": "Greens or spring onion",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Salt and pepper",
+          "measure": "to taste"
+        }
+      ],
+      "preparation": "Simmer the rice in water or vegetable stock until soft, stir in the greens and top with a boiled or poached egg."
+    },
+    {
+      "id": "peanut-toast-banana",
+      "slot": "breakfast",
+      "label": "Peanut butter toast with banana",
+      "contains": [
+        "gluten",
+        "nuts",
+        "dairy",
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Wholegrain toast",
+          "measure": "1–2 slices"
+        },
+        {
+          "name": "Peanut butter",
+          "measure": "1 thumb"
+        },
+        {
+          "name": "Banana",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Glass of milk or soy milk",
+          "measure": "1 cup"
+        }
+      ],
+      "preparation": "Spread the toast with peanut butter and top with sliced banana."
+    },
+    {
+      "id": "bean-veg-wrap",
+      "slot": "lunch",
+      "label": "Bean and veg wrap",
+      "contains": [
+        "gluten",
+        "sesame",
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Wholegrain wrap",
+          "measure": "1 wrap"
+        },
+        {
+          "name": "Beans or tofu",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Salad vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Hummus",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Warm the beans with a little spice, then fill the wrap with beans, salad and hummus. A corn tortilla makes it gluten-free."
+    },
+    {
+      "id": "lentil-soup-bread",
+      "slot": "lunch",
+      "label": "Lentil and vegetable soup with bread",
+      "contains": [
+        "gluten"
+      ],
+      "ingredients": [
+        {
+          "name": "Red lentils",
+          "measure": "1 cupped hand (dry)"
+        },
+        {
+          "name": "Onion, carrot and celery",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Bread",
+          "measure": "1 slice"
+        }
+      ],
+      "preparation": "Simmer the lentils and chopped vegetables in water or vegetable stock for 20 minutes. Makes several portions; it freezes well. Rice cakes instead of bread make it gluten-free."
+    },
+    {
+      "id": "egg-fried-rice",
+      "slot": "lunch",
+      "label": "Egg and vegetable fried rice",
+      "contains": [
+        "egg",
+        "gluten",
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Cooked rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Eggs",
+          "measure": "2 eggs (1 palm)"
+        },
+        {
+          "name": "Frozen mixed vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Tamari or soy sauce",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Stir-fry the vegetables, push them aside and scramble the eggs, then add the rice and tamari. Use tamari for gluten-free."
+    },
+    {
+      "id": "chickpea-potato-bowl",
+      "slot": "lunch",
+      "label": "Chickpea, potato and vegetable bowl",
+      "contains": [],
+      "ingredients": [
+        {
+          "name": "Chickpeas",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Cooked potato or rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Mixed vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Olive oil and lemon",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Combine warm or cold chickpeas, potato and vegetables. Dress with oil, lemon, salt and pepper."
+    },
+    {
+      "id": "tuna-pasta-salad",
+      "slot": "lunch",
+      "label": "Tuna and sweetcorn pasta salad",
+      "contains": [
+        "fish",
+        "gluten"
+      ],
+      "ingredients": [
+        {
+          "name": "Tinned tuna",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Cooked pasta",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Sweetcorn, cucumber and tomato",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Olive oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Mix everything with the oil, lemon and pepper. Gluten-free pasta works the same."
+    },
+    {
+      "id": "chicken-rice-salad",
+      "slot": "lunch",
+      "label": "Chicken, rice and salad",
+      "contains": [
+        "meat"
+      ],
+      "ingredients": [
+        {
+          "name": "Cooked chicken",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Salad",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Dressing or avocado",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Use leftover or roast chicken over rice and salad."
+    },
+    {
+      "id": "lentil-curry-rice",
+      "slot": "dinner",
+      "label": "Lentil curry with rice and greens",
+      "contains": [],
+      "ingredients": [
+        {
+          "name": "Lentils",
+          "measure": "1 palm (cooked)"
+        },
+        {
+          "name": "Rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Greens and tomatoes",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Fry onion, garlic and curry spices in the oil, add lentils, tinned tomatoes and water and simmer until soft. Stir in the greens; serve with rice."
+    },
+    {
+      "id": "chicken-traybake",
+      "slot": "dinner",
+      "label": "Chicken and vegetable tray bake",
+      "contains": [
+        "meat"
+      ],
+      "ingredients": [
+        {
+          "name": "Chicken thighs or breast",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Potatoes",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Mixed vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Toss everything in oil and herbs and roast at 200 °C for about 35 minutes, until the chicken is cooked through."
+    },
+    {
+      "id": "baked-fish-potatoes",
+      "slot": "dinner",
+      "label": "Baked fish with potatoes and peas",
+      "contains": [
+        "fish"
+      ],
+      "ingredients": [
+        {
+          "name": "White fish fillet",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Potatoes",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Peas or green beans",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Bake the fish with lemon for 12–15 minutes; boil the potatoes and vegetables."
+    },
+    {
+      "id": "bean-chilli-rice",
+      "slot": "dinner",
+      "label": "Bean chilli with rice",
+      "contains": [],
+      "ingredients": [
+        {
+          "name": "Kidney or black beans",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Rice",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Tomatoes, peppers and onion",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Avocado or oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Fry onion and peppers, add beans, tinned tomatoes and chilli spices and simmer for 20 minutes. Serve over rice."
+    },
+    {
+      "id": "mince-pasta-tomato",
+      "slot": "dinner",
+      "label": "Pasta with lean mince and tomato sauce",
+      "contains": [
+        "meat",
+        "gluten",
+        "dairy"
+      ],
+      "ingredients": [
+        {
+          "name": "Lean mince",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Pasta",
+          "measure": "1 cupped hand (cooked)"
+        },
+        {
+          "name": "Tomato sauce with vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Grated cheese (optional)",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Brown the mince with onion, add tinned tomatoes and grated vegetables, simmer and serve over pasta. Lentils instead of mince make it vegetarian."
+    },
+    {
+      "id": "tofu-stir-fry-noodles",
+      "slot": "dinner",
+      "label": "Tofu and vegetable stir-fry with rice noodles",
+      "contains": [
+        "soy"
+      ],
+      "ingredients": [
+        {
+          "name": "Firm tofu",
+          "measure": "1 palm"
+        },
+        {
+          "name": "Rice noodles",
+          "measure": "1 cupped hand (cooked)"
+        },
+        {
+          "name": "Stir-fry vegetables",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Oil, garlic and ginger",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Brown the cubed tofu in oil with garlic and ginger, add the vegetables, then the cooked noodles. Season with salt; tamari or soy sauce only if they suit your diet (soy sauce contains wheat)."
+    },
+    {
+      "id": "veg-omelette-bread",
+      "slot": "dinner",
+      "label": "Vegetable omelette with salad and bread",
+      "contains": [
+        "egg",
+        "gluten"
+      ],
+      "ingredients": [
+        {
+          "name": "Eggs",
+          "measure": "2–3 eggs (1 palm)"
+        },
+        {
+          "name": "Vegetables (onion, pepper, spinach)",
+          "measure": "2 fists"
+        },
+        {
+          "name": "Bread",
+          "measure": "1 slice"
+        },
+        {
+          "name": "Oil",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Soften the vegetables in the oil, pour over the beaten eggs and cook gently. Serve with salad and bread."
+    },
+    {
+      "id": "fruit-and-nuts",
+      "slot": "snack",
+      "label": "Fruit and a few nuts",
+      "contains": [
+        "nuts"
+      ],
+      "ingredients": [
+        {
+          "name": "Fruit",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Nuts",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": ""
+    },
+    {
+      "id": "yoghurt-fruit",
+      "slot": "snack",
+      "label": "Yoghurt and fruit",
+      "contains": [
+        "dairy"
+      ],
+      "ingredients": [
+        {
+          "name": "Plain yoghurt",
+          "measure": "1 fist"
+        },
+        {
+          "name": "Fruit",
+          "measure": "1 fist"
+        }
+      ],
+      "preparation": ""
+    },
+    {
+      "id": "hummus-veg-sticks",
+      "slot": "snack",
+      "label": "Hummus with vegetable sticks",
+      "contains": [
+        "sesame"
+      ],
+      "ingredients": [
+        {
+          "name": "Hummus",
+          "measure": "2 thumbs"
+        },
+        {
+          "name": "Carrot, cucumber or pepper sticks",
+          "measure": "1 fist"
+        }
+      ],
+      "preparation": ""
+    },
+    {
+      "id": "boiled-egg-fruit",
+      "slot": "snack",
+      "label": "Boiled egg and a piece of fruit",
+      "contains": [
+        "egg"
+      ],
+      "ingredients": [
+        {
+          "name": "Boiled egg",
+          "measure": "1–2 eggs"
+        },
+        {
+          "name": "Fruit",
+          "measure": "1 fist"
+        }
+      ],
+      "preparation": ""
+    },
+    {
+      "id": "roasted-chickpeas",
+      "slot": "snack",
+      "label": "Roasted chickpeas",
+      "contains": [],
+      "ingredients": [
+        {
+          "name": "Chickpeas",
+          "measure": "1 cupped hand"
+        },
+        {
+          "name": "Oil and spices",
+          "measure": "1 thumb"
+        }
+      ],
+      "preparation": "Roast drained chickpeas with oil and spices at 200 °C for 25 minutes. Keeps for a few days."
+    }
+  ]
+}

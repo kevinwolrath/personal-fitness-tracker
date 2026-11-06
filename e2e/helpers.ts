@@ -81,7 +81,7 @@ export const historyObservations = [
 export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');
 
 /** App-level operations live in the header menu (#15). */
-export async function chooseFromMenu(page: Page, label: 'Import from screenshots' | 'Configure with AI' | 'Export all data') {
+export async function chooseFromMenu(page: Page, label: 'Import from screenshots' | 'Configure with AI' | 'Export all data' | 'Edit setup answers') {
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
 }

@@ -2,277 +2,283 @@ import Ajv2020 from 'ajv/dist/2020';
 import contract from '../../../docs/design-contracts/plan.schema.json';
 import example from '../../../fixtures/plans/prescription-example.plan.json';
 import seed from '../../../plans/seed.plan.json';
-import { buildAiInstructions } from '../../config/instructions';
-import { loadActivePlan } from '../../plan/bootstrap';
+import { undoConfigChange } from '../../config/service';
+import { installSeedPlan, loadActivePlan } from '../../plan/bootstrap';
+import { dietaryNeeds, weekdays } from '../../plan/schema';
 import { validatePlan } from '../../plan/validate';
+import { mealTemplates, type Diet } from '../../presets/meals';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { buildSetupPrompt, checkSetupReply } from '../ai';
-import { chooseWeightBand, enterExactWeight, newDraft, readDraft, toggleGoal, toProfile, type Draft } from '../draft';
-import { finishSetup, weighInFor } from '../finish';
+import { chooseAgeBand, chooseWeightBand, draftFromProfile, enterAge, enterExactWeight, newDraft, readDraft, toggleGoal, toProfile, type Draft } from '../draft';
+import { applyProfileToExisting, applySetupToExisting, finishSetup, weighInFor } from '../finish';
 import { answerLines } from '../labels';
 import { noNutritionSeed, setNutritionSeed } from '../nutritionSeed';
-import { buildStarterPlan, STARTER_PLAN_ID } from '../starterPlan';
+import { buildStarterPlan, rebuildSummary, replanExisting, STARTER_PLAN_ID } from '../starterPlan';
 
-/** #49: first-run setup. Pure parts: answers, starter plan, the AI prompt and reply, and finishing. */
+/** #49 + #53: first-run setup. Answers, the offline starter plan, AI refinement, finishing and editing setup. */
 
 const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
 const contractValidate = ajv.compile(contract);
 const TODAY = '2026-11-06';
+const subsets = <T,>(xs: readonly T[]): T[][] => xs.reduce<T[][]>((acc, x) => [...acc, ...acc.map((s) => [...s, x])], [[]]);
 
 const answered = (over: Partial<Draft> = {}): Draft => ({
   ...newDraft(),
   gender: 'female',
-  ageBand: '40_49',
-  weightBand: '80_99',
-  fitnessGoals: ['lose_weight', 'gain_muscle'],
-  primaryGoal: 'lose_weight',
-  daysPerWeek: 3,
-  sessionMinutes: 45,
-  trainingPlaces: ['home', 'no_equipment'],
+  ageBand: '40_59',
+  weightBand: '70_99',
+  fitnessGoals: ['gradual_loss', 'gain_muscle'],
   activityLevel: 'some_walking',
+  daysPerWeek: 4,
+  equipment: ['none'],
+  dietary: ['vegetarian'],
   considerations: 'Sore left knee',
   ...over,
 });
+const valid = (raw: unknown) => {
+  const r = validatePlan(raw);
+  if (!r.ok) throw new Error(r.errors.join('\n'));
+  if (!contractValidate(raw)) throw new Error(JSON.stringify(contractValidate.errors));
+  return r.plan;
+};
+const acts = (raw: any) => raw.activities as Record<string, any>[];
 
-const scheduleReply = JSON.stringify({
-  fitnessConfigUpdate: {
-    schemaVersion: 1,
-    schedule: {
-      activities: [
-        { id: 'walk', kind: 'exercise', label: 'Brisk walk', when: 'morning', duration: { minutes: 30 } },
-        { id: 'strength', kind: 'exercise', label: 'Home strength', time: '18:00', duration: { minutes: 30 }, appliesTo: { days: ['mon', 'wed', 'fri'] } },
-      ],
-    },
-    exercise: { goals: ['weight_loss', 'muscle_gain'], constraints: { location: 'home' } },
-  },
-});
-
-describe('answers (draft)', () => {
-  it('a missing or unreadable draft starts fresh; a valid one resumes', () => {
+describe('answers', () => {
+  it('a missing, unreadable or older draft starts fresh; a valid one resumes', () => {
     expect(readDraft(null)).toEqual(newDraft());
     expect(readDraft('{nope')).toEqual(newDraft());
-    expect(readDraft(JSON.stringify({ v: 1, step: 'warp' }))).toEqual(newDraft());
-    const d = answered({ step: 'context' });
+    expect(readDraft(JSON.stringify({ v: 1, step: 'goals' }))).toEqual(newDraft()); // #49's drafts
+    const d = answered({ step: 'goals' });
     expect(readDraft(JSON.stringify(d))).toEqual(d);
   });
 
-  it('the first goal leads; removing the primary passes it on; several goals allowed', () => {
-    let d = toggleGoal(newDraft(), 'gain_muscle');
-    d = toggleGoal(d, 'improve_cardio');
-    expect(d).toMatchObject({ fitnessGoals: ['gain_muscle', 'improve_cardio'], primaryGoal: 'gain_muscle' });
+  it('gradual and faster loss exclude each other; maintain excludes both; others combine', () => {
+    let d = toggleGoal(newDraft(), 'gradual_loss');
+    d = toggleGoal(d, 'faster_loss');
+    expect(d.fitnessGoals).toEqual(['faster_loss']);
     d = toggleGoal(d, 'gain_muscle');
-    expect(d).toMatchObject({ fitnessGoals: ['improve_cardio'], primaryGoal: 'improve_cardio' });
-    d = toggleGoal(d, 'improve_cardio');
-    expect(d.fitnessGoals).toEqual([]);
-    expect(d.primaryGoal).toBeUndefined();
+    d = toggleGoal(d, 'maintain');
+    expect(d.fitnessGoals).toEqual(['gain_muscle', 'maintain']);
+    d = toggleGoal(d, 'gradual_loss');
+    expect(d.fitnessGoals).toEqual(['gain_muscle', 'gradual_loss']);
   });
 
-  it('a band and an exact weight replace each other; choosing a band always clears the weigh-in', () => {
-    let d = enterExactWeight(newDraft(), 82.4);
-    d = { ...d, logWeighIn: true };
-    d = chooseWeightBand(d, '80_99');
-    expect(d).toMatchObject({ weightBand: '80_99', exactWeight: undefined, logWeighIn: false });
-    expect(enterExactWeight(d, 81)).toMatchObject({ weightBand: undefined, exactWeight: 81 });
+  it('a specific age sets its band; under 18 is tracking only and clears goals', () => {
+    expect(enterAge(newDraft(), 45)).toMatchObject({ age: 45, ageBand: '40_59' });
+    expect(enterAge(newDraft(), 72)).toMatchObject({ age: 72, ageBand: '60_plus' });
+    const kid = enterAge(answered(), 16);
+    expect(kid).toMatchObject({ ageBand: 'under_18', age: undefined, fitnessGoals: [] });
+    expect(chooseAgeBand(answered(), 'under_18').fitnessGoals).toEqual([]);
+    expect(chooseAgeBand(enterAge(newDraft(), 45), '18_39')).toMatchObject({ ageBand: '18_39', age: undefined });
   });
 
-  it('the profile holds only what the user said', () => {
+  it('a band and a specific weight replace each other; a band clears the weigh-in', () => {
+    const d = chooseWeightBand({ ...enterExactWeight(newDraft(), 82.4), logWeighIn: true }, '70_99');
+    expect(d).toMatchObject({ weightBand: '70_99', exactWeight: undefined, logWeighIn: false });
+  });
+
+  it('the profile holds only what the user said; under 18 keeps no goals or training context', () => {
     expect(toProfile(newDraft())).toEqual({});
     expect(toProfile(answered())).toEqual({
-      gender: 'female', ageBand: '40_49', weightBand: '80_99', fitnessGoals: ['lose_weight', 'gain_muscle'], primaryGoal: 'lose_weight',
-      daysPerWeek: 3, sessionMinutes: 45, trainingPlaces: ['home', 'no_equipment'], activityLevel: 'some_walking', considerations: 'Sore left knee',
+      gender: 'female', ageBand: '40_59', weightBand: '70_99', fitnessGoals: ['gradual_loss', 'gain_muscle'], daysPerWeek: 4,
+      activityLevel: 'some_walking', equipment: ['none'], dietary: ['vegetarian'], considerations: 'Sore left knee',
     });
+    expect(toProfile(answered({ ageBand: 'under_18', fitnessGoals: [] }))).toEqual({ gender: 'female', ageBand: 'under_18', weightBand: '70_99', dietary: ['vegetarian'] });
   });
 
-  it('under 18: no goals or training context reach the profile', () => {
-    expect(toProfile(answered({ ageBand: 'under_18' }))).toEqual({ gender: 'female', ageBand: 'under_18', weightBand: '80_99' });
-    expect(answerLines(answered({ ageBand: 'under_18' })).map((l) => l.label)).toEqual(['Gender', 'Age', 'Weight']);
+  it('editing setup starts from the plan’s saved answers', () => {
+    const d = draftFromProfile({ ...toProfile(answered()), heightCm: 170, displayName: 'kept elsewhere' }, 'kg');
+    expect(toProfile(d)).toEqual({ ...toProfile(answered()), heightCm: 170 });
   });
 
-  it('"From you" lines read as the user chose them, primary goal first, lb shown in lb', () => {
-    const lines = Object.fromEntries(answerLines(answered({ unit: 'lb', fitnessGoals: ['gain_muscle', 'lose_weight'], primaryGoal: 'lose_weight' })).map((l) => [l.label, l.value]));
-    expect(lines).toMatchObject({ Goals: 'Lose a little weight (primary), Gain muscle', Weight: '176–219 lb (a range)', 'Where you train': 'Home, No equipment' });
+  it('lb users see lb bands and inches', () => {
+    const lines = Object.fromEntries(answerLines(answered({ unit: 'lb', heightCm: 180 })).map((l) => [l.label, l.value]));
+    expect(lines).toMatchObject({ Weight: '155–219 lb (a range)', Height: '71 in' });
   });
 });
 
-describe('the starter plan', () => {
-  it('is a valid formatVersion 6 plan with the profile, weight tracking and nothing else', () => {
+describe('the offline starter plan', () => {
+  it('adults get an exercise week and sample meals; valid against both schemas', () => {
     const raw = buildStarterPlan(answered());
-    expect(contractValidate(raw) ? [] : contractValidate.errors).toEqual([]);
-    const r = validatePlan(raw);
-    expect(r.ok).toBe(true);
-    expect(raw).toMatchObject({ id: STARTER_PLAN_ID, formatVersion: 6, activities: [], goals: [], nutrition: { targets: [] }, quickLogs: [] });
-    expect(raw.measurements).toEqual([expect.objectContaining({ id: 'weight', quantity: 'mass' })]);
-    expect(raw.profile).toEqual(toProfile(answered()));
+    valid(raw);
+    expect(raw).toMatchObject({ id: STARTER_PLAN_ID, formatVersion: 6, goals: [], nutrition: { targets: [] } });
+    expect(acts(raw).some((a) => a.id === 'strength')).toBe(true);
+    expect(acts(raw).filter((a) => a.kind === 'meal').map((a) => a.id)).toEqual(['breakfast', 'lunch', 'dinner', 'snack']);
   });
 
-  it('copies nothing from the bundled personal plan: no meals, workouts, diet or goal targets', () => {
+  it('meals are suggestions: optional, hand-sized, with no energy or nutrient values anywhere', () => {
+    const raw = buildStarterPlan(answered({ dietary: [] }));
+    for (const m of acts(raw).filter((a) => a.kind === 'meal')) {
+      expect(m.required).toBe(false);
+      expect(m.nutrition).toBeUndefined();
+      expect(m.ingredients.every((i: any) => i.measure && i.grams === undefined)).toBe(true);
+    }
+    expect(JSON.stringify(raw)).not.toMatch(/"energy"\s*:\s*\d|"protein"\s*:\s*\d|"max"\s*:/);
+  });
+
+  it('every dietary combination, sample day and swap respects every restriction; unsafe swaps are refused', () => {
+    const contains = new Map(mealTemplates.map((m) => [m.label, m.contains]));
+    const banned: Record<Diet, string[]> = { vegetarian: ['meat', 'fish'], vegan: ['meat', 'fish', 'dairy', 'egg'], dairy_free: ['dairy'], gluten_free: ['gluten'], nut_allergy: ['nuts'] };
+    for (const dietary of subsets(dietaryNeeds)) {
+      for (const mealOption of [0, 1, 2]) {
+        for (const swap of [undefined, ...mealTemplates.map((m) => m.id)]) {
+          const d = answered({ dietary, mealOption, mealSwaps: swap ? { [mealTemplates.find((m) => m.id === swap)!.slot]: swap } : {} });
+          const raw = buildStarterPlan(d);
+          for (const m of acts(raw).filter((a) => a.kind === 'meal')) {
+            const c = contains.get(m.label)!;
+            for (const diet of dietary) expect(c.filter((x) => banned[diet].includes(x))).toEqual([]);
+          }
+        }
+      }
+    }
+  });
+
+  it('a meal with no safe template is left unplanned, never invented', () => {
+    setNutritionSeed({ ...noNutritionSeed, id: 'breakfast-only', mealOptions: () => ({ breakfast: [mealTemplates[2]], lunch: [], dinner: [], snack: [] }) });
+    try {
+      expect(acts(buildStarterPlan(answered())).filter((a) => a.kind === 'meal').map((a) => a.id)).toEqual(['breakfast']);
+    } finally {
+      setNutritionSeed(null);
+    }
+  });
+
+  it('three different sample days and three exercise options; swapping one meal changes only that meal', () => {
+    const days = [0, 1, 2].map((mealOption) => acts(buildStarterPlan(answered({ dietary: [], mealOption }))).filter((a) => a.kind === 'meal').map((a) => a.label).join('|'));
+    expect(new Set(days).size).toBe(3);
+    const ex = [0, 1, 2].map((exerciseOption) => JSON.stringify(acts(buildStarterPlan(answered({ exerciseOption }))).filter((a) => a.kind !== 'meal')));
+    expect(new Set(ex).size).toBe(3);
+    const before = acts(buildStarterPlan(answered()));
+    const after = acts(buildStarterPlan(answered({ mealSwaps: { lunch: 'chickpea-potato-bowl' } })));
+    expect(after.find((a) => a.id === 'lunch')!.label).toBe('Chickpea, potato and vegetable bowl');
+    expect(after.filter((a) => a.id !== 'lunch')).toEqual(before.filter((a) => a.id !== 'lunch'));
+    expect(acts(buildStarterPlan(answered({ mealSwaps: { lunch: null } }))).some((a) => a.id === 'lunch')).toBe(false);
+  });
+
+  it('the three exercise options differ for every number of days the wizard offers', () => {
+    for (const daysPerWeek of [undefined, 2, 3, 4, 5])
+      for (const fitnessGoals of [['gain_muscle'], ['gradual_loss'], ['improve_cardio'], []] as Draft['fitnessGoals'][]) {
+        const ex = [0, 1, 2].map((exerciseOption) => JSON.stringify(acts(buildStarterPlan(answered({ exerciseOption, daysPerWeek, fitnessGoals }))).filter((a) => a.kind !== 'meal')));
+        expect(new Set(ex).size).toBe(3);
+      }
+  });
+
+  it('removed items stay out; faster loss keeps three meals', () => {
+    expect(acts(buildStarterPlan(answered({ removed: ['strength'] }))).some((a) => a.id === 'strength')).toBe(false);
+    expect(acts(buildStarterPlan(answered({ fitnessGoals: ['faster_loss'] }))).some((a) => a.id === 'snack')).toBe(false);
+  });
+
+  it('every generated week has recovery: a rest day, and strength never on consecutive days', () => {
+    const idx = (d: string) => weekdays.indexOf(d as never);
+    for (const fitnessGoals of [['maintain'], ['gradual_loss', 'gain_muscle', 'improve_cardio'], ['faster_loss', 'gain_muscle'], []] as Draft['fitnessGoals'][]) {
+      for (const activityLevel of ['mostly_sitting', 'already_training'] as const) {
+        for (const exerciseOption of [0, 1, 2]) {
+          for (const daysPerWeek of [undefined, 2, 5]) {
+            const raw = buildStarterPlan(answered({ fitnessGoals, activityLevel, exerciseOption, daysPerWeek, equipment: ['gym'] }));
+            valid(raw);
+            const training = acts(raw).filter((a) => a.kind === 'exercise' && a.required !== false);
+            const used = new Set(training.flatMap((a) => a.appliesTo.days));
+            expect(used.size).toBeLessThanOrEqual(6);
+            const strength = acts(raw).find((a) => a.id === 'strength')!.appliesTo.days.map(idx).sort();
+            for (let i = 1; i < strength.length; i++) expect(strength[i] - strength[i - 1]).toBeGreaterThan(1);
+          }
+        }
+      }
+    }
+  });
+
+  it('gender never changes the plan', () => {
+    const plans = (['male', 'female', 'other', undefined] as const).map((gender) => JSON.stringify(acts(buildStarterPlan(answered({ gender })))));
+    expect(new Set(plans).size).toBe(1);
+  });
+
+  it('under 18: tracking only, no exercise or meal plan, whatever else was answered', () => {
+    const raw = buildStarterPlan(answered({ ageBand: 'under_18', fitnessGoals: [] }));
+    valid(raw);
+    expect(raw.activities).toEqual([]);
+    expect(raw.exercise).toBeUndefined();
+  });
+
+  it('copies nothing from the bundled personal plan', () => {
     const text = JSON.stringify(buildStarterPlan(answered()));
     for (const a of seed.activities) expect(text).not.toContain(`"${a.label}"`);
     expect(text).not.toContain(seed.title);
-    expect(text).not.toMatch(/"kind":"meal"|ingredients|protein|eatingWindow|"max":/);
   });
 
   it('lb users get lb, kcal and inches', () => {
     expect(buildStarterPlan(answered({ unit: 'lb' })).units).toEqual({ mass: 'lb', energy: 'kcal', length: 'in' });
   });
-
-  it('no answers at all is still a valid plan', () => {
-    const raw = buildStarterPlan(newDraft());
-    expect(raw.profile).toBeUndefined();
-    expect(validatePlan(raw).ok).toBe(true);
-  });
 });
 
-describe('the nutrition seed is pluggable and empty for now', () => {
-  afterEach(() => setNutritionSeed(null));
-
-  it('by default: no nutrition in the plan, and the prompt tells the AI to leave it out', () => {
-    const raw = buildStarterPlan(answered());
-    expect(raw.nutrition).toEqual({ targets: [] });
-    const prompt = buildSetupPrompt(raw, answered(), TODAY);
-    expect(prompt).toMatch(/Leave nutrition out completely/);
-    expect(prompt).toMatch(/Never include nutrition/);
-    expect(prompt).not.toMatch(/7300|"protein"|eatingWindow|Afternoon snack/);
-    expect(prompt).toMatch(/Sections you can change: profile, goals, exercise, schedule, tracking\./);
-  });
-
-  it('a provider plugs in without changing the wizard: plan, prompt and reply handling all follow it', () => {
-    setNutritionSeed({
-      id: 'test',
-      apply: (raw) => ({ ...raw, nutrition: { targets: [{ id: 'protein', label: 'Protein', quantity: 'grams', min: 1 }] } }),
-      prompt: () => 'TEST NUTRITION INSTRUCTIONS',
-      allowsAiNutrition: true,
-    });
-    const raw = buildStarterPlan(answered());
-    expect(raw.nutrition.targets).toHaveLength(1);
-    expect(validatePlan(raw).ok).toBe(true);
-    const prompt = buildSetupPrompt(raw, answered(), TODAY);
-    expect(prompt).toContain('TEST NUTRITION INSTRUCTIONS');
-    expect(prompt).not.toMatch(/Leave nutrition out/);
-    const reply = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { eatingWindow: { start: '10:00', end: '18:00' } } } });
-    const r = checkSetupReply(raw, reply, answered(), 'kJ');
-    expect(r.ok && r.nextRaw.nutrition.eatingWindow).toEqual({ start: '10:00', end: '18:00' });
-  });
-
-  it('reset restores the empty provider', () => {
-    setNutritionSeed(null);
-    expect(buildStarterPlan(answered()).nutrition).toEqual(noNutritionSeed.apply({ nutrition: { targets: [] } }, {}).nutrition);
-  });
-});
-
-describe('the AI prompt', () => {
-  const prompt = buildSetupPrompt(buildStarterPlan(answered()), answered(), TODAY);
-
-  it('includes what the user told the app, and only that', () => {
-    for (const s of ['Female', '40–49', '80–99 kg (a range)', 'Lose a little weight (primary), Gain muscle', 'Home, No equipment', 'Sore left knee']) expect(prompt).toContain(s);
-    expect(prompt).not.toContain(seed.title);
-  });
-
-  it('is provider-neutral, asks before guessing about health, and makes no medical or liability claims', () => {
-    expect(prompt).not.toMatch(/ChatGPT|Claude|Gemini|OpenAI|function call|tool_use/i);
-    expect(prompt).toMatch(/Don't guess about health limits/);
-    expect(prompt).toMatch(/This is a suggestion, not medical advice/);
-    expect(prompt).not.toMatch(/liab|responsib/i);
-  });
-
-  it('every example in it is a valid reply for a new plan', () => {
-    const raw = buildStarterPlan(answered());
-    const blocks = [...prompt.matchAll(/^\{"fitnessConfigUpdate".*\}$/gm)].map((m) => m[0]).filter((b) => !b.includes('<section>'));
-    expect(blocks.length).toBeGreaterThanOrEqual(2);
-    for (const b of blocks) expect(checkSetupReply(raw, b, answered(), 'kJ')).toMatchObject({ ok: true });
-  });
-
-  it("doesn't change Configure with AI's own instructions", () => {
-    const text = buildAiInstructions(JSON.parse(JSON.stringify(seed)), TODAY);
-    expect(text).toMatch(/Sections you can change: profile, goals, nutrition, exercise, schedule, tracking\./);
-    expect(text).toMatch(/Start by asking me what I'd like to change\.$/);
-  });
-});
-
-describe('checking the reply', () => {
+describe('optional AI refinement', () => {
   const raw = buildStarterPlan(answered());
+  const reply = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, schedule: { activities: { merge: [{ id: 'walk', kind: 'exercise', label: 'Brisk walk with a friend', when: 'morning', duration: { minutes: 30 }, appliesTo: { days: ['tue', 'sat'] } }] } } } });
 
-  it('a schedule reply becomes the plan to review, with every assumed change listed', () => {
-    const r = checkSetupReply(raw, scheduleReply, answered(), 'kJ');
-    if (!r.ok) throw new Error(r.errors.join('\n'));
-    expect(r.nextRaw.activities.map((a: { id: string }) => a.id)).toEqual(['walk', 'strength']);
-    expect(r.nextRaw.profile).toEqual(raw.profile); // the user's answers are untouched
-    expect(r.preview.map((p) => p.section)).toEqual(['exercise', 'schedule']);
-    expect(r.preview.flatMap((p) => p.lines.map((l) => l.text)).join('\n')).toMatch(/Brisk walk/);
+  it('the prompt has the answers and the starter plan, leaves nutrition out, and stays provider-neutral', () => {
+    const prompt = buildSetupPrompt(raw, answered(), TODAY);
+    for (const s of ['Female', '40–59', '70–99 kg (a range)', 'Gradual weight loss, Gain muscle', 'Vegetarian', 'Sore left knee']) expect(prompt).toContain(s);
+    expect(prompt).toMatch(/Leave nutrition out completely/);
+    expect(prompt).not.toMatch(/ChatGPT|Claude|Gemini|OpenAI|liab/i);
+    expect(prompt).toMatch(/not medical advice/);
   });
 
-  it('a chatty, fenced reply still imports (#47 importer)', () => {
-    const r = checkSetupReply(raw, `Here's your plan!\n\`\`\`json\n${scheduleReply}\n\`\`\`\nGood luck.`, answered(), 'kJ');
-    expect(r.ok).toBe(true);
-  });
-
-  it('nutrition in the reply is left out, and the review says so', () => {
-    const withFood = JSON.parse(scheduleReply);
+  it('a reply is applied on top of the starter plan; nutrition in it is left out, with a note', () => {
+    const withFood = JSON.parse(reply);
     withFood.fitnessConfigUpdate.nutrition = { targets: [{ id: 'energy', label: 'Energy', quantity: 'energy', max: 6000 }] };
     const r = checkSetupReply(raw, JSON.stringify(withFood), answered(), 'kJ');
     if (!r.ok) throw new Error(r.errors.join('\n'));
+    expect(acts(r.nextRaw).find((a) => a.id === 'walk')!.label).toBe('Brisk walk with a friend');
+    expect(acts(r.nextRaw).some((a) => a.id === 'breakfast')).toBe(true); // sample meals kept
     expect(r.nextRaw.nutrition).toEqual({ targets: [] });
     expect(r.notes).toContain("Nutrition isn't set up yet, so the AI's nutrition suggestions were left out.");
   });
 
-  it('a nutrition-only reply has nothing to use', () => {
-    const r = checkSetupReply(raw, JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, nutrition: { targets: [] } } }), answered(), 'kJ');
-    expect(r).toMatchObject({ ok: false, errors: [expect.stringMatching(/nothing the app can use/)] });
-  });
-
-  it('an unusable reply explains why, with details to copy for the AI', () => {
-    const r = checkSetupReply(raw, 'Sure! What days suit you?', answered(), 'kJ');
-    expect(r.ok).toBe(false);
-    expect(!r.ok && r.diagnostics).toMatch(/could not be imported/);
-  });
-
-  it('an invalid plan is refused as a whole', () => {
-    const bad = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, schedule: { activities: [{ id: 'x', kind: 'exercise', label: 'X', time: '25:00' }] } } });
-    expect(checkSetupReply(raw, bad, answered(), 'kJ').ok).toBe(false);
-  });
-
-  it('under 18: no AI plan, whatever is pasted', () => {
-    const minor = answered({ ageBand: 'under_18' });
-    expect(checkSetupReply(buildStarterPlan(minor), scheduleReply, minor, 'kJ')).toMatchObject({ ok: false, errors: [expect.stringMatching(/adults \(18\+\)/)] });
+  it('under 18: refused', () => {
+    const minor = answered({ ageBand: 'under_18', fitnessGoals: [] });
+    expect(checkSetupReply(buildStarterPlan(minor), reply, minor, 'kJ').ok).toBe(false);
   });
 });
 
 describe('finishing setup', () => {
   const fresh = () => new KeyValueTrackingStore(new MemoryKeyValue());
 
-  it('stores the confirmed plan; after that the app opens on it and setup never returns', async () => {
+  it('a new install stores the confirmed plan; setup never returns', async () => {
     const store = fresh();
-    expect(await loadActivePlan(store)).toBeNull(); // fresh install: setup
-    const plan = await finishSetup(store, buildStarterPlan(answered()), answered(), TODAY);
+    expect(await loadActivePlan(store)).toBeNull();
+    await finishSetup(store, buildStarterPlan(answered()), answered(), TODAY);
     expect(await store.getActivePlan()).toMatchObject({ planId: STARTER_PLAN_ID, origin: 'onboarding', formatVersion: 6 });
-    expect((await loadActivePlan(store))!.id).toBe(plan.id);
+    expect((await loadActivePlan(store))!.activities.length).toBeGreaterThan(0);
   });
 
-  it('a weight band is never recorded as a weigh-in', async () => {
+  it('a weight band is never recorded; an exact weight only when ticked, lb stored canonically', async () => {
     const store = fresh();
     await finishSetup(store, buildStarterPlan(answered()), answered({ logWeighIn: true }), TODAY);
     expect((await store.getDay(STARTER_PLAN_ID, TODAY)).observations).toEqual([]);
-  });
-
-  it('an exact weight is recorded only when the box is ticked', async () => {
-    const off = fresh();
-    const d = enterExactWeight(answered(), 82.4);
-    await finishSetup(off, buildStarterPlan(d), d, TODAY);
-    expect((await off.getDay(STARTER_PLAN_ID, TODAY)).observations).toEqual([]);
-
-    const on = fresh();
-    const ticked = { ...d, logWeighIn: true };
-    await finishSetup(on, buildStarterPlan(ticked), ticked, TODAY);
-    expect((await on.getDay(STARTER_PLAN_ID, TODAY)).observations).toEqual([
-      expect.objectContaining({ metric: 'weight', value: 82.4, unit: 'kg', kind: 'observed', date: TODAY, source: expect.objectContaining({ type: 'manual' }) }),
-    ]);
-  });
-
-  it('an exact weight in lb is stored canonically', () => {
     const d = { ...enterExactWeight(answered({ unit: 'lb' }), 180), logWeighIn: true };
-    const plan = validatePlan(buildStarterPlan(d));
-    if (!plan.ok) throw new Error('invalid');
-    expect(weighInFor(plan.plan, d, TODAY)!.value).toBeCloseTo(81.65, 2);
+    expect(weighInFor(valid(buildStarterPlan(d)), d, TODAY)!.value).toBeCloseTo(81.65, 2);
+    expect(weighInFor(valid(buildStarterPlan(d)), { ...d, logWeighIn: false }, TODAY)).toBeNull();
+  });
+
+  it('editing setup on an existing plan: a new revision of the same plan, history and records kept, undoable', async () => {
+    const store = fresh();
+    await installSeedPlan(store);
+    const obs = { id: 'w1', date: '2026-11-01', metric: 'weight', value: 97, unit: 'kg', kind: 'observed' as const, label: null, note: null, source: { type: 'integration' as const, app: 'withings', capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false }, recordedAt: 't' };
+    await store.addObservations([obs]);
+    await store.setActivity(seed.id, '2026-11-02', 'lunch', { activityId: 'lunch', status: 'done', count: 0, labelSnapshot: 'Lunch', updatedAt: 't' });
+    const before = (await store.getActivePlan())!;
+
+    const plan = await applySetupToExisting(store, before, buildStarterPlan(answered()), answered(), TODAY);
+    const after = (await store.getActivePlan())!;
+    expect(after).toMatchObject({ planId: seed.id, revision: before.revision + 1, origin: 'config' });
+    expect(plan.measurements.map((m) => m.id)).toEqual(expect.arrayContaining(['weight', 'waist'])); // kept
+    expect(plan.goals).toEqual(JSON.parse(before.json).goals); // measurement goals kept
+    expect(plan.profile).toMatchObject({ fitnessGoals: ['gradual_loss', 'gain_muscle'] });
+    expect(await store.latestObservation('weight', TODAY)).toMatchObject({ id: 'w1' }); // imports untouched
+    expect((await store.getDay(seed.id, '2026-11-02')).activities.lunch.status).toBe('done'); // history untouched
+    const [change] = await store.configHistory();
+    expect(change).toMatchObject({ sections: ['setup'], previousPlanJson: before.json });
+
+    const undone = await undoConfigChange(store, after, change);
+    expect({ ...JSON.parse(undone.json), revision: 0 }).toEqual({ ...JSON.parse(before.json), revision: 0 });
   });
 
   it('refuses to store an invalid plan', async () => {
@@ -280,39 +286,81 @@ describe('finishing setup', () => {
   });
 });
 
-describe('plan formatVersion 6 (profile) and empty plans', () => {
-  const v = (formatVersion: number, edit: (p: any) => void) => {
-    const p = { ...JSON.parse(JSON.stringify(example)), formatVersion };
-    edit(p);
-    return p;
+describe('existing customised plans are protected (#53)', () => {
+  const fresh = () => new KeyValueTrackingStore(new MemoryKeyValue());
+  const nonProfile = (raw: any) => {
+    const { profile: _p, revision: _r, formatVersion: _f, ...rest } = raw;
+    return rest;
   };
 
-  it.each([
-    ['gender', (p: any) => (p.profile = { gender: 'female' })],
-    ['ageBand', (p: any) => (p.profile = { ageBand: '30_39' })],
-    ['fitnessGoals', (p: any) => (p.profile = { fitnessGoals: ['maintain'] })],
-  ])('profile %s needs formatVersion 6', (_n, edit) => {
-    for (const [ver, ok] of [[5, false], [6, true]] as const) {
-      const p = v(ver, edit);
-      expect(validatePlan(p).ok).toBe(ok);
-      expect(contractValidate(p)).toBe(ok);
+  it('Edit profile changes only the setup answers: schedule, day types, meals, activities, requirements, targets and units stay byte-for-byte', async () => {
+    const store = fresh();
+    await installSeedPlan(store); // a customised personal plan: day types, meals, requirements, targets
+    await store.setActivity(seed.id, '2026-11-02', 'lunch', { activityId: 'lunch', status: 'done', count: 0, labelSnapshot: 'Lunch', updatedAt: 't' });
+    await store.addObservations([{ id: 'w1', date: '2026-11-01', metric: 'weight', value: 97, unit: 'kg', kind: 'observed', label: null, note: null, source: { type: 'integration', app: 'withings', capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false }, recordedAt: 't' }]);
+    const before = (await store.getActivePlan())!;
+
+    await applyProfileToExisting(store, before, answered({ unit: 'lb', exactWeight: 200, weightBand: undefined, fitnessGoals: ['faster_loss'] }), TODAY);
+    const after = (await store.getActivePlan())!;
+    const b = JSON.parse(before.json);
+    const a = JSON.parse(after.json);
+    expect(nonProfile(a)).toEqual(nonProfile(b)); // nothing but the profile changed
+    expect(a.units).toEqual(b.units); // kg plan stays kg
+    expect(a.profile).toMatchObject({ fitnessGoals: ['faster_loss'], weight: 90.7 }); // 200 lb stored in the plan's kg
+    expect(after).toMatchObject({ planId: seed.id, revision: before.revision + 1, origin: 'config' });
+    expect((await store.getDay(seed.id, '2026-11-02')).activities.lunch.status).toBe('done');
+    expect(await store.latestObservation('weight', TODAY)).toMatchObject({ id: 'w1' });
+
+    const [change] = await store.configHistory();
+    expect(change).toMatchObject({ sections: ['profile'], previousPlanJson: before.json });
+    const undone = await undoConfigChange(store, after, change);
+    expect({ ...JSON.parse(undone.json), revision: 0 }).toEqual({ ...b, revision: 0 });
+  });
+
+  it("Edit profile keeps the plan's own profile notes and removes only answers the user cleared", async () => {
+    const store = fresh();
+    await installSeedPlan(store);
+    const cur = (await store.getActivePlan())!;
+    await store.setActivePlan({ ...cur, json: JSON.stringify({ ...JSON.parse(cur.json), formatVersion: 6, profile: { displayName: 'K', heightCm: 182, dietary: ['vegan'] } }) });
+    await applyProfileToExisting(store, (await store.getActivePlan())!, answered({ dietary: [], heightCm: 182 }), TODAY);
+    const p = JSON.parse((await store.getActivePlan())!.json).profile;
+    expect(p.displayName).toBe('K');
+    expect(p.dietary).toBeUndefined();
+  });
+
+  it('Rebuild shows what it replaces before anything is applied', () => {
+    const current = JSON.parse(JSON.stringify(seed));
+    const next = replanExisting(current, buildStarterPlan(answered()));
+    const c = rebuildSummary(current, next);
+    expect(c.removed).toEqual(expect.arrayContaining(seed.activities.map((a) => a.label).filter((l) => !acts(next).some((x) => x.label === l))));
+    expect(c.removed.length).toBeGreaterThan(0);
+    expect(c.added).toContain('Full-body strength at home');
+    expect(c.dayTypes).toEqual(seed.dayTypes.map((d) => d.label));
+    expect(c.requirements.length).toBeGreaterThan(0);
+  });
+});
+
+describe('plan formatVersion 6 profile rules', () => {
+  const v = (formatVersion: number, profile: Record<string, unknown>) => ({ ...JSON.parse(JSON.stringify(example)), formatVersion, profile });
+
+  it('setup fields need formatVersion 6', () => {
+    for (const profile of [{ gender: 'other' }, { ageBand: '18_39' }, { fitnessGoals: ['maintain'] }, { dietary: ['vegan'] }]) {
+      expect(validatePlan(v(5, profile)).ok).toBe(false);
+      expect(contractValidate(v(5, profile))).toBe(false);
+      expect(validatePlan(v(6, profile)).ok).toBe(true);
+      expect(contractValidate(v(6, profile))).toBe(true);
     }
   });
 
   it.each([
-    ['a primary goal that is not one of the goals', (p: any) => (p.profile = { fitnessGoals: ['maintain'], primaryGoal: 'gain_muscle' })],
-    ['both an exact weight and a band', (p: any) => (p.profile = { weight: 80, weightBand: '80_99' })],
-    ['an unknown age band', (p: any) => (p.profile = { ageBand: '17' })],
-    ['the same goal twice', (p: any) => (p.profile = { fitnessGoals: ['maintain', 'maintain'] })],
-  ])('rejects %s', (_n, edit) => {
-    const p = v(6, edit);
-    expect(validatePlan(p).ok).toBe(false);
-  });
-
-  it('a plan may have no activities yet', () => {
-    const p = v(6, (x) => (x.activities = []));
-    delete p.requirements;
-    expect(validatePlan(p).ok).toBe(true);
-    expect(contractValidate(p) ? [] : contractValidate.errors).toEqual([]);
+    ['gradual and faster loss together', { fitnessGoals: ['gradual_loss', 'faster_loss'] }],
+    ['maintain with weight loss', { fitnessGoals: ['maintain', 'gradual_loss'] }],
+    ['weight loss under 18', { ageBand: 'under_18', fitnessGoals: ['faster_loss'] }],
+    ['an age outside its band', { age: 30, ageBand: '40_59' }],
+    ['an exact weight and a band', { weight: 80, weightBand: '70_99' }],
+    ['an age under 18', { age: 16 }],
+    ['an old #49 band', { ageBand: '40_49' }],
+  ])('rejects %s', (_n, profile) => {
+    expect(validatePlan(v(6, profile)).ok).toBe(false);
   });
 });

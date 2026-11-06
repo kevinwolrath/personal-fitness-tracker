@@ -49,18 +49,20 @@ The AI configuration protocol (07) edits all of these. Requirements are a `sched
 
 ## Next action (`nextAction`, pure)
 
-- **Candidates:** items that are `pending` or `partial` and whose `after` dependencies are resolved.
-- **Rank:**
-  1. required, window open now
-  2. required, anytime
-  3. required, overdue
-  4. optional, open now
-  5. optional, anytime
-  6. optional, overdue
-  7. upcoming (earliest first)
-- **Ties:** when it becomes due, then scheduled time, then plan order.
-- **Status shown:** `now` / `anytime` / `overdue` / `later`.
-- **Due vs upcoming (#51):** `now`, `anytime` and `overdue` are **due**. `later` is only chosen when nothing is due, and is a preview: it never shows completion controls or a meal's details.
+It answers "what should I reasonably do now?", not "what is the first incomplete task?" (#41).
+
+- **Candidates:** items that are `pending` or `partial`, whose `after` dependencies are resolved, and whose **window is open now**:
+  - **Exact time:** from its lead time before the time until its duration (at least an hour) has passed. No other check: it's scheduled.
+  - **Day part** (`when`, from the plan): inside the part, and, when the plan gives an estimated duration, the whole duration fits before the part ends **and** before the next unresolved exact-time item becomes due. A day part is necessary but not proof that the user is free. The duration check only rules a window out, and a calendar gap never creates one.
+  - **Estimated duration:** a session's minutes for the chosen version (full or short), else the activity's `duration`. A requirement uses its quickest alternative, and is unknown if any alternative has none.
+- **Never promoted** (they stay in the checklist, unchanged, and are never auto-skipped or auto-completed):
+  - **overdue** items (window passed);
+  - **anytime** items, required or optional. An untimed strength session is recommended only once the plan gives it a window. Optional untimed habits are never filler;
+  - done, skipped and blocked items.
+- **Rank among candidates:** required first, then exact time before day part, then when it becomes due, then scheduled time, then plan order.
+- **Nothing due:** a compact **Up next** preview (`later`) of the exact-time item that becomes due next, **only within 60 minutes** (`UP_NEXT_HORIZON_MINUTES`). A day part is never previewed. The preview never shows completion controls or a meal's details.
+- **Nothing to recommend:** `null`, and the card is **hidden entirely**, with no placeholder ("Nothing left for today" is gone).
+- **Status shown:** `now` (due) / `later` (preview).
 
 Completing, undoing or skipping anything recomputes it immediately. The local date and time are read together, at every minute boundary (including midnight, so the day rolls over while the app is open) and when the app returns to the foreground.
 
@@ -73,10 +75,10 @@ Completing, undoing or skipping anything recomputes it immediately. The local da
 
 ## Home screen (Daily Log, today)
 
-1. **Up next / Do this next** (one slot, content layer):
-   - **Nothing due:** a compact ink **Up next** card: "Up next · 12:00 pm", the label, "In 4 h 30 min · detail", and **Details**, which opens the item sheet (meal details, early Done, Skip). No meal checklist and no Done on the card. It's small enough that Weight and the measurements stay on screen. No second "Up next" is shown while something is due.
-   - **Due:** the full **Do this next** card: the label and window ("In 15 min · 12:00 pm" inside the lead time, "Now · 8:30 am", "Anytime today", "Was due 12:00 pm"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
-2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the next item has an accent bar.
+1. **Up next / Do this next** (one slot, content layer; absent when there is nothing to recommend, #41):
+   - **Nothing due, a timed item due within the hour:** a compact ink **Up next** card: "Up next · 12:00 pm", the label, "In 4 h 30 min · detail", and **Details**, which opens the item sheet (meal details, early Done, Skip). No meal checklist and no Done on the card. It's small enough that Weight and the measurements stay on screen. No second "Up next" is shown while something is due.
+   - **Due:** the full **Do this next** card: the label and window ("In 15 min · 12:00 pm" inside the lead time, "Now · 8:30 am", "Now · evening"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
+2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the item on the card has an accent bar (none when there's no card). Every scheduled item stays here whether or not it is recommended.
 3. The item sheet: for a session, the Full/Short switch and the exercise checklist (ticks on any editable day, so past days can be corrected), plus **Mark whole workout done** as a retrospective override; alternatives, skip and restore.
 
 The card is shown for today only. Past dates are correctable as before, and future dates are view-only (04).

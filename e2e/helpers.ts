@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import seed from '../plans/seed.plan.json';
 
 /** Frozen local times (Australia/Melbourne, AEDT +11:00). */
 export const MONDAY = '2026-11-02T09:00:00+11:00';
@@ -40,6 +41,15 @@ export async function seedPlan(page: Page, plan: unknown) {
     );
   }, JSON.stringify(plan));
 }
+
+/**
+ * The seed plan with Strength given an explicit day part, as a configured plan could (#41). The shipped seed's
+ * Strength is untimed, so it is never promoted to "Do this next"; tests of the workout card seed this instead.
+ */
+export const seedWithStrengthWindow = (when: 'morning' | 'lunch' | 'afternoon' | 'evening' = 'morning') => ({
+  ...seed,
+  activities: seed.activities.map((a) => (a.id === 'resistance' ? { ...a, when } : a)),
+});
 
 /** Grow the viewport to the scroll content so one screenshot shows the whole day. */
 export async function expandToFullDay(page: Page) {

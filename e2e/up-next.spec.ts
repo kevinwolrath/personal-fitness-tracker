@@ -29,12 +29,20 @@ async function resume(page: Page) {
   });
 }
 
-test('07:30: a compact "Up next" card, no meal and no Done; Weight stays on the first screen', async ({ page }) => {
+test('07:30: lunch is hours away, so there is no card at all and no placeholder (#41)', async ({ page }) => {
   await openRunningAt(page, '07:30');
+  await expect(upNext(page)).toHaveCount(0);
+  await expect(card(page)).toHaveCount(0);
+  await expect(page.getByText(/Nothing left|Nothing planned/)).toHaveCount(0);
+  await expect(page.getByTestId('activity-lunch')).toBeVisible(); // the checklist is unchanged
+});
+
+test('10:45: within an hour of lunch becoming due, a compact "Up next" card, no meal and no Done; Weight stays on the first screen', async ({ page }) => {
+  await openRunningAt(page, '10:45');
   await expect(upNext(page)).toBeVisible();
   await expect(page.getByTestId('up-next-when')).toHaveText(/Up next · 12:00\s?pm/i);
   await expect(page.getByTestId('up-next-title')).toHaveText('Fixed lunch');
-  await expect(page.getByTestId('up-next-countdown')).toHaveText(/^In 4 h 30 min/);
+  await expect(page.getByTestId('up-next-countdown')).toHaveText(/^In 1 h 15 min/);
   await expect(card(page)).toHaveCount(0);
   await expect(page.getByTestId('next-action-meal-ingredients')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Done: Fixed lunch' })).toHaveCount(0);
@@ -46,7 +54,7 @@ test('07:30: a compact "Up next" card, no meal and no Done; Weight stays on the 
 });
 
 test('Details on "Up next" opens the item: lunch can be completed early, on purpose', async ({ page }) => {
-  await openRunningAt(page, '07:30');
+  await openRunningAt(page, '11:00');
   await page.getByRole('button', { name: 'Up next details: Fixed lunch' }).click();
   await expect(page.getByTestId('meal-details')).toBeVisible();
   await expect(page.getByTestId('day-progress')).toHaveText('0 of 5 done'); // opening completes nothing
@@ -72,9 +80,10 @@ test('updates with the clock: due at 11:45 (15 min before), "Now" at 12:00, move
   await expect(page.getByTestId('next-action-title')).toHaveText('Lunch walk'); // 12:30 exercise: due from 12:00
 });
 
-test('reopening the app recomputes: Up next at 07:30 becomes the due lunch at 11:50', async ({ page }) => {
+test('reopening the app recomputes: no card at 07:30 becomes the due lunch at 11:50', async ({ page }) => {
   await openRunningAt(page, '07:30');
-  await expect(upNext(page)).toBeVisible();
+  await expect(page.getByTestId('day-progress')).toBeVisible();
+  await expect(upNext(page)).toHaveCount(0);
   await page.clock.setSystemTime(FRI('11:50')); // time jumps while the app is in the background
   await resume(page);
   await expect(page.getByTestId('next-action-title')).toHaveText('Fixed lunch');
@@ -91,11 +100,11 @@ test('the day rolls over at midnight while the app stays open', async ({ page })
 
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
-  test('up-next at 07:30 and the due card at 11:45', async ({ page }) => {
-    await page.clock.setFixedTime(FRI('07:30'));
+  test('up-next at 10:45 and the due card at 11:45', async ({ page }) => {
+    await page.clock.setFixedTime(FRI('10:45')); // within the 60 min preview horizon (#41)
     await page.goto('/');
     await expect(upNext(page)).toBeVisible();
-    await expect(page).toHaveScreenshot('up-next-friday-0730.png');
+    await expect(page).toHaveScreenshot('up-next-friday-1045.png');
     await page.clock.setFixedTime(FRI('11:45'));
     await page.reload();
     await expect(card(page)).toBeVisible();

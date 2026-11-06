@@ -6,7 +6,7 @@
 - There are two kinds of data, and they never mix:
   - **Plan package**: authored content. The app reads it and never edits it. It can be replaced by importing a new package.
   - **User records**: what happened. They're written only by user actions and never derived from or embedded in the plan.
-- **Seed plan:** the app bundles one plan package, `plans/seed.plan.json` (currently the personal weight-loss plan, decided in issue #3). On a fresh install it's validated and copied into storage as the active plan. A later build with the same `id` and a higher `revision` replaces it silently, keeping history. A plan with a different `id` (a future import) is never overwritten by the seed. UI code never reads the seed directly; it only sees the active plan.
+- **Seed plan:** the app bundles one plan package, `plans/seed.plan.json` (currently the personal weight-loss plan, decided in issue #3). **It is never installed for a new user (#49):** a fresh install has no plan and goes through first-run setup (13), which creates the user's own plan (`origin: onboarding`). Installs that already run the seed keep it: a later build with the same `id` and a higher `revision` replaces it silently, keeping history. A plan with a different `id` (a future import) is never overwritten by the seed. UI code never reads the seed directly; it only sees the active plan.
 - Tracking data is runtime-only and never committed. Only plan packages and generic fixtures live in source control.
 
 ## Storage
@@ -20,7 +20,7 @@
 
 | Record | Key | Fields |
 |---|---|---|
-| `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`, `origin` (`seed`/`config`/`import`). Exactly one active plan. |
+| `plan` | `planId` | `revision`, `formatVersion`, `json` (verbatim package), `importedAt`, `origin` (`seed`/`config`/`import`/`onboarding`). Exactly one active plan. |
 | `config_change` | `id` | `appliedAt`, `sections`, `payload`, `fromRevision`, `toRevision`, `previousPlanJson` (contract 07) |
 | `activity_log` | `planId, date, activityId` | `status` (`pending`, `done`, `skipped`), `count` (for count tracking; `pending` means partial), `labelSnapshot`, `updatedAt` (completion time), `variant` (`full`/`short`), `requirementId` (alternative used). `activityId` is `req:<id>` for a skipped requirement. |
 | `completion_event` | `id` | Append-only: `planId`, `date`, `activityId`, `requirementId`, `action` (`complete`/`progress`/`undo`/`skip`/`restore`), `count`, `variant`, `label`, `purpose`, `at` (contract 08) |

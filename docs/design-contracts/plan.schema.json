@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kevinwolrath/personal-fitness-tracker/docs/design-contracts/plan.schema.json",
   "title": "Personal Fitness Tracker plan package",
-  "description": "formatVersion 1 to 5. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
+  "description": "formatVersion 1 to 6. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -29,7 +29,8 @@
         2,
         3,
         4,
-        5
+        5,
+        6
       ]
     },
     "id": {
@@ -315,11 +316,12 @@
     },
     "activities": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "maxItems": 60,
       "items": {
         "$ref": "#/$defs/activity"
-      }
+      },
+      "description": "May be empty (#49): a new user can start with tracking only."
     },
     "quickLogs": {
       "type": "array",
@@ -956,6 +958,108 @@
           "items": {
             "$ref": "#/$defs/note"
           }
+        },
+        "gender": {
+          "description": "formatVersion 6 (#49).",
+          "enum": [
+            "male",
+            "female",
+            "other",
+            "prefer_not_to_say"
+          ]
+        },
+        "ageBand": {
+          "description": "formatVersion 6 (#49).",
+          "enum": [
+            "under_18",
+            "18_29",
+            "30_39",
+            "40_49",
+            "50_59",
+            "60_plus"
+          ]
+        },
+        "weightBand": {
+          "description": "formatVersion 6 (#49).",
+          "enum": [
+            "under_60",
+            "60_79",
+            "80_99",
+            "100_119",
+            "120_plus"
+          ]
+        },
+        "weight": {
+          "description": "formatVersion 6 (#49). An exact weight given during setup, in units.mass. Context for the plan; never a recorded weigh-in.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 700
+        },
+        "fitnessGoals": {
+          "description": "formatVersion 6 (#49).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "maintain",
+              "lose_weight",
+              "gain_muscle",
+              "improve_cardio"
+            ]
+          }
+        },
+        "primaryGoal": {
+          "description": "formatVersion 6 (#49).",
+          "enum": [
+            "maintain",
+            "lose_weight",
+            "gain_muscle",
+            "improve_cardio"
+          ]
+        },
+        "daysPerWeek": {
+          "description": "formatVersion 6 (#49).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "sessionMinutes": {
+          "description": "formatVersion 6 (#49).",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 240
+        },
+        "trainingPlaces": {
+          "description": "formatVersion 6 (#49).",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "home",
+              "gym",
+              "outdoors",
+              "no_equipment"
+            ]
+          }
+        },
+        "activityLevel": {
+          "description": "formatVersion 6 (#49).",
+          "enum": [
+            "mostly_sitting",
+            "some_walking",
+            "active_job",
+            "already_training"
+          ]
+        },
+        "considerations": {
+          "description": "formatVersion 6 (#49). Injuries, limits or food restrictions to work around, in the user's words.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         }
       }
     },
@@ -1420,6 +1524,110 @@
                 ]
               }
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "formatVersion": {
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "profile": {
+            "not": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "required": [
+                    "gender"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "ageBand"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "weightBand"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "weight"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "fitnessGoals"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "primaryGoal"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "daysPerWeek"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "sessionMinutes"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "trainingPlaces"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "activityLevel"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "considerations"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "profile": {
+          "not": {
+            "type": "object",
+            "required": [
+              "weight",
+              "weightBand"
+            ]
           }
         }
       }

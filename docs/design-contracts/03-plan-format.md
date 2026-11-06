@@ -1,4 +1,4 @@
-# 03 · Plan package format (`pft-plan`, formatVersion 1–5)
+# 03 · Plan package format (`pft-plan`, formatVersion 1–6)
 
 A **plan package** is a single JSON file describing a fitness plan. The app renders whatever valid plan is loaded and has no built-in plan of its own. The machine-readable contract is [`plan.schema.json`](plan.schema.json) (JSON Schema 2020-12). This document defines semantics and the rules the schema cannot express.
 
@@ -10,7 +10,9 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 
 **formatVersion 4** (#30) adds activity `notifications`: plan-defined local reminders (contract 10). A formatVersion 1–3 plan must not contain them.
 
-**formatVersion 5** (#51) adds due times: activity and requirement `leadMinutes`, and the plan-level `timing` section (contract 08). A formatVersion 1–4 plan must not contain them; such plans load unchanged and use the format defaults. Configure with AI writes formatVersion 5. Everything else below applies to every version.
+**formatVersion 5** (#51) adds due times: activity and requirement `leadMinutes`, and the plan-level `timing` section (contract 08). A formatVersion 1–4 plan must not contain them; such plans load unchanged and use the format defaults. 
+
+**formatVersion 6** (#49) adds the setup profile: `profile.gender`, `ageBand`, `weightBand`, `weight`, `fitnessGoals`, `primaryGoal`, `daysPerWeek`, `sessionMinutes`, `trainingPlaces`, `activityLevel` and `considerations` (contracts 07 and 13). A formatVersion 1–5 plan must not contain them. Configure with AI and first-run setup write formatVersion 6. Everything else below applies to every version.
 
 ## Design limits (deliberate)
 
@@ -39,7 +41,7 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 | `goals` | | Target value for a measurement plus a `direction` (decrease, increase or maintain). |
 | `nutrition.targets` | | Daily targets with `min` and/or `max`. `quantity` is `energy` (plan energy unit) or `grams`. Optional `appliesTo`. |
 | `nutrition.eatingWindow` | | `start`/`end` `HH:MM`. Display only. |
-| `activities` | ✓ | Everything that appears in the day list, including meals (see below). |
+| `activities` | ✓ | Everything that appears in the day list, including meals (see below). May be empty (#49): a new user can start with tracking only and add a plan later. |
 | `timing` | | **formatVersion 5.** `{ leadMinutes: { meal?, exercise?, habit? } }`: how many minutes before its exact `time` an item of that kind becomes due on Today (contract 08). Whole minutes, 0–240. Absent kinds use the format defaults: **meal 15, habit 15, exercise 30**. |
 | `quickLogs` | | At most 2 one-tap event loggers. Each tap records a timestamp. Kept in the format, storage and export. The Daily Log has had no quick-log buttons since #15, and the seed plan (revision 3) defines none. |
 

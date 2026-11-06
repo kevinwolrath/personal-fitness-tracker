@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { validatePlan } from '../plan/validate';
-import type { Plan } from '../plan/schema';
+import { CURRENT_FORMAT_VERSION, type Plan } from '../plan/schema';
 import { importDiagnostics, prepareUpdate } from './import';
 import { CONFIG_SCHEMA_VERSION, fieldOf, isMerge, mergeById, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
 
@@ -102,7 +102,7 @@ export function applyConfigUpdate(currentRaw: RawPlan, update: ConfigUpdate): Ap
       } else field.write(next, copy);
     }
   }
-  next.formatVersion = 5; // updates always produce the current format (a superset of the older ones)
+  next.formatVersion = CURRENT_FORMAT_VERSION; // updates always produce the current format (a superset of the older ones)
   next.revision = (Number(currentRaw.revision) || 0) + 1;
 
   const result = validatePlan(next);

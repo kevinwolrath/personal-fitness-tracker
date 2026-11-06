@@ -2,6 +2,7 @@
  * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1, 2 and 3).
  * formatVersion 3 adds meal `ingredients` and `preparation` (contract 03, #26).
  * formatVersion 4 adds activity `notifications`: plan-defined local reminders (contract 10, #30).
+ * formatVersion 6 adds the setup profile (#49): `profile` gender, age band, weight, fitness goals and practical context.
  * formatVersion 5 adds due times: `leadMinutes` on activities and requirements, and plan-wide `timing` (contract 08, #51).
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
@@ -241,10 +242,37 @@ export const exerciseSection = z.strictObject({
     .optional(),
 });
 
+// ---- formatVersion 6: setup profile (#49) --------------------------------------------------
+export const genders = ['male', 'female', 'other', 'prefer_not_to_say'] as const;
+/** Age bands only: never a date of birth. `under_18` is recorded so the app never offers a personalised plan. */
+export const ageBands = ['under_18', '18_29', '30_39', '40_49', '50_59', '60_plus'] as const;
+/** Weight bands, defined in kg (shown in lb as well). A band is context for a plan, never a weigh-in. */
+export const weightBands = ['under_60', '60_79', '80_99', '100_119', '120_plus'] as const;
+export const fitnessGoals = ['maintain', 'lose_weight', 'gain_muscle', 'improve_cardio'] as const;
+export const trainingPlaces = ['home', 'gym', 'outdoors', 'no_equipment'] as const;
+export const activityLevels = ['mostly_sitting', 'some_walking', 'active_job', 'already_training'] as const;
+export const profileV6Fields = [
+  'gender', 'ageBand', 'weightBand', 'weight', 'fitnessGoals', 'primaryGoal', 'daysPerWeek', 'sessionMinutes', 'trainingPlaces', 'activityLevel', 'considerations',
+] as const;
+
 export const profileSection = z.strictObject({
   displayName: z.string().min(1).max(40).optional(),
   heightCm: z.number().min(50).max(260).optional(),
   notes: z.array(note).max(10).optional(),
+  // formatVersion 6 (#49): what the user told the app during setup. All optional.
+  gender: z.enum(genders).optional(),
+  ageBand: z.enum(ageBands).optional(),
+  weightBand: z.enum(weightBands).optional(),
+  /** An exact weight given during setup, in `units.mass`. Context for the plan; never a recorded weigh-in. */
+  weight: z.number().positive().max(700).optional(),
+  fitnessGoals: z.array(z.enum(fitnessGoals)).min(1).max(4).optional(),
+  primaryGoal: z.enum(fitnessGoals).optional(),
+  daysPerWeek: z.number().int().min(1).max(7).optional(),
+  sessionMinutes: z.number().int().min(5).max(240).optional(),
+  trainingPlaces: z.array(z.enum(trainingPlaces)).min(1).max(4).optional(),
+  activityLevel: z.enum(activityLevels).optional(),
+  /** Injuries, limits or food restrictions to work around, in the user's words. */
+  considerations: z.string().min(1).max(200).optional(),
 });
 
 export const unitsSchema = z.strictObject({
@@ -269,7 +297,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -285,7 +313,8 @@ export const planSchema = z.strictObject({
       eatingWindow: eatingWindowSchema.optional(),
     })
     .default({ targets: [] }),
-  activities: z.array(activity).min(1).max(60),
+  /** May be empty (#49): a new user can start with tracking only and add a plan later. */
+  activities: z.array(activity).max(60),
   quickLogs: z.array(quickLogSchema).max(2).default([]),
   profile: profileSection.optional(),
   exercise: exerciseSection.optional(),
@@ -293,6 +322,16 @@ export const planSchema = z.strictObject({
   // formatVersion 5 (#51):
   timing: timingSchema.optional(),
 }).superRefine((p, ctx) => {
+  if (p.formatVersion < 6 && p.profile) {
+    for (const f of profileV6Fields) {
+      if (p.profile[f] !== undefined) ctx.addIssue({ code: 'custom', path: ['profile', f], message: `"profile.${f}" needs formatVersion 6` });
+    }
+  }
+  const pr = p.profile;
+  if (pr?.fitnessGoals && new Set(pr.fitnessGoals).size !== pr.fitnessGoals.length) ctx.addIssue({ code: 'custom', path: ['profile', 'fitnessGoals'], message: 'each goal only once' });
+  if (pr?.trainingPlaces && new Set(pr.trainingPlaces).size !== pr.trainingPlaces.length) ctx.addIssue({ code: 'custom', path: ['profile', 'trainingPlaces'], message: 'each place only once' });
+  if (pr?.primaryGoal && !(pr.fitnessGoals ?? []).includes(pr.primaryGoal)) ctx.addIssue({ code: 'custom', path: ['profile', 'primaryGoal'], message: 'primaryGoal must be one of profile.fitnessGoals' });
+  if (pr?.weight !== undefined && pr.weightBand !== undefined) ctx.addIssue({ code: 'custom', path: ['profile', 'weightBand'], message: 'give either weight or weightBand, not both' });
   if (p.formatVersion < 5) {
     const need = '"leadMinutes" needs formatVersion 5';
     if (p.timing !== undefined) ctx.addIssue({ code: 'custom', path: ['timing'], message: '"timing" needs formatVersion 5' });
@@ -339,4 +378,7 @@ export type SessionExercise = Session['exercises'][number];
 export type Purpose = (typeof purposes)[number];
 export type DayPart = (typeof dayParts)[number];
 /** Building blocks reused by the configuration sections (src/config). */
+/** The plan format this app writes (Configure with AI, setup). */
+export const CURRENT_FORMAT_VERSION = 6;
+
 export const planParts = { activity, measurement, nutritionTarget, appliesTo, time, requirement: requirementSchema };

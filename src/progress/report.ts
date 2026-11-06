@@ -1,6 +1,9 @@
 import { addDays, type LocalDate } from '../plan/dates';
 import type { Plan } from '../plan/schema';
 import type { Observation } from '../observations/types';
+import { convertEnergy, entryUnit, type EnergyDisplay } from '../energy';
+import { prescribeDay } from '../prescription/prescribe';
+import type { ActivityLogRecord, DayOverrideRecord } from '../storage/types';
 import { fromCanonical, toCanonical } from '../observations/units';
 import {
   bmiSeries,
@@ -14,6 +17,9 @@ import {
   rollingAverage,
   slowdown,
   weeklyRate,
+  weeklyTotals,
+  weekStart,
+  meanBetween,
   type Point,
   type WeekCompare,
 } from './series';
@@ -23,7 +29,7 @@ import {
  * in, one model per chart out. Measured values are dots; calculated values (averages, BMI, changes) are lines
  * and say so; device estimates are tagged. Nothing is filled in between measurements.
  */
-export const chartIds = ['weight', 'waist', 'bmi', 'weight-vs-waist', 'rate', 'goal', 'body-fat'] as const;
+export const chartIds = ['weight', 'waist', 'bmi', 'weight-vs-waist', 'rate', 'goal', 'body-fat', 'workouts', 'active-minutes', 'steps', 'energy', 'energy-balance', 'protein'] as const;
 export type ChartId = (typeof chartIds)[number];
 export const chartTitles: Record<ChartId, string> = {
   weight: 'Weight',
@@ -33,8 +39,14 @@ export const chartTitles: Record<ChartId, string> = {
   rate: 'Weekly rate',
   goal: 'Goal',
   'body-fat': 'Body fat',
+  workouts: 'Workouts',
+  'active-minutes': 'Active minutes',
+  steps: 'Steps',
+  energy: 'Energy eaten vs burned',
+  'energy-balance': 'Energy balance',
+  protein: 'Protein',
 };
-export const progressMetrics = ['weight', 'waist', 'body_fat'];
+export const progressMetrics = ['weight', 'waist', 'body_fat', 'exercise_session', 'active_minutes', 'steps', 'distance', 'energy_intake', 'total_energy', 'protein_intake'];
 
 export const ranges = [
   { id: '7d', label: '7 days', days: 7 },
@@ -44,7 +56,7 @@ export const ranges = [
 ] as const;
 export type RangeId = (typeof ranges)[number]['id'];
 
-export type Series = { label: string; points: Point[]; style: 'dots' | 'line'; tone: 'accent' | 'ink' | 'warm' };
+export type Series = { label: string; points: Point[]; style: 'dots' | 'line' | 'bars'; tone: 'accent' | 'ink' | 'warm' };
 export type ChartModel = {
   id: ChartId;
   title: string;
@@ -67,7 +79,14 @@ const fmt = (n: number, d = 1) => n.toFixed(d);
 const signed = (n: number, d = 1) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n).toFixed(d)}`;
 const shortDate = (d: LocalDate) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
-export function progressReport(observations: Observation[], plan: Plan, today: LocalDate, range: RangeId) {
+export type ProgressOptions = {
+  /** How energy is shown on this phone (contract 11); charts use its first unit. */
+  energy?: EnergyDisplay;
+  /** The plan's activity logs and day-type overrides, for workouts done vs scheduled. */
+  history?: { activityLogs: ActivityLogRecord[]; dayOverrides: DayOverrideRecord[] };
+};
+
+export function progressReport(observations: Observation[], plan: Plan, today: LocalDate, range: RangeId, opts: ProgressOptions = {}) {
   const days = ranges.find((r) => r.id === range)!.days;
   const from = days ? addDays(today, -(days - 1)) : null;
   const mass = plan.units.mass;
@@ -234,9 +253,13 @@ export function progressReport(observations: Observation[], plan: Plan, today: L
     summary: bf.length ? `Body fat ${fmt(bf[bf.length - 1].value)} percent, a scale estimate.` : 'Body fat: no readings.',
   };
 
-  const summary: { weight: WeekCompare; waist: WeekCompare; mass: string; length: string } = {
+  const activity = activityCharts(observations, plan, today, from, opts);
+  Object.assign(charts, activity.charts);
+
+  const summary: { weight: WeekCompare; waist: WeekCompare; workouts: WeekCompare; mass: string; length: string } = {
     weight: compareWeeks(weight, today, 'mean'),
     waist: compareWeeks(waistAll, today, 'last'),
+    workouts: compareWeeks(activity.doneDaily, today, 'total'),
     mass,
     length,
   };
@@ -248,4 +271,158 @@ export function chartLayout(saved: { order?: string[]; hidden?: string[] } | nul
   const known = (xs: string[] | undefined) => (xs ?? []).filter((x): x is ChartId => (chartIds as readonly string[]).includes(x));
   const order = [...new Set([...known(saved?.order), ...chartIds])];
   return { order, hidden: known(saved?.hidden) };
+}
+
+const thousands = (n: number) => Math.round(n).toLocaleString('en-AU');
+const workoutPurposes: string[] = ['strength', 'conditioning_high_intensity', 'conditioning_low_intensity'];
+
+/**
+ * Part 2 (#52): workouts done vs scheduled, active minutes, steps, energy eaten vs burned, energy balance and
+ * protein. Intake comes only from logged or imported intake observations, never from ticked planned meals.
+ * Energy values are estimates (food logging and wearables both are) and say so.
+ */
+function activityCharts(observations: Observation[], plan: Plan, today: LocalDate, from: LocalDate | null, opts: ProgressOptions) {
+  const charts = {} as Record<ChartId, ChartModel>;
+  const span = from ? `since ${new Date(`${from}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : 'overall';
+
+  // Workouts: required exercise items of the current plan, done vs scheduled, per week.
+  const logs = opts.history?.activityLogs ?? [];
+  const overrides = new Map((opts.history?.dayOverrides ?? []).map((o) => [o.date, o.dayTypeId]));
+  const firstLog = logs.length ? logs[0].date : today;
+  const start = from ?? (firstLog < today ? firstLog : addDays(today, -27));
+  const doneDaily: Point[] = [];
+  const scheduledDaily: Point[] = [];
+  for (let d = start; d <= today; d = addDays(d, 1)) {
+    const activities = Object.fromEntries(logs.filter((l) => l.date === d && l.planId === plan.id).map((l) => [l.activityId, l]));
+    const p = prescribeDay(plan, d, { activities, dayTypeOverride: overrides.get(d) ?? null, observations: [], quickLogs: [] });
+    // Workouts are training sessions: a structured session, strength or conditioning. Walks and errands count in
+    // active minutes and steps instead.
+    const workouts = p.items.filter((i) => i.required && (!!i.session || (i.purpose !== null && workoutPurposes.includes(i.purpose))));
+    if (!workouts.length) continue;
+    scheduledDaily.push({ date: d, value: workouts.length, kind: 'calculated' });
+    doneDaily.push({ date: d, value: workouts.filter((i) => i.state === 'done').length, kind: 'measured' });
+  }
+  const done = weeklyTotals(doneDaily);
+  const scheduled = weeklyTotals(scheduledDaily);
+  const imported = weeklyTotals(dailySeries(observations, 'exercise_session', 'sum').map((p) => ({ ...p, value: 1 }))).filter((w) => !from || w.week >= weekStart(from));
+  const thisWeek = { done: done.find((w) => w.week === weekStart(today))?.total ?? 0, of: scheduled.find((w) => w.week === weekStart(today))?.total ?? 0 };
+  const importedTotal = imported.reduce((s, w) => s + w.total, 0);
+  charts.workouts = {
+    id: 'workouts',
+    title: chartTitles.workouts,
+    headline: scheduled.length ? `This week: ${thisWeek.done} of ${thisWeek.of} done` : null,
+    sub: scheduled.length ? `Strength and conditioning sessions per week, against your current plan${importedTotal ? ` · ${importedTotal} more recorded by other apps ${span}` : ''}` : null,
+    tag: null,
+    unit: 'workouts',
+    series: [
+      { label: 'Done', points: done.map((w) => ({ date: w.week, value: w.total, kind: 'measured' })), style: 'bars', tone: 'accent' },
+      { label: 'Scheduled', points: scheduled.map((w) => ({ date: w.week, value: w.total, kind: 'calculated' })), style: 'dots', tone: 'ink' },
+    ],
+    empty: scheduled.length ? null : 'No workouts are scheduled in your plan for this range.',
+    note: null,
+    summary: scheduled.length ? `Workouts this week: ${thisWeek.done} of ${thisWeek.of} done.` : 'Workouts: none scheduled.',
+  };
+
+  // Active minutes per week: a wearable's active minutes where present, otherwise recorded workout durations.
+  const active = dailySeries(observations, 'active_minutes');
+  const sessions = dailySeries(observations, 'exercise_session', 'sum');
+  const activeDays = new Set(active.map((p) => p.date));
+  const minutes = inRange([...active, ...sessions.filter((p) => !activeDays.has(p.date))].sort((a, b) => a.date.localeCompare(b.date)), from, today);
+  const minWeeks = weeklyTotals(minutes);
+  const minThis = minWeeks.find((w) => w.week === weekStart(today))?.total;
+  charts['active-minutes'] = {
+    id: 'active-minutes',
+    title: chartTitles['active-minutes'],
+    headline: minWeeks.length ? `This week: ${thousands(minThis ?? 0)} min` : null,
+    sub: minWeeks.length ? 'Per week, from active minutes or recorded workouts (imported)' : null,
+    tag: null,
+    unit: 'min',
+    series: [{ label: 'Minutes per week', points: minWeeks.map((w) => ({ date: w.week, value: w.total, kind: 'measured' })), style: 'bars', tone: 'accent' }],
+    empty: minWeeks.length ? null : 'No active minutes or workouts recorded. They can come from Health Connect or a screenshot import.',
+    note: null,
+    summary: minWeeks.length ? `Active minutes this week: ${thousands(minThis ?? 0)}.` : 'Active minutes: none recorded.',
+  };
+
+  // Steps: days as dots, a 7-day average, distance in the subtitle.
+  const steps = inRange(dailySeries(observations, 'steps'), from, today);
+  const stepsAvg = inRange(rollingAverage(dailySeries(observations, 'steps')), from, today);
+  const km = inRange(dailySeries(observations, 'distance'), from, today).reduce((s, p) => s + p.value, 0);
+  charts.steps = {
+    id: 'steps',
+    title: chartTitles.steps,
+    headline: stepsAvg.length ? `${thousands(stepsAvg[stepsAvg.length - 1].value)} a day` : steps.length ? thousands(steps[steps.length - 1].value) : null,
+    sub: steps.length ? `7-day average${km ? ` · ${km.toFixed(1)} km ${span}` : ''}` : null,
+    tag: null,
+    unit: 'steps',
+    series: [
+      { label: 'Days', points: steps, style: 'dots', tone: 'accent' },
+      { label: '7-day average', points: stepsAvg, style: 'line', tone: 'ink' },
+    ],
+    empty: steps.length ? null : 'No steps recorded. Connect Health Connect or import a screenshot.',
+    note: null,
+    summary: steps.length ? `Steps: ${steps.length} days; 7-day average ${stepsAvg.length ? thousands(stepsAvg[stepsAvg.length - 1].value) : 'not yet'}.` : 'Steps: none recorded.',
+  };
+
+  // Energy eaten vs burned (estimates), in the device's energy unit.
+  const unit = entryUnit(opts.energy ?? plan.units.energy);
+  const toUnit = (p: Point): Point => ({ ...p, value: convertEnergy(p.value, 'kJ', unit) });
+  const eaten = inRange(dailySeries(observations, 'energy_intake'), from, today).map(toUnit);
+  const burned = inRange(dailySeries(observations, 'total_energy'), from, today).map(toUnit);
+  const last7 = (ps: Point[]) => meanBetween(ps, addDays(today, -6), today);
+  const e7 = last7(eaten);
+  const b7 = last7(burned);
+  charts.energy = {
+    id: 'energy',
+    title: chartTitles.energy,
+    headline: e7 !== null || b7 !== null ? `${e7 !== null ? thousands(e7) : '—'} eaten · ${b7 !== null ? thousands(b7) : '—'} burned` : null,
+    sub: e7 !== null || b7 !== null ? `${unit} a day, last 7 days (days with data only)` : null,
+    tag: 'Estimate',
+    unit,
+    series: [
+      { label: 'Eaten (logged or imported)', points: eaten, style: 'dots', tone: 'accent' },
+      { label: 'Burned (from a wearable)', points: burned, style: 'dots', tone: 'warm' },
+    ],
+    empty: eaten.length || burned.length ? null : 'Energy appears here when you log or import what you ate, or a wearable reports energy burned. Ticking a planned meal doesn’t count as eaten.',
+    note: eaten.length || burned.length ? 'Both are estimates: food logs and wearables can be off by a lot.' : null,
+    summary: eaten.length || burned.length ? `Energy, last 7 days: ${e7 !== null ? thousands(e7) : 'no'} ${unit} eaten and ${b7 !== null ? thousands(b7) : 'no'} ${unit} burned a day.` : 'Energy: no data.',
+  };
+
+  // Energy balance per week (eaten − burned) against the weight trend.
+  const weekE = new Map(bucketMeans(eaten, 'week').map((b) => [b.bucket, b.value]));
+  const weekB = new Map(bucketMeans(burned, 'week').map((b) => [b.bucket, b.value]));
+  const balance: Point[] = [...weekE.keys()].filter((k) => weekB.has(k)).sort().map((k) => ({ date: k, value: weekE.get(k)! - weekB.get(k)!, kind: 'calculated' }));
+  const lastBal = balance[balance.length - 1];
+  charts['energy-balance'] = {
+    id: 'energy-balance',
+    title: chartTitles['energy-balance'],
+    headline: lastBal ? `${lastBal.value > 0 ? '+' : lastBal.value < 0 ? '−' : ''}${thousands(Math.abs(lastBal.value))} ${unit}/day` : null,
+    sub: lastBal ? 'Eaten minus burned, weekly average of days with both' : null,
+    tag: 'Estimate',
+    unit: `${unit}/day`,
+    series: [{ label: 'Weekly balance', points: balance, style: 'bars', tone: 'warm' }],
+    reference: { value: 0, label: 'Balanced' },
+    empty: balance.length ? null : 'Needs both energy eaten and energy burned in the same weeks.',
+    note: balance.length ? 'Estimates rarely match the scale exactly. Your weight trend is the better guide.' : null,
+    summary: lastBal ? `Latest weekly energy balance ${thousands(lastBal.value)} ${unit} a day, an estimate.` : 'Energy balance: not enough data.',
+  };
+
+  // Protein vs the plan's protein target.
+  const protein = inRange(dailySeries(observations, 'protein_intake'), from, today);
+  const target = plan.nutrition.targets.find((t) => t.quantity === 'grams' && /protein/i.test(`${t.id} ${t.label}`));
+  const p7 = last7(protein);
+  charts.protein = {
+    id: 'protein',
+    title: chartTitles.protein,
+    headline: p7 !== null ? `${Math.round(p7)} g a day` : null,
+    sub: p7 !== null ? `Last 7 days (days with data)${target?.min ? ` · target ${target.min}${target.max ? `–${target.max}` : '+'} g` : ''}` : null,
+    tag: null,
+    unit: 'g',
+    series: [{ label: 'Logged or imported', points: protein, style: 'dots', tone: 'accent' }],
+    reference: target?.min ? { value: target.min, label: 'Target (minimum)' } : undefined,
+    empty: protein.length ? null : 'Protein appears here when you log or import it. Ticking a planned meal doesn’t count as eaten.',
+    note: null,
+    summary: p7 !== null ? `Protein ${Math.round(p7)} grams a day over the last 7 days.` : 'Protein: none recorded.',
+  };
+
+  return { charts, doneDaily };
 }

@@ -27,6 +27,7 @@ describe('empty: no data at all', () => {
   const r = progressReport([], plan, TODAY, '30d');
   it('every chart explains what it needs, and nothing is invented', () => {
     for (const id of chartIds) {
+      if (id === 'workouts') continue; // the schedule is plan data: "0 of N done" is true, not invented
       expect(r.charts[id].empty).toBeTruthy();
       if (id !== 'goal') expect(r.charts[id].headline).toBeNull(); // the goal itself is plan data, not a measurement
     }
@@ -114,8 +115,67 @@ describe('chart order and visibility', () => {
   it('saved choices are kept; unknown ids dropped; new charts appended', () => {
     expect(chartLayout(null).order).toEqual([...chartIds]);
     expect(chartLayout({ order: ['bmi', 'gone', 'weight'], hidden: ['waist', 'gone'] })).toEqual({
-      order: ['bmi', 'weight', 'waist', 'weight-vs-waist', 'rate', 'goal', 'body-fat'],
+      order: ['bmi', 'weight', 'waist', 'weight-vs-waist', 'rate', 'goal', 'body-fat', 'workouts', 'active-minutes', 'steps', 'energy', 'energy-balance', 'protein'],
       hidden: ['waist'],
     });
+  });
+});
+
+describe('part 2: activity, energy and protein', () => {
+  const log = (date: string, activityId: string, status: 'done' | 'skipped' = 'done') => ({ planId: plan.id, date, activityId, status, count: 0, labelSnapshot: activityId, updatedAt: `${date}T10:00:00Z` });
+
+  it('workouts: strength and conditioning sessions of the plan, done vs scheduled; walks and school runs are not workouts', () => {
+    // Mon 2 Nov: a home day with school runs, the strength session and conditioning.
+    const history = { activityLogs: [log('2026-11-02', 'school-run-am'), log('2026-11-02', 'resistance'), log('2026-11-02', 'school-run-pm', 'skipped')], dayOverrides: [] };
+    const r = progressReport([], plan, TODAY, '7d', { history });
+    const done = r.charts.workouts.series[0].points;
+    const scheduled = r.charts.workouts.series[1].points;
+    expect(done.find((p) => p.date === '2026-11-02')!.value).toBe(1); // the strength session; the school run doesn't count
+    expect(scheduled.find((p) => p.date === '2026-11-02')!.value).toBeGreaterThan(1);
+    expect(r.charts.workouts.headline).toMatch(/^This week: 1 of \d+ done$/);
+    expect(r.summary.workouts.thisWeek).toBe(1);
+  });
+
+  it('a day-type override changes what was scheduled', () => {
+    const homeOnly = { ...plan, activities: plan.activities.map((a) => (a.id === 'resistance' ? { ...a, appliesTo: { dayTypes: ['home'] } } : a)) } as typeof plan;
+    const office = progressReport([], homeOnly, TODAY, '7d', { history: { activityLogs: [], dayOverrides: [{ planId: plan.id, date: '2026-11-02', dayTypeId: 'office' }] } });
+    const home = progressReport([], homeOnly, TODAY, '7d', { history: { activityLogs: [], dayOverrides: [] } });
+    const week = (r: typeof office) => r.charts.workouts.series[1].points.find((p) => p.date === '2026-11-02')!.value;
+    expect(week(office)).not.toBe(week(home));
+  });
+
+  it('ticked planned meals never count as eaten: energy and protein stay empty without intake data', () => {
+    const r = progressReport([], plan, TODAY, '30d', { history: { activityLogs: [log('2026-11-05', 'lunch'), log('2026-11-05', 'dinner')], dayOverrides: [] } });
+    expect(r.charts.energy.empty).toMatch(/Ticking a planned meal doesn’t count as eaten/);
+    expect(r.charts.protein.empty).toMatch(/Ticking a planned meal doesn’t count as eaten/);
+  });
+
+  it('energy: estimates in the phone’s energy unit; balance only for weeks with both', () => {
+    const data = [
+      ...[0, 1, 2].map((d) => obs(addDays(TODAY, -d), 'energy_intake', 8368, { unit: 'kJ' })), // 2,000 kcal
+      ...[0, 1].map((d) => obs(addDays(TODAY, -d), 'total_energy', 10460, { unit: 'kJ' })), // 2,500 kcal
+      obs(addDays(TODAY, -20), 'energy_intake', 8000, { unit: 'kJ' }), // a week with no burned value
+    ];
+    const r = progressReport(data, plan, TODAY, '30d', { energy: 'kcal' });
+    expect(r.charts.energy).toMatchObject({ tag: 'Estimate', unit: 'kcal', headline: '2,000 eaten · 2,500 burned' });
+    expect(r.charts['energy-balance'].series[0].points).toHaveLength(1);
+    expect(r.charts['energy-balance'].headline).toBe('−500 kcal/day');
+    expect(r.charts['energy-balance'].note).toMatch(/weight trend is the better guide/);
+  });
+
+  it('protein against the plan’s protein target', () => {
+    const r = progressReport([obs(TODAY, 'protein_intake', 150, { unit: 'g' }), obs(addDays(TODAY, -1), 'protein_intake', 170, { unit: 'g' })], plan, TODAY, '7d');
+    expect(r.charts.protein).toMatchObject({ headline: '160 g a day', reference: { value: 160, label: 'Target (minimum)' } });
+    expect(r.charts.protein.sub).toMatch(/target 160–180 g/);
+  });
+
+  it('steps with a 7-day average and distance; active minutes prefer a wearable’s value over workout durations on the same day', () => {
+    const r = progressReport(
+      [obs(TODAY, 'steps', 8000, { unit: 'count' }), obs(addDays(TODAY, -1), 'steps', 6000, { unit: 'count' }), obs(TODAY, 'distance', 5.2, { unit: 'km' }), obs(TODAY, 'active_minutes', 40, { unit: 'min' }), obs(TODAY, 'exercise_session', 30, { unit: 'min' }), obs(addDays(TODAY, -1), 'exercise_session', 25, { unit: 'min' })],
+      plan, TODAY, '7d',
+    );
+    expect(r.charts.steps).toMatchObject({ headline: '7,000 a day' });
+    expect(r.charts.steps.sub).toMatch(/5\.2 km/);
+    expect(r.charts['active-minutes'].headline).toBe('This week: 65 min'); // 40 (wearable) + 25 (workout on a day without one)
   });
 });

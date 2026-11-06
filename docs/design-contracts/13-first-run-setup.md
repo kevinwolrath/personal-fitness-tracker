@@ -54,14 +54,28 @@ Adults always get a usable plan without AI, built from bundled data in `presets/
 - **Other plan content:** a daily weight measurement and the `profile` (only what the user answered). Units follow kg/lb (lb → kcal and inches).
 - **Under 18:** tracking only. No activities, no exercise section and no AI. The schema also rejects weight-loss goals with `ageBand: under_18`.
 
-## Editing setup on an existing plan (`replanExisting`)
+## Editing setup on an existing plan
 
-- **The result** is a new revision of the **same plan id**, so day logs stay attached, written through the 07 history (`sections: ['setup']`, with `previousPlanJson`) so it can be undone.
-- **Replaced:** day types and the week (one "Every day" type), activities, requirements, exercise settings and the setup answers in `profile`.
-- **Kept:**
-  - measurements (with weight added if missing);
-  - measurement goals, nutrition targets (day-type limits removed, since those day types are gone), quick logs, due times and units other than mass;
-  - every observation, import, activity log, completion event and earlier revision.
+**Edit setup answers** (☰ menu) never touches a customised plan unless the user explicitly asks it to. After the questions, the last step is **Save your answers**:
+
+- **Save profile** (the primary action, `profileOnly`): only the setup answers in `profile` change, as the next revision through the 07 history (`sections: ['profile']`, undoable).
+  - **Untouched:** schedule, day types, activities, meals, requirements, nutrition targets, measurement goals, measurements and units. An exact weight typed in the other unit is converted to the plan's unit.
+  - **Profile entries setup doesn't own** (such as `displayName`) are kept.
+- **Rebuild starter plan instead** (an explicit secondary action, `replanExisting`): shows the starter plan with the Exercise and Meals tabs.
+  - **"What will change" first:** activities removed and added, day types that become one "Every day" schedule, requirements removed, and what is kept.
+  - **Replace my plan** asks "Replace your current plan?" before applying anything.
+  - **The result:** a new revision of the **same plan id**, so day logs stay attached, through the 07 history (`sections: ['setup']`), so it can be undone.
+  - **Kept:** measurements (with weight added if missing), measurement goals, nutrition targets (day-type limits removed), quick logs, due times and units other than mass.
+
+Both paths keep every observation, import, activity log, completion event and earlier revision. Cancel, Back or declining the confirmation leave the plan exactly as it was.
+
+## Meal safety and wording
+
+- **On the Meals tab and on each planned meal:** sample meals are **general suggestions, not a personalised nutrition plan and not food the user has logged**.
+- **Portions:** hand-sized portions are a rough guide and **don't guarantee enough energy or protein**.
+- **Allergens:** filtering by ingredient type can't guarantee a meal is free of an allergen. The Meals tab, the swap list and each meal's detail tell the user to **check ingredients and allergen labels themselves**.
+- **Tags are conservative:** an optional or alternative ingredient counts, and soy sauce counts as gluten. A test reads every template's ingredient names and fails if an implied tag (gluten, dairy, egg, meat, fish, nuts, soy, sesame) is missing. Soy and sesame are recorded but not yet filterable.
+- **Release:** a qualified dietitian should review the templates and their guidance before public release.
 
 ## Nutrition hook
 

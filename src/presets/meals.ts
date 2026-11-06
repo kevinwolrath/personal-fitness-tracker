@@ -76,7 +76,7 @@ export function mealActivities(day: Partial<Record<MealSlot, MealTemplate>>): Re
         id: s,
         kind: 'meal',
         label: m.label,
-        detail: 'Sample meal · a palm of protein',
+        detail: 'Sample meal, a suggestion only · check ingredients and allergens',
         when: when[s],
         purpose: 'nutrition',
         required: false,

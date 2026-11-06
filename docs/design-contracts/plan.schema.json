@@ -960,33 +960,28 @@
           }
         },
         "gender": {
-          "description": "formatVersion 6 (#49).",
+          "description": "formatVersion 6 (#49, #53). Stored only; never changes plan numbers.",
           "enum": [
             "male",
             "female",
-            "other",
-            "prefer_not_to_say"
+            "other"
           ]
         },
         "ageBand": {
-          "description": "formatVersion 6 (#49).",
+          "description": "formatVersion 6 (#49, #53). under_18: tracking only.",
           "enum": [
             "under_18",
-            "18_29",
-            "30_39",
-            "40_49",
-            "50_59",
+            "18_39",
+            "40_59",
             "60_plus"
           ]
         },
         "weightBand": {
-          "description": "formatVersion 6 (#49).",
+          "description": "formatVersion 6 (#49, #53). kg bands; a rough guide, never a weigh-in or BMI.",
           "enum": [
-            "under_60",
-            "60_79",
-            "80_99",
-            "100_119",
-            "120_plus"
+            "under_70",
+            "70_99",
+            "100_plus"
           ]
         },
         "weight": {
@@ -996,55 +991,26 @@
           "maximum": 700
         },
         "fitnessGoals": {
-          "description": "formatVersion 6 (#49).",
+          "description": "formatVersion 6 (#49, #53). Each value once.",
           "type": "array",
           "minItems": 1,
-          "maxItems": 4,
+          "maxItems": 5,
           "uniqueItems": true,
           "items": {
             "enum": [
               "maintain",
-              "lose_weight",
+              "gradual_loss",
+              "faster_loss",
               "gain_muscle",
               "improve_cardio"
             ]
           }
-        },
-        "primaryGoal": {
-          "description": "formatVersion 6 (#49).",
-          "enum": [
-            "maintain",
-            "lose_weight",
-            "gain_muscle",
-            "improve_cardio"
-          ]
         },
         "daysPerWeek": {
           "description": "formatVersion 6 (#49).",
           "type": "integer",
           "minimum": 1,
           "maximum": 7
-        },
-        "sessionMinutes": {
-          "description": "formatVersion 6 (#49).",
-          "type": "integer",
-          "minimum": 5,
-          "maximum": 240
-        },
-        "trainingPlaces": {
-          "description": "formatVersion 6 (#49).",
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 4,
-          "uniqueItems": true,
-          "items": {
-            "enum": [
-              "home",
-              "gym",
-              "outdoors",
-              "no_equipment"
-            ]
-          }
         },
         "activityLevel": {
           "description": "formatVersion 6 (#49).",
@@ -1060,6 +1026,57 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200
+        },
+        "age": {
+          "description": "formatVersion 6 (#49, #53). Exact age, only if given. Never a date of birth.",
+          "type": "integer",
+          "minimum": 18,
+          "maximum": 120
+        },
+        "equipment": {
+          "description": "formatVersion 6 (#49, #53). Each value once.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "none",
+              "bands",
+              "weights",
+              "gym"
+            ]
+          }
+        },
+        "physicalLimits": {
+          "description": "formatVersion 6 (#49, #53). Each value once.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "knees",
+              "back",
+              "shoulders"
+            ]
+          }
+        },
+        "dietary": {
+          "description": "formatVersion 6 (#49, #53). Each value once.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "vegetarian",
+              "vegan",
+              "dairy_free",
+              "gluten_free",
+              "nut_allergy"
+            ]
+          }
         }
       }
     },
@@ -1562,6 +1579,12 @@
                 {
                   "type": "object",
                   "required": [
+                    "age"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
                     "weightBand"
                   ]
                 },
@@ -1580,31 +1603,31 @@
                 {
                   "type": "object",
                   "required": [
-                    "primaryGoal"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "required": [
                     "daysPerWeek"
                   ]
                 },
                 {
                   "type": "object",
                   "required": [
-                    "sessionMinutes"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "required": [
-                    "trainingPlaces"
-                  ]
-                },
-                {
-                  "type": "object",
-                  "required": [
                     "activityLevel"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "equipment"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "physicalLimits"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "dietary"
                   ]
                 },
                 {

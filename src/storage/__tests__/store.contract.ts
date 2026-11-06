@@ -88,6 +88,11 @@ export function describeTrackingStore(
       expect((await store.latestObservation('weight', '2026-11-01'))?.value).toBe(98.4);
       expect(await store.latestObservation('weight', '2026-10-31')).toBeNull();
       expect(await store.latestObservation('waist', '2026-11-04')).toBeNull();
+      // #52: all observed values of chosen metrics, oldest first; inferred values never.
+      await store.addObservations([obs('i', 'weight', '2026-11-03', 50, '2026-11-03T07:00:00Z', { kind: 'inferred' })]);
+      expect((await store.observationsFor(['weight'])).map((x) => x.id)).toEqual(['a', 'b', 'c', 'd']);
+      expect((await store.observationsFor(['weight', 'steps'])).map((x) => x.id)).toEqual(['a', 'b', 'c', 's', 'd']);
+      expect(await store.observationsFor([])).toEqual([]);
       expect((await store.getDay('p', '2026-11-02')).observations.map((x) => x.id)).toEqual(['b', 'c', 's']);
 
       // Correcting history: remove a past entry and add a new one.

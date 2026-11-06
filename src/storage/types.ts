@@ -127,6 +127,8 @@ export interface TrackingStore {
    * entered or confirmed beats an integration's (#36); then latest recordedAt.
    */
   latestObservation(metric: string, onOrBefore: LocalDate): Promise<Observation | null>;
+  /** Every observed (never inferred) observation of these metrics, by date then recordedAt (#52 Progress). */
+  observationsFor(metrics: string[]): Promise<Observation[]>;
   /**
    * Replace one integration's observations (`source.importId`) for these dates and metrics with `observations`,
    * atomically (#36). Only that integration's records on those days and metrics are removed: manual entries,

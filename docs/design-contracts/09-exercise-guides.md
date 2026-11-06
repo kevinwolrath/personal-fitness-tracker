@@ -47,3 +47,29 @@ Adding an exercise (goblet squat, one-arm kettlebell row, …) is data only: a d
 - **No definition:** the guide still opens with the name, dose and any caution, and says "No guide for this exercise yet."
 - **Read-only:** opening, paging or closing the guide never logs, completes or reorders anything.
 - **Layout:** fills most of the screen (92 % of the height). On web it renders inside the phone frame, and the responsive sweep (05) covers it at every width.
+
+## Muscle-group inventory, priority and recovery (#56)
+
+Advisory planning only: the app orders and explains, it never blocks a choice or asks for every muscle every day.
+
+**Data, not code.** `src/exercises/inventory.json` holds the approved muscle groups and exercises, each with `primary` and `secondary` muscles, `kind` (`strength` or `conditioning`) and `equipment` (any one type; `[]` means none). `src/exercises/coverage.ts` names no exercise or muscle.
+- **Eligible** exercises use the user's configured equipment (`plan.exercise.equipment`). With none configured, only the no-equipment ones are eligible. A limitation of `avoid` removes the movement; `caution` keeps it, flagged.
+- **History** comes from session ticks (and whole-workout "done") and from free exercise logs (contract 04). These are disjoint, with stable ids, so nothing counts twice. Conditioning stays separate from strength sessions and suggestions, but its muscle work counts.
+
+**Rules** (`COVERAGE`, tunable; tests pin each):
+- **Effective sets:** sets × intensity (light 0.5), scaled down below 6 reps or 20 s per set, so one push-up isn't a set. Primary muscles count 1.0 per effective set, secondary 0.5.
+- **Volume window:** the last 7 *training* days. Configured rest days are skipped, so a rest day never makes a muscle overdue.
+- **Status**, in this order:
+  - **unavailable:** an active sore/injured report, which always wins;
+  - **recovering:** inside a recovery window;
+  - **green:** at or above the weekly target (6 effective sets);
+  - **amber:** from half the target;
+  - **red:** below that;
+  - **unknown:** red is shown as unknown until history spans 7 days, so nothing is red on first use.
+- **Recovery is independent of priority.** Each day's load on a muscle sets a window from that day's last hit: light (≤ 2 effective sets) ~24 h, hard (> 2, or any set marked hard) ~48 h, particularly demanding (≥ 6) ~72 h. Under 0.5 needs none. These are planning defaults, not physiological guarantees.
+- **Suggestions** order eligible strength exercises by Σ contribution × need. Need is the share of the target still missing (0.5 when unknown).
+  - Order: not done today → not held → score → inventory order.
+  - **Held** (listed after, never removed): a primary muscle is recovering or unavailable, or a secondary is unavailable.
+- **Scheduled sessions (option C)** keep their exercises; `orderSessionMovements` orders them by the same priority. Session completion and plan behaviour are unchanged.
+
+Not built yet: logging and reporting from the UI, and the silhouette (waiting for approved artwork and layouts).

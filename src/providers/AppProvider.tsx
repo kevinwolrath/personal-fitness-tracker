@@ -7,6 +7,7 @@ import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
 import { colors, space, type } from '../ui/theme';
+import { SetupWizard } from '../features/onboarding/SetupWizard';
 
 type AppData = {
   store: TrackingStore;
@@ -32,9 +33,12 @@ export function useApp(): AppData {
   return ctx;
 }
 
-/** Opens storage and loads the active plan (installing the seed on first run). */
+/**
+ * Opens storage and loads the active plan. With no plan yet (a fresh install) it shows first-run setup (#49)
+ * instead of the app; setup creates the user's own plan and then the app opens on Today.
+ */
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { error: string } | null>(null);
+  const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { store: TrackingStore; plan: null } | { error: string } | null>(null);
   const [chosenEnergy, setChosenEnergy] = useState<EnergyDisplay | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const notifyDataChanged = useCallback(() => setDataVersion((v) => v + 1), []);
@@ -54,7 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const reloadPlan = useCallback(async () => {
-    if (!state || 'error' in state) return;
+    if (!state || 'error' in state || !state.plan) return;
     const stored = await state.store.getActivePlan();
     if (stored) setState({ store: state.store, plan: planSchema.parse(JSON.parse(stored.json)) });
   }, [state]);
@@ -63,7 +67,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     preferences.setEnergyDisplay(d).catch(() => undefined); // still applies for this session if storage fails
   }, []);
   const value = useMemo(
-    () => (state && !('error' in state) ? { ...state, reloadPlan, energy: chosenEnergy ?? state.plan.units.energy, setEnergy, dataVersion, notifyDataChanged } : null),
+    () => (state && !('error' in state) && state.plan ? { store: state.store, plan: state.plan, reloadPlan, energy: chosenEnergy ?? state.plan.units.energy, setEnergy, dataVersion, notifyDataChanged } : null),
     [state, reloadPlan, chosenEnergy, setEnergy, dataVersion, notifyDataChanged],
   );
 
@@ -81,6 +85,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         <Text style={[type.detail, styles.error]}>{state.error}</Text>
       </View>
     );
+  }
+  if (!state.plan || !value) {
+    return <SetupWizard store={state.store} energy={chosenEnergy ?? 'kJ'} onFinished={(plan) => setState({ store: state.store, plan })} />;
   }
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

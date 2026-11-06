@@ -9,7 +9,7 @@ import {
   strengthSplits,
   trainingLocations,
 } from '../plan/schema';
-import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan } from './sections';
+import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 
 const fence = (json: unknown) => '```json\n' + JSON.stringify(json, null, 2) + '\n```';
 /** An example reply exactly as the AI should send it: the bare object, one line, no fence (#47). */
@@ -20,16 +20,89 @@ const bare = (json: unknown) => JSON.stringify(json);
  * styles, #47). Plain text and JSON only, no provider-specific features, so any assistant can follow it. Generated from the live
  * configuration and the app's own schema enums, so it can't drift from what the importer accepts.
  */
-export function buildAiInstructions(raw: RawPlan, today: string): string {
-  const config = readConfig(raw);
-  const fieldDocs = sectionNames
+export type InstructionOptions = {
+  /** Sections the AI must not change (#49 setup leaves out nutrition): hidden from the fields, config and examples. */
+  exclude?: SectionName[];
+  /** Text before the standard instructions (#49 setup: what the user told the app). */
+  intro?: string;
+  /** The last line: what the AI should do first. */
+  ending?: string;
+};
+
+export function buildAiInstructions(raw: RawPlan, today: string, opts: InstructionOptions = {}): string {
+  const exclude = new Set(opts.exclude ?? []);
+  const allowed = sectionNames.filter((s) => !exclude.has(s));
+  const config = Object.fromEntries(Object.entries(readConfig(raw)).filter(([k]) => !exclude.has(k as SectionName)));
+  const fieldDocs = allowed
     .map((s) => {
       const fields = Object.entries(sections[s].fields).map(([k, f]) => `  - ${k}${f.clearable ? ' (may be null to clear)' : ''}${'mergeById' in f && f.mergeById ? ' (merge by id)' : ''}: ${f.doc}`);
       return `- ${s}\n${fields.join('\n')}`;
     })
     .join('\n');
 
-  return `# Fitness tracker: configuration session
+  const examples = [
+    {
+      title: 'Exercise only (nutrition and everything else stay unchanged):',
+      json: {
+        fitnessConfigUpdate: {
+          schemaVersion: CONFIG_SCHEMA_VERSION,
+          exercise: {
+            equipment: [{ type: 'kettlebell', weightsKg: [16, 24] }, { type: 'heavy_bag' }, { type: 'home_gym', brand: 'Fortis' }],
+            limitations: [
+              { movement: 'biceps_curl', status: 'avoid', reason: 'elbow discomfort' },
+              { movement: 'hammer_curl', status: 'allowed' },
+            ],
+          },
+        },
+      },
+    },
+    {
+      title: 'Nutrition only:',
+      json: {
+        fitnessConfigUpdate: {
+          schemaVersion: CONFIG_SCHEMA_VERSION,
+          nutrition: { targets: [{ id: 'energy', label: 'Energy', quantity: 'energy', max: 7300 }, { id: 'protein', label: 'Protein', quantity: 'grams', min: 160, max: 180 }] },
+        },
+      },
+    },
+    {
+      title: 'Changing one meal without resending the others (merge by id):',
+      json: {
+        fitnessConfigUpdate: {
+          schemaVersion: CONFIG_SCHEMA_VERSION,
+          nutrition: { meals: { merge: [{ id: 'snack', kind: 'meal', label: 'Afternoon snack', when: 'afternoon', nutrition: { energy: 900, protein: 30 } }] } },
+        },
+      },
+    },
+    {
+      title: 'Nutrition and exercise together:',
+      json: {
+        fitnessConfigUpdate: {
+          schemaVersion: CONFIG_SCHEMA_VERSION,
+          nutrition: { eatingWindow: { start: '11:30', end: '19:30' } },
+          exercise: { constraints: { location: 'home', gymMembership: false, maxSessionMinutes: 40 } },
+        },
+      },
+    },
+    {
+      title: 'A first weekly schedule (exercise and habits, merge by id):',
+      json: {
+        fitnessConfigUpdate: {
+          schemaVersion: CONFIG_SCHEMA_VERSION,
+          schedule: {
+            activities: {
+              merge: [
+                { id: 'walk', kind: 'exercise', label: 'Brisk walk', when: 'morning', duration: { minutes: 30 }, purpose: 'walking' },
+                { id: 'strength', kind: 'exercise', label: 'Strength session', time: '18:00', duration: { minutes: 30 }, appliesTo: { days: ['mon', 'wed', 'fri'] } },
+              ],
+            },
+          },
+        },
+      },
+    },
+  ].filter((e) => !Object.keys(e.json.fitnessConfigUpdate).some((k) => exclude.has(k as SectionName)));
+
+  return `${opts.intro ? `${opts.intro}\n\n` : ''}# Fitness tracker: configuration session
 
 You are helping me update the configuration of my personal fitness tracker app. Talk with me normally. Ask questions when something is unclear, and don't guess about health limits, equipment or food. When I say I'm done, reply with ONE update for the app in the exact format below.
 
@@ -47,7 +120,7 @@ When I say I'm done, your whole reply is ONE JSON object and nothing else: start
 
 ${bare({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section>': { '<field>': '<new value>' } } })}
 
-Sections you can change: ${sectionNames.join(', ')}. Always include "fitnessConfigUpdate" and "schemaVersion": ${CONFIG_SCHEMA_VERSION}.
+Sections you can change: ${allowed.join(', ')}.${exclude.size ? ` Never include ${[...exclude].join(' or ')}: the app sets ${exclude.size > 1 ? 'those' : 'that'} up separately.` : ''} Always include "fitnessConfigUpdate" and "schemaVersion": ${CONFIG_SCHEMA_VERSION}.
 
 The update must contain EVERY change we agreed in this conversation, in the right sections, and nothing else. Before sending, check it against my requests one by one.
 
@@ -86,48 +159,7 @@ ${fieldDocs}
 
 Each example is a complete reply.
 
-Exercise only (nutrition and everything else stay unchanged):
+${examples.map((e) => `${e.title}\n\n${bare(e.json)}`).join('\n\n')}
 
-${bare({
-  fitnessConfigUpdate: {
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    exercise: {
-      equipment: [{ type: 'kettlebell', weightsKg: [16, 24] }, { type: 'heavy_bag' }, { type: 'home_gym', brand: 'Fortis' }],
-      limitations: [
-        { movement: 'biceps_curl', status: 'avoid', reason: 'elbow discomfort' },
-        { movement: 'hammer_curl', status: 'allowed' },
-      ],
-    },
-  },
-})}
-
-Nutrition only:
-
-${bare({
-  fitnessConfigUpdate: {
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    nutrition: { targets: [{ id: 'energy', label: 'Energy', quantity: 'energy', max: 7300 }, { id: 'protein', label: 'Protein', quantity: 'grams', min: 160, max: 180 }] },
-  },
-})}
-
-Changing one meal without resending the others (merge by id):
-
-${bare({
-  fitnessConfigUpdate: {
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    nutrition: { meals: { merge: [{ id: 'snack', kind: 'meal', label: 'Afternoon snack', when: 'afternoon', nutrition: { energy: 900, protein: 30 } }] } },
-  },
-})}
-
-Nutrition and exercise together:
-
-${bare({
-  fitnessConfigUpdate: {
-    schemaVersion: CONFIG_SCHEMA_VERSION,
-    nutrition: { eatingWindow: { start: '11:30', end: '19:30' } },
-    exercise: { constraints: { location: 'home', gymMembership: false, maxSessionMinutes: 40 } },
-  },
-})}
-
-Start by asking me what I'd like to change.`;
+${opts.ending ?? "Start by asking me what I'd like to change."}`;
 }

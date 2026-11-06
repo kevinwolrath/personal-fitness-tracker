@@ -37,7 +37,7 @@ export const exportSchema = z.object({
       revision: z.number(),
       formatVersion: z.number(),
       importedAt: z.string(),
-      origin: z.enum(['seed', 'config', 'import']).optional(),
+      origin: z.enum(['seed', 'config', 'import', 'onboarding']).optional(),
       /** The plan package as imported (goals, targets, schedule live here). */
       plan: z.unknown(),
     }),

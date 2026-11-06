@@ -22,6 +22,7 @@ import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
+import { NoPlanCard } from './NoPlanCard';
 import { isDue } from '../../prescription/nextAction';
 import { useReminders } from '../reminders/RemindersProvider';
 import { WorkoutCard } from './WorkoutCard';
@@ -172,6 +173,8 @@ export function DayLogScreen() {
     .map((part) => ({ part, items: prescription.items.filter((i) => i.window.part === part) }))
     .filter((g) => g.items.length);
   const nothingPlanned = !prescription.items.length;
+  // A new user who skipped the AI step (#49): no plan yet, so Today offers to set one up instead of "Do this next".
+  const noPlan = plan.activities.length === 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
@@ -191,7 +194,13 @@ export function DayLogScreen() {
 
         {!editable && <Text style={[type.detail, styles.notice]}>Upcoming. You can tick these off on the day.</Text>}
 
-        {date === today && (
+        {date === today && noPlan && (
+          <View style={styles.firstBlock}>
+            <NoPlanCard minor={plan.profile?.ageBand === 'under_18'} onSetUp={() => router.push('/configure')} />
+          </View>
+        )}
+
+        {date === today && !noPlan && (
           <View style={styles.firstBlock}>
             {(() => {
               const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
@@ -230,7 +239,7 @@ export function DayLogScreen() {
           <TargetsLine plan={plan} targets={day.targets} energy={energy} />
         </View>
 
-        {nothingPlanned && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
+        {nothingPlanned && !(noPlan && date === today) && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
 
         {groups.map((g) => (
           <View key={g.part} style={styles.block} testID={`part-${g.part}`}>

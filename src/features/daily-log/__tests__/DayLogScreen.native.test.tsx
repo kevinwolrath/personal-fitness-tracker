@@ -8,7 +8,8 @@ import { Slot } from 'expo-router';
 import { Alert, Modal, Platform, Text } from 'react-native';
 import { renderRouter } from 'expo-router/testing-library';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MemoryKeyValue } from '../../../storage/keyValueStore';
+import { KeyValueTrackingStore, MemoryKeyValue } from '../../../storage/keyValueStore';
+import { installSeedPlan } from '../../../plan/bootstrap';
 import { AppProvider } from '../../../providers/AppProvider';
 import { DayLogScreen } from '../DayLogScreen';
 import { AppShell } from '../../shell/AppShell';
@@ -57,8 +58,10 @@ async function launch() {
   return utils;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   mockKv = new MemoryKeyValue();
+  // An install that already runs the bundled seed plan (new installs go through setup, #49).
+  await installSeedPlan(new KeyValueTrackingStore(mockKv));
   jest.clearAllMocks();
   jest.useFakeTimers({ now: NOW });
 });

@@ -55,7 +55,8 @@ it('the snapshot captures what was prescribed, independent of later plan edits',
   const s = snap.prescribed as any;
   expect(snap).toMatchObject({ planId: 'prescription-example', date: '2026-11-02', planRevision: 1 });
   expect(s.items.find((i: any) => i.key === 'strength').session.exercises[4]).toEqual({
-    movement: 'hammer_curl', label: 'Hammer curl', dose: '2 × 12', substitutedFor: 'Biceps curl',
+    movement: 'hammer_curl', label: 'Hammer curl', dose: '2 × 12', substitutedFor: 'Biceps curl', sets: 2, reps: 12, // structured dose (#56)
   });
+  expect(s.items.find((i: any) => i.key === 'strength').session.doses).toBe(1);
   expect(s.items.find((i: any) => i.kind === 'requirement').options.map((o: any) => o.id)).toEqual(['vr-boxing', 'heavy-bag', 'battle-ropes']);
 });

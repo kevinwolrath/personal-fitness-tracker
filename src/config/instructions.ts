@@ -9,6 +9,7 @@ import {
   strengthSplits,
   trainingLocations,
 } from '../plan/schema';
+import { APP_NAME } from '../brand';
 import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 
 const fence = (json: unknown) => '```json\n' + JSON.stringify(json, null, 2) + '\n```';
@@ -102,9 +103,9 @@ export function buildAiInstructions(raw: RawPlan, today: string, opts: Instructi
     },
   ].filter((e) => !Object.keys(e.json.fitnessConfigUpdate).some((k) => exclude.has(k as SectionName)));
 
-  return `${opts.intro ? `${opts.intro}\n\n` : ''}# Fitness tracker: configuration session
+  return `${opts.intro ? `${opts.intro}\n\n` : ''}# ${APP_NAME}: configuration session
 
-You are helping me update the configuration of my personal fitness tracker app. Talk with me normally. Ask questions when something is unclear, and don't guess about health limits, equipment or food. When I say I'm done, reply with ONE update for the app in the exact format below.
+You are helping me update the configuration of ${APP_NAME}, my personal health and fitness app (plan, meals, activity and progress). Talk with me normally. Ask questions when something is unclear, and don't guess about health limits, equipment or food. When I say I'm done, reply with ONE update for the app in the exact format below.
 
 The app owns my configuration. You only propose changes. The app validates your update, shows me a preview, and applies it only if I confirm.
 

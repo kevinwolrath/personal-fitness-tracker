@@ -1,3 +1,4 @@
+import { APP_NAME } from '../brand';
 import { previewUpdate, type SectionPreview } from '../config/diff';
 import { buildAiInstructions } from '../config/instructions';
 import type { RawPlan, SectionName } from '../config/sections';
@@ -19,9 +20,9 @@ export function buildSetupPrompt(starterRaw: RawPlan, d: Draft, today: string, s
   const answers = answerLines(d);
   const told = answers.length ? answers.map((a) => `- ${a.label}: ${a.value}`).join('\n') : '- Nothing yet: please ask me.';
   const nutrition = seed.prompt((starterRaw.profile ?? {}) as Record<string, unknown>);
-  const intro = `# Fitness tracker: my first plan
+  const intro = `# ${APP_NAME}: my first plan
 
-I've just installed a fitness tracker app and I'd like help refining my starting plan. Here is what I told the app (anything missing, I chose not to say):
+I've just installed ${APP_NAME}, a personal health and fitness app, and I'd like help refining my starting plan. Here is what I told the app (anything missing, I chose not to say):
 
 ${told}
 

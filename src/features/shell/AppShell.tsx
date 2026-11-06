@@ -19,6 +19,7 @@ import { SettingsSheet } from '../settings/SettingsSheet';
 import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
 import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
 import { energyDisplayDetail } from '../../energy';
+import { APP_NAME } from '../../brand';
 
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
@@ -94,8 +95,8 @@ function Shell({ children }: { children: ReactNode }) {
               <View style={styles.line} />
             </View>
           </Pressable>
-          <Text style={styles.appName} numberOfLines={1}>
-            Personal Fitness Tracker
+          <Text style={styles.appName} numberOfLines={1} testID="app-name">
+            {APP_NAME}
           </Text>
         </View>
       </SafeAreaView>

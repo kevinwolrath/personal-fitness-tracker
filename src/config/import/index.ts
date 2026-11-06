@@ -1,3 +1,4 @@
+import { APP_NAME } from '../../brand';
 import { z } from 'zod';
 import { CONFIG_SCHEMA_VERSION, sectionNames, sections } from '../sections';
 import { canonicalize } from './canonicalize';
@@ -90,7 +91,7 @@ export function prepareUpdate(text: string): Prepared {
  */
 export function importDiagnostics(input: string, result: { errors: string[]; notes?: string[]; recoverable?: string[]; problems?: Problem[]; text?: string }): string {
   const lines = [
-    'Fitness tracker: configuration update could not be imported.',
+    `${APP_NAME}: configuration update could not be imported.`,
     `Schema version expected: ${CONFIG_SCHEMA_VERSION}. Pasted text: ${input.length.toLocaleString('en-AU')} characters.`,
     '',
     'Errors:',

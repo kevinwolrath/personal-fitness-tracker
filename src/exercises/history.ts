@@ -1,4 +1,5 @@
 import type { LocalDate } from '../plan/dates';
+import type { Activity } from '../plan/schema';
 import { sessionProgress } from '../prescription/exercises';
 import type { PrescribedSession } from '../prescription/session';
 import type { ActivityLog, CompletionEvent, ExerciseLog } from '../storage/types';
@@ -90,4 +91,23 @@ export function snapshotSession(prescribed: unknown, activityId: string): Prescr
     exercises: s.exercises.map(ex),
     ...(s.short ? { short: { minutes: s.short.minutes, exercises: s.short.exercises.map(ex) } } : {}),
   };
+}
+
+/**
+ * A completed plan activity that names an inventory movement (#56), e.g. VR boxing: one entry per activity and day,
+ * so the same completion is never counted twice. Count tracking (rounds) counts the rounds done, even part-way;
+ * a check counts once done. Minutes are the plan's duration (the shorter end of a range), shared out per round for
+ * count tracking; without a duration, rounds count by the conditioning model's default round length. Skipped: nothing.
+ */
+export function activityEntries({ planId, date, activity, log }: { planId: string; date: LocalDate; activity: Activity; log: ActivityLog }): ExerciseEntry[] {
+  if (!activity.movement || log.status === 'skipped') return [];
+  const planned = activity.duration ? ('minutes' in activity.duration ? activity.duration.minutes : activity.duration.min) : undefined;
+  const base = { id: `activity|${planId}|${date}|${activity.id}`, movement: activity.movement, date, at: log.updatedAt, source: 'activity' as const };
+  if (activity.tracking.type === 'count') {
+    if (log.count <= 0) return [];
+    const minutes = planned !== undefined ? (planned * log.count) / activity.tracking.target : undefined;
+    return [{ ...base, sets: log.count, ...(minutes !== undefined ? { minutes } : {}) }];
+  }
+  if (log.status !== 'done') return [];
+  return [{ ...base, sets: 1, ...(planned !== undefined ? { minutes: planned } : {}) }];
 }

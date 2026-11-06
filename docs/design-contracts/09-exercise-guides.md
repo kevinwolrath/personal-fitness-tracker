@@ -54,10 +54,18 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
 
 **Data, not code.** `src/exercises/inventory.json` holds the approved muscle groups and exercises, each with `primary` and `secondary` muscles, `kind` (`strength` or `conditioning`) and `equipment` (any one type; `[]` means none). `src/exercises/coverage.ts` names no exercise or muscle.
 - **Eligible** exercises use the user's configured equipment (`plan.exercise.equipment`). With none configured, only the no-equipment ones are eligible. A limitation of `avoid` removes the movement; `caution` keeps it, flagged.
-- **History** comes from session ticks (and whole-workout "done") and from free exercise logs (contract 04). These are disjoint, with stable ids, so nothing counts twice. Conditioning stays separate from strength sessions and suggestions, but its muscle work counts.
+- **History** (`src/exercises/state.ts`, the last 60 days) comes from three sources. They're disjoint and have stable ids, so nothing counts twice:
+  - session ticks (and whole-workout "done"), with doses from that day's snapshot, else the plan in effect;
+  - plan activities that name a `movement` (formatVersion 7), for example VR boxing: rounds done (even part-way), or the planned duration once a check is done; skipped counts nothing;
+  - exercises logged on their own (contract 04).
+- **Conditioning** stays separate from strength sessions and suggestions, but its muscle work counts. Legacy movements outside the inventory (e.g. `cable_row`) keep their data and simply add no muscle history.
 
 **Rules** (`COVERAGE`, tunable; tests pin each):
-- **Effective sets:** sets × intensity (light 0.5), scaled down below 6 reps or 20 s per set, so one push-up isn't a set. Primary muscles count 1.0 per effective set, secondary 0.5.
+- **Effective sets:**
+  - **Strength:** sets × intensity (light 0.5), scaled down below 6 reps or 20 s per set, so one push-up isn't a set.
+  - **Conditioning** has its own model, by time: minutes × 0.15 × intensity. Rounds without a time count 3 minutes each, so a 3-minute boxing round is about 0.45 of a set, never a hard set.
+  - Primary muscles count 1.0 per effective set, secondary 0.5.
+- **Rest days** come only from `plan.exercise.restDays` (formatVersion 7; the seed rests on Friday). They're never inferred from the schedule.
 - **Volume window:** the last 7 *training* days. Configured rest days are skipped, so a rest day never makes a muscle overdue.
 - **Status**, in this order:
   - **unavailable:** an active sore/injured report, which always wins;
@@ -70,6 +78,11 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
 - **Suggestions** order eligible strength exercises by Σ contribution × need. Need is the share of the target still missing (0.5 when unknown).
   - Order: not done today → not held → score → inventory order.
   - **Held** (listed after, never removed): a primary muscle is recovering or unavailable, or a secondary is unavailable.
-- **Scheduled sessions (option C)** keep their exercises; `orderSessionMovements` orders them by the same priority. Session completion and plan behaviour are unchanged.
+- **Scheduled sessions (option C)** keep their exercises. On Today, `sessionExerciseOrder` orders them by the same priority:
+  - Plan order until history spans 7 days.
+  - Exercises the inventory doesn't know keep their slot.
+  - The order uses history **before today**, so it never reshuffles mid-workout.
+  - It's display order only: exercise keys, ticks and session completion are unchanged.
+- **Logging:** `logExercise` (inventory movements, whole sets, any day including rest days) and `reportMuscle` / `clearMuscleReport` exist in code.
 
-Not built yet: logging and reporting from the UI, and the silhouette (waiting for approved artwork and layouts).
+Not built yet: the on-screen entry points for logging, reporting and coverage, and the silhouette (waiting for approved design and artwork).

@@ -1,4 +1,4 @@
-import { COVERAGE, effectiveSets, muscleCoverage, orderSessionMovements, suggestExercises, windowStart, type ExerciseEntry, type MuscleReport } from '../coverage';
+import { COVERAGE, effectiveSets, hasEnoughHistory, muscleCoverage, sessionExerciseOrder, suggestExercises, windowStart, type ExerciseEntry, type MuscleReport } from '../coverage';
 import { eligibleExercises, exerciseInventory } from '../inventory';
 
 /** #56: muscle-group priority and recovery, from approved rules. Times are AEDT (+11:00). */
@@ -194,13 +194,33 @@ describe('suggestions: priority, recovery, equipment and limitations', () => {
 });
 
 describe('option C: a scheduled session keeps its exercises, ordered by priority', () => {
-  it('known movements follow the suggestion order; unknown ones keep their place after them', () => {
-    const c = muscleCoverage({ inventory: exerciseInventory, entries: [longAgo, entry('chest_press', day(-4), '08:00', { sets: 6 })], now: t(MON, '18:00'), today: MON });
-    const s = suggestExercises(eligibleExercises({ equipment: [{ type: 'home_gym' }, { type: 'kettlebell' }, { type: 'free_weights' }] }), c);
-    const session = ['kettlebell_squat', 'chest_press', 'lat_pulldown', 'cable_row', 'hammer_curl'];
-    const ordered = orderSessionMovements(session, s);
-    expect([...ordered].sort()).toEqual([...session].sort()); // nothing added or dropped
-    expect(ordered.indexOf('chest_press')).toBeGreaterThan(ordered.indexOf('lat_pulldown')); // chest is well trained
-    expect(ordered.at(-1)).toBe('cable_row'); // not in the inventory
+  const session = ['kettlebell_squat', 'chest_press', 'lat_pulldown', 'cable_row', 'hammer_curl'].map((movement) => ({ movement }));
+  const cov = (entries: ExerciseEntry[]) => muscleCoverage({ inventory: exerciseInventory, entries, now: t(MON, '06:00'), today: MON });
+  const moves = (order: number[]) => order.map((i) => session[i].movement);
+
+  it('first use (not enough history): the plan order, unchanged', () => {
+    const entries = [entry('chest_press', day(-2), '08:00', { sets: 6 })];
+    expect(hasEnoughHistory(entries, exerciseInventory, MON)).toBe(false);
+    expect(sessionExerciseOrder(session, cov(entries), exerciseInventory, false)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('with history: exercises for muscles in need first; nothing added or dropped; unknown movements keep their slot', () => {
+    const entries = [longAgo, entry('chest_press', day(-4), '08:00', { sets: 6 })];
+    expect(hasEnoughHistory(entries, exerciseInventory, MON)).toBe(true);
+    const order = sessionExerciseOrder(session, cov(entries), exerciseInventory, true);
+    expect([...order].sort()).toEqual([0, 1, 2, 3, 4]);
+    expect(order[3]).toBe(3); // cable_row (legacy, not in the inventory) stays in its slot
+    expect(moves(order).indexOf('chest_press')).toBeGreaterThan(moves(order).indexOf('lat_pulldown')); // chest is well trained
+  });
+
+  it('an exercise whose primary muscle is still recovering moves after the others', () => {
+    const entries = [longAgo, entry('lat_pulldown', MON, '05:00')];
+    const order = moves(sessionExerciseOrder(session, cov(entries), exerciseInventory, true));
+    expect(order.at(-1)).toBe('lat_pulldown');
+  });
+
+  it('ties keep the plan order (stable)', () => {
+    const twice = [{ movement: 'plank' }, { movement: 'plank' }];
+    expect(sessionExerciseOrder(twice, cov([longAgo]), exerciseInventory, true)).toEqual([0, 1]);
   });
 });

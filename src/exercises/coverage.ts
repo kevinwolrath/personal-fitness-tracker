@@ -120,6 +120,13 @@ export function windowStart(today: LocalDate, restDays: readonly Weekday[] = [])
 const contributionOf = (ex: InventoryExercise, muscle: MuscleId) =>
   ex.primary.includes(muscle) ? COVERAGE.contribution.primary : ex.secondary.includes(muscle) ? COVERAGE.contribution.secondary : 0;
 
+/** History spans at least `minHistoryDays` (counting only exercises the inventory knows). Until then nothing is red. */
+export function hasEnoughHistory(entries: readonly ExerciseEntry[], inventory: Inventory, today: LocalDate): boolean {
+  const known = new Set(inventory.exercises.map((e) => e.movement));
+  const first = entries.filter((e) => known.has(e.movement) && e.date <= today).reduce<LocalDate | null>((min, e) => (min === null || e.date < min ? e.date : min), null);
+  return first !== null && first <= addDays(today, -COVERAGE.minHistoryDays);
+}
+
 export type CoverageInput = {
   inventory: Inventory;
   entries: ExerciseEntry[];
@@ -137,8 +144,7 @@ export function muscleCoverage({ inventory, entries, reports = [], now, today, r
   const unique = [...new Map(entries.filter((e) => ms(e.at) <= ms(now) && e.date <= today).map((e) => [e.id, e])).values()];
   const known = unique.filter((e) => byMovement.has(e.movement));
   const from = windowStart(today, restDays);
-  const firstDate = known.reduce<LocalDate | null>((min, e) => (min === null || e.date < min ? e.date : min), null);
-  const enoughHistory = firstDate !== null && firstDate <= addDays(today, -COVERAGE.minHistoryDays);
+  const enoughHistory = hasEnoughHistory(known, inventory, today);
   const target = COVERAGE.weeklyTargetSets;
 
   return inventory.muscleGroups.map(({ id: muscle, label }) => {
@@ -209,6 +215,24 @@ const needOf = (c: MuscleCoverage): number => {
   return Math.max(0, (c.target - c.volume) / c.target);
 };
 
+/** Score (Σ contribution × need) and what holds an exercise back. */
+function rate(exercise: InventoryExercise, byMuscle: Map<MuscleId, MuscleCoverage>): { score: number; held: Suggestion['held'] } {
+  const held: Suggestion['held'] = [];
+  let score = 0;
+  for (const [muscles, weight, primary] of [
+    [exercise.primary, COVERAGE.contribution.primary, true],
+    [exercise.secondary, COVERAGE.contribution.secondary, false],
+  ] as const) {
+    for (const m of muscles) {
+      const c = byMuscle.get(m);
+      if (!c) continue;
+      if (c.status === 'unavailable' || (primary && c.status === 'recovering')) held.push({ muscle: m, status: c.status });
+      score += weight * needOf(c);
+    }
+  }
+  return { score: round(score), held };
+}
+
 /**
  * Order eligible exercises by how much they help the muscles that need work (#56). Every exercise stays in the list:
  * the user can pick anything, including repeats. Order: not done today → not held → score → inventory order.
@@ -223,22 +247,7 @@ export function suggestExercises(
   const order = new Map(eligible.map((e, i) => [e.exercise.movement, i]));
   return eligible
     .filter((e) => opts.includeConditioning || e.exercise.kind === 'strength')
-    .map(({ exercise, caution }) => {
-      const held: Suggestion['held'] = [];
-      let score = 0;
-      for (const [muscles, weight, primary] of [
-        [exercise.primary, COVERAGE.contribution.primary, true],
-        [exercise.secondary, COVERAGE.contribution.secondary, false],
-      ] as const) {
-        for (const m of muscles) {
-          const c = byMuscle.get(m);
-          if (!c) continue;
-          if (c.status === 'unavailable' || (primary && c.status === 'recovering')) held.push({ muscle: m, status: c.status });
-          score += weight * needOf(c);
-        }
-      }
-      return { exercise, caution, score: round(score), held, doneToday: !!opts.doneToday?.has(exercise.movement) };
-    })
+    .map(({ exercise, caution }) => ({ exercise, caution, ...rate(exercise, byMuscle), doneToday: !!opts.doneToday?.has(exercise.movement) }))
     .sort(
       (a, b) =>
         Number(a.doneToday) - Number(b.doneToday) ||
@@ -249,13 +258,27 @@ export function suggestExercises(
 }
 
 /**
- * Option C (#56): keep a scheduled session's exercises, ordered by the same priority. Movements the inventory
- * doesn't know keep their place relative to each other, after the known ones. Stable. Pure.
+ * Option C (#56): a scheduled session keeps its exercises; only their display order follows muscle priority.
+ * Returns indexes into `exercises`. Known exercises are ordered not-held → score → plan order, and fill the slots
+ * known exercises had; anything the inventory doesn't know keeps its own slot. Without enough history (first use),
+ * the plan order is kept unchanged. Pure, stable.
  */
-export function orderSessionMovements(movements: string[], suggestions: Suggestion[]): string[] {
-  const rank = new Map(suggestions.map((s, i) => [s.exercise.movement, i]));
-  return movements
-    .map((m, i) => ({ m, i }))
-    .sort((a, b) => (rank.get(a.m) ?? Infinity) - (rank.get(b.m) ?? Infinity) || a.i - b.i)
-    .map((x) => x.m);
+export function sessionExerciseOrder(
+  exercises: readonly { movement: string }[],
+  coverage: MuscleCoverage[],
+  inventory: Inventory,
+  enoughHistory: boolean,
+): number[] {
+  const plan = exercises.map((_, i) => i);
+  if (!enoughHistory) return plan;
+  const byMovement = new Map(inventory.exercises.map((e) => [e.movement, e]));
+  const byMuscle = new Map(coverage.map((c) => [c.muscle, c]));
+  const known = plan.filter((i) => byMovement.has(exercises[i].movement));
+  const ranked = known
+    .map((i) => ({ i, ...rate(byMovement.get(exercises[i].movement)!, byMuscle) }))
+    .sort((a, b) => Number(a.held.length > 0) - Number(b.held.length > 0) || b.score - a.score || a.i - b.i)
+    .map((r) => r.i);
+  const slots = new Set(known);
+  let k = 0;
+  return plan.map((i) => (slots.has(i) ? ranked[k++] : i));
 }

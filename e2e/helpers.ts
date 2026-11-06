@@ -61,14 +61,14 @@ export async function expandToFullDay(page: Page) {
 }
 
 /** Seed tracking records (keeping the plan already stored: the bundled seed, see playwright.config) before the app boots. */
-export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[] }) {
+export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[]; exerciseLogs?: unknown[] }) {
   await page.addInitScript((json) => {
     const key = 'pft:tracking:v1';
     if (sessionStorage.getItem('pft:e2e:records')) return;
     sessionStorage.setItem('pft:e2e:records', '1');
     const r = JSON.parse(json);
     const plan = JSON.parse(localStorage.getItem(key) ?? 'null')?.plan ?? null;
-    localStorage.setItem(key, JSON.stringify({ version: 1, plan, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [] }));
+    localStorage.setItem(key, JSON.stringify({ version: 1, plan, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [], exerciseLogs: r.exerciseLogs ?? [] }));
   }, JSON.stringify(records));
 }
 

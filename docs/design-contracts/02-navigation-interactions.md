@@ -5,7 +5,7 @@
 **The Daily Log is the primary application surface. Today is the current date within that log.** Every date (today, yesterday, last year, next week) is rendered by the same day view (`DayLogScreen`), from the same canonical data model, with the same editing behaviour. History has no separate screen or store: a historical day *is* the Daily Log at that date. New capabilities extend the shared model and the continuous history rather than becoming isolated feature screens.
 
 - **Route:** `/` is the Daily Log. The selected date is the `date` search parameter (`/?date=2026-03-11`); no parameter means today. Reloads, links and back/forward keep the date.
-- **Today opens on "Do this next"** (contract 08): the next prescribed action, ready to tick off, then the day grouped Morning / Midday / Afternoon / Evening / Anytime today. Requirements show as one row with their alternatives.
+- **Today opens on "Do this next"** (contract 08): what to reasonably do now, ready to tick off, when there is something (otherwise no card, #41), then the day grouped Morning / Midday / Afternoon / Evening / Anytime today. Requirements show as one row with their alternatives.
 - **What a day shows** (for any date where data exists): measurements against goals, targets, the plan's activities and meals for that date's day type, and a **Recorded** section with every other observation on that date (imported steps, sleep, readiness, workouts, calculated values, and `other` metrics). It also shows activity history that the current plan no longer schedules that day, taken from `labelSnapshot`.
 - **Ingestion is not a destination.** Manual entry, screenshot import and future integrations write canonical observations (contract 06). Each appears on its own effective date in the log.
 - **Editing:** today and every past date are fully correctable, including imported values (edit or remove from the observation sheet; provenance records the edit). Future dates are view-only planned days (contract 04).
@@ -27,7 +27,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 2. The day title (26 pt) with the day-type chip on the same row. If both don't fit, the chip wraps below, right-aligned. Neither truncates.
 3. Progress text and the progress bar on one line.
 
-**Vertical budget.** On a 390 × 844 phone, the **Do this next** card starts within **200 px** of the top of the viewport, app bar included. `e2e/app-shell.spec.ts` measures it. A change that pushes the card lower has to change this contract first.
+**Vertical budget.** On a 390 × 844 phone, the **Do this next** card starts within **200 px** of the top of the viewport, app bar included. When there's nothing to recommend the card is absent (#41, contract 08), and the first content block (the measurements) starts within the same budget. `e2e/app-shell.spec.ts` measures it. A change that pushes the card lower has to change this contract first.
 
 **Modal routes** (`/import`, `/configure`) are tasks rather than places. They cover the shell and use the modal header below. They don't show the app bar.
 

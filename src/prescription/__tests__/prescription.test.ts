@@ -130,8 +130,9 @@ describe('prescribeDay', () => {
 });
 
 describe('nextAction', () => {
-  it('before any window opens, an open anytime item is offered ahead of "later" items', () => {
-    expect(next([], '05:30')).toMatchObject({ item: { key: 'stretch' }, status: 'anytime' });
+  it('anytime items are never promoted just for being open (#41): before any window opens there is no card', () => {
+    expect(next([], '05:30')).toBeNull(); // the optional anytime stretch is not filler; breakfast (a day part) is not "Up next"
+    expect(prescribeDay(plan, DATE, records()).items.map((i) => i.key)).toContain('stretch'); // still in the checklist
   });
 
   it('morning: breakfast now; the walk waits for breakfast', () => {
@@ -143,8 +144,8 @@ describe('nextAction', () => {
   it('completing an item immediately moves "next" on', () => {
     const before = next([log('breakfast')], '12:05')!;
     expect(before.item.key).toBe('lunch'); // lunch window open beats an overdue walk
-    const after = next([log('breakfast'), log('lunch')], '12:05')!;
-    expect(after).toMatchObject({ item: { key: 'morning-walk' }, status: 'overdue' }); // required overdue beats upcoming
+    const after = next([log('breakfast'), log('lunch')], '12:05');
+    expect(after).toBeNull(); // the overdue walk is not promoted (#41); dinner (18:30) is too far off to preview
   });
 
   it('afternoon: strength session, then the snack once lunch is done', () => {
@@ -162,17 +163,17 @@ describe('nextAction', () => {
     const dayDone = ['breakfast', 'morning-walk', 'lunch', 'strength', 'snack', 'dinner'].map((id) => log(id));
     expect(next(dayDone, '19:30')).toMatchObject({ item: { key: requirementKey('hard-conditioning') }, status: 'now' });
     const boxed = [...dayDone, log('vr-boxing', { count: 3, requirementId: 'hard-conditioning' })];
-    const n = next(boxed, '19:45');
-    expect(n?.item.key).toBe('stretch'); // only the optional stretch is left; never heavy bag or battle ropes
-    expect(next([...boxed, log('stretch')], '20:00')).toBeNull(); // nothing left
+    expect(next(boxed, '19:45')).toBeNull(); // never heavy bag or battle ropes, and the optional anytime stretch is not filler (#41)
   });
 
-  it('early morning with nothing current: the earliest upcoming item is "later"', () => {
-    const p = prescribeDay(plan, DATE, records([log('stretch')]));
-    expect(nextAction(p, at('05:00'))).toMatchObject({ item: { key: 'breakfast' }, status: 'later' });
+  it('nothing due: only a timed item due within the hour is previewed as "later" (#41)', () => {
+    const p = prescribeDay(plan, DATE, records([log('breakfast'), log('morning-walk')]));
+    expect(nextAction(p, at('10:44'))).toBeNull(); // lunch becomes due 11:45: 61 min away
+    expect(nextAction(p, at('10:45'))).toMatchObject({ item: { key: 'lunch' }, status: 'later' }); // exactly 60 min
+    expect(nextAction(p, at('11:45'))).toMatchObject({ item: { key: 'lunch' }, status: 'now' }); // its lead window opens
   });
 
-  it('required anytime work comes before optional current work; overdue required before optional', () => {
+  it('required before optional among due items; anytime and overdue required work is never promoted (#41)', () => {
     const anyPlan = load({
       ...JSON.parse(JSON.stringify(example)),
       activities: [
@@ -184,8 +185,8 @@ describe('nextAction', () => {
     });
     const p = prescribeDay(anyPlan, DATE, records());
     expect(nextAction(p, at('08:00'))!.item.key).toBe('meds'); // required & current
-    expect(nextAction(prescribeDay(anyPlan, DATE, records([log('meds')])), at('08:00'))!.item.key).toBe('water'); // required anytime
-    expect(nextAction(prescribeDay(anyPlan, DATE, records([log('water')])), at('12:00'))!.item.key).toBe('meds'); // overdue required
+    expect(nextAction(prescribeDay(anyPlan, DATE, records([log('meds')])), at('08:00'))!.item.key).toBe('walk'); // not the required anytime water
+    expect(nextAction(prescribeDay(anyPlan, DATE, records([log('water')])), at('12:00'))).toBeNull(); // meds overdue: stays in the list only
   });
 });
 

@@ -30,8 +30,9 @@ describe('Friday office day with the shipped plan (the reported case)', () => {
   const FRI = '2026-11-06';
   const next = (logs: ActivityLog[], hhmm: string) => nextAction(prescribeDay(plan, FRI, records(logs)), at(hhmm));
 
-  it('07:30: lunch at 12:00 is only "Up next", not due', () => {
-    const n = next([], '07:30');
+  it('07:30: lunch at 12:00 is hours away: no card at all (#41); from 10:45 it is only "Up next", not due', () => {
+    expect(next([], '07:30')).toBeNull();
+    const n = next([], '10:45');
     expect(n).toMatchObject({ item: { key: 'lunch' }, status: 'later' });
     expect(isDue(n)).toBe(false);
   });
@@ -42,12 +43,13 @@ describe('Friday office day with the shipped plan (the reported case)', () => {
     expect(next([], '12:00')).toMatchObject({ item: { key: 'lunch' }, status: 'now' });
   });
 
-  it('after lunch is done or skipped, the next due item follows; far-future items are only previews', () => {
+  it('after lunch is done or skipped, the next due item follows; a near item is only a preview', () => {
     // 12:05: the walk (12:30, exercise: 30 min lead) is already due.
     expect(next([log('lunch')], '12:05')).toMatchObject({ item: { key: 'lunch-walk' }, status: 'now' });
     expect(next([log('lunch', { status: 'skipped' })], '12:05')!.item.key).toBe('lunch-walk');
-    // Lunch done early at 08:00 (through Details): nothing is due, the walk is previewed.
-    expect(next([log('lunch')], '08:00')).toMatchObject({ item: { key: 'lunch-walk' }, status: 'later' });
+    // Lunch done early (through Details): nothing is due; the walk (due 12:00) is previewed only within the hour (#41).
+    expect(next([log('lunch')], '08:00')).toBeNull();
+    expect(next([log('lunch')], '11:00')).toMatchObject({ item: { key: 'lunch-walk' }, status: 'later' });
   });
 
   it('dinner follows the same rule: upcoming at 18:00, due from 18:15', () => {
@@ -57,9 +59,10 @@ describe('Friday office day with the shipped plan (the reported case)', () => {
     expect(next(before, '18:15')).toMatchObject({ item: { key: 'dinner' }, status: 'now' });
   });
 
-  it('overdue: an unfinished lunch after its window is still offered ahead of anything upcoming', () => {
+  it('overdue: an unfinished lunch after its window is not promoted, but stays open in the checklist (#41)', () => {
     // Lunch's window (from 11:45) ends an hour after 12:00. The walk is done; dinner is hours away.
-    expect(next([log('lunch-walk')], '13:30')).toMatchObject({ item: { key: 'lunch' }, status: 'overdue' });
+    expect(next([log('lunch-walk')], '13:30')).toBeNull();
+    expect(prescribeDay(plan, FRI, records([log('lunch-walk')])).items.find((i) => i.key === 'lunch')!.state).toBe('pending');
   });
 });
 

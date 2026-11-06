@@ -25,4 +25,4 @@ Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/pla
 
 The first-pass proposal (screens, wireframes, gestures, scaffold changes, open questions) is in [`../first-pass-proposal.md`](../first-pass-proposal.md). It is a proposal, not a contract. Once it's agreed, the decisions belong in the contracts above.
 
-Status: agreed in #1, extended by #3, #5, #6, #7, #10, #12, #15, #19, #21, #26, #28, #30, #36, #39, #51, #49, #53 and #52.
+Status: agreed in #1, extended by #3, #5, #6, #7, #10, #12, #15, #19, #21, #26, #28, #30, #36, #39, #51, #49, #53, #52 and #41.

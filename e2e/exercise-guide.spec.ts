@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import example from '../fixtures/plans/prescription-example.plan.json';
-import { openAt, row, seedPlan, seedRecords } from './helpers';
+import { openAt, row, seedPlan, seedRecords, seedWithStrengthWindow } from './helpers';
 
 /** Issue #12: tap a prescribed exercise → see how to do it → close → back where I was, nothing changed. */
 
@@ -12,8 +12,9 @@ const schoolRunDone = {
 const guide = (page: Page) => page.getByTestId('exercise-guide');
 
 test('opens from the "Do this next" card, steps through the illustrations, and closes without changing anything', async ({ page }) => {
+  await seedPlan(page, seedWithStrengthWindow('morning')); // a plan-defined window: the 35 min fit before 11:00 (#41)
   await seedRecords(page, { activities: schoolRunDone });
-  await openAt(page, at('10:30'));
+  await openAt(page, at('10:15'));
   await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout');
   const progressBefore = await page.getByTestId('day-progress').textContent();
   const eventsBefore = (await store(page)).completionEvents?.length ?? 0;
@@ -93,8 +94,9 @@ test('substitutes and exercises without a guide degrade gracefully', async ({ pa
 
 test('visual: exercise guide', async ({ page }, info) => {
   test.skip(info.project.name !== 'phone', 'baselines are kept for the phone project only');
+  await seedPlan(page, seedWithStrengthWindow('morning')); // a plan-defined window: the 35 min fit before 11:00 (#41)
   await seedRecords(page, { activities: schoolRunDone });
-  await openAt(page, at('10:30'));
+  await openAt(page, at('10:15'));
   await page.getByTestId('next-action-session').getByRole('button', { name: /^Kettlebell squat/ }).click();
   await expect(page.getByTestId('guide-position')).toHaveText('1 / 2');
   await expect(page).toHaveScreenshot('exercise-guide.png');

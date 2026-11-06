@@ -22,17 +22,27 @@ test('shows what to do now, ticks it off from the card, and moves on immediately
 
   await page.getByRole('button', { name: 'Done: School run' }).click();
   await expect(row(page, 'school-run-am').getByRole('checkbox')).toBeChecked();
-  // Recalculated: nothing else is due this morning, so the required anytime strength session is next.
-  await expect(nextTitle(page)).toHaveText('Strength workout');
-  await expect(page.getByTestId('workout-summary')).toHaveText('35 min · 0 of 5 exercises');
-  await expect(page.getByTestId('next-action-session')).toContainText('Kettlebell squat'); // the next exercise, collapsed
-  await expect(page.getByTestId('next-action-session')).toContainText('3 × 10');
-  await page.getByTestId('workout-expand').click();
-  await expect(page.getByTestId('next-action-session')).toContainText('Cable row (Fortis)');
+  // Recalculated (#41): untimed Strength is not promoted just for being open, and lunch is hours away: no card.
+  await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
+  await expect(page.getByText(/Nothing left|Nothing planned/)).toHaveCount(0);
+  await expect(row(page, 'resistance').getByRole('checkbox')).not.toBeChecked(); // still in the checklist, actionable
+  await expect(page.getByTestId('activity-school-run-am')).not.toHaveCSS('border-left-width', '4px');
 
   // Undo from the list: the run is next again.
   await row(page, 'school-run-am').getByRole('checkbox').click();
   await expect(nextTitle(page)).toHaveText('School run');
+});
+
+test('#41 the reported case: Monday 09:34, the overdue school run, untimed Strength and a noon lunch are not promoted', async ({ page }) => {
+  await openAt(page, at('09:34'));
+  await expect(page.getByTestId('day-progress')).toBeVisible();
+  await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
+  await expect(row(page, 'school-run-am').getByRole('checkbox')).not.toBeChecked(); // overdue: left as it was
+  await expect(row(page, 'resistance')).toBeVisible();
+  await expect(row(page, 'lunch')).toBeVisible();
+  // Nearer noon, lunch is recommended.
+  await openAt(page, at('11:50'));
+  await expect(nextTitle(page)).toHaveText('Fixed lunch');
 });
 
 test('completion persists with a timestamp, history is append-only, and survives restart', async ({ page }) => {
@@ -66,8 +76,8 @@ test('one conditioning alternative satisfies the requirement; no redundant ropes
   await expect(page.getByTestId('option-heavy-bag')).toBeDisabled();
   await expect(page.getByTestId('option-heavy-bag')).toHaveAttribute('aria-label', /not needed today/);
   await expect(page.getByTestId('option-battle-ropes')).toBeDisabled();
-  await expect(nextTitle(page)).not.toHaveText(/conditioning|Battle ropes|Heavy bag/);
   await expect(page.getByTestId('day-progress')).toHaveText('All 7 done');
+  await expect(card(page)).toHaveCount(0); // never Battle ropes or Heavy bag; nothing left, so no card (#41)
 
   const s = await store(page);
   expect(s.activities['weight-loss-v1|2026-11-02']['vr-boxing']).toMatchObject({ status: 'done', count: 3, requirementId: 'hard-conditioning' });
@@ -105,22 +115,23 @@ test('avoided movements show the configured substitute (from the #7 exercise con
   await expect(session).toContainText('caution'); // overhead press
 });
 
-test('respects "after": the snack waits for lunch; overdue items still surface', async ({ page }) => {
+test('respects "after": the snack waits for lunch; overdue lunch stays in the list but is not promoted', async ({ page }) => {
   await seedRecords(page, { activities: done(['school-run-am']) });
   await openAt(page, at('14:20'));
-  // Lunch window (11:30–13:00) has passed: it's overdue and required, and the snack (after lunch) isn't available yet.
-  await expect(nextTitle(page)).toHaveText('Strength workout'); // required anytime ranks before required overdue
-  await row(page, 'resistance').getByRole('checkbox').click(); // whole-workout override from the list (#28)
-  await expect(nextTitle(page)).toHaveText('Fixed lunch');
-  await expect(page.getByTestId('next-action-when')).toContainText('Was due 12:00 pm');
-  await page.getByRole('button', { name: 'Done: Fixed lunch' }).click();
-  await expect(nextTitle(page)).toHaveText('Fixed snack');
+  // Lunch's window has passed and the snack (after lunch) isn't available, so only the afternoon school run
+  // (15:15, due from 14:45, within the hour) is previewed (#41).
+  await expect(page.getByTestId('up-next-title')).toHaveText('School run');
+  await expect(row(page, 'lunch').getByRole('checkbox')).not.toBeChecked();
+  await row(page, 'lunch').getByRole('checkbox').click(); // ticked from the list, late
+  await expect(nextTitle(page)).toHaveText('Fixed snack'); // the afternoon snack is open now
 });
 
-test('nothing left: the card says so', async ({ page }) => {
+test('nothing left: no card and no placeholder (#41)', async ({ page }) => {
   await seedRecords(page, { activities: { ...done(['school-run-am', 'lunch', 'dog-walk', 'school-run-pm', 'snack', 'dinner', 'resistance', 'vr-boxing']) } });
   await openAt(page, at('21:00'));
-  await expect(card(page)).toContainText('Nothing left for today');
+  await expect(page.getByTestId('day-progress')).toBeVisible();
+  await expect(card(page)).toHaveCount(0);
+  await expect(page.getByText('Nothing left for today')).toHaveCount(0);
 });
 
 test('the next-action card is only for today; other days are the plain log', async ({ page }) => {
@@ -161,10 +172,12 @@ test('history is not destroyed by a later plan change', async ({ page, context }
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
   test('prescription-morning', async ({ page }) => {
-    // Mid-morning, school run done: nothing else is due yet, so the (anytime, required) strength session is next.
+    // Mid-morning, school run done: nothing is due and lunch is more than an hour off, so there is no card (#41).
+    // Untimed Strength stays in the checklist under "Anytime today".
     await seedRecords(page, { activities: done(['school-run-am']) });
     await openAt(page, at('10:30'));
-    await expect(nextTitle(page)).toHaveText('Strength workout');
+    await expect(page.getByTestId('day-progress')).toBeVisible();
+    await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
     const height = await page.getByTestId('day-scroll').evaluate((el) => {
       const s = el as HTMLElement;
       return Math.ceil(window.innerHeight - s.clientHeight + s.scrollHeight);

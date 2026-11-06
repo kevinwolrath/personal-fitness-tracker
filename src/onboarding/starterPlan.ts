@@ -88,3 +88,42 @@ function stripSetupProfile(p: Record<string, unknown> | undefined): Record<strin
   const setupKeys = ['gender', 'ageBand', 'age', 'weightBand', 'weight', 'fitnessGoals', 'daysPerWeek', 'activityLevel', 'equipment', 'physicalLimits', 'dietary', 'considerations'];
   return Object.fromEntries(Object.entries(p ?? {}).filter(([k]) => !setupKeys.includes(k)));
 }
+
+/**
+ * "Edit profile" on an existing plan (#53): only the setup answers in `profile` change, as the next revision.
+ * Schedule, day types, activities, meals, requirements, targets, measurements and units stay byte-for-byte.
+ * An exact weight typed in the other unit is converted to the plan's mass unit.
+ */
+export function profileOnly(current: RawPlan, d: Draft): RawPlan {
+  const answers = toProfile(d);
+  const planUnit = current.units?.mass;
+  if (typeof answers.weight === 'number' && planUnit && planUnit !== d.unit) {
+    answers.weight = Math.round((planUnit === 'lb' ? (answers.weight as number) * 2.20462 : (answers.weight as number) / 2.20462) * 10) / 10;
+  }
+  const next: RawPlan = JSON.parse(JSON.stringify(current));
+  next.formatVersion = CURRENT_FORMAT_VERSION;
+  next.revision = (Number(current.revision) || 0) + 1;
+  const profile = { ...stripSetupProfile(current.profile), ...answers };
+  if (Object.keys(profile).length) next.profile = profile;
+  else delete next.profile;
+  return next;
+}
+
+export type RebuildSummary = { removed: string[]; added: string[]; dayTypes: string[] | null; requirements: string[]; kept: string[] };
+
+/** What "Rebuild starter plan" would change, in the user's words, shown before they confirm. */
+export function rebuildSummary(current: RawPlan, next: RawPlan): RebuildSummary {
+  const labels = (p: RawPlan) => new Map<string, string>((p.activities ?? []).map((a: { id: string; label: string }) => [a.id, a.label]));
+  const before = labels(current);
+  const after = labels(next);
+  const removed = [...before].filter(([id, label]) => after.get(id) !== label).map(([, l]) => l);
+  const added = [...after].filter(([id, label]) => before.get(id) !== label).map(([, l]) => l);
+  const sameDays = JSON.stringify(current.dayTypes) === JSON.stringify(next.dayTypes) && JSON.stringify(current.schedule) === JSON.stringify(next.schedule);
+  return {
+    removed,
+    added,
+    dayTypes: sameDays ? null : (current.dayTypes ?? []).map((t: { label: string }) => t.label),
+    requirements: (current.requirements ?? []).map((r: { label: string }) => r.label),
+    kept: ['measurements', 'goals', 'nutrition targets', 'history and imports'],
+  };
+}

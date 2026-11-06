@@ -165,7 +165,7 @@ test.describe('first run', () => {
 });
 
 test.describe('edit setup answers (existing install)', () => {
-  test('replaces the plan only after confirming; same plan, new revision, measurements and history kept', async ({ page }) => {
+  test('Edit profile saves the answers only: the customised schedule, meals and day types stay exactly as they were', async ({ page }) => {
     await openAt(page, THURSDAY);
     const before = await doc(page);
     await chooseFromMenu(page, 'Edit setup answers');
@@ -176,11 +176,33 @@ test.describe('edit setup answers (existing install)', () => {
 
     await chooseFromMenu(page, 'Edit setup answers');
     await answerAll(page);
-    await primary(page).click();
-    await expect(page.getByTestId('setup-review')).toBeVisible();
+    await page.getByRole('button', { name: 'Review changes' }).click();
+    await expect(page.getByTestId('setup-edit-profile')).toContainText('Your schedule, day types, meals, activities and targets stay exactly as they are');
+    await primary(page).click(); // Save profile
+    await expect(page.getByTestId('day-progress')).toBeVisible();
+
+    const after = await doc(page);
+    const b = JSON.parse(before.plan.json);
+    const a = JSON.parse(after.plan.json);
+    for (const key of ['activities', 'dayTypes', 'schedule', 'requirements', 'nutrition', 'measurements', 'goals', 'units']) expect(a[key]).toEqual(b[key]);
+    expect(a.profile).toMatchObject({ fitnessGoals: ['gradual_loss', 'gain_muscle'], dietary: ['vegetarian'] });
+    expect(after.plan).toMatchObject({ planId: before.plan.planId, revision: before.plan.revision + 1 });
+    expect(after.configChanges[0]).toMatchObject({ sections: ['profile'], previousPlanJson: before.plan.json });
+  });
+
+  test('Rebuild starter plan shows what will change and replaces only after confirming', async ({ page }) => {
+    await openAt(page, THURSDAY);
+    const before = await doc(page);
+    await chooseFromMenu(page, 'Edit setup answers');
+    await answerAll(page);
+    await page.getByRole('button', { name: 'Review changes' }).click();
+    await page.getByTestId('edit-preview-rebuild').click();
+    const changes = page.getByTestId('rebuild-changes');
+    await expect(changes).toContainText('Removed:');
+    await expect(changes).toContainText('School run');
+    await expect(changes).toContainText('Kept: measurements, goals, nutrition targets, workout history and imports');
     await primary(page).click(); // Replace my plan
     const dialog = page.getByRole('alertdialog', { name: 'Replace your current plan?' });
-    await expect(dialog).toContainText('measurements, workout history, imports and earlier plan versions stay');
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     expect((await doc(page)).plan).toEqual(before.plan); // not confirmed: untouched
     await primary(page).click();
@@ -193,6 +215,16 @@ test.describe('edit setup answers (existing install)', () => {
     expect(plan.measurements.map((m: any) => m.id)).toEqual(expect.arrayContaining(['weight', 'waist']));
     expect(plan.activities.some((a: any) => a.id === 'strength')).toBe(true);
     expect(after.configChanges[0]).toMatchObject({ sections: ['setup'], previousPlanJson: before.plan.json });
+  });
+
+  test('visual: the Edit profile screen', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only');
+    await openAt(page, THURSDAY);
+    await chooseFromMenu(page, 'Edit setup answers');
+    await answerAll(page);
+    await page.getByRole('button', { name: 'Review changes' }).click();
+    await expect(page.getByTestId('setup-edit-profile')).toBeVisible();
+    await expect(page).toHaveScreenshot('setup-edit-profile.png');
   });
 });
 

@@ -44,7 +44,8 @@ export function WizardFrame(props: {
         <Text style={styles.sub}>{sub}</Text>
       </View>
       {above ? <View style={styles.above}>{above}</View> : null}
-      <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="setup-scroll">
+      {/* Keyed by screen: each step starts at the top instead of keeping the previous step's scroll position. */}
+      <ScrollView key={testID} style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="setup-scroll">
         {children}
       </ScrollView>
       <View style={styles.bar}>

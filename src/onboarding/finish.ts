@@ -6,7 +6,7 @@ import type { Plan } from '../plan/schema';
 import { validatePlan } from '../plan/validate';
 import { commitConfigUpdate } from '../config/service';
 import { newId, type StoredPlan, type TrackingStore } from '../storage/types';
-import { replanExisting } from './starterPlan';
+import { profileOnly, replanExisting } from './starterPlan';
 import type { Draft } from './draft';
 
 /**
@@ -40,6 +40,20 @@ export async function applySetupToExisting(store: TrackingStore, current: Stored
   const r = validatePlan(nextRaw);
   if (!r.ok) throw new Error(`The plan isn't valid: ${r.errors.join('; ')}`);
   await commitConfigUpdate(store, current, nextRaw, ['setup'], { setup: setupRaw.profile ?? {} }, now);
+  const weighIn = weighInFor(r.plan, d, today, now);
+  if (weighIn) await store.addObservations([weighIn]);
+  return r.plan;
+}
+
+/**
+ * "Edit profile" on an existing install (#53): only the setup answers change, as the next revision through the
+ * configuration history (undoable). The schedule, day types, meals, activities and targets are untouched.
+ */
+export async function applyProfileToExisting(store: TrackingStore, current: StoredPlan, d: Draft, today: LocalDate, now = new Date()): Promise<Plan> {
+  const nextRaw = profileOnly(JSON.parse(current.json), d);
+  const r = validatePlan(nextRaw);
+  if (!r.ok) throw new Error(`The profile isn't valid: ${r.errors.join('; ')}`);
+  await commitConfigUpdate(store, current, nextRaw, ['profile'], { profile: nextRaw.profile ?? null }, now);
   const weighIn = weighInFor(r.plan, d, today, now);
   if (weighIn) await store.addObservations([weighIn]);
   return r.plan;

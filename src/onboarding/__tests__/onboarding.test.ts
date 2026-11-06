@@ -10,10 +10,10 @@ import { mealTemplates, type Diet } from '../../presets/meals';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { buildSetupPrompt, checkSetupReply } from '../ai';
 import { chooseAgeBand, chooseWeightBand, draftFromProfile, enterAge, enterExactWeight, newDraft, readDraft, toggleGoal, toProfile, type Draft } from '../draft';
-import { applySetupToExisting, finishSetup, weighInFor } from '../finish';
+import { applyProfileToExisting, applySetupToExisting, finishSetup, weighInFor } from '../finish';
 import { answerLines } from '../labels';
 import { noNutritionSeed, setNutritionSeed } from '../nutritionSeed';
-import { buildStarterPlan, STARTER_PLAN_ID } from '../starterPlan';
+import { buildStarterPlan, rebuildSummary, replanExisting, STARTER_PLAN_ID } from '../starterPlan';
 
 /** #49 + #53: first-run setup. Answers, the offline starter plan, AI refinement, finishing and editing setup. */
 
@@ -283,6 +283,60 @@ describe('finishing setup', () => {
 
   it('refuses to store an invalid plan', async () => {
     await expect(finishSetup(fresh(), { ...buildStarterPlan(answered()), formatVersion: 99 }, answered(), TODAY)).rejects.toThrow(/isn't valid/);
+  });
+});
+
+describe('existing customised plans are protected (#53)', () => {
+  const fresh = () => new KeyValueTrackingStore(new MemoryKeyValue());
+  const nonProfile = (raw: any) => {
+    const { profile: _p, revision: _r, formatVersion: _f, ...rest } = raw;
+    return rest;
+  };
+
+  it('Edit profile changes only the setup answers: schedule, day types, meals, activities, requirements, targets and units stay byte-for-byte', async () => {
+    const store = fresh();
+    await installSeedPlan(store); // a customised personal plan: day types, meals, requirements, targets
+    await store.setActivity(seed.id, '2026-11-02', 'lunch', { activityId: 'lunch', status: 'done', count: 0, labelSnapshot: 'Lunch', updatedAt: 't' });
+    await store.addObservations([{ id: 'w1', date: '2026-11-01', metric: 'weight', value: 97, unit: 'kg', kind: 'observed', label: null, note: null, source: { type: 'integration', app: 'withings', capturedAt: null, confidence: null, importId: 'health-connect', assetId: null, evidence: null, edited: false }, recordedAt: 't' }]);
+    const before = (await store.getActivePlan())!;
+
+    await applyProfileToExisting(store, before, answered({ unit: 'lb', exactWeight: 200, weightBand: undefined, fitnessGoals: ['faster_loss'] }), TODAY);
+    const after = (await store.getActivePlan())!;
+    const b = JSON.parse(before.json);
+    const a = JSON.parse(after.json);
+    expect(nonProfile(a)).toEqual(nonProfile(b)); // nothing but the profile changed
+    expect(a.units).toEqual(b.units); // kg plan stays kg
+    expect(a.profile).toMatchObject({ fitnessGoals: ['faster_loss'], weight: 90.7 }); // 200 lb stored in the plan's kg
+    expect(after).toMatchObject({ planId: seed.id, revision: before.revision + 1, origin: 'config' });
+    expect((await store.getDay(seed.id, '2026-11-02')).activities.lunch.status).toBe('done');
+    expect(await store.latestObservation('weight', TODAY)).toMatchObject({ id: 'w1' });
+
+    const [change] = await store.configHistory();
+    expect(change).toMatchObject({ sections: ['profile'], previousPlanJson: before.json });
+    const undone = await undoConfigChange(store, after, change);
+    expect({ ...JSON.parse(undone.json), revision: 0 }).toEqual({ ...b, revision: 0 });
+  });
+
+  it("Edit profile keeps the plan's own profile notes and removes only answers the user cleared", async () => {
+    const store = fresh();
+    await installSeedPlan(store);
+    const cur = (await store.getActivePlan())!;
+    await store.setActivePlan({ ...cur, json: JSON.stringify({ ...JSON.parse(cur.json), formatVersion: 6, profile: { displayName: 'K', heightCm: 182, dietary: ['vegan'] } }) });
+    await applyProfileToExisting(store, (await store.getActivePlan())!, answered({ dietary: [], heightCm: 182 }), TODAY);
+    const p = JSON.parse((await store.getActivePlan())!.json).profile;
+    expect(p.displayName).toBe('K');
+    expect(p.dietary).toBeUndefined();
+  });
+
+  it('Rebuild shows what it replaces before anything is applied', () => {
+    const current = JSON.parse(JSON.stringify(seed));
+    const next = replanExisting(current, buildStarterPlan(answered()));
+    const c = rebuildSummary(current, next);
+    expect(c.removed).toEqual(expect.arrayContaining(seed.activities.map((a) => a.label).filter((l) => !acts(next).some((x) => x.label === l))));
+    expect(c.removed.length).toBeGreaterThan(0);
+    expect(c.added).toContain('Full-body strength at home');
+    expect(c.dayTypes).toEqual(seed.dayTypes.map((d) => d.label));
+    expect(c.requirements.length).toBeGreaterThan(0);
   });
 });
 

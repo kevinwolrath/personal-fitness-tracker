@@ -18,7 +18,7 @@ import {
   type Goal,
   type Step,
 } from '../../onboarding/draft';
-import { applySetupToExisting, finishSetup } from '../../onboarding/finish';
+import { applyProfileToExisting, applySetupToExisting, finishSetup } from '../../onboarding/finish';
 import {
   activityLabels,
   adultAgeBands,
@@ -36,7 +36,7 @@ import {
   weightBandLabels,
 } from '../../onboarding/labels';
 import { activeNutritionSeed } from '../../onboarding/nutritionSeed';
-import { buildStarterPlan } from '../../onboarding/starterPlan';
+import { buildStarterPlan, rebuildSummary, replanExisting } from '../../onboarding/starterPlan';
 import { toLocalDate } from '../../plan/dates';
 import { activityLevels, dietaryNeeds, equipmentKinds, fitnessGoals, genders, physicalLimits, weekdays, weightBands, type Plan } from '../../plan/schema';
 import { preferences } from '../../platform/preferences';
@@ -74,6 +74,8 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
   const [aiPlan, setAiPlan] = useState<Extract<SetupReply, { ok: true }> | null>(null);
   const [copied, setCopied] = useState<'prompt' | 'details' | null>(null);
   const [confirming, setConfirming] = useState(false);
+  /** Editing: rebuild the starter plan instead of saving the profile only (#53). */
+  const [rebuild, setRebuild] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -119,7 +121,11 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
     setSaveError(null);
     try {
       const today = toLocalDate(new Date());
-      const plan = edit ? await applySetupToExisting(store, edit.current, planToSave, draft, today) : await finishSetup(store, planToSave, draft, today);
+      const plan = edit
+        ? rebuild
+          ? await applySetupToExisting(store, edit.current, planToSave, draft, today)
+          : await applyProfileToExisting(store, edit.current, draft, today)
+        : await finishSetup(store, planToSave, draft, today);
       if (!edit) await preferences.clearSetupDraft().catch(() => undefined);
       onFinished(plan);
     } catch (e) {
@@ -169,7 +175,7 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
         sub="Pick any that fit. Gradual and faster loss are either/or."
         onSkip={() => go('review')}
         onBack={() => go('about')}
-        primary={{ title: 'See my plan', onPress: () => go('review') }}
+        primary={{ title: edit ? 'Review changes' : 'See my plan', onPress: () => go('review') }}
       >
         <View style={ws.question} accessibilityLabel="Goals">
           {fitnessGoals.map((g) => (
@@ -255,6 +261,34 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
     />
   );
 
+  // Editing an existing plan: save the answers only, unless the user explicitly asks to rebuild (#53).
+  if (edit && !rebuild) {
+    const answers = answerLines(draft);
+    return (
+      <WizardFrame
+        testID="setup-edit-profile"
+        step={total}
+        total={total}
+        title="Save your answers"
+        sub="Only your profile changes. Your schedule, day types, meals, activities and targets stay exactly as they are."
+        onBack={() => go(minor ? 'about' : 'goals')}
+        primary={{ title: saving ? 'Saving…' : 'Save profile', onPress: finish, disabled: saving }}
+      >
+        <Card title="Your answers" testID="edit-answers">
+          {answers.length ? answers.map((a) => <Row key={a.label} title={a.value} sub={a.label} />) : <Text style={local.body}>No answers. That's fine.</Text>}
+        </Card>
+        {draft.exactWeight !== undefined ? <Text style={ws.hint}>{draft.logWeighIn ? `${draft.exactWeight} ${draft.unit} will be logged as today's weigh-in.` : 'Your weight is not logged as a weigh-in.'}</Text> : null}
+        {minor ? null : (
+          <Card title="Rebuild starter plan instead" testID="edit-rebuild">
+            <Text style={local.body}>Replace your schedule with a new starter plan from these answers. You'll see what changes, and confirm, before anything is replaced.</Text>
+            <TextLink title="Preview a new starter plan" onPress={() => setRebuild(true)} testID="edit-preview-rebuild" />
+          </Card>
+        )}
+        {saveError ? <Text style={local.error}>{`Couldn't save: ${saveError}`}</Text> : null}
+      </WizardFrame>
+    );
+  }
+
   if (minor) {
     return (
       <WizardFrame testID="setup-review" step={2} total={2} title="Tracking only" sub="Personalised plans are for adults (18+). You can track your weight and anything you do." onBack={() => go('about')} primary={{ title: startTitle, onPress: start, disabled: saving }}>
@@ -281,7 +315,7 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
         step={3}
         total={3}
         title={`Swap ${slotLabels[swapSlot].toLowerCase()}`}
-        sub={draft.dietary.length ? `Only meals that fit: ${draft.dietary.map((x) => dietLabels[x]).join(', ')}.` : 'Sample meals with hand-sized portions.'}
+        sub={`${draft.dietary.length ? `Only meals that fit: ${draft.dietary.map((x) => dietLabels[x]).join(', ')}.` : 'General sample meals.'} Always check ingredients and allergen labels yourself.`}
         onBack={() => setSwapSlot(null)}
         primary={{ title: 'Done', onPress: () => setSwapSlot(null) }}
       >
@@ -424,9 +458,9 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
       testID="setup-review"
       step={3}
       total={3}
-      title="Your starter plan"
+      title={edit ? 'Rebuild starter plan' : 'Your starter plan'}
       sub={based ? `Based on: ${based}.` : 'Based on general beginner presets. Edit anything.'}
-      onBack={() => go('goals')}
+      onBack={() => (edit ? setRebuild(false) : go('goals'))}
       above={
         <>
           {tabs}
@@ -439,6 +473,7 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
       }
       primary={{ title: startTitle, onPress: start, disabled: saving }}
     >
+      {edit ? <ChangeSummary current={JSON.parse(edit.current.json)} next={replanExisting(JSON.parse(edit.current.json), planToSave)} /> : null}
       {aiPlan ? (
         <Card title="AI version" testID="review-ai">
           <Text style={local.body}>AI-generated suggestion, not medical advice. These are its changes:</Text>
@@ -484,7 +519,9 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
               />
             );
           })}
-          <Text style={ws.hint} testID="review-meals-note">Sample meals are suggestions, not food you've logged. Portions use your hand (palm, fist, cupped hand, thumb). No calorie targets are set.</Text>
+          <Text style={ws.hint} testID="review-meals-note">
+            Sample meals are general suggestions, not a personalised nutrition plan and not food you've logged. Hand-sized portions are a rough guide: they don't guarantee enough energy or protein for you. The app filters by ingredient type, which can't guarantee a meal is free of an allergen: always check ingredients and allergen labels yourself.
+          </Text>
         </View>
       )}
 
@@ -493,6 +530,20 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
       {saveError ? <Text style={local.error}>{`Couldn't save: ${saveError}`}</Text> : null}
       {confirmDialog}
     </WizardFrame>
+  );
+}
+
+/** What a rebuild replaces, before the user confirms (#53). */
+function ChangeSummary({ current, next }: { current: RawPlan; next: RawPlan }) {
+  const c = rebuildSummary(current, next);
+  return (
+    <Card title="What will change" testID="rebuild-changes">
+      {c.removed.length ? <Text style={local.body}>{`Removed: ${c.removed.join(', ')}.`}</Text> : null}
+      {c.added.length ? <Text style={local.body}>{`Added: ${c.added.join(', ')}.`}</Text> : null}
+      {c.dayTypes ? <Text style={local.body}>{`Day types ${c.dayTypes.join(', ')} become one "Every day" schedule.`}</Text> : null}
+      {c.requirements.length ? <Text style={local.body}>{`Daily requirements removed: ${c.requirements.join(', ')}.`}</Text> : null}
+      <Text style={ws.hint}>Kept: measurements, goals, nutrition targets, workout history and imports. You can undo this from Configure with AI.</Text>
+    </Card>
   );
 }
 

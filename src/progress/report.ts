@@ -1,9 +1,9 @@
-import { addDays, type LocalDate } from '../plan/dates';
-import type { Plan } from '../plan/schema';
+import { addDays, toLocalDate, type LocalDate } from '../plan/dates';
+import { planSchema, type Plan } from '../plan/schema';
 import type { Observation } from '../observations/types';
 import { convertEnergy, entryUnit, type EnergyDisplay } from '../energy';
 import { prescribeDay } from '../prescription/prescribe';
-import type { ActivityLogRecord, DayOverrideRecord } from '../storage/types';
+import type { ActivityLogRecord, ConfigChange, DayOverrideRecord } from '../storage/types';
 import { fromCanonical, toCanonical } from '../observations/units';
 import {
   bmiSeries,
@@ -82,8 +82,12 @@ const shortDate = (d: LocalDate) => new Date(`${d}T12:00:00`).toLocaleDateString
 export type ProgressOptions = {
   /** How energy is shown on this phone (contract 11); charts use its first unit. */
   energy?: EnergyDisplay;
-  /** The plan's activity logs and day-type overrides, for workouts done vs scheduled. */
-  history?: { activityLogs: ActivityLogRecord[]; dayOverrides: DayOverrideRecord[] };
+  /**
+   * The plan's activity logs and day-type overrides, for workouts done vs scheduled. `planVersions` (#67): earlier
+   * versions of the plan from the configuration history, each in effect for dates before `until`, so a past day is
+   * compared with the schedule it actually had.
+   */
+  history?: { activityLogs: ActivityLogRecord[]; dayOverrides: DayOverrideRecord[]; planVersions?: { until: LocalDate; plan: Plan }[] };
 };
 
 export function progressReport(observations: Observation[], plan: Plan, today: LocalDate, range: RangeId, opts: ProgressOptions = {}) {
@@ -285,16 +289,20 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   const charts = {} as Record<ChartId, ChartModel>;
   const span = from ? `since ${new Date(`${from}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : 'overall';
 
-  // Workouts: required exercise items of the current plan, done vs scheduled, per week.
+  // Workouts: required training items of the plan in effect each day, done vs scheduled, per week.
   const logs = opts.history?.activityLogs ?? [];
+  const versions = [...(opts.history?.planVersions ?? [])].sort((a, b) => a.until.localeCompare(b.until));
+  /** The plan that applied on `d`: the version replaced by the first change made after that day, else the current one. */
+  const planOn = (d: LocalDate) => versions.find((v) => d < v.until)?.plan ?? plan;
   const overrides = new Map((opts.history?.dayOverrides ?? []).map((o) => [o.date, o.dayTypeId]));
   const firstLog = logs.length ? logs[0].date : today;
   const start = from ?? (firstLog < today ? firstLog : addDays(today, -27));
   const doneDaily: Point[] = [];
   const scheduledDaily: Point[] = [];
   for (let d = start; d <= today; d = addDays(d, 1)) {
-    const activities = Object.fromEntries(logs.filter((l) => l.date === d && l.planId === plan.id).map((l) => [l.activityId, l]));
-    const p = prescribeDay(plan, d, { activities, dayTypeOverride: overrides.get(d) ?? null, observations: [], quickLogs: [] });
+    const dayPlan = planOn(d);
+    const activities = Object.fromEntries(logs.filter((l) => l.date === d && l.planId === dayPlan.id).map((l) => [l.activityId, l]));
+    const p = prescribeDay(dayPlan, d, { activities, dayTypeOverride: overrides.get(d) ?? null, observations: [], quickLogs: [] });
     // Workouts are training sessions: a structured session, strength or conditioning. Walks and errands count in
     // active minutes and steps instead.
     const workouts = p.items.filter((i) => i.required && (!!i.session || (i.purpose !== null && workoutPurposes.includes(i.purpose))));
@@ -304,14 +312,18 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   }
   const done = weeklyTotals(doneDaily);
   const scheduled = weeklyTotals(scheduledDaily);
-  const imported = weeklyTotals(dailySeries(observations, 'exercise_session', 'sum').map((p) => ({ ...p, value: 1 }))).filter((w) => !from || w.week >= weekStart(from));
+  // Every recorded session counts, including several on one day (#67).
+  const sessionsRecorded: Point[] = observations
+    .filter((o) => o.metric === 'exercise_session' && o.kind === 'observed' && (!from || o.date >= from) && o.date <= today)
+    .map((o) => ({ date: o.date, value: 1, kind: 'measured' }));
+  const imported = weeklyTotals(sessionsRecorded);
   const thisWeek = { done: done.find((w) => w.week === weekStart(today))?.total ?? 0, of: scheduled.find((w) => w.week === weekStart(today))?.total ?? 0 };
   const importedTotal = imported.reduce((s, w) => s + w.total, 0);
   charts.workouts = {
     id: 'workouts',
     title: chartTitles.workouts,
     headline: scheduled.length ? `This week: ${thisWeek.done} of ${thisWeek.of} done` : null,
-    sub: scheduled.length ? `Strength and conditioning sessions per week, against your current plan${importedTotal ? ` · ${importedTotal} more recorded by other apps ${span}` : ''}` : null,
+    sub: scheduled.length ? `Strength and conditioning sessions per week, against the plan in effect each day${importedTotal ? ` · ${importedTotal} more recorded by other apps ${span}` : ''}` : null,
     tag: null,
     unit: 'workouts',
     series: [
@@ -388,20 +400,21 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   };
 
   // Energy balance per week (eaten − burned) against the weight trend.
-  const weekE = new Map(bucketMeans(eaten, 'week').map((b) => [b.bucket, b.value]));
-  const weekB = new Map(bucketMeans(burned, 'week').map((b) => [b.bucket, b.value]));
-  const balance: Point[] = [...weekE.keys()].filter((k) => weekB.has(k)).sort().map((k) => ({ date: k, value: weekE.get(k)! - weekB.get(k)!, kind: 'calculated' }));
+  // Only days with both values: a day's eaten minus that same day's burned, then the weekly average of those days (#67).
+  const burnedOn = new Map(burned.map((p) => [p.date, p.value]));
+  const dailyBalance: Point[] = eaten.filter((p) => burnedOn.has(p.date)).map((p) => ({ date: p.date, value: p.value - burnedOn.get(p.date)!, kind: 'calculated' }));
+  const balance: Point[] = bucketMeans(dailyBalance, 'week').map((b) => ({ date: b.bucket, value: b.value, kind: 'calculated' }));
   const lastBal = balance[balance.length - 1];
   charts['energy-balance'] = {
     id: 'energy-balance',
     title: chartTitles['energy-balance'],
     headline: lastBal ? `${lastBal.value > 0 ? '+' : lastBal.value < 0 ? '−' : ''}${thousands(Math.abs(lastBal.value))} ${unit}/day` : null,
-    sub: lastBal ? 'Eaten minus burned, weekly average of days with both' : null,
+    sub: lastBal ? 'Eaten minus burned on the same day, averaged over each week’s days with both' : null,
     tag: 'Estimate',
     unit: `${unit}/day`,
     series: [{ label: 'Weekly balance', points: balance, style: 'bars', tone: 'warm' }],
     reference: { value: 0, label: 'Balanced' },
-    empty: balance.length ? null : 'Needs both energy eaten and energy burned in the same weeks.',
+    empty: balance.length ? null : 'Needs energy eaten and energy burned recorded on the same days.',
     note: balance.length ? 'Estimates rarely match the scale exactly. Your weight trend is the better guide.' : null,
     summary: lastBal ? `Latest weekly energy balance ${thousands(lastBal.value)} ${unit} a day, an estimate.` : 'Energy balance: not enough data.',
   };
@@ -425,4 +438,19 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   };
 
   return { charts, doneDaily };
+}
+
+/**
+ * Earlier plan versions from the configuration history (#67): each change replaced a plan, and that plan applied
+ * to the days before the change. Unreadable entries are skipped.
+ */
+export function planVersionsFrom(changes: ConfigChange[]): { until: LocalDate; plan: Plan }[] {
+  return changes.flatMap((c) => {
+    try {
+      const r = planSchema.safeParse(JSON.parse(c.previousPlanJson));
+      return r.success ? [{ until: toLocalDate(new Date(c.appliedAt)), plan: r.data }] : [];
+    } catch {
+      return [];
+    }
+  });
 }

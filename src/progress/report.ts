@@ -133,7 +133,7 @@ export function progressReport(observations: Observation[], plan: Plan, today: L
     tag: 'Calculated',
     unit: 'kg/m²',
     series: bmi ? [{ label: 'BMI', points: bmi, style: 'line', tone: 'ink' }] : [],
-    empty: !heightCm ? 'Add your height (Configure with AI) to see BMI. It’s only calculated from real weigh-ins.' : bmi?.length ? null : 'No weigh-ins in this range.',
+    empty: !heightCm ? 'Add your height (☰ menu: Edit setup answers) to see BMI. It’s only calculated from real weigh-ins.' : bmi?.length ? null : 'No weigh-ins in this range.',
     note: bmi?.length ? 'BMI is a rough population measure; it doesn’t tell fat from muscle.' : null,
     summary: bmi?.length ? `BMI ${fmt(bmi[bmi.length - 1].value)}, calculated.` : 'BMI: not available.',
   };

@@ -24,7 +24,7 @@ The first delivery covers measurements and weight trends. Nutrition, activity, s
 |---|---|---|
 | Weight | Weigh-ins (dots) and a 7-day average (line), in the plan's mass unit | One value per day: a value the user entered beats an imported one (06). The average uses only real weigh-ins in the window. |
 | Waist | Measurements (dots only) | Usually weekly; never joined into a line. Empty state says how to start (or how to add waist to the plan). |
-| BMI | kg/m², per weigh-in, **Calculated** | Only from real weigh-ins and `profile.heightCm`. Never from a weight or age band. No height: an empty state asking for one. Notes that BMI doesn't tell fat from muscle. |
+| BMI | kg/m², per weigh-in, **Calculated** | Only from real weigh-ins and `profile.heightCm`. Never from a weight or age band. No height: an empty state pointing to Edit setup answers (13). Notes that BMI doesn't tell fat from muscle. |
 | Weight vs waist | % change from the start of the range: weight (7-day average, line) and waist (dots) | Needs two of each. When the waist falls with steady weight, the note says this is *consistent with* body recomposition, not proof of muscle gain. |
 | Weekly rate | Trend over the last 4 weeks (kg/week) and week-on-week change of weekly averages | Slowdown compares the last 4 weeks with the 4 before: "slower / about the same / faster / direction changed", stated as facts. Never claims metabolic adaptation. |
 | Goal | The plan's mass goal (dashed line) and the 7-day average | Projection is a date **range** from the trend ± its uncertainty, "a projection, not a promise". No projection when moving away or with too little data. |

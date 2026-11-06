@@ -175,6 +175,16 @@ export function DayLogScreen() {
   const nothingPlanned = !prescription.items.length;
   // A new user who skipped the AI step (#49): no plan yet, so Today offers to set one up instead of "Do this next".
   const noPlan = plan.activities.length === 0;
+  // The top slot (contract 08): a workout just finished, the due workout, or the next-action card. Absent when there's
+  // nothing reasonable to do now (#41): no placeholder, and the day's checklist below is unchanged.
+  const topCard = (() => {
+    if (date !== today || noPlan) return null;
+    const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
+    // A workout's checklist only appears once it's due; before that it's an "Up next" preview like any item (#51).
+    const workout = heldItem ?? (isDue(next) && next?.item.session && next.item.activity ? next.item : undefined);
+    return workout || next ? { heldItem, workout } : null;
+  })();
+  const noCardToday = date === today && !noPlan && topCard === null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
@@ -200,16 +210,13 @@ export function DayLogScreen() {
           </View>
         )}
 
-        {date === today && !noPlan && (
-          <View style={styles.firstBlock}>
-            {(() => {
-              const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
-              // A workout's checklist only appears once it's due; before that it's an "Up next" preview like any item (#51).
-              const workout = heldItem ?? (isDue(next) && next?.item.session && next.item.activity ? next.item : undefined);
-              if (!workout) {
-                return <NextActionCard plan={plan} energy={energy} next={next} nowMinutes={nowMinutes} progress={progress} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />;
-              }
-              return (
+        {topCard && (() => {
+          const { heldItem, workout } = topCard;
+          return (
+            <View style={styles.firstBlock}>
+              {!workout ? (
+                <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />
+              ) : (
                 <WorkoutCard
                   item={workout}
                   progress={sessionProgress(workout.session!, records.activities[workout.key])}
@@ -222,12 +229,13 @@ export function DayLogScreen() {
                   completed={!!heldItem}
                   onDismissCompleted={() => setHeld(null)}
                 />
-              );
-            })()}
-          </View>
-        )}
+              )}
+            </View>
+          );
+        })()}
 
-        <View style={styles.block}>
+        {/* With no card above, the measurements take its place right under the header (vertical budget, contract 02). */}
+        <View style={noCardToday ? styles.firstBlock : styles.block}>
           <MeasurementPanel
             plan={plan}
             date={date}

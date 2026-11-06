@@ -118,12 +118,42 @@ async function at(h: number, m: number) {
   await act(async () => jest.advanceTimersByTime(61_000));
 }
 
-it('before anything is due, "Up next" is a compact preview: no meal, no Done (#51)', async () => {
+it('nothing reasonable to do now: no card and no placeholder; the checklist is unchanged (#41)', async () => {
   await launch();
-  // Thursday 09:00, office day: lunch (12:00) is the next item but isn't due until 11:45.
+  // Thursday 09:00, office day: lunch (12:00) isn't due until 11:45, more than an hour away.
+  expect(screen.queryByTestId('next-action')).toBeNull();
+  expect(screen.queryByTestId('up-next')).toBeNull();
+  expect(screen.queryByText(/Nothing left|Nothing planned/)).toBeNull();
+  expect(screen.getByTestId('activity-lunch')).toBeTruthy();
+  expect(screen.getByTestId('day-progress')).toHaveTextContent('0 of 5 done');
+  expect(screen.getByTestId('measurement-weight')).toBeTruthy();
+});
+
+it('recalculates when the app resumes, not only on the minute tick (#41)', async () => {
+  await launch();
+  expect(screen.queryByTestId('up-next')).toBeNull();
+  const { AppState } = jest.requireActual<typeof import('react-native')>('react-native');
+  const listeners = (AppState.addEventListener as jest.Mock).mock.calls.filter((c) => c[0] === 'change').map((c) => c[1] as (s: string) => void);
+  jest.setSystemTime(new Date(2026, 10, 5, 11, 50, 30)); // back after a while, before the minute timer fires
+  await act(async () => listeners.forEach((l) => l('active'))); // what the OS does on resume
+  expect(screen.getByTestId('next-action-title')).toHaveTextContent('Fixed lunch');
+});
+
+it('recalculates when the day type changes: Home brings the school run (#41)', async () => {
+  await launch();
+  await at(8, 40);
+  expect(screen.queryByTestId('next-action')).toBeNull(); // office day: nothing due
+  fireEvent.press(screen.getByLabelText(/Day type: Office day/));
+  fireEvent.press(await screen.findByLabelText('Home day'));
+  await waitFor(() => expect(screen.getByTestId('next-action-title')).toHaveTextContent('School run'));
+});
+
+it('before anything is due, "Up next" is a compact preview within the hour: no meal, no Done (#51, #41)', async () => {
+  await launch();
+  await at(10, 45); // lunch (12:00) becomes due at 11:45: exactly an hour away
   expect(screen.getByTestId('up-next-title')).toHaveTextContent('Fixed lunch');
   expect(screen.getByTestId('up-next-when')).toHaveTextContent(/Up next · 12:00/i);
-  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 3 h/);
+  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 1 h 15 min/);
   expect(screen.queryByTestId('next-action')).toBeNull();
   expect(screen.queryByTestId('next-action-meal-ingredients')).toBeNull();
   expect(screen.queryByLabelText('Done: Fixed lunch')).toBeNull();
@@ -133,6 +163,7 @@ it('before anything is due, "Up next" is a compact preview: no meal, no Done (#5
 
 it('Details on "Up next" allows completing early, deliberately (#51)', async () => {
   await launch();
+  await at(11, 0);
   fireEvent.press(screen.getByLabelText('Up next details: Fixed lunch'));
   expect(await screen.findByTestId('meal-details')).toBeTruthy();
   expect(screen.getByTestId('day-progress')).toHaveTextContent('0 of 5 done'); // opening never completes

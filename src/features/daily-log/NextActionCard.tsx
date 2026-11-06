@@ -14,10 +14,10 @@ import { MealDetails } from './MealDetails';
 type Props = {
   /** The active plan: a meal's ingredients and amounts come from it (#26). */
   plan: Plan;
-  next: NextAction | null;
+  /** Never null: with no useful recommendation the screen shows no card at all (#41). */
+  next: NextAction;
   /** Local minutes since midnight: for the countdown to an upcoming item and "in 15 min" once it's due (#51). */
   nowMinutes: number;
-  progress: { done: number; total: number };
   logs: Record<string, ActivityLog | undefined>;
   onAdvance: (item: PrescriptionItem, a: Activity) => void;
   onDetails: (item: PrescriptionItem) => void;
@@ -32,10 +32,7 @@ function whenLabel(n: NextAction, nowMinutes: number): string {
   const at = w.time ? formatClock(w.time) : partLabels[w.part];
   // Due but not yet at its time (inside the lead window): say how soon (#51).
   if (n.status === 'now' && w.time && nowMinutes < w.at) return `${sentence(formatCountdown(w.at - nowMinutes))} · ${at}`;
-  if (n.status === 'now') return w.time ? `Now · ${at}` : `Now · ${at.toLowerCase()}`;
-  if (n.status === 'anytime') return 'Anytime today';
-  if (n.status === 'overdue') return w.time ? `Was due ${at}` : `Was due this ${at.toLowerCase()}`;
-  return w.time ? `Next up at ${at}` : `Later · ${at.toLowerCase()}`;
+  return w.time ? `Now · ${at}` : `Now · ${at.toLowerCase()}`;
 }
 
 function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
@@ -48,19 +45,11 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
 
 /**
  * "What am I supposed to be doing now?" — the single most useful action, ready to tick off (contract 08).
- * When nothing is due it shrinks to a compact "Up next" preview with a countdown and Details (#51).
+ * When nothing is due it shrinks to a compact "Up next" preview with a countdown and Details (#51),
+ * only for a timed item due within the hour (#41). The screen hides the card when there's nothing to recommend.
  */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
-export function NextActionCard({ plan, next, nowMinutes, progress, logs, onAdvance, onDetails, energy }: Props) {
-  if (!next) {
-    return (
-      <View style={styles.card} testID="next-action" accessibilityLiveRegion="polite">
-        <Text style={styles.eyebrow}>Today</Text>
-        <Text style={styles.title}>{progress.total ? 'Nothing left for today' : 'Nothing planned for today'}</Text>
-        {progress.total > 0 && <Text style={styles.sub}>{`All ${progress.total} done or skipped`}</Text>}
-      </View>
-    );
-  }
+export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy }: Props) {
   const { item } = next;
   // Nothing is due yet (#51): a compact preview only. No meal, no Done; early completion or skipping is in Details.
   if (next.status === 'later') {

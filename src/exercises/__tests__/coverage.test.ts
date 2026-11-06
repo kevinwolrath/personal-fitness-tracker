@@ -32,7 +32,15 @@ describe('effective sets: completed sets, reps or hold time, and intensity', () 
     expect(effectiveSets(entry('plank', MON, '08:00', { reps: undefined, seconds: 30, sets: 2 }))).toBe(2);
     expect(effectiveSets(entry('plank', MON, '08:00', { reps: undefined, seconds: 10, sets: 2 }))).toBe(1);
     expect(effectiveSets(entry('chest_press', MON, '08:00', { intensity: 'light' }))).toBe(1.5);
-    expect(effectiveSets(entry('vr_boxing', MON, '08:00', { reps: undefined, sets: 3 }))).toBe(3);
+  });
+
+  it('conditioning counts by time with its own model: a 3-minute boxing round is well under one hard set', () => {
+    const round = effectiveSets(entry('vr_boxing', MON, '08:00', { reps: undefined, sets: 1 }), 'conditioning');
+    expect(round).toBeCloseTo(COVERAGE.conditioning.minutesPerRound * COVERAGE.conditioning.effectiveSetsPerMinute);
+    expect(round).toBeLessThan(effectiveSets(entry('chest_press', MON, '08:00', { sets: 1 })));
+    expect(effectiveSets(entry('battle_ropes', MON, '08:00', { reps: undefined, sets: 1, minutes: 10 }), 'conditioning')).toBeCloseTo(1.5);
+    expect(effectiveSets(entry('heavy_bag', MON, '08:00', { reps: undefined, sets: 4, seconds: 90 }), 'conditioning')).toBeCloseTo(0.9); // 6 min
+    expect(effectiveSets(entry('heavy_bag', MON, '08:00', { reps: undefined, sets: 1, minutes: 10, intensity: 'light' }), 'conditioning')).toBeCloseTo(0.75);
   });
 });
 
@@ -169,7 +177,7 @@ describe('suggestions: priority, recovery, equipment and limitations', () => {
     const c = muscleCoverage({ inventory: exerciseInventory, entries: [longAgo, entry('vr_boxing', day(-2), '19:00', { reps: undefined, sets: 6 })], now: t(MON, '18:00'), today: MON });
     expect(names(suggestExercises(all, c))).not.toContain('vr_boxing');
     expect(names(suggestExercises(all, c, { includeConditioning: true }))).toContain('vr_boxing');
-    expect(c.find((m) => m.muscle === 'shoulders')!.volume).toBe(6);
+    expect(c.find((m) => m.muscle === 'shoulders')!.volume).toBe(2.7); // 6 rounds x 3 min x 0.15, not 6 sets
   });
 
   it('only the user’s equipment is suggested, and "caution" is carried through', () => {

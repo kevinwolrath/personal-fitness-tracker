@@ -12,9 +12,9 @@ const plan = (() => {
 const ids = (xs: { exercise: { movement: string } }[]) => xs.map((x) => x.exercise.movement);
 
 describe('the bundled inventory (approved on #56)', () => {
-  it('has exactly the approved muscle groups, in order', () => {
+  it('has exactly the approved 14 muscle groups, in order', () => {
     expect(exerciseInventory.muscleGroups.map((m) => m.label)).toEqual([
-      'Chest', 'Upper back', 'Lats', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Core/abdominals', 'Lower back', 'Glutes', 'Quadriceps', 'Hamstrings', 'Calves',
+      'Chest', 'Upper back', 'Lats', 'Shoulders', 'Biceps', 'Triceps', 'Forearms', 'Core/abdominals', 'Lower back', 'Glutes', 'Quadriceps', 'Hamstrings', 'Calves', 'Hip flexors',
     ]);
   });
 
@@ -34,8 +34,7 @@ describe('the bundled inventory (approved on #56)', () => {
       'Hammer curls': 'Biceps | Forearms',
       'Overhead press': 'Shoulders | Triceps, Core/abdominals',
       'Plank': 'Core/abdominals | Shoulders',
-      // Approved secondary "Hip flexors" is not one of the approved muscle groups: not tracked (raised on #56).
-      'Straight-leg lying raises': 'Core/abdominals | None',
+      'Straight-leg lying raises': 'Hip flexors | Core/abdominals', // hip flexors: the 14th group (#56 decision 2)
       'Standing calf raises': 'Calves | None',
       'Heavy bag boxing': 'Shoulders | Chest, Triceps, Core/abdominals',
       'VR boxing': 'Shoulders | Chest, Triceps, Core/abdominals',

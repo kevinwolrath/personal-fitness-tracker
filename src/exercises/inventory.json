@@ -14,7 +14,8 @@
     { "id": "glutes", "label": "Glutes" },
     { "id": "quadriceps", "label": "Quadriceps" },
     { "id": "hamstrings", "label": "Hamstrings" },
-    { "id": "calves", "label": "Calves" }
+    { "id": "calves", "label": "Calves" },
+    { "id": "hip_flexors", "label": "Hip flexors" }
   ],
   "exercises": [
     { "movement": "knuckle_push_up", "name": "Push-ups (knuckles)", "kind": "strength", "equipment": [], "primary": ["chest"], "secondary": ["triceps", "shoulders", "core"] },
@@ -27,7 +28,7 @@
     { "movement": "hammer_curl", "name": "Hammer curls", "kind": "strength", "equipment": ["dumbbells", "free_weights"], "primary": ["biceps"], "secondary": ["forearms"] },
     { "movement": "overhead_press", "name": "Overhead press", "kind": "strength", "equipment": ["dumbbells", "free_weights", "kettlebell"], "primary": ["shoulders"], "secondary": ["triceps", "core"] },
     { "movement": "plank", "name": "Plank", "kind": "strength", "equipment": [], "primary": ["core"], "secondary": ["shoulders"] },
-    { "movement": "straight_leg_raise", "name": "Straight-leg lying raises", "kind": "strength", "equipment": [], "primary": ["core"], "secondary": [] },
+    { "movement": "straight_leg_raise", "name": "Straight-leg lying raises", "kind": "strength", "equipment": [], "primary": ["hip_flexors"], "secondary": ["core"] },
     { "movement": "standing_calf_raise", "name": "Standing calf raises", "kind": "strength", "equipment": [], "primary": ["calves"], "secondary": [] },
     { "movement": "heavy_bag", "name": "Heavy bag boxing", "kind": "conditioning", "equipment": ["heavy_bag"], "primary": ["shoulders"], "secondary": ["chest", "triceps", "core"] },
     { "movement": "vr_boxing", "name": "VR boxing", "kind": "conditioning", "equipment": ["vr_headset"], "primary": ["shoulders"], "secondary": ["chest", "triceps", "core"] },

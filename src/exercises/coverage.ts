@@ -37,6 +37,11 @@ export const COVERAGE = {
   recoveryHours: { light: 24, hard: 48, demanding: 72 },
   /** Need given to a neutral (unknown) muscle, so its exercises still sort sensibly. */
   unknownNeed: 0.5,
+  /**
+   * Conditioning (boxing, ropes) is counted by time, never as resistance sets (#56): effective sets per minute,
+   * so a 3-minute boxing round is well under one hard set. Rounds without a time count `minutesPerRound` each.
+   */
+  conditioning: { effectiveSetsPerMinute: 0.15, minutesPerRound: 3 },
 } as const;
 
 export type Intensity = keyof typeof COVERAGE.intensityFactor;
@@ -49,10 +54,12 @@ export type ExerciseEntry = {
   date: LocalDate;
   /** ISO timestamp with offset. */
   at: string;
-  /** Completed sets (rounds for conditioning). */
+  /** Completed sets (for conditioning: rounds, or 1 when only a duration is known). */
   sets: number;
   reps?: number;
   seconds?: number;
+  /** Conditioning: actual or planned minutes, when known. */
+  minutes?: number;
   intensity?: Intensity;
   source: 'session' | 'free' | 'activity';
 };
@@ -82,8 +89,16 @@ export type MuscleCoverage = {
 const ms = (iso: string) => Date.parse(iso);
 const round = (n: number) => Math.round(n * 100) / 100;
 
-/** Effective sets of one entry: sets × intensity, scaled down when reps or hold time are short. */
-export function effectiveSets(e: ExerciseEntry): number {
+/**
+ * Effective sets of one entry. Strength: sets × intensity, scaled down when reps or hold time are short.
+ * Conditioning: minutes × `conditioning.effectiveSetsPerMinute` × intensity (minutes from the entry, else
+ * seconds × sets, else rounds × `minutesPerRound`).
+ */
+export function effectiveSets(e: ExerciseEntry, kind: InventoryExercise['kind'] = 'strength'): number {
+  if (kind === 'conditioning') {
+    const minutes = e.minutes ?? (e.seconds !== undefined ? (e.seconds * Math.max(0, e.sets)) / 60 : Math.max(0, e.sets) * COVERAGE.conditioning.minutesPerRound);
+    return minutes * COVERAGE.conditioning.effectiveSetsPerMinute * COVERAGE.intensityFactor[e.intensity ?? 'moderate'];
+  }
   const perSet =
     e.reps !== undefined ? Math.min(1, e.reps / COVERAGE.repsForFullSet) : e.seconds !== undefined ? Math.min(1, e.seconds / COVERAGE.secondsForFullSet) : 1;
   return Math.max(0, e.sets) * perSet * COVERAGE.intensityFactor[e.intensity ?? 'moderate'];
@@ -128,7 +143,10 @@ export function muscleCoverage({ inventory, entries, reports = [], now, today, r
 
   return inventory.muscleGroups.map(({ id: muscle, label }) => {
     const hits = known
-      .map((e) => ({ e, load: contributionOf(byMovement.get(e.movement)!, muscle) * effectiveSets(e) }))
+      .map((e) => {
+        const ex = byMovement.get(e.movement)!;
+        return { e, load: contributionOf(ex, muscle) * effectiveSets(e, ex.kind) };
+      })
       .filter((h) => h.load > 0);
     const volume = round(hits.filter((h) => h.e.date >= from).reduce((s, h) => s + h.load, 0));
     const lastTrainedAt = hits.reduce<string | null>((max, h) => (max === null || ms(h.e.at) > ms(max) ? h.e.at : max), null);

@@ -1,5 +1,6 @@
 import { addDays, weekdayOf, type LocalDate } from '../plan/dates';
 import type { Weekday } from '../plan/schema';
+import type { MuscleReport } from '../storage/types';
 import type { Eligibility, Inventory, InventoryExercise, MuscleId } from './inventory';
 
 /**
@@ -56,8 +57,7 @@ export type ExerciseEntry = {
   source: 'session' | 'free' | 'activity';
 };
 
-/** A user report that overrides automatic readiness until cleared. */
-export type MuscleReport = { id: string; muscle: MuscleId; kind: 'sore' | 'injured'; at: string; clearedAt: string | null };
+export type { MuscleReport };
 
 /**
  * green: adequately trained in the window; amber: approaching the next appropriate training opportunity;

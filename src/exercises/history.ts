@@ -1,8 +1,8 @@
 import type { LocalDate } from '../plan/dates';
 import { sessionProgress } from '../prescription/exercises';
 import type { PrescribedSession } from '../prescription/session';
-import type { ActivityLog, CompletionEvent } from '../storage/types';
-import type { ExerciseEntry, Intensity } from './coverage';
+import type { ActivityLog, CompletionEvent, ExerciseLog } from '../storage/types';
+import type { ExerciseEntry } from './coverage';
 
 /**
  * Exercise history from its two sources (#56). Pure.
@@ -12,17 +12,7 @@ import type { ExerciseEntry, Intensity } from './coverage';
  * exercise, so each completed exercise is one entry. Entry ids are stable, so merging twice changes nothing.
  */
 
-/** An exercise logged outside a scheduled session (#56). Persisted by the TrackingStore. */
-export type ExerciseLog = {
-  id: string;
-  movement: string;
-  date: LocalDate;
-  at: string;
-  sets: number;
-  reps: number | null;
-  seconds: number | null;
-  intensity: Intensity | null;
-};
+export type { ExerciseLog };
 
 export const freeLogEntry = (l: ExerciseLog): ExerciseEntry => ({
   id: `free|${l.id}`,

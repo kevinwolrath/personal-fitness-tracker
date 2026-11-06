@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Observation } from '../../observations/types';
 import { preferences } from '../../platform/preferences';
-import { chartLayout, chartTitles, progressMetrics, progressReport, ranges, type ChartId, type ChartModel, type RangeId } from '../../progress/report';
+import { chartLayout, planVersionsFrom, type ProgressOptions, chartTitles, progressMetrics, progressReport, ranges, type ChartId, type ChartModel, type RangeId } from '../../progress/report';
 import type { WeekCompare } from '../../progress/series';
 import { useApp } from '../../providers/AppProvider';
 import { ModalHeader } from '../../ui/ModalHeader';
@@ -21,14 +21,18 @@ export function ProgressScreen() {
   const { store, plan, energy, dataVersion } = useApp();
   const { today } = useClock();
   const [observations, setObservations] = useState<Observation[] | null>(null);
-  const [history, setHistory] = useState<Awaited<ReturnType<typeof store.planHistory>> | undefined>(undefined);
+  const [history, setHistory] = useState<ProgressOptions['history']>(undefined);
   const [range, setRange] = useState<RangeId>('30d');
   const [layout, setLayout] = useState(chartLayout(null));
   const [editing, setEditing] = useState(false);
 
   const load = useCallback(() => {
     store.observationsFor(progressMetrics).then(setObservations, () => setObservations([]));
-    store.planHistory(plan.id).then(setHistory, () => setHistory(undefined));
+    // The plan's records plus its earlier versions (#67), so past days are compared with the schedule they had.
+    Promise.all([store.planHistory(plan.id), store.configHistory()]).then(
+      ([h, changes]) => setHistory({ ...h, planVersions: planVersionsFrom(changes) }),
+      () => setHistory(undefined),
+    );
   }, [store, plan.id]);
   useEffect(load, [load, dataVersion]);
   useFocusEffect(load); // values logged on Today show when switching back

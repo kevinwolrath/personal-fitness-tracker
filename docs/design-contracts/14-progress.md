@@ -34,11 +34,11 @@ Delivered in two parts: measurements and weight trends (PR #64), then activity, 
 
 | Chart | Shows | Rules |
 |---|---|---|
-| Workouts | Per week: sessions done (bars) and scheduled (dots) | A workout is a required plan item with a session, or a strength or conditioning purpose; walks and errands count in active minutes and steps instead. Scheduled is computed from the **current plan** with the day's day-type override; skipped isn't done. Sessions recorded by other apps are counted separately in the subtitle. |
+| Workouts | Per week: sessions done (bars) and scheduled (dots) | A workout is a required plan item with a session, or a strength or conditioning purpose; walks and errands count in active minutes and steps instead. Scheduled is computed from **the plan in effect on each day** (#67): every configuration change stores the plan it replaced, and that plan applies to the days before the change; days after the last change use the current plan. The day's day-type override applies; skipped isn't done. Sessions recorded by other apps are counted separately in the subtitle, every session (several on one day count separately). |
 | Active minutes | Minutes per week (bars) | A wearable's active minutes for a day, or else that day's recorded workout durations, never both. |
 | Steps | Days (dots) and a 7-day average (line) | Distance over the range in the subtitle. |
 | Energy eaten vs burned | Eaten (logged or imported) and burned (a wearable), **Estimate** | In the phone's energy unit (11). Ticked planned meals never count as eaten. Says both are estimates. |
-| Energy balance | Weekly average of eaten minus burned (bars), **Estimate** | Only weeks with both. Says the weight trend is the better guide. |
+| Energy balance | Weekly average of daily eaten minus burned (bars), **Estimate** | Only **days** with both values count (#67): a day's intake is never compared with another day's expenditure. Weeks without such a day have no bar. Says the weight trend is the better guide. |
 | Protein | Logged or imported protein (dots) against the plan's protein target minimum | Ticked planned meals never count. |
 
 - **Every chart:**
@@ -48,4 +48,4 @@ Delivered in two parts: measurements and weight trends (PR #64), then activity, 
 - **Tap to inspect** shows the nearest value's date, value and source: entered by you, imported from an app, from a screenshot, or calculated.
 - **No interpolation:** gaps stay gaps, and measured values are never drawn as continuous lines.
 - **Calculations** are pure functions in `src/progress/series.ts` and `src/progress/report.ts`.
-- **Data** comes from `store.observationsFor(metrics)`, which returns observed values only, never inferred ones, and `store.planHistory(planId)` (activity logs and day-type overrides) for workouts.
+- **Data** comes from `store.observationsFor(metrics)`, which returns observed values only, never inferred ones, `store.planHistory(planId)` (activity logs and day-type overrides) and `store.configHistory()` (earlier plan versions, `planVersionsFrom`) for workouts.

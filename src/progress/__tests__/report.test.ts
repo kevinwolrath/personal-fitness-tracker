@@ -2,7 +2,7 @@ import seed from '../../../plans/seed.plan.json';
 import { addDays } from '../../plan/dates';
 import { validatePlan } from '../../plan/validate';
 import { manualSource, type Observation } from '../../observations/types';
-import { chartIds, chartLayout, progressReport } from '../report';
+import { chartIds, chartLayout, planVersionsFrom, progressReport } from '../report';
 
 /** #52 first PR: the Progress view model. Measurements as dots, calculations as lines, honest empty states. */
 
@@ -177,5 +177,58 @@ describe('part 2: activity, energy and protein', () => {
     expect(r.charts.steps).toMatchObject({ headline: '7,000 a day' });
     expect(r.charts.steps.sub).toMatch(/5\.2 km/);
     expect(r.charts['active-minutes'].headline).toBe('This week: 65 min'); // 40 (wearable) + 25 (workout on a day without one)
+  });
+});
+
+describe('#67: calculation fixes', () => {
+  const kJ = (date: string, metric: string, value: number) => obs(date, metric, value, { unit: 'kJ' });
+
+  it('energy balance pairs eaten and burned on the same day; different days in one week give no balance', () => {
+    // Week of 2 Nov: food logged Mon and Tue, a wearable reports Thu and Fri. No day has both.
+    const apart = [kJ('2026-11-02', 'energy_intake', 8000), kJ('2026-11-03', 'energy_intake', 8000), kJ('2026-11-05', 'total_energy', 10000), kJ('2026-11-06', 'total_energy', 10000)];
+    const r = progressReport(apart, plan, TODAY, '30d', { energy: 'kJ' });
+    expect(r.charts['energy-balance'].series[0].points).toEqual([]);
+    expect(r.charts['energy-balance'].empty).toMatch(/on the same days/);
+  });
+
+  it('only the overlapping days count, averaged per week', () => {
+    const data = [
+      kJ('2026-11-02', 'energy_intake', 8000), kJ('2026-11-02', 'total_energy', 9000), // −1,000
+      kJ('2026-11-03', 'energy_intake', 9000), kJ('2026-11-03', 'total_energy', 9000), // 0
+      kJ('2026-11-04', 'energy_intake', 2000), // no burned value that day: ignored, not averaged in
+      kJ('2026-11-05', 'total_energy', 15000), // no intake that day: ignored
+    ];
+    const r = progressReport(data, plan, TODAY, '30d', { energy: 'kJ' });
+    expect(r.charts['energy-balance'].series[0].points).toEqual([{ date: '2026-11-02', value: -500, kind: 'calculated' }]);
+    expect(r.charts['energy-balance'].headline).toBe('−500 kJ/day');
+  });
+
+  it('past days are compared with the plan in effect then, not today’s schedule', () => {
+    // Until Wed 4 Nov the plan had the strength session on Mon and Wed; from then on it was dropped.
+    const before = plan;
+    const now = { ...plan, revision: plan.revision + 1, activities: plan.activities.filter((a) => a.id !== 'resistance') } as typeof plan;
+    const logs = [{ planId: plan.id, date: '2026-11-02', activityId: 'resistance', status: 'done' as const, count: 0, labelSnapshot: 'Strength', updatedAt: 't' }];
+    const withHistory = progressReport([], now, TODAY, '7d', { history: { activityLogs: logs, dayOverrides: [], planVersions: [{ until: '2026-11-04', plan: before }] } });
+    const todaysOnly = progressReport([], now, TODAY, '7d', { history: { activityLogs: logs, dayOverrides: [], planVersions: [] } });
+    const monday = (r: ReturnType<typeof progressReport>, i: 0 | 1) => r.charts.workouts.series[i].points.find((p) => p.date === '2026-11-02')!.value;
+    // With the history, Monday's strength session was scheduled and done; today's plan alone would miss it.
+    expect(monday(withHistory, 0)).toBe(1);
+    expect(monday(withHistory, 1)).toBeGreaterThan(monday(todaysOnly, 1));
+    expect(monday(todaysOnly, 0)).toBe(0);
+    expect(withHistory.charts.workouts.sub).toMatch(/against the plan in effect each day/);
+  });
+
+  it('plan versions come from the configuration history; unreadable entries are skipped', () => {
+    const change = (appliedAt: string, json: string) => ({ id: appliedAt, appliedAt, sections: ['schedule'], payload: {}, fromRevision: 1, toRevision: 2, previousPlanJson: json });
+    const v = planVersionsFrom([change('2026-11-04T09:00:00+11:00', JSON.stringify(seed)), change('2026-11-05T09:00:00+11:00', '{broken')]);
+    expect(v).toHaveLength(1);
+    expect(v[0].plan.id).toBe(seed.id);
+    expect(v[0].until).toMatch(/^2026-11-0[34]$/); // local date of the change
+  });
+
+  it('every recorded session counts, including two on one day', () => {
+    const sessions = [obs('2026-11-03', 'exercise_session', 30, { unit: 'min' }), obs('2026-11-03', 'exercise_session', 20, { unit: 'min' }), obs('2026-11-05', 'exercise_session', 40, { unit: 'min' })];
+    const r = progressReport(sessions, plan, TODAY, '7d', { history: { activityLogs: [], dayOverrides: [] } });
+    expect(r.charts.workouts.sub).toMatch(/3 more recorded by other apps/);
   });
 });

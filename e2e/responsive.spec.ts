@@ -297,23 +297,24 @@ test.describe('first-run setup (#49)', () => {
     const primary = page.getByTestId('setup-primary');
     const steps: [string, () => Promise<void>][] = [
       ['about', async () => {
-        await page.getByTestId('gender-prefer_not_to_say').click();
+        await page.getByTestId('gender-other').click();
         await page.getByTestId('age-60_plus').click();
-        await page.getByTestId('weight-120_plus').click();
+        await page.getByTestId('weight-100_plus').click();
       }],
       ['goals', async () => {
-        await page.getByRole('checkbox', { name: 'Lose a little weight' }).click();
+        await page.getByRole('checkbox', { name: 'Faster weight loss' }).click();
         await page.getByRole('checkbox', { name: 'Improve cardio' }).click();
+        await page.getByTestId('equipment-weights').click();
+        await page.getByTestId('limit-knees').click();
+        await page.getByTestId('diet-gluten_free').click();
       }],
-      ['context', async () => {
-        await page.getByTestId('activity-already_training').click();
-        await page.getByTestId('place-no_equipment').click();
-      }],
-      ['generate', async () => {}],
+      ['review', async () => {}],
+      ['review', async () => page.getByTestId('tab-meals').click()],
+      ['swap', async () => page.getByRole('button', { name: 'Swap breakfast' }).click()],
     ];
     for (const [step, answer] of steps) {
-      await expect(page.getByTestId(`setup-${step}`)).toBeVisible();
       await answer();
+      await expect(page.getByTestId(`setup-${step}`)).toBeVisible();
       for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 800 });
         await page.waitForTimeout(50);
@@ -326,7 +327,7 @@ test.describe('first-run setup (#49)', () => {
           .map(({ el, r }) => `${el.getAttribute('aria-label') ?? el.textContent} ${Math.round(r.width)}×${Math.round(r.height)}`),
       );
       expect(small, `${step} touch targets`).toEqual([]);
-      if (step !== 'generate') await primary.click();
+      if (step === 'about' || step === 'goals') await primary.click();
     }
   });
 });

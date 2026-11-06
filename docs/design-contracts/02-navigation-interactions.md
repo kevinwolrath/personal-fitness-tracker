@@ -56,6 +56,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
 | **Health Connect** | Opens the Health Connect sheet: connect (read-only, the only permission request), status, today's imported values with their source, **Sync now** and **Manage in Health Connect** (contract 12). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
 | **Configure with AI** | Opens `/configure` (contract 07). |
+| **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
 | **Settings** | Opens the Settings sheet: device preferences, for now **Energy units** (kJ, kcal or both). The detail line states the current choice, e.g. "Energy in kJ" (contract 11). |
 | **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
@@ -72,6 +73,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
 | `/import` | Modal | Screenshot import (contract 06) |
+| `/setup` | Full-screen modal | Edit setup answers (contract 13) |
 
 The log shows **one day at a time**. Its screen header (see Layout layers): `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).
 

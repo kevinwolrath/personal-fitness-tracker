@@ -15,6 +15,7 @@ export default function RootLayout() {
             <Stack.Screen name="(main)" />
             <Stack.Screen name="import" options={{ presentation: 'modal' }} />
             <Stack.Screen name="configure" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="setup" options={{ presentation: 'fullScreenModal' }} />
           </Stack>
         </AppProvider>
       </PhoneFrame>

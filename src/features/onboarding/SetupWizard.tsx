@@ -1,70 +1,108 @@
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { RawPlan } from '../../config/sections';
 import type { EnergyDisplay } from '../../energy';
 import { buildSetupPrompt, checkSetupReply, type SetupReply } from '../../onboarding/ai';
-import { chooseWeightBand, enterExactWeight, isMinor, readDraft, toggleGoal, type Draft, type Goal, type Step } from '../../onboarding/draft';
-import { finishSetup } from '../../onboarding/finish';
+import {
+  chooseAgeBand,
+  chooseWeightBand,
+  enterAge,
+  enterExactWeight,
+  isMinor,
+  readDraft,
+  resetChoices,
+  toggleGoal,
+  toggleIn,
+  type Draft,
+  type Goal,
+  type Step,
+} from '../../onboarding/draft';
+import { applySetupToExisting, finishSetup } from '../../onboarding/finish';
 import {
   activityLabels,
+  adultAgeBands,
   ageLabels,
   answerLines,
+  cmToIn,
   dayOptions,
+  dietLabels,
+  equipmentLabels,
   genderLabels,
   goalLabels,
-  minuteOptions,
-  placeLabels,
+  inToCm,
+  limitLabels,
+  slotLabels,
   weightBandLabels,
 } from '../../onboarding/labels';
+import { activeNutritionSeed } from '../../onboarding/nutritionSeed';
 import { buildStarterPlan } from '../../onboarding/starterPlan';
 import { toLocalDate } from '../../plan/dates';
-import { activityLevels, ageBands, fitnessGoals, genders, trainingPlaces, weightBands, type Plan } from '../../plan/schema';
+import { activityLevels, dietaryNeeds, equipmentKinds, fitnessGoals, genders, physicalLimits, weekdays, weightBands, type Plan } from '../../plan/schema';
 import { preferences } from '../../platform/preferences';
-import type { TrackingStore } from '../../storage/types';
+import { exerciseStyles } from '../../presets/exercisePlan';
+import { plannedSlots, type MealSlot } from '../../presets/meals';
+import type { StoredPlan, TrackingStore } from '../../storage/types';
+import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { colors, radius, space, touch, type } from '../../ui/theme';
 import { Card, Chip, Chips, Grid, Question, styles as ws, TextLink, WizardFrame } from './WizardParts';
 
-type Props = { store: TrackingStore; energy: EnergyDisplay; onFinished: (plan: Plan) => void };
+type Props = {
+  store: TrackingStore;
+  energy: EnergyDisplay;
+  onFinished: (plan: Plan) => void;
+  /** Edit setup answers (#53): starts from the current plan's answers and replaces it only after confirmation. */
+  edit?: { current: StoredPlan; initial: Draft; onCancel: () => void };
+};
 
-const DISCLAIMER = 'AI-generated suggestion, not medical advice.';
+const dayNames: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+const daysOf = (a: Record<string, any>) => (a.appliesTo?.days as string[] | undefined)?.slice().sort((x, y) => weekdays.indexOf(x as never) - weekdays.indexOf(y as never)) ?? [];
 
 /**
- * First-run setup (#49, option A): About you → Goals → Practical context → Generate → Review, then Today.
- * Every answer is optional. Progress is saved on the device after each change, so setup resumes after a
- * restart. Nothing is stored as a plan until the user confirms on the review.
+ * Setup (#49, #53): About you → Goals → Your starter plan (Exercise | Meals). Every answer is optional.
+ * Adults get an offline starter plan from the bundled presets; refining it with AI is optional. Under 18:
+ * tracking only. First-run progress is saved on the device after each change; nothing becomes a plan until the
+ * user starts with it (or, editing, confirms the replacement).
  */
-export function SetupWizard({ store, energy, onFinished }: Props) {
-  const [draft, setDraft] = useState<Draft | null>(null);
+export function SetupWizard({ store, energy, onFinished, edit }: Props) {
+  const [draft, setDraft] = useState<Draft | null>(edit ? edit.initial : null);
+  const [tab, setTab] = useState<'exercise' | 'meals'>('exercise');
+  const [swapSlot, setSwapSlot] = useState<MealSlot | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
   const [reply, setReply] = useState('');
-  const [result, setResult] = useState<SetupReply | null>(null);
+  const [check, setCheck] = useState<SetupReply | null>(null);
+  const [aiPlan, setAiPlan] = useState<Extract<SetupReply, { ok: true }> | null>(null);
   const [copied, setCopied] = useState<'prompt' | 'details' | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (edit) return;
     let cancelled = false;
-    preferences.setupDraft().then((json) => {
-      if (cancelled) return;
-      const d = readDraft(json);
-      // A pasted reply isn't kept across restarts: an AI review resumes at Generate.
-      setDraft(d.step === 'review' && d.path === 'ai' ? { ...d, step: 'generate', path: undefined } : d);
-    });
+    preferences.setupDraft().then((json) => !cancelled && setDraft(readDraft(json)));
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [edit]);
 
   const save = useRef<(d: Draft) => void>(() => undefined);
   save.current = (d: Draft) => {
     setDraft(d);
-    preferences.setSetupDraft(JSON.stringify(d)).catch(() => undefined); // still works for this session
+    if (!edit) preferences.setSetupDraft(JSON.stringify(d)).catch(() => undefined); // still works for this session
   };
   const update = (fn: (d: Draft) => Draft) => draft && save.current(fn(draft));
-  const go = (step: Step, extra: Partial<Draft> = {}) => update((d) => ({ ...d, ...extra, step }));
+  const go = (step: Step) => update((d) => ({ ...d, step }));
+  /** An answer that shapes the plan changed: any AI version no longer matches it. */
+  const answer = (fn: (d: Draft) => Draft) => {
+    setAiPlan(null);
+    update(fn);
+  };
 
   const starter = useMemo(() => (draft ? buildStarterPlan(draft) : null), [draft]);
+  const everything = useMemo(() => (draft ? buildStarterPlan({ ...draft, removed: [] }) : null), [draft]);
 
-  if (!draft || !starter) {
+  if (!draft || !starter || !everything) {
     return (
       <View style={local.center}>
         <ActivityIndicator color={colors.muted} />
@@ -72,13 +110,17 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
     );
   }
   const minor = isMinor(draft);
+  const total = minor ? 2 : 3;
+  const planToSave: RawPlan = aiPlan?.nextRaw ?? starter;
 
-  const confirm = async (raw: Record<string, unknown>) => {
+  const finish = async () => {
+    setConfirming(false);
     setSaving(true);
     setSaveError(null);
     try {
-      const plan = await finishSetup(store, raw, draft, toLocalDate(new Date()));
-      await preferences.clearSetupDraft().catch(() => undefined);
+      const today = toLocalDate(new Date());
+      const plan = edit ? await applySetupToExisting(store, edit.current, planToSave, draft, today) : await finishSetup(store, planToSave, draft, today);
+      if (!edit) await preferences.clearSetupDraft().catch(() => undefined);
       onFinished(plan);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
@@ -86,16 +128,20 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
     }
   };
 
+  // ---- Step 1: About you ------------------------------------------------------------------
   if (draft.step === 'about') {
+    const next = () => go(minor ? 'review' : 'goals');
     return (
       <WizardFrame
         testID="setup-about"
         step={1}
-        total={minor ? 2 : 4}
+        total={total}
         title="About you"
-        sub="All optional. It stays on this phone unless you choose to share it with an AI."
-        onSkip={() => go(minor ? 'review' : 'goals', minor ? { path: 'basic' } : {})}
-        primary={{ title: minor ? 'Continue' : 'Next', onPress: () => go(minor ? 'review' : 'goals', minor ? { path: 'basic' } : {}) }}
+        sub="All optional. Ranges are fine. It stays on this phone unless you share it with an AI."
+        onSkip={next}
+        onBack={edit?.onCancel}
+        backLabel={edit ? 'Cancel' : 'Back'}
+        primary={{ title: 'Next', onPress: next }}
       >
         <Question label="Gender">
           <Grid>
@@ -103,113 +149,91 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
               <Chip key={g} wide label={genderLabels[g]} selected={draft.gender === g} onPress={() => update((d) => ({ ...d, gender: d.gender === g ? undefined : g }))} testID={`gender-${g}`} />
             ))}
           </Grid>
+          <Text style={ws.hint}>“Other” includes non-binary. Gender never changes your plan: it's based on your goals, activity and measurements.</Text>
         </Question>
-        <Question label="Age">
-          <Chips>
-            {ageBands.map((a) => (
-              <Chip key={a} label={ageLabels[a]} selected={draft.ageBand === a} onPress={() => update((d) => ({ ...d, ageBand: d.ageBand === a ? undefined : a }))} testID={`age-${a}`} />
-            ))}
-          </Chips>
-          {minor ? (
-            <View style={local.notice} testID="setup-minor" accessibilityLiveRegion="polite">
-              <Text style={local.noticeTitle}>Personalised plans are for adults</Text>
-              <Text style={local.noticeText}>AI fitness and diet plans in this app are for people 18 and over. You can still use the app to track your activity and measurements.</Text>
-            </View>
-          ) : null}
-        </Question>
+        <AgeQuestion draft={draft} update={answer} />
         <WeightQuestion draft={draft} update={update} />
+        <HeightQuestion draft={draft} update={update} />
       </WizardFrame>
     );
   }
 
+  // ---- Step 2: Goals ------------------------------------------------------------------------
   if (draft.step === 'goals') {
-    const primary = draft.primaryGoal ?? draft.fitnessGoals[0];
     return (
       <WizardFrame
         testID="setup-goals"
         step={2}
-        total={4}
-        title="Your goals"
-        sub="Pick any that apply. The primary goal leads the plan."
-        onSkip={() => go('context')}
+        total={3}
+        title="Goals"
+        sub="Pick any that fit. Gradual and faster loss are either/or."
+        onSkip={() => go('review')}
         onBack={() => go('about')}
-        primary={{ title: 'Next', onPress: () => go('context') }}
+        primary={{ title: 'See my plan', onPress: () => go('review') }}
       >
         <View style={ws.question} accessibilityLabel="Goals">
           {fitnessGoals.map((g) => (
-            <GoalOption
-              key={g}
-              goal={g}
-              selected={draft.fitnessGoals.includes(g)}
-              primary={draft.fitnessGoals.includes(g) && primary === g}
-              showPrimary={draft.fitnessGoals.length > 1}
-              onToggle={() => update((d) => toggleGoal(d, g))}
-              onMakePrimary={() => update((d) => ({ ...d, primaryGoal: g }))}
-            />
+            <GoalOption key={g} goal={g} selected={draft.fitnessGoals.includes(g)} onToggle={() => answer((d) => toggleGoal(d, g))} />
           ))}
-          {draft.fitnessGoals.length > 1 ? <Text style={ws.hint}>Tap “Make primary” to change which goal leads.</Text> : null}
         </View>
-      </WizardFrame>
-    );
-  }
-
-  if (draft.step === 'context') {
-    return (
-      <WizardFrame
-        testID="setup-context"
-        step={3}
-        total={4}
-        title="Practical context"
-        sub="All optional. Skip anything you'd rather not say."
-        onSkip={() => go('generate')}
-        onBack={() => go('goals')}
-        primary={{ title: 'Next', onPress: () => go('generate') }}
-      >
-        <Question label="Days per week">
+        <Question label="Activity now">
+          <Chips>
+            {activityLevels.map((a) => (
+              <Chip key={a} label={activityLabels[a]} selected={draft.activityLevel === a} onPress={() => answer((d) => resetChoices({ ...d, activityLevel: d.activityLevel === a ? undefined : a }))} testID={`activity-${a}`} />
+            ))}
+          </Chips>
+        </Question>
+        <Question label="Days per week, at most">
           <Chips>
             {dayOptions.map((n) => (
-              <Chip key={n} label={n === 6 ? '6+' : String(n)} selected={draft.daysPerWeek === n} onPress={() => update((d) => ({ ...d, daysPerWeek: d.daysPerWeek === n ? undefined : n }))} testID={`days-${n}`} />
+              <Chip key={n} label={String(n)} selected={draft.daysPerWeek === n} onPress={() => answer((d) => resetChoices({ ...d, daysPerWeek: d.daysPerWeek === n ? undefined : n }))} testID={`days-${n}`} />
             ))}
           </Chips>
         </Question>
-        <Question label="Time per session">
+        <Question label="Equipment">
           <Chips>
-            {minuteOptions.map((n) => (
-              <Chip key={n} label={n === 60 ? '60 min+' : `${n} min`} selected={draft.sessionMinutes === n} onPress={() => update((d) => ({ ...d, sessionMinutes: d.sessionMinutes === n ? undefined : n }))} testID={`minutes-${n}`} />
-            ))}
-          </Chips>
-        </Question>
-        <Question label="Where you train">
-          <Chips>
-            {trainingPlaces.map((p) => (
+            {equipmentKinds.map((e) => (
               <Chip
-                key={p}
+                key={e}
                 multi
-                label={placeLabels[p]}
-                selected={draft.trainingPlaces.includes(p)}
-                onPress={() => update((d) => ({ ...d, trainingPlaces: d.trainingPlaces.includes(p) ? d.trainingPlaces.filter((x) => x !== p) : [...d.trainingPlaces, p] }))}
-                testID={`place-${p}`}
+                label={equipmentLabels[e]}
+                selected={draft.equipment.includes(e)}
+                onPress={() =>
+                  answer((d) => {
+                    // "None" and having equipment exclude each other.
+                    const cleared = { ...d, equipment: e === 'none' ? d.equipment.filter((x) => x === 'none') : d.equipment.filter((x) => x !== 'none') };
+                    return toggleIn(cleared, 'equipment', e);
+                  })
+                }
+                testID={`equipment-${e}`}
               />
             ))}
           </Chips>
         </Question>
-        <Question label="Current activity">
+        <Question label="Go easy on">
           <Chips>
-            {activityLevels.map((a) => (
-              <Chip key={a} label={activityLabels[a]} selected={draft.activityLevel === a} onPress={() => update((d) => ({ ...d, activityLevel: d.activityLevel === a ? undefined : a }))} testID={`activity-${a}`} />
+            {physicalLimits.map((l) => (
+              <Chip key={l} multi label={limitLabels[l]} selected={draft.physicalLimits.includes(l)} onPress={() => answer((d) => toggleIn(d, 'physicalLimits', l))} testID={`limit-${l}`} />
+            ))}
+          </Chips>
+        </Question>
+        <Question label="Dietary needs and allergies">
+          <Chips>
+            {dietaryNeeds.map((n) => (
+              <Chip key={n} multi label={dietLabels[n]} selected={draft.dietary.includes(n)} onPress={() => answer((d) => toggleIn(d, 'dietary', n))} testID={`diet-${n}`} />
             ))}
           </Chips>
         </Question>
         <View style={ws.question}>
-          <Text style={type.section}>Anything to work around</Text>
+          <Text style={type.section}>Anything else to work around</Text>
           <TextInput
             value={draft.considerations ?? ''}
             onChangeText={(t) => update((d) => ({ ...d, considerations: t.slice(0, 200) || undefined }))}
-            placeholder="Injuries, limits, food restrictions…"
+            placeholder="Injuries, other allergies, time limits…"
             placeholderTextColor={colors.faint}
             multiline
             style={local.textField}
-            accessibilityLabel="Anything to work around"
+            accessibilityLabel="Anything else to work around"
             testID="setup-considerations"
           />
         </View>
@@ -217,40 +241,106 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
     );
   }
 
-  if (draft.step === 'generate') {
-    const failed = result && !result.ok ? result : null;
+  // ---- Step 3: review ----------------------------------------------------------------------
+  const startTitle = saving ? 'Saving…' : edit ? 'Replace my plan' : minor ? 'Start tracking' : 'Start with this plan';
+  const start = () => (edit ? setConfirming(true) : finish());
+  const confirmDialog = (
+    <ConfirmDialog
+      visible={confirming}
+      title="Replace your current plan?"
+      message="Your schedule, exercise settings and setup answers change. Your measurements, workout history, imports and earlier plan versions stay, and you can undo this from Configure with AI."
+      confirmLabel="Replace plan"
+      onCancel={() => setConfirming(false)}
+      onConfirm={finish}
+    />
+  );
+
+  if (minor) {
+    return (
+      <WizardFrame testID="setup-review" step={2} total={2} title="Tracking only" sub="Personalised plans are for adults (18+). You can track your weight and anything you do." onBack={() => go('about')} primary={{ title: startTitle, onPress: start, disabled: saving }}>
+        <Card title="Your app" testID="review-basic">
+          <Text style={local.body}>Weight tracking only. No exercise or meal plan.</Text>
+        </Card>
+        {saveError ? <Text style={local.error}>{`Couldn't save: ${saveError}`}</Text> : null}
+        {confirmDialog}
+      </WizardFrame>
+    );
+  }
+
+  // Swap one meal (inline: no nested modal).
+  if (swapSlot) {
+    const safe = activeNutritionSeed().mealOptions(draft.dietary)[swapSlot];
+    const current = starter.activities.find((a: { id: string }) => a.id === swapSlot);
+    const choose = (id: string | null) => {
+      update((d) => ({ ...d, mealSwaps: { ...d.mealSwaps, [swapSlot]: id } }));
+      setSwapSlot(null);
+    };
+    return (
+      <WizardFrame
+        testID="setup-swap"
+        step={3}
+        total={3}
+        title={`Swap ${slotLabels[swapSlot].toLowerCase()}`}
+        sub={draft.dietary.length ? `Only meals that fit: ${draft.dietary.map((x) => dietLabels[x]).join(', ')}.` : 'Sample meals with hand-sized portions.'}
+        onBack={() => setSwapSlot(null)}
+        primary={{ title: 'Done', onPress: () => setSwapSlot(null) }}
+      >
+        {safe.map((m) => {
+          const isCurrent = current?.label === m.label;
+          return (
+            <View key={m.id} style={[local.mealCard, isCurrent && local.mealCardOn]} testID={`swap-${m.id}`}>
+              <Text style={local.mealTitle}>{m.label}</Text>
+              <Text style={local.small}>{m.ingredients.map((i) => `${i.name}: ${i.measure}`).join(' · ')}</Text>
+              <Pressable
+                onPress={() => choose(m.id)}
+                disabled={isCurrent}
+                style={({ pressed }) => [local.use, pressed && local.pressed]}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isCurrent, disabled: isCurrent }}
+                accessibilityLabel={isCurrent ? `${m.label}, current` : `Use ${m.label}`}
+              >
+                <Text style={local.useText}>{isCurrent ? 'Current' : 'Use'}</Text>
+              </Pressable>
+            </View>
+          );
+        })}
+        {!safe.length ? <Text style={local.body}>No sample meal fits your dietary needs for this meal, so it stays unplanned.</Text> : null}
+        <TextLink title="Leave it unplanned" onPress={() => choose(null)} testID="swap-none" />
+      </WizardFrame>
+    );
+  }
+
+  // Refine with AI (optional, inline).
+  if (aiOpen) {
+    const failed = check && !check.ok ? check : null;
     const copy = async (what: 'prompt' | 'details', text: string) => {
       await Clipboard.setStringAsync(text);
       setCopied(what);
     };
-    const check = () => {
-      const r = checkSetupReply(starter, reply, draft, energy);
-      setResult(r);
-      if (r.ok) go('review', { path: 'ai' });
-    };
     return (
       <WizardFrame
-        testID="setup-generate"
-        step={4}
-        total={4}
-        title="Get a suggested plan"
-        sub="Copy a prompt to any AI chat assistant, then paste its reply here."
-        onBack={() => go('context')}
-        primary={{ title: 'Check reply', onPress: check, disabled: !reply.trim() }}
+        testID="setup-ai"
+        step={3}
+        total={3}
+        title="Refine with AI"
+        sub="Optional. Copy a prompt to any AI chat assistant, then paste its reply."
+        onBack={() => setAiOpen(false)}
+        primary={{
+          title: 'Check reply',
+          disabled: !reply.trim(),
+          onPress: () => {
+            const r = checkSetupReply(starter, reply, draft, energy);
+            setCheck(r);
+            if (r.ok) {
+              setAiPlan(r);
+              setAiOpen(false);
+            }
+          },
+        }}
       >
         <Card title="1 · Copy the prompt">
-          <Text style={local.body} testID="setup-prompt-summary">
-            {answerLines(draft).length
-              ? `It includes what you told the app: ${answerLines(draft).map(summaryValue).join(', ')}. Nothing else.`
-              : "You didn't share anything, so the AI will ask you. Nothing else is included."}
-          </Text>
-          <Pressable
-            onPress={() => copy('prompt', buildSetupPrompt(starter, draft, toLocalDate(new Date())))}
-            style={({ pressed }) => [local.outline, pressed && local.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel="Copy prompt"
-            testID="setup-copy-prompt"
-          >
+          <Text style={local.body}>It includes your answers and this starter plan. Nothing else.</Text>
+          <Pressable onPress={() => copy('prompt', buildSetupPrompt(starter, draft, toLocalDate(new Date())))} style={({ pressed }) => [local.outline, pressed && local.pressed]} accessibilityRole="button" accessibilityLabel="Copy prompt" testID="setup-copy-prompt">
             <Text style={local.outlineText}>{copied === 'prompt' ? 'Copied: paste it into any AI chat' : 'Copy prompt'}</Text>
           </Pressable>
         </Card>
@@ -259,7 +349,7 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
             value={reply}
             onChangeText={(t) => {
               setReply(t);
-              setResult(null);
+              setCheck(null);
             }}
             multiline
             placeholder="Paste the AI's whole reply here"
@@ -279,85 +369,209 @@ export function SetupWizard({ store, energy, onFinished }: Props) {
                 {e}
               </Text>
             ))}
-            {failed.diagnostics ? (
-              <TextLink title={copied === 'details' ? 'Copied: paste it to the AI' : 'Copy details for the AI'} onPress={() => copy('details', failed.diagnostics!)} testID="setup-copy-details" />
-            ) : null}
+            {failed.diagnostics ? <TextLink title={copied === 'details' ? 'Copied: paste it to the AI' : 'Copy details for the AI'} onPress={() => copy('details', failed.diagnostics!)} testID="setup-copy-details" /> : null}
           </View>
         ) : null}
-        <Text style={ws.hint}>The reply is an AI-generated suggestion, not medical advice. You'll review every value before anything is saved.</Text>
-        <TextLink title="Skip for now: start with a basic profile" onPress={() => go('review', { path: 'basic' })} testID="setup-skip-ai" />
+        <Text style={ws.hint}>The reply is an AI-generated suggestion, not medical advice. You'll see every change before anything is saved.</Text>
       </WizardFrame>
     );
   }
 
-  // Review.
-  const ai = draft.path === 'ai' && result?.ok ? result : null;
-  const answers = answerLines(draft);
-  const weighIn = draft.exactWeight !== undefined ? (draft.logWeighIn ? `${draft.exactWeight} ${draft.unit} logged as today's weigh-in` : 'Not logged as a weigh-in') : null;
+  const shown = planToSave.activities as Record<string, any>[];
+  const exercise = shown.filter((a) => a.kind !== 'meal');
+  const removedExercise = (everything.activities as Record<string, any>[]).filter((a) => a.kind !== 'meal' && draft.removed.includes(a.id));
+  const trainingDays = new Set(exercise.filter((a) => a.required !== false).flatMap(daysOf));
+  const restDays = weekdays.filter((w) => !trainingDays.has(w));
+  const options = activeNutritionSeed().mealOptions(draft.dietary);
+  const slots = plannedSlots(draft.fitnessGoals);
+  // Only what shapes the plan: goals, days, equipment and diet (gender, age and weight never change it).
+  const based = [
+    draft.fitnessGoals.map((g) => goalLabels[g].label).join(', '),
+    draft.daysPerWeek ? `up to ${draft.daysPerWeek} days a week` : null,
+    draft.equipment.length ? (draft.equipment.includes('none') ? 'no equipment' : draft.equipment.map((e) => equipmentLabels[e].toLowerCase()).join(', ')) : null,
+    draft.dietary.map((x) => dietLabels[x]).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const carousel = (label: string, n: number, count: number, onMove: (n: number) => void, testID: string) => (
+    <View style={local.carousel} testID={testID}>
+      <Pressable onPress={() => onMove((n + count - 1) % count)} style={local.arrow} accessibilityRole="button" accessibilityLabel="Previous option" testID={`${testID}-prev`}>
+        <Text style={local.arrowText}>‹</Text>
+      </Pressable>
+      <View style={local.carouselText} accessibilityLiveRegion="polite">
+        <Text style={local.carouselTitle}>{label}</Text>
+        <Text style={local.small}>{`Option ${n + 1} of ${count}`}</Text>
+      </View>
+      <Pressable onPress={() => onMove((n + 1) % count)} style={local.arrow} accessibilityRole="button" accessibilityLabel="Next option" testID={`${testID}-next`}>
+        <Text style={local.arrowText}>›</Text>
+      </Pressable>
+    </View>
+  );
+
+  const tabs = (
+    <View style={local.tabs} accessibilityRole="tablist">
+      {(['exercise', 'meals'] as const).map((t) => (
+        <Pressable key={t} onPress={() => setTab(t)} style={[local.tab, tab === t && local.tabOn]} accessibilityRole="tab" accessibilityState={{ selected: tab === t }} aria-selected={tab === t} testID={`tab-${t}`}>
+          <Text style={[local.tabText, tab === t && local.tabTextOn]}>{t === 'exercise' ? 'Exercise' : 'Meals'}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
   return (
     <WizardFrame
       testID="setup-review"
-      step={minor ? 2 : 4}
-      total={minor ? 2 : 4}
-      title={ai ? 'Review the suggestion' : 'Review your profile'}
-      sub={ai ? `${DISCLAIMER} Check each value; edit anything before you confirm.` : minor ? 'Tracking only. Nothing here is personalised.' : 'Weight tracking now. Set up a plan with AI any time.'}
-      onBack={() => go(minor ? 'about' : 'generate', { path: undefined })}
-      primary={{ title: saving ? 'Saving…' : ai ? 'Confirm and start' : 'Start tracking', onPress: () => confirm(ai ? ai.nextRaw : starter), disabled: saving }}
+      step={3}
+      total={3}
+      title="Your starter plan"
+      sub={based ? `Based on: ${based}.` : 'Based on general beginner presets. Edit anything.'}
+      onBack={() => go('goals')}
+      above={
+        <>
+          {tabs}
+          {aiPlan
+            ? null
+            : tab === 'exercise'
+              ? carousel(exerciseStyles[draft.exerciseOption].label, draft.exerciseOption, exerciseStyles.length, (n) => update((d) => ({ ...d, exerciseOption: n, removed: d.removed.filter((id) => !exercise.concat(removedExercise).some((a) => a.id === id)) })), 'exercise-options')
+              : carousel(`Sample day ${draft.mealOption + 1}`, draft.mealOption, 3, (n) => update((d) => ({ ...d, mealOption: n, mealSwaps: {} })), 'meal-options')}
+        </>
+      }
+      primary={{ title: startTitle, onPress: start, disabled: saving }}
     >
-      {ai ? (
-        <Card title="Assumed by the AI" testID="review-ai">
-          {ai.preview.flatMap((p) => p.lines.map((l, i) => <ReviewRow key={`${p.section}-${i}`} label={p.title} value={l.text} tag="Assumed" assumed />))}
-          {ai.notes.map((n, i) => (
+      {aiPlan ? (
+        <Card title="AI version" testID="review-ai">
+          <Text style={local.body}>AI-generated suggestion, not medical advice. These are its changes:</Text>
+          {aiPlan.preview.flatMap((p) => p.lines.map((l, i) => <Row key={`${p.section}-${i}`} title={l.text} sub={p.title} />))}
+          {aiPlan.notes.map((n, i) => (
             <Text key={i} style={ws.hint}>
               {n}
             </Text>
           ))}
+          <TextLink title="Use the presets instead" onPress={() => setAiPlan(null)} testID="review-ai-undo" />
         </Card>
-      ) : (
-        <Card title="Your plan" testID="review-basic">
-          <Text style={local.body}>{minor ? 'Weight tracking only.' : 'Weight tracking. No workouts yet.'}</Text>
-        </Card>
-      )}
-      <Card title="From you" testID="review-from-you">
-        {answers.length ? (
-          answers.map((a) => <ReviewRow key={a.label} label={a.label} value={a.value} tag="From you" />)
-        ) : (
-          <Text style={local.body}>Nothing yet. That's fine.</Text>
-        )}
-        {weighIn ? <Text style={ws.hint} testID="review-weigh-in">{weighIn}</Text> : null}
-      </Card>
-      <Card title="Nutrition" testID="review-nutrition">
-        <Text style={local.body}>Not set up yet.</Text>
-      </Card>
-      {saveError ? (
-        <Text style={local.noticeText} accessibilityLiveRegion="polite">
-          {`Couldn't save: ${saveError}`}
-        </Text>
       ) : null}
-      <View style={local.links}>
-        <TextLink title="Edit answers" onPress={() => go('about', { path: undefined })} testID="review-edit" />
-        {ai ? (
-          <TextLink
-            title="Ask the AI again"
-            onPress={() => {
-              setReply('');
-              setResult(null);
-              go('generate', { path: undefined });
-            }}
-            testID="review-regenerate"
-          />
-        ) : null}
-      </View>
+
+      {tab === 'exercise' ? (
+        <View style={ws.question} testID="review-exercise">
+          {exercise.map((a) => (
+            <Row
+              key={a.id}
+              title={a.label}
+              sub={[daysOf(a).map((x) => dayNames[x]).join(', '), a.duration?.minutes ? `${a.duration.minutes} min` : null, a.required === false ? 'optional' : null].filter(Boolean).join(' · ')}
+              action={aiPlan ? undefined : { label: 'Remove', a11y: `Remove ${a.label}`, onPress: () => update((d) => ({ ...d, removed: [...d.removed, a.id] })) }}
+              testID={`plan-${a.id}`}
+            />
+          ))}
+          {removedExercise.map((a) => (
+            <Row key={a.id} title={a.label} sub="Removed" muted action={{ label: 'Add back', a11y: `Add back ${a.label}`, onPress: () => update((d) => ({ ...d, removed: d.removed.filter((x) => x !== a.id) })) }} testID={`plan-${a.id}`} />
+          ))}
+          <Text style={ws.hint} testID="review-rest">{`Rest: ${restDays.map((x) => dayNames[x]).join(', ')}. Strength days never follow each other. Add a set or a few reps when it feels easy.`}</Text>
+        </View>
+      ) : (
+        <View style={ws.question} testID="review-meals">
+          {slots.map((s) => {
+            const meal = shown.find((a) => a.id === s);
+            const noneSafe = !options[s].length;
+            return (
+              <Row
+                key={s}
+                title={meal ? meal.label : 'Unplanned'}
+                sub={meal ? `${slotLabels[s]} · ${(meal.ingredients as { measure: string; name: string }[]).map((i) => `${i.measure} ${i.name.toLowerCase()}`).join(', ')}` : noneSafe ? `${slotLabels[s]} · no sample meal fits your needs` : slotLabels[s]}
+                muted={!meal}
+                action={noneSafe || aiPlan ? undefined : { label: meal ? 'Swap' : 'Choose', a11y: `${meal ? 'Swap' : 'Choose'} ${slotLabels[s].toLowerCase()}`, onPress: () => setSwapSlot(s) }}
+                testID={`meal-${s}`}
+              />
+            );
+          })}
+          <Text style={ws.hint} testID="review-meals-note">Sample meals are suggestions, not food you've logged. Portions use your hand (palm, fist, cupped hand, thumb). No calorie targets are set.</Text>
+        </View>
+      )}
+
+      {!aiPlan ? <TextLink title="Refine with AI (optional)" onPress={() => setAiOpen(true)} testID="review-refine" /> : null}
+      {draft.exactWeight !== undefined ? <Text style={ws.hint} testID="review-weigh-in">{draft.logWeighIn ? `${draft.exactWeight} ${draft.unit} will be logged as today's weigh-in.` : 'Your weight is not logged as a weigh-in.'}</Text> : null}
+      {saveError ? <Text style={local.error}>{`Couldn't save: ${saveError}`}</Text> : null}
+      {confirmDialog}
     </WizardFrame>
   );
 }
 
-/** One answer as it reads inside a sentence ("3 days a week", not a bare "3"). */
-function summaryValue(a: { label: string; value: string }): string {
-  if (a.label === 'Days per week') return `${a.value} days a week`;
-  if (a.label === 'Time per session') return `${a.value} per session`;
-  if (a.label === 'To work around') return `to work around: ${a.value}`;
-  return a.value;
+function Row({ title, sub, action, muted, testID }: { title: string; sub: string; action?: { label: string; a11y: string; onPress: () => void }; muted?: boolean; testID?: string }) {
+  return (
+    <View style={local.row} testID={testID}>
+      <View style={local.rowText}>
+        <Text style={[local.rowTitle, muted && local.muted]}>{title}</Text>
+        {sub ? <Text style={local.small}>{sub}</Text> : null}
+      </View>
+      {action ? (
+        <Pressable onPress={action.onPress} style={({ pressed }) => [local.rowAction, pressed && local.pressed]} accessibilityRole="button" accessibilityLabel={action.a11y}>
+          <Text style={local.rowActionText}>{action.label}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function AgeQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
+  const [exact, setExact] = useState(draft.age !== undefined);
+  const [text, setText] = useState(draft.age !== undefined ? String(draft.age) : '');
+  const minor = isMinor(draft);
+  return (
+    <View style={ws.question} accessibilityLabel="Age">
+      <Text style={type.section}>Age</Text>
+      {exact ? (
+        <TextInput
+          value={text}
+          onChangeText={(t) => {
+            setText(t);
+            const n = Number(t);
+            update((d) => enterAge(d, t.trim() && Number.isInteger(n) && n > 0 && n <= 120 ? n : undefined));
+          }}
+          keyboardType="number-pad"
+          placeholder="Age in years"
+          placeholderTextColor={colors.faint}
+          style={local.numberField}
+          accessibilityLabel="Exact age in years"
+          testID="setup-exact-age"
+        />
+      ) : (
+        <Chips>
+          {adultAgeBands.map((a) => (
+            <Chip key={a} label={ageLabels[a]} selected={draft.ageBand === a} onPress={() => update((d) => chooseAgeBand(d, d.ageBand === a ? undefined : a))} testID={`age-${a}`} />
+          ))}
+        </Chips>
+      )}
+      <TextLink
+        title={exact ? 'Choose a range instead' : 'Enter a specific age instead'}
+        onPress={() => {
+          setExact(!exact);
+          setText('');
+          update((d) => ({ ...d, age: undefined }));
+        }}
+        testID="setup-age-mode"
+      />
+      <Pressable
+        onPress={() => update((d) => chooseAgeBand(d, d.ageBand === 'under_18' ? undefined : 'under_18'))}
+        style={local.checkRow}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: minor }}
+        aria-checked={minor}
+        accessibilityLabel="I'm under 18: tracking only"
+        testID="age-under_18"
+      >
+        <View style={[local.box, minor && local.boxOn]}>{minor ? <Text style={local.tick}>✓</Text> : null}</View>
+        <Text style={local.body}>
+          Under 18? <Text style={local.linkInline}>Tracking only</Text>
+        </Text>
+      </Pressable>
+      {minor ? (
+        <View style={local.notice} testID="setup-minor" accessibilityLiveRegion="polite">
+          <Text style={local.noticeTitle}>Personalised plans are for adults</Text>
+          <Text style={local.noticeText}>Exercise and meal plans in this app are for people 18 and over. You can still track your weight and anything you do.</Text>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
@@ -367,7 +581,7 @@ function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draf
     <View style={ws.question} testID="setup-weight">
       <View style={local.weightHeader}>
         <Text style={type.section}>Weight</Text>
-        <View style={local.units} accessibilityRole="radiogroup" accessibilityLabel="Weight unit">
+        <View style={local.units} accessibilityRole="radiogroup" accessibilityLabel="Units">
           {(['kg', 'lb'] as const).map((u) => (
             <Chip key={u} label={u} selected={draft.unit === u} onPress={() => update((d) => ({ ...d, unit: u }))} testID={`unit-${u}`} />
           ))}
@@ -385,7 +599,7 @@ function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draf
             keyboardType="decimal-pad"
             placeholder={`Weight in ${draft.unit}`}
             placeholderTextColor={colors.faint}
-            style={local.weightField}
+            style={local.numberField}
             accessibilityLabel={`Exact weight in ${draft.unit}`}
             testID="setup-exact-weight"
           />
@@ -419,96 +633,108 @@ function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draf
               <Chip key={b} label={weightBandLabels[b][draft.unit]} selected={draft.weightBand === b} onPress={() => update((d) => chooseWeightBand(d, d.weightBand === b ? undefined : b))} testID={`weight-${b}`} />
             ))}
           </Chips>
-          <TextLink title="Enter exact weight instead" onPress={() => setExact(true)} testID="setup-weight-exact" />
-          <Text style={ws.hint}>A range is only a guide for the plan. It's never recorded as a weigh-in.</Text>
+          <TextLink title="Enter a specific weight instead" onPress={() => setExact(true)} testID="setup-weight-exact" />
+          <Text style={ws.hint}>A range is a rough guide for the plan. It's never recorded as a weigh-in or used for BMI.</Text>
         </>
       )}
     </View>
   );
 }
 
-function GoalOption(props: { goal: Goal; selected: boolean; primary: boolean; showPrimary: boolean; onToggle: () => void; onMakePrimary: () => void }) {
-  const { goal, selected, primary, showPrimary, onToggle, onMakePrimary } = props;
-  const g = goalLabels[goal];
+function HeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
+  const inches = draft.unit === 'lb';
+  const [text, setText] = useState(draft.heightCm ? String(inches ? cmToIn(draft.heightCm) : draft.heightCm) : '');
   return (
-    <View style={[local.option, selected && local.optionOn]} testID={`goal-${goal}`}>
-      <Pressable
-        onPress={onToggle}
-        style={local.optionMain}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: selected }}
-        aria-checked={selected}
-        accessibilityLabel={g.label}
-        accessibilityHint={g.detail}
-      >
-        <View style={[local.box, selected && local.boxOn]}>{selected ? <Text style={local.tick}>✓</Text> : null}</View>
-        <View style={local.optionText}>
-          <Text style={local.optionTitle}>{g.label}</Text>
-          <Text style={local.optionDetail}>{g.detail}</Text>
-        </View>
-      </Pressable>
-      {selected && showPrimary ? (
-        primary ? (
-          <Text style={local.primaryTag} testID={`goal-${goal}-primary`}>
-            Primary
-          </Text>
-        ) : (
-          <Pressable onPress={onMakePrimary} style={local.makePrimary} accessibilityRole="button" accessibilityLabel={`Make ${g.label} primary`}>
-            <Text style={local.makePrimaryText}>Make primary</Text>
-          </Pressable>
-        )
-      ) : null}
+    <View style={ws.question}>
+      <Text style={type.section}>{`Height (optional), ${inches ? 'in' : 'cm'}`}</Text>
+      <TextInput
+        value={text}
+        onChangeText={(t) => {
+          setText(t);
+          const n = Number(t.replace(',', '.'));
+          const cm = t.trim() && Number.isFinite(n) && n > 0 ? (inches ? inToCm(n) : n) : undefined;
+          update((d) => ({ ...d, heightCm: cm !== undefined && cm >= 50 && cm <= 260 ? cm : undefined }));
+        }}
+        keyboardType="decimal-pad"
+        placeholder={inches ? 'Height in inches' : 'Height in cm'}
+        placeholderTextColor={colors.faint}
+        style={local.numberField}
+        accessibilityLabel={`Height in ${inches ? 'inches' : 'centimetres'}, optional`}
+        testID="setup-height"
+      />
+      <Text style={ws.hint}>Only used for BMI, with an exact weight. Skip it if you like.</Text>
     </View>
   );
 }
 
-function ReviewRow({ label, value, tag, assumed }: { label: string; value: string; tag: string; assumed?: boolean }) {
+function GoalOption({ goal, selected, onToggle }: { goal: Goal; selected: boolean; onToggle: () => void }) {
+  const g = goalLabels[goal];
   return (
-    <View style={local.reviewRow}>
-      <View style={local.reviewText}>
-        <Text style={local.reviewLabel}>{label}</Text>
-        <Text style={local.reviewValue}>{value}</Text>
+    <Pressable
+      onPress={onToggle}
+      style={[local.option, selected && local.optionOn]}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      aria-checked={selected}
+      accessibilityLabel={g.label}
+      accessibilityHint={g.detail}
+      testID={`goal-${goal}`}
+    >
+      <View style={[local.box, selected && local.boxOn]}>{selected ? <Text style={local.tick}>✓</Text> : null}</View>
+      <View style={local.optionText}>
+        <Text style={local.optionTitle}>{g.label}</Text>
+        <Text style={local.optionDetail}>{g.detail}</Text>
       </View>
-      <Text style={[local.tag, assumed ? local.tagAssumed : local.tagYou]}>{tag}</Text>
-    </View>
+    </Pressable>
   );
 }
 
 const local = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   body: { fontSize: 15, color: colors.ink, lineHeight: 21, flexShrink: 1 },
+  small: { fontSize: 13, color: colors.muted, lineHeight: 18 },
+  muted: { color: colors.muted },
+  error: { fontSize: 14, color: colors.ink },
   pressed: { opacity: 0.75 },
+  linkInline: { color: colors.accent, fontWeight: '700' },
   notice: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 2, borderColor: colors.accent, padding: space.md, gap: space.xs },
   noticeTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
   noticeText: { fontSize: 14, color: colors.ink, lineHeight: 20 },
   errorPanel: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 2, borderColor: colors.ink, padding: space.lg, gap: space.sm },
   textField: { minHeight: touch, maxHeight: 120, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: space.md, paddingVertical: space.md, fontSize: 16, color: colors.ink, textAlignVertical: 'top' },
+  numberField: { minHeight: touch, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: space.md, fontSize: 18, color: colors.ink },
   replyField: { minHeight: 110, maxHeight: 220, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, backgroundColor: colors.bg, padding: space.md, fontSize: 13, color: colors.ink, fontFamily: 'monospace', textAlignVertical: 'top' },
   outline: { minHeight: touch, borderRadius: radius.md, borderWidth: 2, borderColor: colors.ink, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg },
   outlineText: { fontSize: 16, fontWeight: '700', color: colors.ink },
   weightHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   units: { flexDirection: 'row', gap: space.xs },
-  weightField: { minHeight: touch, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.surface, paddingHorizontal: space.md, fontSize: 18, color: colors.ink },
-  checkRow: { minHeight: touch, flexDirection: 'row', alignItems: 'center', gap: space.md },
+  checkRow: { minHeight: touch, flexDirection: 'row', alignItems: 'center', gap: space.md, alignSelf: 'flex-start' },
   box: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
   boxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   tick: { color: colors.onAccent, fontSize: 15, fontWeight: '800' },
-  option: { minHeight: 64, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', paddingRight: space.md },
+  option: { minHeight: 56, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: space.sm },
   optionOn: { borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft },
-  optionMain: { flex: 1, minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.md, paddingVertical: space.sm },
   optionText: { flex: 1, gap: 2 },
-  optionTitle: { fontSize: 17, fontWeight: '700', color: colors.ink },
-  optionDetail: { fontSize: 14, color: colors.muted },
-  primaryTag: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase', color: colors.onAccent, backgroundColor: colors.accent, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: space.xs, overflow: 'hidden' },
-  makePrimary: { minHeight: touch, justifyContent: 'center' },
-  makePrimaryText: { fontSize: 14, fontWeight: '700', color: colors.accent },
-  links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.lg },
-  reviewRow: { minHeight: touch, flexDirection: 'row', alignItems: 'center', gap: space.sm, borderTopWidth: 1, borderTopColor: colors.line, paddingVertical: space.xs },
-  reviewText: { flex: 1, gap: 2 },
-  reviewLabel: { fontSize: 13, color: colors.muted },
-  reviewValue: { fontSize: 15, fontWeight: '600', color: colors.ink },
-  tag: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase', borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 3, overflow: 'hidden' },
-  tagYou: { backgroundColor: colors.accentSoft, color: colors.accent },
-  tagAssumed: { backgroundColor: colors.line, color: colors.ink },
+  optionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
+  optionDetail: { fontSize: 13, color: colors.muted },
+  tabs: { flexDirection: 'row', backgroundColor: colors.line, borderRadius: radius.md, padding: 3 },
+  tab: { flex: 1, minHeight: touch - 4, borderRadius: radius.md - 2, alignItems: 'center', justifyContent: 'center' },
+  tabOn: { backgroundColor: colors.surface },
+  tabText: { fontSize: 16, fontWeight: '600', color: colors.muted },
+  tabTextOn: { fontWeight: '800', color: colors.ink },
+  carousel: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  arrow: { minWidth: touch, minHeight: touch, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  arrowText: { fontSize: 22, fontWeight: '700', color: colors.ink },
+  carouselText: { flex: 1, alignItems: 'center' },
+  carouselTitle: { fontSize: 17, fontWeight: '800', color: colors.ink },
+  row: { minHeight: touch + 8, flexDirection: 'row', alignItems: 'center', gap: space.sm, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, paddingLeft: space.md, paddingRight: space.xs, paddingVertical: space.xs },
+  rowText: { flex: 1, gap: 2, paddingVertical: space.xs },
+  rowTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
+  rowAction: { minHeight: touch, minWidth: touch + 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.sm },
+  rowActionText: { fontSize: 15, fontWeight: '700', color: colors.accent },
+  mealCard: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: space.md, gap: space.xs },
+  mealCardOn: { borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft },
+  mealTitle: { fontSize: 16, fontWeight: '800', color: colors.ink },
+  use: { minHeight: touch, minWidth: touch, alignSelf: 'flex-start', justifyContent: 'center' },
+  useText: { fontSize: 15, fontWeight: '700', color: colors.accent },
 });
-

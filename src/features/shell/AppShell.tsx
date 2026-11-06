@@ -71,6 +71,7 @@ function Shell({ children }: { children: ReactNode }) {
     { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
     { key: 'health-connect', label: 'Health Connect', detail: healthConnectStatus(healthConnect), onSelect: () => setHealthConnectOpen(true) },
     { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
+    { key: 'setup', label: 'Edit setup answers', detail: 'Rebuild your starter plan from new answers', onSelect: () => router.push('/setup') },
     {
       key: 'reminders',
       label: 'Reminders',

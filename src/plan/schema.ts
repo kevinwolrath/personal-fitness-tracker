@@ -5,6 +5,8 @@
  * formatVersion 6 adds the setup profile (#49): `profile` gender, age band, weight, fitness goals and practical context.
  * formatVersion 5 adds due times: `leadMinutes` on activities and requirements, and plan-wide `timing` (contract 08, #51).
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
+ * formatVersion 7 adds `exercise.restDays` and activity `movement` (#56): rest days for muscle coverage, and which
+ * exercise-inventory movement an activity is (e.g. VR boxing), so its muscle work counts.
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
 import { z } from 'zod';
@@ -137,6 +139,9 @@ const activity = z.strictObject({
   // formatVersion 5 (#51):
   /** Minutes before `time` this becomes due. Absent: the plan's `timing`, then the format default for its kind. */
   leadMinutes: leadMinutes.optional(),
+  // formatVersion 7 (#56):
+  /** The exercise-inventory movement this activity is (e.g. "vr_boxing"), so completing it adds to muscle history. */
+  movement: movementId.optional(),
 });
 
 const measurement = z.strictObject({
@@ -231,6 +236,11 @@ export const exerciseSection = z.strictObject({
   activityTypes: z.array(activityType).max(30).optional(),
   strength: trainingBlock.extend({ split: z.enum(strengthSplits).optional(), focus: z.array(note).max(10).optional() }).optional(),
   conditioning: trainingBlock.optional(),
+  /**
+   * formatVersion 7 (#56): configured rest days. They never make a muscle overdue (the coverage window skips them)
+   * and never stop voluntary exercise. Absent = none: rest days are never inferred from the schedule.
+   */
+  restDays: z.array(z.enum(weekdays)).max(7).optional(),
   constraints: z
     .strictObject({
       location: z.enum(trainingLocations).optional(),
@@ -304,7 +314,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -329,6 +339,12 @@ export const planSchema = z.strictObject({
   // formatVersion 5 (#51):
   timing: timingSchema.optional(),
 }).superRefine((p, ctx) => {
+  const rest = p.exercise?.restDays;
+  if (rest && new Set(rest).size !== rest.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: 'each day only once' });
+  if (p.formatVersion < 7) {
+    if (rest !== undefined) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: '"exercise.restDays" needs formatVersion 7' });
+    p.activities.forEach((a, i) => a.movement !== undefined && ctx.addIssue({ code: 'custom', path: ['activities', i, 'movement'], message: '"movement" needs formatVersion 7' }));
+  }
   if (p.formatVersion < 6 && p.profile) {
     for (const f of profileV6Fields) {
       if (p.profile[f] !== undefined) ctx.addIssue({ code: 'custom', path: ['profile', f], message: `"profile.${f}" needs formatVersion 6` });
@@ -393,6 +409,6 @@ export type Purpose = (typeof purposes)[number];
 export type DayPart = (typeof dayParts)[number];
 /** Building blocks reused by the configuration sections (src/config). */
 /** The plan format this app writes (Configure with AI, setup). */
-export const CURRENT_FORMAT_VERSION = 6;
+export const CURRENT_FORMAT_VERSION = 7;
 
 export const planParts = { activity, measurement, nutritionTarget, appliesTo, time, requirement: requirementSchema };

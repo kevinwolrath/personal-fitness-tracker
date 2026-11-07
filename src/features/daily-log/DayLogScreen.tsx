@@ -26,6 +26,8 @@ import { NoPlanCard } from './NoPlanCard';
 import { isDue } from '../../prescription/nextAction';
 import { useReminders } from '../reminders/RemindersProvider';
 import { TodayWorkoutCard, TodayWorkoutSheet } from './TodayWorkout';
+import { ShareDaySheet } from './ShareDaySheet';
+import { dailySummary } from '../../share/dailySummary';
 import { todayWorkout, workoutToggle, type WorkoutRow } from '../../exercises/todayWorkout';
 import { logExercise } from '../../exercises/state';
 import type { ExerciseLog } from '../../storage/types';
@@ -51,6 +53,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
 export function DayLogScreen() {
   const [coverage, setCoverage] = useState<null | 'map' | 'inventory'>(null);
   const [workoutOpen, setWorkoutOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -252,6 +255,8 @@ export function DayLogScreen() {
           onToday={() => setDate(today)}
           onPickDate={() => setJumpOpen(true)}
           onDayType={() => setDayTypeOpen(true)}
+          // Share this day (#76): the selected date, today or past; future days have nothing recorded yet.
+          onShare={editable ? () => setShareOpen(true) : undefined}
         />
 
         {!editable && <Text style={[type.detail, styles.notice]}>Upcoming. You can tick these off on the day.</Text>}
@@ -306,6 +311,18 @@ export function DayLogScreen() {
         <Toast toast={toast} onDone={clearToast} />
       </SafeAreaView>
 
+      {shareOpen && (
+        <ShareDaySheet
+          text={dailySummary({ plan, date, dayTypeLabel: day.dayTypeLabel, items: prescription.items, records, exerciseLogs: freeLogs })}
+          onClose={() => setShareOpen(false)}
+          onResult={(r) => {
+            if (r === 'dismissed') return; // back on the preview, nothing sent
+            if (r === 'unavailable') return setToast({ key: Date.now(), message: "Sharing isn't available here." });
+            setShareOpen(false);
+            if (r === 'copied') setToast({ key: Date.now(), message: 'Copied. Paste it into ChatGPT, Claude or another app.' });
+          }}
+        />
+      )}
       {/* Under the sheets it opens (guide, item options, coverage): those render after it, on top. */}
       {workoutOpen && (
         <TodayWorkoutSheet

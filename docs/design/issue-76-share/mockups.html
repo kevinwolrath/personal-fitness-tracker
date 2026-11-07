@@ -1,0 +1,66 @@
+<!doctype html><html><head><meta charset="utf-8"><title>#76 Share Today wireframes</title><style>
+:root{--bg:#101519;--card:#20262c;--line:#3a434b;--ink:#eef1f3;--mut:#9aa5ae;--or:#ff9d42;--red:#e5484d;--amb:#f5a524;--yel:#e5d34a;--grn:#46a758}
+*{box-sizing:border-box}body{margin:0;background:#555;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+.phone{width:390px;height:844px;background:var(--bg);overflow:hidden;position:relative;margin:0}
+.app{height:56px;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--line);font-weight:700;font-size:18px}
+.wire{position:absolute;right:8px;top:8px;font-size:10px;color:#000;background:#ffd;padding:2px 6px;border-radius:4px;z-index:9}
+.pad{padding:12px 20px}.date{color:var(--ink);font-size:16px;padding:8px 20px}
+h1{margin:4px 0 2px;font-size:30px}.sub{color:var(--mut);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+.eb{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--or)}
+.t{font-size:20px;font-weight:800;margin:2px 0}.btn{background:var(--or);color:#111;border-radius:14px;text-align:center;padding:12px;font-weight:700;margin-top:10px}
+.sec{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase;margin:16px 0 6px}
+.row{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--line);padding:4px 0}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--mut);flex:none}.ck.on{background:var(--grn);border-color:var(--grn);position:relative}
+.ck.on:after{content:"✓";color:#fff;position:absolute;left:5px;top:0;font-size:16px;font-weight:800}
+.nm{flex:1;font-size:15px}.nm small{display:block;color:var(--mut);font-size:12px}.done .nm{color:var(--mut);text-decoration:line-through}
+.dose{color:var(--mut);font-size:13px}.i{width:22px;height:22px;border:1.5px solid var(--or);border-radius:50%;color:var(--or);font-size:12px;text-align:center;line-height:19px;flex:none}
+.chip{font-size:11px;font-weight:700;padding:1px 6px;border-radius:8px;display:inline-block;margin-right:4px}
+.p-red{color:var(--red);border:1px solid var(--red)}.p-amb{color:var(--amb);border:1px dashed var(--amb)}.p-yel{color:var(--yel);border:1px dotted var(--yel)}.p-grn{color:var(--grn);border:1px solid var(--grn)}
+.plan{font-size:11px;color:var(--ink);background:#33404a;border-radius:6px;padding:1px 5px;margin-left:4px}
+.sheet{position:absolute;inset:40px 0 0 0;background:var(--card);border-radius:22px 22px 0 0;padding:8px 20px}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--mut);margin:0 auto 8px}
+.sh{display:flex;justify-content:space-between;align-items:center;height:44px}.sh b{font-size:17px}.sh span{color:var(--or)}
+.map{height:96px;border:1px dashed var(--mut);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--mut);font-size:12px;text-align:center}
+.map div{width:56px;height:80px;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.counts{display:flex;gap:8px;margin:10px 0}.counts div{flex:1;background:#2a3238;border-radius:10px;text-align:center;padding:6px;font-size:12px;color:var(--mut)}.counts b{display:block;font-size:18px;color:var(--ink)}
+.link{color:var(--mut);text-decoration:underline;text-align:center;padding:12px;font-size:14px}
+.ghost{border:1px solid var(--line);border-radius:14px;text-align:center;padding:11px;font-weight:600;margin-top:8px}
+.lbl{position:absolute;bottom:0;left:0;right:0;background:#000c;color:#fff;font-size:12px;padding:6px 10px}
+.tab{position:absolute;bottom:0;left:0;right:0;height:60px;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;color:var(--mut);font-size:13px}.tab b{color:var(--or)}
+</style><style>
+.dr{display:flex;align-items:center;justify-content:space-between;padding:8px 20px}.sharebtn{border:1px solid var(--line);border-radius:22px;min-width:48px;height:44px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-size:14px;font-weight:600}
+.tr{display:flex;align-items:center;justify-content:space-between}.chipdt{border:1px solid var(--line);border-radius:22px;padding:8px 12px;font-size:14px}
+.menu{position:absolute;inset:0;background:#0009}.menup{position:absolute;left:0;top:0;bottom:0;width:300px;background:var(--card);padding:20px}.mi{min-height:48px;display:flex;align-items:center;border-bottom:1px solid var(--line);font-size:15px}.mi.new{color:var(--or);font-weight:700}
+pre{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.45;background:#151a1e;border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;color:var(--ink)}
+.note{color:var(--mut);font-size:12px}.hl{outline:2px solid var(--or);outline-offset:2px}
+</style></head><body>
+<div id="x"></div><script>
+const TOPA=`<div class="app">☰ <span>Body Anvil</span></div>`;
+const rest=`<div class="card"><div class="eb">Do this next</div><div class="t">School run</div><div class="sub">Now · 8:30 am · Bike out, walk-jog home</div><div class="btn">Done</div></div>
+<div class="card"><div class="eb">Today's workout</div><div class="t">2 of 12 done · 10 left</div><div class="sub">Strength workout · plan and more</div></div>
+<div class="card"><div class="eb" style="color:var(--mut)">Weight</div><div class="t">97.8 kg</div></div>`;
+const tab=`<div class="tab"><b>Today</b><span>Progress</span></div>`;
+const A=`${TOPA}<div class="dr"><span>‹ &nbsp;Mon, 2 Nov ▾ &nbsp;›</span><span class="sharebtn hl">⤴ Share</span></div><div class="pad" style="padding-top:0"><div class="tr"><h1>Today</h1><span class="chipdt">Home day ▾</span></div><div class="sub">2 of 7 done</div>${rest}</div>${tab}<div class="lbl">A · Date row (screen header), right side: "⤴ Share". Net height 0 px. On other dates it sits after "Today".</div>`;
+const B=`${TOPA}<div class="dr"><span>‹ &nbsp;Mon, 2 Nov ▾ &nbsp;›</span></div><div class="pad" style="padding-top:0"><div class="tr"><h1>Today</h1><span style="display:flex;gap:8px"><span class="sharebtn hl" style="min-width:44px;padding:0">⤴</span><span class="chipdt">Home day ▾</span></span></div><div class="sub">2 of 7 done</div>${rest}</div>${tab}<div class="lbl">B · Title row (screen header), icon-only "⤴" beside the day-type chip (label "Share this day"). Net 0 px; tighter row.</div>`;
+const C=`${TOPA}<div class="dr"><span>‹ &nbsp;Mon, 2 Nov ▾ &nbsp;›</span></div><div class="pad" style="padding-top:0"><div class="tr"><h1>Today</h1><span class="chipdt">Home day ▾</span></div><div class="sub">2 of 7 done</div>${rest}</div>${tab}
+<div class="menu"><div class="menup"><b>Menu</b><div class="mi new hl">Share this day…</div><div class="mi">Import from screenshots</div><div class="mi">Configure with AI</div><div class="mi">Health Connect</div><div class="mi">Reminders</div><div class="mi">Settings</div><div class="mi">Export all data</div></div></div>
+<div class="lbl">C · App menu (☰): "Share this day…". No change to Today; less discoverable. (Not "top of Today" as the ticket asks.)</div>`;
+const P=`<div class="app" style="opacity:.4">☰ <span>Body Anvil</span></div><div class="sheet"><div class="grab"></div><div class="sh"><span>Cancel</span><b>Share this day</b><span style="opacity:0">x</span></div>
+<div class="note">This is exactly what will be shared. It includes your weight.</div>
+<pre>Review my daily fitness activity for weight loss. Flag concerns and suggest one practical improvement. Be concise; don't invent missing data.
+
+Body Anvil — Daily activity — Mon 2 Nov 2026 (Home day)
+Weight: 97.8 kg (target 78.0 kg)
+Plan: 3 of 7 done · 1 skipped · 3 pending
+Strength workout (full): 2 of 5 done
+- done: Goblet squat 3×10, Chest press 3×10
+- pending: Lat pulldown, One-arm kettlebell row, Hammer curls
+Extra exercise: Standing calf raises 3×15
+Conditioning: VR boxing 3 of 3 rounds (done)
+Meals (checklist, not intake): Fixed lunch done · Fixed snack pending · Family dinner pending
+Other: School run done · Dog walk skipped</pre>
+<div class="btn">Share</div><div class="note" style="margin-top:8px">Opens Android's app chooser (ChatGPT, Claude, Messages…). Illustrative values only.</div></div>
+<div class="lbl">Preview sheet (all options): the exact text, Cancel / Share. Same formatter for preview and share.</div>`;
+document.getElementById('x').innerHTML=[A,B,C,P].map((h,i)=>`<div class="phone" id="p${i}">${h}</div>`).join('<div style="height:20px"></div>');
+</script></body></html>

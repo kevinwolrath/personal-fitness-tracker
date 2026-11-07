@@ -34,6 +34,15 @@ jobs:
         with:
           persist-credentials: false
 
+      # Built once and reused by both steps below. No --pull: the base image is pinned by digest in the Dockerfile.
+      # A stable tag keeps the npm ci layer cached between deploys (#91).
+      - name: Build release image
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          docker build -f docker/android-play.Dockerfile -t pft-google-play .
+          if ($LASTEXITCODE -ne 0) { throw "Docker build failed ($LASTEXITCODE)" }
+
       - name: Resolve next Android version code from Google Play in Docker
         id: version_code
         shell: powershell
@@ -58,10 +67,9 @@ jobs:
               --env ANDROID_PACKAGE_NAME `
               --env REQUESTED_VERSION_CODE `
               --env GITHUB_OUTPUT=/run/output/github-output.txt `
-              --mount "type=bind,source=${{ github.workspace }},target=/app,readonly" `
               --mount "type=bind,source=$versionDir,target=/run/output" `
               -w /app `
-              reactnativecommunity/react-native-android:latest `
+              pft-google-play `
               scripts/resolve-android-version-code.js
             if ($LASTEXITCODE -ne 0) { throw "Google Play version-code resolution failed ($LASTEXITCODE)" }
 
@@ -109,9 +117,6 @@ jobs:
             [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
             [IO.File]::WriteAllText($serviceFile, $env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, [Text.UTF8Encoding]::new($false))
 
-            docker build --pull -f docker/android-play.Dockerfile -t pft-google-play:$env:GITHUB_RUN_ID .
-            if ($LASTEXITCODE -ne 0) { throw "Docker build failed ($LASTEXITCODE)" }
-
             docker run --rm `
               --env ANDROID_KEYSTORE_PASSWORD `
               --env ANDROID_KEY_ALIAS `
@@ -120,10 +125,16 @@ jobs:
               --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
               --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
               --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `
-              pft-google-play:$env:GITHUB_RUN_ID
+              --mount "type=volume,source=pft-gradle-cache,target=/gradle-cache" `
+              pft-google-play
             if ($LASTEXITCODE -ne 0) { throw "Google Play Docker deployment failed ($LASTEXITCODE)" }
           }
           finally {
             Remove-Item -Recurse -Force $secretDir -ErrorAction SilentlyContinue
-            docker image rm pft-google-play:$env:GITHUB_RUN_ID 2>$null | Out-Null
           }
+
+      # Old builds of this image only (by label). The current image and the Gradle cache volume stay.
+      - name: Prune old release images
+        if: always()
+        shell: powershell
+        run: docker image prune --force --filter "label=org.questspire.build=pft-google-play"

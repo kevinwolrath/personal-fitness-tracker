@@ -76,7 +76,9 @@ fi
 
 export ANDROID_KEYSTORE_FILE="$KEYSTORE"
 cd android
-./gradlew bundleRelease --no-daemon
+# All ABIs (Play serves each phone its own). --build-cache reuses task outputs from earlier deploys, stored with
+# the dependencies in GRADLE_USER_HOME, the pft-gradle-cache volume (#91).
+./gradlew bundleRelease --no-daemon --build-cache
 cd ..
 
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab

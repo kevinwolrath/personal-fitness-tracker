@@ -1,9 +1,9 @@
 {
   "$schema": "../docs/design-contracts/plan.schema.json",
   "format": "pft-plan",
-  "formatVersion": 4,
+  "formatVersion": 7,
   "id": "weight-loss-v1",
-  "revision": 5,
+  "revision": 6,
   "title": "Weight loss · phase 1",
   "description": "School-run home days, office days and weekends. Strength sessions for muscle preservation; nightly high-intensity conditioning (VR boxing, heavy bag or battle ropes).",
   "units": {
@@ -225,8 +225,8 @@
             "reps": 10
           },
           {
-            "movement": "cable_row",
-            "label": "Cable row (Fortis)",
+            "movement": "one_arm_kettlebell_row",
+            "label": "One-arm kettlebell row",
             "sets": 3,
             "reps": 10
           },
@@ -251,8 +251,8 @@
               "reps": 10
             },
             {
-              "movement": "cable_row",
-              "label": "Cable row (Fortis)",
+              "movement": "one_arm_kettlebell_row",
+              "label": "One-arm kettlebell row",
               "sets": 2,
               "reps": 10
             }
@@ -295,8 +295,8 @@
             "reps": 10
           },
           {
-            "movement": "cable_row",
-            "label": "Cable row (Fortis)",
+            "movement": "one_arm_kettlebell_row",
+            "label": "One-arm kettlebell row",
             "sets": 4,
             "reps": 10
           },
@@ -321,8 +321,8 @@
               "reps": 10
             },
             {
-              "movement": "cable_row",
-              "label": "Cable row (Fortis)",
+              "movement": "one_arm_kettlebell_row",
+              "label": "One-arm kettlebell row",
               "sets": 2,
               "reps": 10
             }
@@ -357,6 +357,7 @@
     },
     {
       "id": "vr-boxing",
+      "movement": "vr_boxing",
       "kind": "exercise",
       "label": "VR boxing",
       "detail": "Thrill of the Fight · 3-minute rounds",
@@ -371,6 +372,7 @@
     },
     {
       "id": "heavy-bag",
+      "movement": "heavy_bag",
       "kind": "exercise",
       "label": "Heavy bag rounds",
       "detail": "3 × 3-minute rounds",
@@ -383,6 +385,7 @@
     },
     {
       "id": "battle-ropes",
+      "movement": "battle_ropes",
       "kind": "exercise",
       "label": "Battle ropes",
       "detail": "Intervals",
@@ -537,6 +540,9 @@
         "battle_ropes"
       ]
     },
+    "restDays": [
+      "fri"
+    ],
     "constraints": {
       "location": "home",
       "gymMembership": false,

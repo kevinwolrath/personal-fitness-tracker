@@ -1,0 +1,23 @@
+{
+  "issue": "https://github.com/kevinwolrath/personal-fitness-tracker/issues/75",
+  "comment": "https://github.com/kevinwolrath/personal-fitness-tracker/issues/75#issuecomment-6701546440",
+  "zip": "https://github.com/user-attachments/files/34508889/hero-forge-reference-images.zip",
+  "files": [
+    {
+      "name": "character-front-back-options.png",
+      "sha256": "58f644fbac649534f35a72e076f787debbf179e7f94c60d908d13175fad185e3"
+    },
+    {
+      "name": "hero-forge-character-muscle-map-reference.png",
+      "sha256": "e124333047308b980e6fab09ab810c3aab55f7ad700aba091a06e3fd3682be24"
+    },
+    {
+      "name": "hero-forge-mobile-screens.png",
+      "sha256": "6b9b39863e3c85513ebb31b4d86fa3faec0e8fa7d63da54284426bc4a5902211"
+    }
+  ],
+  "duplicates": {
+    "hero-forge-three-screen-reference.png": "hero-forge-mobile-screens.png",
+    "muscle-map-three-variants.png": "hero-forge-character-muscle-map-reference.png"
+  }
+}

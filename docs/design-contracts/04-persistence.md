@@ -14,7 +14,7 @@
 - **Native:** SQLite via `expo-sqlite`, accessed only through a small repository module, for example `src/storage/`. Screens never run SQL.
 - **Web (test surface):** the same `TrackingStore` interface over `localStorage`: one JSON document under `pft:tracking:v1` (decided in issue #3, so no SQLite/WASM in the browser). It falls back to in-memory storage if `localStorage` is unavailable. Platform selection is by file extension (`openStore.ts` / `openStore.web.ts`).
 - Both implementations must pass the shared suite in `src/storage/__tests__/store.contract.ts`. The SQLite implementation is tested against Node's built-in SQLite through the same `SqlDatabase` interface expo-sqlite provides.
-- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. Migration 3 (#10) is additive too: it adds `activity_log.variant` and `requirement_id`, plus `completion_event` and `day_snapshot`. Migration 4 (#28) adds `activity_log.exercises_done` (a JSON array of exercise keys, contract 08). Tests open real version-1 and version-3 databases and check nothing is lost.
+- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. Migration 3 (#10) is additive too: it adds `activity_log.variant` and `requirement_id`, plus `completion_event` and `day_snapshot`. Migration 4 (#28) adds `activity_log.exercises_done` (a JSON array of exercise keys, contract 08). Migration 5 (#56) adds two new tables, `exercise_log` and `muscle_report`; nothing existing changes. Tests open real version-1, version-3 and version-4 databases and check nothing is lost. The web document gains `exerciseLogs` and `muscleReports` lists; documents written before them read as empty.
 
 ## Records (logical model)
 
@@ -29,6 +29,8 @@
 | `import_session` | `id` | `createdAt`, `extractor`, `assets` (JSON) |
 | `quick_log` | `id` (uuid) | `planId`, `quickLogId`, `at` (ISO timestamp with offset) |
 | `day_override` | `planId, date` | `dayTypeId` |
+| `exercise_log` | `id` | An exercise done **outside** a scheduled session (#56): `movement` (inventory id), `date`, `at`, `sets`, `reps`/`seconds` (or null), `intensity` (`light`/`moderate`/`hard` or null). Not plan-scoped. Session exercises are never written here (their ticks stay on the session's `activity_log`), so muscle history counts each completion once. |
+| `muscle_report` | `id` | `muscle` (inventory muscle-group id), `kind` (`sore`/`injured`), `at`, `clearedAt` (null while active). Clearing keeps the record (#56). |
 
 Rules:
 

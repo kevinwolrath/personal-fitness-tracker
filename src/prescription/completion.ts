@@ -1,7 +1,18 @@
 import type { Activity } from '../plan/schema';
 import { newId, type ActivityLog, type CompletionEvent, type DaySnapshot } from '../storage/types';
 import { requirementKey, type Prescription, type PrescriptionItem } from './prescribe';
-import { exerciseDose } from './session';
+import { exerciseDose, type PrescribedExercise } from './session';
+
+const snapshotExercise = (e: PrescribedExercise) => ({
+  movement: e.movement,
+  label: e.label,
+  dose: exerciseDose(e),
+  substitutedFor: e.substitutedFor ?? null,
+  ...(e.sets !== undefined ? { sets: e.sets } : {}),
+  ...(e.reps !== undefined ? { reps: e.reps } : {}),
+  ...(e.seconds !== undefined ? { seconds: e.seconds } : {}),
+  ...(e.avoid ? { avoid: true } : {}),
+});
 
 /** What was prescribed, in a stable, plan-independent form (kept even if the plan is later edited). */
 export function snapshotOf(p: Prescription, planId: string, planRevision: number, now: string): DaySnapshot {
@@ -23,7 +34,11 @@ export function snapshotOf(p: Prescription, planId: string, planRevision: number
         options: i.options.map((o) => ({ id: o.id, label: o.label })),
         session: i.session && {
           minutes: i.session.minutes,
-          exercises: i.session.exercises.map((e) => ({ movement: e.movement, label: e.label, dose: exerciseDose(e), substitutedFor: e.substitutedFor ?? null })),
+          exercises: i.session.exercises.map(snapshotExercise),
+          // Structured doses and the short version (#56): exercise history keeps what was prescribed that day.
+          // `doses: 1` marks snapshots that have them; older ones only have the `dose` text.
+          doses: 1,
+          ...(i.session.short ? { short: { minutes: i.session.short.minutes, exercises: i.session.short.exercises.map(snapshotExercise) } } : {}),
         },
       })),
     },

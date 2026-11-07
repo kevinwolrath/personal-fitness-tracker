@@ -11,7 +11,7 @@ The configuration is not a second store. It's a sectioned view over the active p
 | `profile` | `units`, `displayName`, `heightCm`, `notes`, and (formatVersion 6, #49) `gender`, `ageBand`, `weightBand`, `weight`, `fitnessGoals`, `primaryGoal`, `daysPerWeek`, `sessionMinutes`, `trainingPlaces`, `activityLevel`, `considerations` | `units`, `profile.*` |
 | `goals` | `targets` | `goals` |
 | `nutrition` | `targets`, `eatingWindow`, `meals` | `nutrition.targets`, `nutrition.eatingWindow`, activities with `kind: "meal"` |
-| `exercise` | `goals`, `equipment`, `limitations`, `substitutions`, `activityTypes`, `strength`, `conditioning`, `constraints` | `exercise.*` |
+| `exercise` | `goals`, `equipment`, `limitations`, `substitutions`, `activityTypes`, `strength`, `conditioning`, `restDays` (#56), `constraints` | `exercise.*` |
 | `schedule` | `dayTypes`, `week`, `requirements`, `activities`, `timing` | `dayTypes`, `schedule`, `requirements` (08), activities that aren't meals, `timing` (due times, 08) |
 | `tracking` | `measurements`, `quickLogs` | `measurements`, `quickLogs` |
 

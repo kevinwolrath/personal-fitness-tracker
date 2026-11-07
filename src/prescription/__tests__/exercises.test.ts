@@ -65,13 +65,13 @@ it('a workout marked done as a whole shows every exercise done, and unticking on
   const whole = setDone(ctx(), activity, true).log!;
   expect(sessionProgress(session, whole)).toMatchObject({ done: 5, complete: true, next: null });
   const c = tickExercise(ctx(whole), activity, session, 'full:4:hammer_curl', false);
-  expect(c.log).toMatchObject({ status: 'pending', exercisesDone: ['full:0:kettlebell_squat', 'full:1:chest_press', 'full:2:lat_pulldown', 'full:3:cable_row'] });
+  expect(c.log).toMatchObject({ status: 'pending', exercisesDone: ['full:0:kettlebell_squat', 'full:1:chest_press', 'full:2:lat_pulldown', 'full:3:one_arm_kettlebell_row'] });
 });
 
 it('short is an explicit choice, never inferred: ticking the short exercises within the full version does not complete it', () => {
-  // The short version is squat, chest press, cable row: a subset of the full one.
+  // The short version is squat, chest press, one-arm row: a subset of the full one.
   let log: ActivityLog | undefined;
-  for (const key of ['full:0:kettlebell_squat', 'full:1:chest_press', 'full:3:cable_row']) log = tickExercise(ctx(log), activity, session, key, true).log!;
+  for (const key of ['full:0:kettlebell_squat', 'full:1:chest_press', 'full:3:one_arm_kettlebell_row']) log = tickExercise(ctx(log), activity, session, key, true).log!;
   expect(log!.status).toBe('pending');
 
   const short = chooseVariant(ctx(), activity, session, 'short')!;

@@ -1,0 +1,77 @@
+{
+  "canvas": [
+    1024,
+    1536
+  ],
+  "targetTop": 40,
+  "targetBottom": 1472,
+  "method": "Uniform resampling and translation for common framing only. No pose, perspective, mirroring, asymmetric scaling or anatomical edits. Raw AI outputs retained.",
+  "images": {
+    "male-front": {
+      "sourceBounds": {
+        "left": 211,
+        "top": 31,
+        "right": 812,
+        "bottom": 1458
+      },
+      "scale": 1.0035038542396637,
+      "tx": -1.292221443588005,
+      "ty": 8.891380518570426
+    },
+    "male-back": {
+      "sourceBounds": {
+        "left": 217,
+        "top": 31,
+        "right": 804,
+        "bottom": 1450
+      },
+      "scale": 1.0091613812544045,
+      "tx": -3.1768851303735346,
+      "ty": 8.715997181113462
+    },
+    "female-front": {
+      "sourceBounds": {
+        "left": 257,
+        "top": 47,
+        "right": 763,
+        "bottom": 1456
+      },
+      "scale": 1.0163236337828248,
+      "tx": -6.325053229240666,
+      "ty": -7.767210787792763
+    },
+    "female-back": {
+      "sourceBounds": {
+        "left": 263,
+        "top": 47,
+        "right": 756,
+        "bottom": 1435
+      },
+      "scale": 1.031700288184438,
+      "tx": -13.651296829971102,
+      "ty": -8.489913544668582
+    },
+    "neutral-front": {
+      "sourceBounds": {
+        "left": 267,
+        "top": 34,
+        "right": 755,
+        "bottom": 1449
+      },
+      "scale": 1.0120141342756184,
+      "tx": -5.139222614840946,
+      "ty": 5.591519434628978
+    },
+    "neutral-back": {
+      "sourceBounds": {
+        "left": 267,
+        "top": 34,
+        "right": 754,
+        "bottom": 1436
+      },
+      "scale": 1.0213980028530671,
+      "tx": -9.423680456490729,
+      "ty": 5.272467902995714
+    }
+  }
+}

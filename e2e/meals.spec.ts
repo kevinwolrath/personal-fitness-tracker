@@ -118,8 +118,10 @@ test('an already-configured plan gets the lunch with a lunch-only update; the ot
   // A plan configured before #26: formatVersion 2, lunch without ingredients, a customised snack.
   const before = JSON.parse(JSON.stringify(seed));
   before.formatVersion = 2;
+  delete before.exercise.restDays; // formatVersion 7 (#56)
   for (const a of before.activities) {
     delete a.notifications; // reminders arrived later (#30, formatVersion 4)
+    delete a.movement; // formatVersion 7 (#56)
     if (a.id === 'lunch') {
       delete a.ingredients;
       delete a.preparation;

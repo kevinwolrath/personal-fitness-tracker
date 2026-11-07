@@ -1,0 +1,40 @@
+{
+  "viewBox": [
+    0,
+    0,
+    1024,
+    1536
+  ],
+  "files": {
+    "male-front": {
+      "png": "../artwork/male-front.png",
+      "sha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "regions": "male-front-regions.svg"
+    },
+    "male-back": {
+      "png": "../artwork/male-back.png",
+      "sha256": "90d979ba8147882dd30974e522cbb2c1f93f6cf4527910d9c718ee194e1e323e",
+      "regions": "male-back-regions.svg"
+    },
+    "female-front": {
+      "png": "../artwork/female-front.png",
+      "sha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "regions": "female-front-regions.svg"
+    },
+    "female-back": {
+      "png": "../artwork/female-back.png",
+      "sha256": "6bcca9023cbff8bd149d3b6ffa06393bcd2b7507e81c00917a9775e269c6bfcf",
+      "regions": "female-back-regions.svg"
+    },
+    "neutral-front": {
+      "png": "../artwork/neutral-front.png",
+      "sha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "regions": "neutral-front-regions.svg"
+    },
+    "neutral-back": {
+      "png": "../artwork/neutral-back.png",
+      "sha256": "49a1d70193cbb560572d2648dd6db1212b8e52ba19740802622fea8f6e6ddda3",
+      "regions": "neutral-back-regions.svg"
+    }
+  }
+}

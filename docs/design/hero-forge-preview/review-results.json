@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "scope": "Approval artifacts only; app unchanged; automated checks are not proof of anatomical accuracy",
+  "muscleGroups": 14,
+  "characters": [
+    "male",
+    "female",
+    "neutral"
+  ],
+  "artworkBindings": 6,
+  "canvas": "1024x1536",
+  "highlightSamples": 168,
+  "mobileWidths": [
+    360,
+    390,
+    430
+  ],
+  "alignmentChecks": 126,
+  "keyboardRegionSelection": "passed",
+  "symptomPatterns": "diagonal sore / cross-hatch injured",
+  "referenceImages": "all loaded",
+  "svgImageSources": 7,
+  "browserErrors": []
+}

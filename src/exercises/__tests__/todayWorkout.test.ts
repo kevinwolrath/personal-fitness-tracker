@@ -1,3 +1,4 @@
+import example from '../../../fixtures/plans/prescription-example.plan.json';
 import seed from '../../../plans/seed.plan.json';
 import type { Plan } from '../../plan/schema';
 import { validatePlan } from '../../plan/validate';
@@ -64,6 +65,18 @@ describe('what is listed', () => {
   it('a skipped session is not prescribed: its exercises become ordinary rows', () => {
     const skipped = setSkipped(ctx(), true);
     expect(workout(MON, { logs: { resistance: skipped.log! } }).rows.some((r) => r.plan)).toBe(false);
+  });
+});
+
+describe('guides', () => {
+  it('a planned row carries its prescribed exercise: substitution and caution reach the guide', () => {
+    const ex = load(example);
+    const items = prescribeDay(ex, MON, records()).items;
+    const w = todayWorkout({ plan: ex, date: MON, items, logs: {}, freeLogs: [], state: null });
+    const curl = w.rows.find((r) => r.movement === 'hammer_curl')!;
+    expect(curl.prescribed).toMatchObject({ movement: 'hammer_curl', substitutedFor: 'Biceps curl' });
+    expect(w.rows.find((r) => r.movement === 'overhead_press')).toMatchObject({ caution: true, prescribed: expect.objectContaining({ caution: true }) });
+    expect(workout(TUE).rows.every((r) => r.prescribed === null)).toBe(true);
   });
 });
 

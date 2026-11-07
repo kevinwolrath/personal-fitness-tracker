@@ -67,7 +67,7 @@ export function DayLogScreen() {
   const next = date === today ? nextAt(nowMinutes) : null;
   // #56 option C: today's scheduled sessions keep their exercises, shown in muscle-priority order (plan order until
   // there's enough history). Display order only: exercise keys and ticks never change.
-  const exerciseState = useExerciseState(store, plan, today, prescription, date === today, dataVersion);
+  const { state: exerciseState, loading: exerciseLoading } = useExerciseState(store, plan, today, prescription, date === today, dataVersion);
   const orderOf = (key: string) => (date === today ? exerciseState?.sessionOrders[key] : undefined);
 
   // Today's workout (#56, layout A): every eligible strength exercise plus the day's plan, on every date.
@@ -174,7 +174,8 @@ export function DayLogScreen() {
         : Promise.all(t.ids.map((id) => store.removeExerciseLog(id)));
     write.then(notifyDataChanged, () => setToast({ key: Date.now(), message: "Couldn't save. Try again." }));
   };
-  const workoutGuide = (row: WorkoutRow) => setGuideFor({ movement: row.movement, label: row.name, sets: row.dose.sets, reps: row.dose.reps, seconds: row.dose.seconds });
+  // A planned exercise opens its guide as prescribed (substitution, caution, today's dose); others with their dose.
+  const workoutGuide = (row: WorkoutRow) => setGuideFor(row.prescribed ?? { movement: row.movement, label: row.name, sets: row.dose.sets, reps: row.dose.reps, seconds: row.dose.seconds });
   const chooseVariant = (item: PrescriptionItem, variant: Variant) => {
     if (!editable || !item.activity || !item.session) return;
     if (switchNeedsConfirm(item.session, records.activities[item.key])) setPendingSwitch({ item, variant });
@@ -230,8 +231,10 @@ export function DayLogScreen() {
     return promoted || next ? { promoted } : null;
   })();
   const showWorkout = !noPlan || workout.total > 0;
+  // Today's order comes from history (#56): until it has loaded, don't show rows that would then reorder.
+  const workoutLoading = date === today && exerciseLoading && !exerciseState;
   const workoutCard = (promoted: boolean) => (
-    <TodayWorkoutCard workout={workout} promoted={promoted} editable={editable} onToggle={toggleWorkout} onGuide={workoutGuide} onOpen={() => setWorkoutOpen(true)} />
+    <TodayWorkoutCard workout={workout} promoted={promoted} editable={editable} loading={workoutLoading} onToggle={toggleWorkout} onGuide={workoutGuide} onOpen={() => setWorkoutOpen(true)} />
   );
   const noCardToday = date === today && !noPlan && topCard === null && !showWorkout;
 
@@ -307,6 +310,7 @@ export function DayLogScreen() {
       {workoutOpen && (
         <TodayWorkoutSheet
           workout={workout}
+          loading={workoutLoading}
           coverage={date === today ? exerciseState?.coverage ?? null : null}
           gender={plan.profile?.gender}
           editable={editable}

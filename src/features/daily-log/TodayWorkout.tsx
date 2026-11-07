@@ -51,6 +51,7 @@ function Row({ row, editable, onToggle, onGuide, onCard }: { row: WorkoutRow; ed
         <View style={styles.nameLine}>
           {row.status && !row.done ? <Text style={[styles.chip, ink]} testID={`workout-status-${row.movement}`}>{statusText[row.status]}</Text> : null}
           {row.caution ? <Text style={[styles.chip, ink]}>Caution</Text> : null}
+          {row.prescribed?.substitutedFor ? <Text style={[styles.muscles, muted]}>instead of {row.prescribed.substitutedFor.toLowerCase()}</Text> : null}
           <Text style={[styles.muscles, muted, row.done && styles.struck]} numberOfLines={1}>{row.muscles.join(' · ')}</Text>
         </View>
       </View>
@@ -62,11 +63,18 @@ function Row({ row, editable, onToggle, onGuide, onCard }: { row: WorkoutRow; ed
   );
 }
 
-const subtitle = (w: TodayWorkout) =>
-  w.restDay ? 'Rest day · optional' : w.sessions.some((s) => s.state !== 'skipped') ? `${w.sessions.find((s) => s.state !== 'skipped')!.label} · plan and more` : 'Optional · any time today';
+/** Rest day, else the day's session and its state (planned, done or skipped), else optional. */
+const subtitle = (w: TodayWorkout) => {
+  if (w.restDay) return 'Rest day · optional';
+  const s = w.sessions[0];
+  if (!s) return 'Optional · any time today';
+  return `${s.label} · ${s.state === 'skipped' ? 'skipped' : s.state === 'done' ? 'done ✓' : 'plan and more'}`;
+};
 
-export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuide, onOpen }: {
+export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuide, onOpen, loading = false }: {
   workout: TodayWorkout;
+  /** Today's priority order is still loading: keep the card's height, but don't show an exercise that may change. */
+  loading?: boolean;
   /** The strength session is "Do this next" (#41): the card sits in the top slot. */
   promoted: boolean;
   editable: boolean;
@@ -84,7 +92,11 @@ export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuid
         <Text style={styles.title} accessibilityRole="header" testID="today-workout-counts">{counts}</Text>
         <Text style={[styles.sub, styles.onCardMuted]} testID="today-workout-subtitle">{subtitle(w)}</Text>
       </Pressable>
-      {w.next ? <Row row={w.next} editable={editable} onToggle={onToggle} onGuide={onGuide} onCard /> : null}
+      {loading ? (
+        <View style={styles.placeholder} testID="today-workout-loading" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+      ) : w.next ? (
+        <Row row={w.next} editable={editable} onToggle={onToggle} onGuide={onGuide} onCard />
+      ) : null}
       <Pressable onPress={onOpen} style={styles.link} accessibilityRole="button" accessibilityLabel={`Show all ${w.total} exercises`} testID="today-workout-show-all">
         <Text style={styles.linkText}>{`Show all ${w.total} ⌄`}</Text>
       </Pressable>
@@ -92,8 +104,9 @@ export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuid
   );
 }
 
-export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggle, onGuide, onCoverage, onLogDifferent, onSessionOptions, onClose }: {
+export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggle, onGuide, onCoverage, onLogDifferent, onSessionOptions, onClose, loading = false }: {
   workout: TodayWorkout;
+  loading?: boolean;
   coverage: MuscleCoverage[] | null;
   gender?: unknown;
   editable: boolean;
@@ -128,7 +141,8 @@ export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggl
           ))}
         </View>
         {todo.length > 0 && <Text style={type.section} accessibilityRole="header">{w.restDay ? 'To do · optional' : 'To do · by priority'}</Text>}
-        <View testID="today-workout-todo">{todo.map((r) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />)}</View>
+        {loading ? <Text style={type.detail} testID="today-workout-loading">Loading today's order…</Text> : null}
+        <View testID="today-workout-todo">{loading ? null : todo.map((r) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />)}</View>
         {done.length > 0 && <Text style={type.section} accessibilityRole="header">{`Done · ${done.length}`}</Text>}
         <View testID="today-workout-done">{done.map((r) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />)}</View>
         <Button title="Log with a different dose…" variant="secondary" disabled={!editable} onPress={onLogDifferent} />
@@ -147,6 +161,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   title: { fontSize: 22, fontWeight: '800', color: colors.onCard, ...type.number },
   sub: { ...type.detail },
   link: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
+  placeholder: { minHeight: touch + space.sm + space.xs * 2 },
   linkText: { color: colors.onCardMuted, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
   sheet: { gap: space.md, paddingBottom: space.xl },
   preview: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch, padding: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
@@ -156,7 +171,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   count: { flex: 1, alignItems: 'center', paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
   countN: { fontSize: 22, fontWeight: '800', ...type.number },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch + space.sm, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: space.xs },
-  circle: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center', marginLeft: -space.sm },
+  circle: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
   mark: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.faint, alignItems: 'center', justifyContent: 'center' },
   markDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   tick: { color: colors.onAccent, fontWeight: '800', fontSize: 15 },
@@ -171,7 +186,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   chip: { fontSize: 12, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.priority, overflow: 'hidden' },
   muscles: { fontSize: 13, flexShrink: 1 },
   dose: { fontSize: 14, fontWeight: '600', ...type.number },
-  info: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center', marginRight: -space.sm },
+  info: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
   infoText: { fontSize: 20 },
   onCard: { color: colors.onCard },
   onCardMuted: { color: colors.onCardMuted },

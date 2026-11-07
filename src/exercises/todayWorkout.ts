@@ -2,6 +2,7 @@ import type { LocalDate } from '../plan/dates';
 import type { Plan } from '../plan/schema';
 import { sessionProgress } from '../prescription/exercises';
 import type { PrescriptionItem } from '../prescription/prescribe';
+import type { PrescribedExercise } from '../prescription/session';
 import type { SessionExercise } from '../plan/schema';
 import type { ActivityLog, ExerciseLog } from '../storage/types';
 import type { MuscleCoverage } from './coverage';
@@ -33,6 +34,8 @@ export type WorkoutRow = {
   doseLabel: string;
   /** In today's prescribed session (the chosen full/short version): ticking writes that session's tick. */
   plan: { activityId: string; key: string } | null;
+  /** The planned exercise as prescribed (substitution, caution, dose), for its guide. */
+  prescribed: PrescribedExercise | null;
   /** Primary muscle-group labels. */
   muscles: string[];
   status: RowStatus | null;
@@ -124,12 +127,12 @@ export function todayWorkout(input: {
   const byMovement = new Map(inventory.exercises.map((e) => [e.movement, e]));
 
   const sessions = items.filter((i) => i.kind === 'activity' && i.session && i.activity);
-  type Planned = { activityId: string; key: string; done: boolean; dose: Dose; name: string };
+  type Planned = { activityId: string; key: string; done: boolean; dose: Dose; name: string; exercise: PrescribedExercise };
   const planned = new Map<string, Planned>();
   for (const item of sessions.filter((s) => s.state !== 'skipped')) {
     for (const r of sessionProgress(item.session!, logs[item.key]).rows) {
       if (r.optional || planned.has(r.exercise.movement)) continue;
-      planned.set(r.exercise.movement, { activityId: item.key, key: r.key, done: r.done, dose: fromExercise(r.exercise), name: r.exercise.label });
+      planned.set(r.exercise.movement, { activityId: item.key, key: r.key, done: r.done, dose: fromExercise(r.exercise), name: r.exercise.label, exercise: r.exercise });
     }
   }
 
@@ -152,9 +155,10 @@ export function todayWorkout(input: {
       dose,
       doseLabel: formatDose(dose),
       plan: p ? { activityId: p.activityId, key: p.key } : null,
+      prescribed: p?.exercise ?? null,
       muscles: (inv?.primary ?? []).map((m) => label.get(m) ?? m),
       status: state && inv ? statusOf(inv.primary, state.coverage, restDay) : null,
-      caution: caution.get(movement) ?? false,
+      caution: caution.get(movement) ?? !!p?.exercise.caution,
       done: doneBy !== null,
       doneBy,
       freeLogIds,

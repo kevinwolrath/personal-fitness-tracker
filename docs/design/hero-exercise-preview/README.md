@@ -1,6 +1,6 @@
 # Hero exercise artwork — first approval sample (#86)
 
-Status: **pending owner visual approval**. This is the first sample only, not the completed exercise catalogue or a production guide replacement.
+Historical first sample. Kevin subsequently requested full implementation in chat; that instruction supersedes the preview pause. Current application implementation, catalogue and validation are documented in [hero-exercises](../hero-exercises/README.md). The initial sample and its original validation below remain for provenance.
 
 ![Male hero demonstrating goblet squat: standing and bottom positions](male-goblet-squat-v1.png)
 

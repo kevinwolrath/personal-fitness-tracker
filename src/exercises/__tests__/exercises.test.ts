@@ -5,6 +5,8 @@ import { validatePlan } from '../../plan/validate';
 import { prescribeExercise } from '../../prescription/session';
 import { buildGuide } from '../guide';
 import { illustrations } from '../illustrations.generated';
+import { illustrationIds } from '../illustrationIds';
+import inventory from '../inventory.json';
 import data from '../library.json';
 import { exerciseLibrary, findDefinition, validateLibrary } from '../library';
 
@@ -26,16 +28,14 @@ describe('library and assets', () => {
       seedPlan.activities.flatMap((a) => [...(a.session?.exercises ?? []), ...(a.session?.short?.exercises ?? [])]).map((e) => e.movement),
     );
     expect([...movements].sort()).toEqual(['chest_press', 'hammer_curl', 'kettlebell_squat', 'lat_pulldown', 'one_arm_kettlebell_row']);
-    // Guide content (instructions, illustrations) for the one-arm row has not been supplied yet (#56): until it is,
-    // its guide degrades to the workout's label. Every other prescribed movement must have a definition.
-    const awaitingGuide = new Set(['one_arm_kettlebell_row']);
-    for (const m of movements) expect(findDefinition(m) !== undefined).toBe(!awaitingGuide.has(m));
+    for (const m of movements) expect(findDefinition(m)).toBeDefined();
+    for (const e of inventory.exercises) expect(findDefinition(e.movement)).toBeDefined();
   });
 
   it('every definition has ordered steps with bundled images; every bundled image is used', () => {
     const used = exerciseLibrary.exercises.flatMap((e) => e.steps.map((s) => s.image));
     for (const e of exerciseLibrary.exercises) expect(e.steps.length).toBeGreaterThanOrEqual(2);
-    expect(used.sort()).toEqual(Object.keys(illustrations).sort());
+    expect(used.sort()).toEqual(Object.keys(illustrationIds).sort());
   });
 
   it('the generated module is in sync with assets/exercises/*.svg', () => {
@@ -78,7 +78,7 @@ describe('library and assets', () => {
       id: 'goblet_squat', name: 'Goblet squat', equipment: ['kettlebell'], instructions: ['Hold the bell at your chest.'],
       steps: [{ image: 'goblet-squat-1', caption: 'Start' }],
     });
-    const r = validateLibrary(d, { ...illustrations, 'goblet-squat-1': '<svg/>' });
+    const r = validateLibrary(d, { ...illustrationIds, 'goblet-squat-1': true });
     expect(r.ok).toBe(true);
     if (r.ok) expect(buildGuide(prescribeExercise({ movement: 'goblet_squat', sets: 3, reps: 8 }), undefined, r.library)).toMatchObject({ name: 'Goblet squat', prescription: '3 × 8', steps: [{ image: 'goblet-squat-1' }] });
   });
@@ -99,8 +99,8 @@ describe('buildGuide', () => {
 
   it('different exercises resolve to their own image sets', () => {
     const images = [0, 1, 2, 3, 4].map((i) => guide(i).steps.map((s) => s.image));
-    expect(new Set(images.flat()).size).toBe(8); // the one-arm row (#56) has no illustrations yet
-    expect(guide(3)).toMatchObject({ hasDefinition: false, name: 'One-arm kettlebell row', steps: [] });
+    expect(new Set(images.flat()).size).toBe(10);
+    expect(guide(3)).toMatchObject({ hasDefinition: true, name: 'One-arm kettlebell row' });
     expect(images[2]).toEqual(['lat-pulldown-1', 'lat-pulldown-2']);
   });
 
@@ -115,7 +115,7 @@ describe('buildGuide', () => {
     const curl = buildGuide(prescribeExercise({ movement: 'biceps_curl', sets: 2, reps: 12 }, ex.exercise), ex.exercise);
     expect(curl).toMatchObject({ name: 'Hammer curl', substitutedFor: 'Biceps curl', prescription: '2 × 12' });
     const press = buildGuide(prescribeExercise({ movement: 'overhead_press', sets: 2, reps: 8 }, ex.exercise), ex.exercise);
-    expect(press).toMatchObject({ hasDefinition: false, caution: 'Caution: shoulder' });
+    expect(press).toMatchObject({ hasDefinition: true, caution: 'Caution: shoulder' });
   });
 
   it('an exercise without a definition degrades to its workout label, with no steps or instructions', () => {

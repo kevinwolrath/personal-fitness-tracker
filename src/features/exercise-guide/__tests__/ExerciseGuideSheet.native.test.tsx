@@ -3,6 +3,7 @@
  * Runs under the ios and android jest projects.
  */
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { buildGuide, type ExerciseGuide } from '../../../exercises/guide';
 import { ExerciseGuideSheet } from '../ExerciseGuideSheet';
 
@@ -17,6 +18,10 @@ it('steps through the illustrations with previous/next and closes', () => {
   expect(screen.getByTestId('guide-prescription')).toHaveTextContent('Today: 3 × 10');
   expect(screen.getByTestId('guide-position')).toHaveTextContent('1 / 2');
   expect(screen.getByLabelText(/Kettlebell squat, step 1/)).toBeTruthy();
+  const image = screen.getByTestId('guide-image-1', { includeHiddenElements: true });
+  expect(image.props.source).toBeTruthy();
+  expect(image.props.resizeMode).toBe('contain');
+  expect(StyleSheet.flatten(image.props.style).height).toBe(342 * 3 / 4);
 
   fireEvent.press(screen.getByLabelText('Next step'));
   expect(screen.getByTestId('guide-position')).toHaveTextContent('2 / 2');
@@ -37,6 +42,14 @@ it('a single-step guide shows the image without step controls', () => {
   expect(screen.queryByTestId('guide-position')).toBeNull();
   expect(screen.queryByLabelText('Next step')).toBeNull();
   expect(screen.getByTestId('guide-caption')).toHaveTextContent(squat.steps[0].caption);
+});
+
+it('a native swipe updates the caption and step indicators to match the displayed image', () => {
+  render(<ExerciseGuideSheet guide={squat} onClose={() => {}} />);
+  fireEvent(screen.getByTestId('guide-pager'), 'layout', layout);
+  fireEvent(screen.getByTestId('guide-step-scroll'), 'momentumScrollEnd', { nativeEvent: { contentOffset: { x: 342, y: 0 } } });
+  expect(screen.getByTestId('guide-position')).toHaveTextContent('2 / 2');
+  expect(screen.getByTestId('guide-caption')).toHaveTextContent(squat.steps[1].caption);
 });
 
 it('an exercise without a definition still shows its name and dose', () => {

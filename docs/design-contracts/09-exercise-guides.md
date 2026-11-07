@@ -24,13 +24,16 @@ An exercise definition never carries a dose, and a workout never carries instruc
 | `instructions` | 1–8 short cues, in order. |
 | `steps` | 0–8 `{ image, caption }`. `image` names a bundled illustration. |
 
-Adding an exercise (goblet squat, one-arm kettlebell row, …) is data only: a definition plus its illustrations. No code changes.
+Adding an exercise is a library definition plus bundled illustrations and a static asset registry entry; no new screen or business rules.
 
 ## Illustrations
 
-- App-owned SVG line drawings in `assets/exercises/<image>.svg`, generated from joint poses by `scripts/draw-exercise-illustrations.cjs`. No third-party images, no network, no `href`/`url()`.
-- The figure uses `currentColor`, so it follows the theme's ink colour. Equipment and frame colours are fixed in the drawing.
-- `npm run build:exercise-assets` bundles them into `src/exercises/illustrations.generated.ts`. Tests fail if it's out of date, if a step names a missing image, or if an image is unused.
+- Production guides use the three established Body Anvil heroes, generated with the exact character references under `assets/hero-forge/app/`. Character assignment is editorial per exercise; it does not change with the viewer's profile. The separate muscle map continues using profile-based character selection.
+- Offline JPEG steps live under `assets/exercises/heroes/`. `manifest.json` records stable IDs, movements, character assignments and step order. `src/exercises/heroIllustrations.ts` uses literal static `require` calls so Metro ships each image on web, iOS and Android. No remote URL, API key or image-generation service is required at runtime.
+- Every tracked inventory movement has two illustrated steps and instructions; the existing cable-row guide is retained too. Doses stay owned by workouts/configuration, never the artwork. Conditioning illustrations do not turn time-based activity into strength logging.
+- Images use `contain` in the existing 4:3 illustration frame, with no distortion or body cropping. The heroes retain their charcoal/orange costume and dark background in both selectable themes. Captions and instructions remain accessible text outside the image.
+- Tests check inventory/library/registry coverage, unique step assets, file signatures/size, all three heroes, native paging and browser loading. Source prompts and processing provenance are in `docs/design/hero-exercises/`.
+- Legacy SVG source assets and their generator remain in the repository for provenance; production guides no longer render the generic figures.
 
 ## The guide sheet
 

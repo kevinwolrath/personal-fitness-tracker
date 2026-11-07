@@ -77,11 +77,12 @@ Completing, undoing or skipping anything recomputes it immediately. The local da
 
 1. **Up next / Do this next** (one slot, content layer; absent when there is nothing to recommend, #41):
    - **Nothing due, a timed item due within the hour:** a compact ink **Up next** card: "Up next · 12:00 pm", the label, "In 4 h 30 min · detail", and **Details**, which opens the item sheet (meal details, early Done, Skip). No meal checklist and no Done on the card. It's small enough that Weight and the measurements stay on screen. No second "Up next" is shown while something is due.
-   - **Due:** the full **Do this next** card: the label and window ("In 15 min · 12:00 pm" inside the lead time, "Now · 8:30 am", "Now · evening"). A **session** gets the workout card (see Exercise checklist below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
-2. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Requirements render as one row with tappable alternatives, and the item on the card has an accent bar (none when there's no card). Every scheduled item stays here whether or not it is recommended.
-3. The item sheet: for a session, the Full/Short switch and the exercise checklist (ticks on any editable day, so past days can be corrected), plus **Mark whole workout done** as a retrospective override; alternatives, skip and restore.
+   - **Due:** the full **Do this next** card: the label and window ("In 15 min · 12:00 pm" inside the lead time, "Now · 8:30 am", "Now · evening"). A due **session** puts **Today's workout** in this slot instead ("Do this next · Today's workout"; see below). For a meal it shows what to prepare: ingredients with amounts and measures, how to make it, and energy/protein (#26, from the plan). Then one-tap completion. Count items show "Add round · 2 of 3", and requirements get a button per alternative. "Short version, skip and more" opens the item sheet.
+2. **Today's workout** (#56, layout A): a card in the content layer, under the top slot, on **every** date (see "Today's workout" below).
+3. The day grouped by part of day: **Morning / Midday / Afternoon / Evening / Anytime today**. Strength **sessions** are not listed here: they live on Today's workout. Conditioning and every other activity stay. Requirements render as one row with tappable alternatives, and the item on the card has an accent bar (none when there's no card). Every scheduled item stays here whether or not it is recommended.
+4. The item sheet: for a session (opened from the workout sheet's "full or short, skip and more"), the Full/Short switch and the exercise checklist (ticks on any editable day, so past days can be corrected), plus **Mark whole workout done** as a retrospective override; alternatives, skip and restore.
 
-The card is shown for today only. Past dates are correctable as before, and future dates are view-only (04).
+The Up next / Do this next card is shown for today only. Today's workout is shown on every date: past dates are correctable as before, and future dates are view-only (04).
 
 ## Exercise checklist (#28)
 
@@ -102,16 +103,20 @@ A session (strength workout) is completed **exercise by exercise**, and it stays
 - Each tick is a `tick`/`untick` event (label = the exercise); a version change is `switch`; completing and reopening are `complete`/`undo`. All are append-only.
 - Pure rules live in `src/prescription/exercises.ts`.
 
-**Workout card** (option C, chosen in #28)
-- **Collapsed** (the default) shows only:
-  - the workout's name;
-  - progress ("35 min · 2 of 5 exercises");
-  - the **next exercise** with its own tick and ⓘ.
-
-  You can train without expanding: tick it, and the next one fades in. Keep this state minimal; don't add controls or copy to it.
-- **Expanded** (⌄): the Full/Short switch, every exercise (done ones stay visible, struck through, with the next one highlighted), and "Skip and more". Expanded or collapsed is remembered per day and item for the app session.
-- **Order (#56, option C):** on Today, a session's exercises are shown in muscle-priority order once there's a week of exercise history (contract 09), and in plan order before that. The order is fixed for the day. Ticks, keys and completion don't depend on it.
-- **No whole-workout Done on the card.** Ticks are the way to train. Marking the whole workout done stays available from the day-list row and the item sheet as a manual override. It then shows every exercise of its version as done, and unticking one makes the rest explicit.
-- **Finishing.** When the last exercise is ticked, the card holds **"Strength workout complete · 5 of 5 exercises ✓"** for about 4 seconds, or until "What's next ›", then "Do this next" moves on.
+**Today's workout** (#56, layout A; replaces the #28 workout card)
+- **What's listed** (`src/exercises/todayWorkout.ts`, pure): every **eligible strength** exercise of the inventory (contract 09: the user's equipment, *avoid* removed, *caution* flagged) plus every exercise of the day's prescribed session version, which is always listed even outside the inventory. Conditioning is never listed: it stays its own activity.
+- **Card** (content layer, ≤ 200 px at 390 px): "Today's workout", "3 of 12 done · 9 left", a subtitle, the **next to-do exercise** with its tick, dose and ⓘ, and "Show all 12". Tapping elsewhere opens the sheet. No muscle graphic on the card.
+  - Subtitle: the session's name on a plan day, "Rest day · optional" on a configured rest day, else "Optional · any time today".
+  - While the session is due (#41), the card takes the top slot as "Do this next · Today's workout". Otherwise it sits under the top card.
+- **Sheet** (full height, fixed header): the coverage preview (tap for the full coverage view, #81), totals (total, remaining, done), "To do · by priority", then "Done · n", then **Log with a different dose…** (the existing log form) and, per session, "full or short, skip and more" (the item sheet).
+- **Order:** the day's priority order, frozen from history before today, so rows never reshuffle while ticking. Until there's a week of history, the day's planned exercises come first in plan order. Done rows move below the to-do rows and keep their relative order.
+- **Status** per row (worst primary muscle), always as text with a symbol: "! Due", "◐ Building", "✓ Trained", "↻ Recovering", "≋ Sore", "✕ Injured". Neutral muscles show nothing, so nothing is due on first use. On a rest day nothing is "Due".
+- **One tap:**
+  - A **planned** exercise writes its session tick. The session's rules below are unchanged: version, completing on the last tick, reopening, records.
+  - **Any other** exercise writes one free exercise log (contract 04) with the row's dose, under an id fixed per day and movement, so a repeated tap can't add a second record.
+  - **Unticking** undoes the record that made it done: the session tick, or that day's free logs for the movement.
+  - Session exercises are never written as free logs, so nothing counts twice.
+- **Dose:** today's prescribed dose; else the plan's dose for that movement in any session; else the inventory's `defaultDose`. The log form starts from the same dose.
+- **Finishing a session** by its last tick shows a toast ("Strength workout complete"); Do this next then moves on. Marking the whole workout done stays in the item sheet as a manual override.
 - **Guide.** ⓘ (or the exercise's name) opens the exercise guide (09) and never changes completion.
 - **Touch targets.** Every tick target is at least 48 dp.

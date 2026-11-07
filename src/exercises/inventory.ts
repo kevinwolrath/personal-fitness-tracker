@@ -22,8 +22,14 @@ export const inventorySchema = z.strictObject({
       kind: z.enum(['strength', 'conditioning']),
       /** Any one of these equipment types is enough; empty = no equipment. */
       equipment: z.array(z.enum(equipmentTypes)).max(6),
-      /** Editable log-form draft, not completed work or a recommendation. */
-      defaultDose: z.strictObject({ sets: z.number().int().positive(), seconds: z.number().positive() }).optional(),
+      /**
+       * The one-tap dose on Today's workout and the log form's starting draft (#56): sets and exactly one of reps or
+       * seconds. A plan's own dose for the movement always wins. Not a recommendation and not completed work.
+       */
+      defaultDose: z
+        .strictObject({ sets: z.number().int().positive(), reps: z.number().int().positive().optional(), seconds: z.number().positive().optional() })
+        .refine((d) => (d.reps === undefined) !== (d.seconds === undefined), 'give reps or seconds, not both')
+        .optional(),
       primary: z.array(muscleId).min(1),
       secondary: z.array(muscleId),
     }),

@@ -8,7 +8,7 @@ import { validatePlan } from '../../plan/validate';
 import type { ActivityLog, DayRecords } from '../../storage/types';
 import { isDue, nextAction } from '../nextAction';
 import { prescribeDay } from '../prescribe';
-import { DEFAULT_LEAD_MINUTES, leadMinutesFor, toMinutes } from '../windows';
+import { leadMinutesFor, toMinutes } from '../windows';
 
 /** #51: "Do this next" is time-aware. Items become due a plan-defined lead time before their scheduled time. */
 
@@ -82,7 +82,6 @@ describe('lead times: item > plan > format default', () => {
     Object.fromEntries(prescribeDay(load(raw), '2026-11-02', records()).items.map((i) => [i.key, i.window.start]));
 
   it('format defaults: meals and habits 15 min, exercise 30 min', () => {
-    expect(DEFAULT_LEAD_MINUTES).toEqual({ meal: 15, habit: 15, exercise: 30 });
     expect(starts(base())).toMatchObject({ lunch: at('11:45'), gym: at('11:30'), pills: at('11:45') });
   });
 

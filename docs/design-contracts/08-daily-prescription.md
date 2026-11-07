@@ -110,6 +110,7 @@ A session (strength workout) is completed **exercise by exercise**, and it stays
 
   You can train without expanding: tick it, and the next one fades in. Keep this state minimal; don't add controls or copy to it.
 - **Expanded** (⌄): the Full/Short switch, every exercise (done ones stay visible, struck through, with the next one highlighted), and "Skip and more". Expanded or collapsed is remembered per day and item for the app session.
+- **Order (#56, option C):** on Today, a session's exercises are shown in muscle-priority order once there's a week of exercise history (contract 09), and in plan order before that. The order is fixed for the day. Ticks, keys and completion don't depend on it.
 - **No whole-workout Done on the card.** Ticks are the way to train. Marking the whole workout done stays available from the day-list row and the item sheet as a manual override. It then shows every exercise of its version as done, and unticking one makes the rest explicit.
 - **Finishing.** When the last exercise is ticked, the card holds **"Strength workout complete · 5 of 5 exercises ✓"** for about 4 seconds, or until "What's next ›", then "Do this next" moves on.
 - **Guide.** ⓘ (or the exercise's name) opens the exercise guide (09) and never changes completion.

@@ -197,7 +197,7 @@ describe('the shipped seed plan', () => {
   it('Monday: strength session with the real equipment, conditioning as one requirement', () => {
     const p = day('2026-11-02');
     const strength = p.items.find((i) => i.key === 'resistance')!;
-    expect(strength.session!.exercises.map((e) => e.label)).toEqual(['Kettlebell squat', 'Chest press (Fortis)', 'Lat pulldown (Fortis)', 'Cable row (Fortis)', 'Hammer curl']);
+    expect(strength.session!.exercises.map((e) => e.label)).toEqual(['Kettlebell squat', 'Chest press (Fortis)', 'Lat pulldown (Fortis)', 'One-arm kettlebell row', 'Hammer curl']);
     expect(strength.session!.short!.minutes).toBe(10);
     const req = p.items.find((i) => i.kind === 'requirement')!;
     expect(req.options.map((o) => o.label)).toEqual(['VR boxing', 'Heavy bag rounds', 'Battle ropes']);

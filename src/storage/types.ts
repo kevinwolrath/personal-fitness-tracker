@@ -82,6 +82,36 @@ export type QuickLogEntry = {
   at: string;
 };
 
+/** How hard an exercise was, when known (#56). */
+export type ExerciseIntensity = 'light' | 'moderate' | 'hard';
+
+/**
+ * An exercise logged outside any scheduled session (#56), at any time of day. Session exercises are never
+ * written here (they live in their session's activity log), so muscle history counts each completion once.
+ */
+export type ExerciseLog = {
+  id: string;
+  /** Inventory movement id. */
+  movement: string;
+  date: LocalDate;
+  at: string;
+  /** Completed sets (rounds for conditioning). */
+  sets: number;
+  reps: number | null;
+  seconds: number | null;
+  intensity: ExerciseIntensity | null;
+};
+
+/** A user report that a muscle group is sore or injured (#56). Overrides automatic readiness until cleared. */
+export type MuscleReport = {
+  id: string;
+  /** Inventory muscle-group id. */
+  muscle: string;
+  kind: 'sore' | 'injured';
+  at: string;
+  clearedAt: string | null;
+};
+
 export type DayRecords = {
   activities: Record<string, ActivityLog>;
   dayTypeOverride: string | null;
@@ -104,6 +134,9 @@ export type StoreSnapshot = {
   configChanges: ConfigChange[];
   completionEvents: CompletionEvent[];
   daySnapshots: DaySnapshot[];
+  /** #56. Absent in snapshots made before it. */
+  exerciseLogs?: ExerciseLog[];
+  muscleReports?: MuscleReport[];
 };
 
 /**
@@ -160,6 +193,15 @@ export interface TrackingStore {
   firstRecordDate(): Promise<LocalDate | null>;
 
   /** Every record, from the earliest through the latest. No lookback limit. */
+  /** Exercises logged outside sessions (#56), oldest first; optionally only dates in [from, to]. */
+  exerciseLogs(range?: { from?: LocalDate; to?: LocalDate }): Promise<ExerciseLog[]>;
+  addExerciseLog(log: ExerciseLog): Promise<void>;
+  removeExerciseLog(id: string): Promise<void>;
+  /** Every muscle report, oldest first (#56). */
+  muscleReports(): Promise<MuscleReport[]>;
+  addMuscleReport(report: MuscleReport): Promise<void>;
+  /** Mark a report cleared from `at`; the report itself is kept. */
+  clearMuscleReport(id: string, at: string): Promise<void>;
   snapshot(): Promise<StoreSnapshot>;
   /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */
   restore(snapshot: StoreSnapshot): Promise<void>;

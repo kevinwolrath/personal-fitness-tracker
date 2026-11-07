@@ -34,6 +34,7 @@ import type { PrescriptionItem } from '../../prescription/prescribe';
 import { TargetsLine } from './TargetsLine';
 import { Toast, type ToastState } from '../../ui/Toast';
 import { useClock, useDay } from './useDay';
+import { useExerciseState } from './useExerciseState';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -55,6 +56,10 @@ export function DayLogScreen() {
   const { day, prescription, progress, nextAt, records, latestMeasurement, actions, reload } = useDay(store, plan, date, dataVersion);
   // "Do this next" is about the present, so it only shows on today (contract 08).
   const next = date === today ? nextAt(nowMinutes) : null;
+  // #56 option C: today's scheduled sessions keep their exercises, shown in muscle-priority order (plan order until
+  // there's enough history). Display order only: exercise keys and ticks never change.
+  const exerciseState = useExerciseState(store, plan, today, prescription, date === today, dataVersion);
+  const orderOf = (key: string) => (date === today ? exerciseState?.sessionOrders[key] : undefined);
 
   const [firstRecord, setFirstRecord] = useState<LocalDate | null>(null);
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -160,7 +165,7 @@ export function DayLogScreen() {
         log={records.activities[item.key]}
         showTime={item.window.part !== 'anytime'}
         note={budgetNote[item.key]}
-        exerciseProgress={item.session ? sessionProgress(item.session, records.activities[item.key]) : null}
+        exerciseProgress={item.session ? sessionProgress(item.session, records.activities[item.key], orderOf(item.key)) : null}
         editable={editable}
         isNext={next?.item.key === item.key}
         onPress={() => press(item, item.activity!)}
@@ -219,7 +224,7 @@ export function DayLogScreen() {
               ) : (
                 <WorkoutCard
                   item={workout}
-                  progress={sessionProgress(workout.session!, records.activities[workout.key])}
+                  progress={sessionProgress(workout.session!, records.activities[workout.key], orderOf(workout.key))}
                   expanded={!!expanded[expandKey(workout)]}
                   onToggleExpanded={() => setExpanded((e) => ({ ...e, [expandKey(workout)]: !e[expandKey(workout)] }))}
                   onTick={(row) => tickExercise(workout, row)}
@@ -280,6 +285,7 @@ export function DayLogScreen() {
         plan={plan}
         onTickExercise={tickExercise}
         onChooseVariant={chooseVariant}
+        sessionOrder={sheetItem ? orderOf(sheetItem.key) : undefined}
       />
       <ConfirmDialog
         visible={!!pendingSwitch}

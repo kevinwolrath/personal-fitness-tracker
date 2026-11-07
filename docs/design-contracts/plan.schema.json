@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kevinwolrath/personal-fitness-tracker/docs/design-contracts/plan.schema.json",
   "title": "Personal Fitness Tracker plan package",
-  "description": "formatVersion 1 to 6. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
+  "description": "formatVersion 1 to 7. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -30,7 +30,8 @@
         3,
         4,
         5,
-        6
+        6,
+        7
       ]
     },
     "id": {
@@ -604,6 +605,10 @@
         },
         "leadMinutes": {
           "$ref": "#/$defs/leadMinutes"
+        },
+        "movement": {
+          "description": "formatVersion 7 (#56): the exercise-inventory movement this activity is (e.g. \"vr_boxing\"), so completing it adds to muscle history.",
+          "$ref": "#/$defs/movementId"
         }
       }
     },
@@ -907,6 +912,15 @@
             "notes": {
               "$ref": "#/$defs/note"
             }
+          }
+        },
+        "restDays": {
+          "description": "formatVersion 7 (#56): configured rest days. They never make a muscle overdue and never stop voluntary exercise. Absent = none; never inferred from the schedule.",
+          "type": "array",
+          "maxItems": 7,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/weekday"
           }
         },
         "constraints": {

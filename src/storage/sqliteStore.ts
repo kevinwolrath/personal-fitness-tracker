@@ -8,6 +8,8 @@ import type {
   DayRecords,
   DaySnapshot,
   QuickLogEntry,
+  ExerciseLog,
+  MuscleReport,
   StoreSnapshot,
   StoredPlan,
   TrackingStore,
@@ -70,6 +72,15 @@ const migrations = [
      updated_at TEXT NOT NULL, PRIMARY KEY (plan_id, date));`,
   // 4 (#28): exercise-level ticks within a session, as a JSON array of exercise keys. Additive only.
   `ALTER TABLE activity_log ADD COLUMN exercises_done TEXT;`,
+  // 5 (#56): exercises logged outside sessions, and sore/injured muscle reports. Additive only: new tables.
+  `CREATE TABLE exercise_log (
+     id TEXT PRIMARY KEY, movement TEXT NOT NULL, date TEXT NOT NULL, at TEXT NOT NULL,
+     sets INTEGER NOT NULL, reps INTEGER, seconds INTEGER,
+     intensity TEXT CHECK (intensity IS NULL OR intensity IN ('light', 'moderate', 'hard')));
+   CREATE INDEX exercise_log_date ON exercise_log (date, at);
+   CREATE TABLE muscle_report (
+     id TEXT PRIMARY KEY, muscle TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('sore', 'injured')),
+     at TEXT NOT NULL, cleared_at TEXT);`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -153,6 +164,10 @@ const toSnapshotRecord = (r: SnapshotRow): DaySnapshot => ({
 
 type QuickLogRow = { id: string; plan_id: string; quick_log_id: string; date: string; at: string };
 const toQuickLog = (q: QuickLogRow): QuickLogEntry => ({ id: q.id, planId: q.plan_id, quickLogId: q.quick_log_id, date: q.date, at: q.at });
+type ExerciseLogRow = { id: string; movement: string; date: string; at: string; sets: number; reps: number | null; seconds: number | null; intensity: ExerciseLog['intensity'] };
+const toExerciseLog = (r: ExerciseLogRow): ExerciseLog => ({ id: r.id, movement: r.movement, date: r.date, at: r.at, sets: r.sets, reps: r.reps, seconds: r.seconds, intensity: r.intensity });
+type MuscleReportRow = { id: string; muscle: string; kind: MuscleReport['kind']; at: string; cleared_at: string | null };
+const toMuscleReport = (r: MuscleReportRow): MuscleReport => ({ id: r.id, muscle: r.muscle, kind: r.kind, at: r.at, clearedAt: r.cleared_at });
 
 export class SqliteTrackingStore implements TrackingStore {
   private constructor(private db: SqlDatabase) {}
@@ -334,6 +349,36 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync('DELETE FROM quick_log WHERE id = ?', [id]);
   }
 
+  async exerciseLogs(range: { from?: string; to?: string } = {}): Promise<ExerciseLog[]> {
+    const rows = await this.db.getAllAsync<ExerciseLogRow>(
+      'SELECT * FROM exercise_log WHERE (? IS NULL OR date >= ?) AND (? IS NULL OR date <= ?) ORDER BY at, id',
+      [range.from ?? null, range.from ?? null, range.to ?? null, range.to ?? null],
+    );
+    return rows.map(toExerciseLog);
+  }
+
+  async addExerciseLog(l: ExerciseLog): Promise<void> {
+    await this.db.runAsync('INSERT OR REPLACE INTO exercise_log (id, movement, date, at, sets, reps, seconds, intensity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+      l.id, l.movement, l.date, l.at, l.sets, l.reps, l.seconds, l.intensity,
+    ]);
+  }
+
+  async removeExerciseLog(id: string): Promise<void> {
+    await this.db.runAsync('DELETE FROM exercise_log WHERE id = ?', [id]);
+  }
+
+  async muscleReports(): Promise<MuscleReport[]> {
+    return (await this.db.getAllAsync<MuscleReportRow>('SELECT * FROM muscle_report ORDER BY at, id', [])).map(toMuscleReport);
+  }
+
+  async addMuscleReport(r: MuscleReport): Promise<void> {
+    await this.db.runAsync('INSERT OR REPLACE INTO muscle_report (id, muscle, kind, at, cleared_at) VALUES (?, ?, ?, ?, ?)', [r.id, r.muscle, r.kind, r.at, r.clearedAt]);
+  }
+
+  async clearMuscleReport(id: string, at: string): Promise<void> {
+    await this.db.runAsync('UPDATE muscle_report SET cleared_at = ? WHERE id = ?', [at, id]);
+  }
+
   private async insertConfigChange(c: ConfigChange): Promise<void> {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO config_change (id, applied_at, sections, payload, from_revision, to_revision, previous_plan_json)
@@ -404,7 +449,8 @@ export class SqliteTrackingStore implements TrackingStore {
     const r = await this.db.getFirstAsync<{ first: string | null }>(
       `SELECT MIN(d) AS first FROM (
          SELECT MIN(date) AS d FROM observation UNION ALL SELECT MIN(date) FROM activity_log
-         UNION ALL SELECT MIN(date) FROM day_override UNION ALL SELECT MIN(date) FROM quick_log)`,
+         UNION ALL SELECT MIN(date) FROM day_override UNION ALL SELECT MIN(date) FROM quick_log
+         UNION ALL SELECT MIN(date) FROM exercise_log)`,
       [],
     );
     return r?.first ?? null;
@@ -423,9 +469,11 @@ export class SqliteTrackingStore implements TrackingStore {
       ),
     ]);
     const configChanges = (await this.configHistory()).reverse();
-    const [events, snapshots] = await Promise.all([
+    const [events, snapshots, exerciseLogs, muscleReports] = await Promise.all([
       this.db.getAllAsync<EventRow>('SELECT * FROM completion_event ORDER BY date, at, id', []),
       this.db.getAllAsync<SnapshotRow>('SELECT * FROM day_snapshot ORDER BY date, plan_id', []),
+      this.exerciseLogs(),
+      this.muscleReports(),
     ]);
     return {
       configChanges,
@@ -437,6 +485,8 @@ export class SqliteTrackingStore implements TrackingStore {
       observations: obs.map(toObservation),
       quickLogs: qs.map(toQuickLog),
       imports: imports.map((i) => ({ id: i.id, createdAt: i.created_at, extractor: i.extractor, assets: JSON.parse(i.assets_json) })),
+      exerciseLogs,
+      muscleReports,
     };
   }
 
@@ -451,6 +501,8 @@ export class SqliteTrackingStore implements TrackingStore {
       for (const c of s.configChanges ?? []) await this.insertConfigChange(c);
       for (const e of s.completionEvents ?? []) await this.insertEvent(e);
       for (const d of s.daySnapshots ?? []) await this.upsertDaySnapshot(d);
+      for (const l of s.exerciseLogs ?? []) await this.addExerciseLog(l);
+      for (const r of s.muscleReports ?? []) await this.addMuscleReport(r);
     });
   }
 }

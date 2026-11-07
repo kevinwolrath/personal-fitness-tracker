@@ -43,15 +43,27 @@ export const exerciseKey = (variant: Variant, index: number, e: PrescribedExerci
 
 const exercisesOf = (s: PrescribedSession, v: Variant) => (v === 'short' && s.short ? s.short.exercises : s.exercises);
 
-/** Where a session stands for a day's log. A workout marked done as a whole shows every exercise of its version as done. */
-export function sessionProgress(session: PrescribedSession, log: ActivityLog | undefined): SessionProgress {
+/**
+ * Display order for a session's exercises, per version: indexes into that version's exercise list (#56, option C:
+ * the session keeps its exercises, ordered by muscle priority). Keys never change, so ticks stay attached.
+ */
+export type SessionOrder = Partial<Record<Variant, readonly number[]>>;
+
+/**
+ * Where a session stands for a day's log. A workout marked done as a whole shows every exercise of its version as done.
+ * With `order`, rows (and so "next") follow it; an order that isn't a permutation of the version's exercises is ignored.
+ */
+export function sessionProgress(session: PrescribedSession, log: ActivityLog | undefined, order?: SessionOrder): SessionProgress {
   const variant: Variant = log?.variant === 'short' && session.short ? 'short' : 'full';
   const wholeDone = log?.status === 'done';
   const ticks = new Set(log?.exercisesDone ?? []);
-  const rows = exercisesOf(session, variant).map((exercise, i) => {
+  const planned = exercisesOf(session, variant).map((exercise, i) => {
     const key = exerciseKey(variant, i, exercise);
     return { key, exercise, done: wholeDone || ticks.has(key), optional: !!exercise.avoid };
   });
+  const o = order?.[variant];
+  const valid = !!o && o.length === planned.length && [...o].sort((a, b) => a - b).every((v, i) => v === i);
+  const rows = valid ? o!.map((i) => planned[i]) : planned;
   const required = rows.filter((r) => !r.optional);
   const done = required.filter((r) => r.done).length;
   return {

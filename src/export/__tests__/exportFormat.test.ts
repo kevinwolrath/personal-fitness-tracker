@@ -32,7 +32,7 @@ it('exports the entire history, earliest record through today, versioned', async
   const doc = buildExport(await (await populatedStore()).snapshot(), meta);
   expect(exportSchema.parse(doc)).toBeTruthy();
   expect(doc).toMatchObject({ format: 'pft-export', exportVersion: 1, range: { from: '2024-03-05', to: '2026-11-01' } });
-  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1, configChanges: 0, completionEvents: 0, daySnapshots: 0 });
+  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1, configChanges: 0, completionEvents: 0, daySnapshots: 0, exerciseLogs: 0, muscleReports: 0 });
   expect(doc.activityLogs.map((a) => [a.date, a.activityId, a.status, a.count])).toEqual([
     ['2024-03-05', 'vr-boxing', 'done', 3],
     ['2026-11-01', 'resistance', 'skipped', 0],
@@ -78,4 +78,26 @@ it('reads an export written before configChanges existed (additive field)', () =
     counts: {}, plans: [], observations: [], activityLogs: [], dayOverrides: [], quickLogs: [], imports: [] };
   const r = toSnapshot(old);
   expect(r.ok && r.snapshot.configChanges).toEqual([]);
+});
+
+describe('exercise logs and muscle reports (#56)', () => {
+  it('are in the export, counted, dated, and come back on restore', async () => {
+    const store = await populatedStore();
+    await store.addExerciseLog({ id: 'x', movement: 'standing_calf_raise', date: '2023-01-02', at: '2023-01-02T07:00:00+11:00', sets: 3, reps: 15, seconds: null, intensity: 'light' });
+    await store.addMuscleReport({ id: 'r', muscle: 'calves', kind: 'sore', at: '2023-01-03T07:00:00+11:00', clearedAt: null });
+    const doc = buildExport(await store.snapshot(), meta);
+    expect(doc.counts).toMatchObject({ exerciseLogs: 1, muscleReports: 1 });
+    expect(doc.range.from).toBe('2023-01-02'); // the oldest record is an exercise log
+    const back = toSnapshot(JSON.parse(JSON.stringify(doc)));
+    expect(back.ok && back.snapshot.exerciseLogs).toEqual(doc.exerciseLogs);
+    expect(back.ok && back.snapshot.muscleReports).toEqual(doc.muscleReports);
+  });
+
+  it('an export written before #56 reads as having none', () => {
+    const old = { format: 'pft-export', exportVersion: 1, exportedAt: 't', app: { name: 'x', version: '0.1.0' }, range: { from: null, to: '2026-11-01' },
+      counts: {}, plans: [], observations: [], activityLogs: [], dayOverrides: [], quickLogs: [], imports: [] };
+    const r = toSnapshot(old);
+    expect(r.ok && r.snapshot.exerciseLogs).toEqual([]);
+    expect(r.ok && r.snapshot.muscleReports).toEqual([]);
+  });
 });

@@ -116,6 +116,18 @@ export const exportSchema = z.object({
   daySnapshots: z
     .array(z.object({ planId: z.string(), date, planRevision: z.number(), prescribed: z.unknown(), updatedAt: z.string() }))
     .default([]),
+  /** Exercises logged outside sessions and sore/injured muscle reports (#56). Added in-version; optional when reading. */
+  exerciseLogs: z
+    .array(
+      z.object({
+        id: z.string(), movement: z.string(), date, at: z.string(), sets: z.number(), reps: z.number().nullable(), seconds: z.number().nullable(),
+        intensity: z.enum(['light', 'moderate', 'hard']).nullable(),
+      }),
+    )
+    .default([]),
+  muscleReports: z
+    .array(z.object({ id: z.string(), muscle: z.string(), kind: z.enum(['sore', 'injured']), at: z.string(), clearedAt: z.string().nullable() }))
+    .default([]),
 });
 
 export type ExportDocument = z.infer<typeof exportSchema>;
@@ -126,6 +138,7 @@ export function earliestDate(s: StoreSnapshot): LocalDate | null {
     ...s.activityLogs.map((a) => a.date),
     ...s.dayOverrides.map((d) => d.date),
     ...s.quickLogs.map((q) => q.date),
+    ...(s.exerciseLogs ?? []).map((l) => l.date),
   ];
   return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
 }
@@ -147,6 +160,8 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
       configChanges: s.configChanges.length,
       completionEvents: s.completionEvents.length,
       daySnapshots: s.daySnapshots.length,
+      exerciseLogs: (s.exerciseLogs ?? []).length,
+      muscleReports: (s.muscleReports ?? []).length,
     },
     plans: s.plans.map((p) => ({
       planId: p.planId,
@@ -164,6 +179,8 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
     configChanges: s.configChanges,
     completionEvents: s.completionEvents,
     daySnapshots: s.daySnapshots,
+    exerciseLogs: s.exerciseLogs ?? [],
+    muscleReports: s.muscleReports ?? [],
   };
 }
 
@@ -194,6 +211,8 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
       configChanges: e.configChanges.map((c) => ({ ...c, payload: c.payload as unknown })),
       completionEvents: e.completionEvents,
       daySnapshots: e.daySnapshots.map((d) => ({ ...d, prescribed: d.prescribed as unknown })),
+      exerciseLogs: e.exerciseLogs,
+      muscleReports: e.muscleReports,
     },
   };
 }

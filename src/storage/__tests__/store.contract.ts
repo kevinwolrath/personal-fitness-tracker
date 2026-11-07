@@ -1,5 +1,5 @@
 import { manualSource, type Observation } from '../../observations/types';
-import type { ActivityLog, TrackingStore } from '../types';
+import type { ActivityLog, ExerciseLog, TrackingStore } from '../types';
 
 const obs = (id: string, metric: string, date: string, value: number, recordedAt: string, over: Partial<Observation> = {}): Observation => ({
   id,
@@ -285,6 +285,44 @@ export function describeTrackingStore(
       expect((await store.getDay('p', '2026-11-02')).quickLogs.map((q) => q.id)).toEqual(['q1', 'q2']);
       await store.removeQuickLog('q1');
       expect((await store.getDay('p', '2026-11-02')).quickLogs.map((q) => q.id)).toEqual(['q2']);
+    });
+
+    describe('exercise logs and muscle reports (#56)', () => {
+      const xl = (id: string, date: string, at: string, over: Partial<ExerciseLog> = {}): ExerciseLog => ({
+        id, movement: 'standing_calf_raise', date, at, sets: 3, reps: 15, seconds: null, intensity: null, ...over,
+      });
+
+      it('adds, lists by time, filters by date range and removes exercise logs', async () => {
+        await store.addExerciseLog(xl('b', '2026-11-03', '2026-11-03T07:00:00+11:00'));
+        await store.addExerciseLog(xl('a', '2026-11-02', '2026-11-02T19:30:00+11:00', { movement: 'plank', reps: null, seconds: 30, intensity: 'hard' }));
+        await store.addExerciseLog(xl('c', '2026-11-05', '2026-11-05T12:00:00+11:00'));
+        expect((await store.exerciseLogs()).map((l) => l.id)).toEqual(['a', 'b', 'c']);
+        expect((await store.exerciseLogs({ from: '2026-11-03', to: '2026-11-04' })).map((l) => l.id)).toEqual(['b']);
+        expect((await store.exerciseLogs({ from: '2026-11-03' })).map((l) => l.id)).toEqual(['b', 'c']);
+        expect((await store.exerciseLogs())[0]).toEqual(xl('a', '2026-11-02', '2026-11-02T19:30:00+11:00', { movement: 'plank', reps: null, seconds: 30, intensity: 'hard' }));
+        await store.removeExerciseLog('b');
+        expect((await store.exerciseLogs()).map((l) => l.id)).toEqual(['a', 'c']);
+        expect(await store.firstRecordDate()).toBe('2026-11-02');
+      });
+
+      it('clearing a report keeps it, with when it was cleared', async () => {
+        await store.addMuscleReport({ id: 'r', muscle: 'chest', kind: 'sore', at: '2026-11-02T20:00:00+11:00', clearedAt: null });
+        await store.clearMuscleReport('r', '2026-11-04T08:00:00+11:00');
+        expect(await store.muscleReports()).toEqual([{ id: 'r', muscle: 'chest', kind: 'sore', at: '2026-11-02T20:00:00+11:00', clearedAt: '2026-11-04T08:00:00+11:00' }]);
+      });
+
+      it('survive reopen, and round-trip through snapshot and restore', async () => {
+        await store.addExerciseLog(xl('a', '2026-11-02', '2026-11-02T19:30:00+11:00'));
+        await store.addMuscleReport({ id: 'r', muscle: 'calves', kind: 'injured', at: '2026-11-02T20:00:00+11:00', clearedAt: null });
+        const again = await reopen();
+        expect(await again.exerciseLogs()).toHaveLength(1);
+        const s = await again.snapshot();
+        expect(s.exerciseLogs).toHaveLength(1);
+        expect(s.muscleReports).toHaveLength(1);
+        const target = await setupEmpty();
+        await target.restore(s);
+        expect(await target.snapshot()).toEqual(s);
+      });
     });
 
     it('persists everything across reopen (restart / reload)', async () => {

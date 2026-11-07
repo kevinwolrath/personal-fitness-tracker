@@ -25,8 +25,11 @@ describe('library and assets', () => {
     const movements = new Set(
       seedPlan.activities.flatMap((a) => [...(a.session?.exercises ?? []), ...(a.session?.short?.exercises ?? [])]).map((e) => e.movement),
     );
-    expect([...movements].sort()).toEqual(['cable_row', 'chest_press', 'hammer_curl', 'kettlebell_squat', 'lat_pulldown']);
-    for (const m of movements) expect(findDefinition(m)).toBeDefined();
+    expect([...movements].sort()).toEqual(['chest_press', 'hammer_curl', 'kettlebell_squat', 'lat_pulldown', 'one_arm_kettlebell_row']);
+    // Guide content (instructions, illustrations) for the one-arm row has not been supplied yet (#56): until it is,
+    // its guide degrades to the workout's label. Every other prescribed movement must have a definition.
+    const awaitingGuide = new Set(['one_arm_kettlebell_row']);
+    for (const m of movements) expect(findDefinition(m) !== undefined).toBe(!awaitingGuide.has(m));
   });
 
   it('every definition has ordered steps with bundled images; every bundled image is used', () => {
@@ -96,7 +99,8 @@ describe('buildGuide', () => {
 
   it('different exercises resolve to their own image sets', () => {
     const images = [0, 1, 2, 3, 4].map((i) => guide(i).steps.map((s) => s.image));
-    expect(new Set(images.flat()).size).toBe(10);
+    expect(new Set(images.flat()).size).toBe(8); // the one-arm row (#56) has no illustrations yet
+    expect(guide(3)).toMatchObject({ hasDefinition: false, name: 'One-arm kettlebell row', steps: [] });
     expect(images[2]).toEqual(['lat-pulldown-1', 'lat-pulldown-2']);
   });
 

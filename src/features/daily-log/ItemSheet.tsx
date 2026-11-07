@@ -15,10 +15,12 @@ import { Sheet } from '../../ui/Sheet';
 import { space, type } from '../../ui/theme';
 import { MealDetails } from './MealDetails';
 import { ExerciseChecklist, VersionSwitch } from './ExerciseChecklist';
-import { sessionProgress, type ChecklistRow, type Variant } from '../../prescription/exercises';
+import { sessionProgress, type ChecklistRow, type SessionOrder, type Variant } from '../../prescription/exercises';
 import { ModalHeader } from '../../ui/ModalHeader';
 
 type Props = {
+  /** Today's display order for the session's exercises (#56 option C); absent = plan order. */
+  sessionOrder?: SessionOrder;
   item: PrescriptionItem | null;
   logs: Record<string, ActivityLog | undefined>;
   editable: boolean;
@@ -35,7 +37,7 @@ type Props = {
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant }: Props) {
+export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder }: Props) {
   const exerciseConfig = plan.exercise;
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const act = (fn: () => void) => () => {
@@ -45,7 +47,7 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
   const a = item?.activity;
   const meal = a ? mealView(plan, a, energy) : null;
   const session = item?.session;
-  const progress = item && session ? sessionProgress(session, logs[item.key]) : null;
+  const progress = item && session ? sessionProgress(session, logs[item.key], sessionOrder) : null;
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';
   return (
     <Sheet visible={!!item} onClose={() => {

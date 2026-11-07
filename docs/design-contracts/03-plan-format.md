@@ -1,4 +1,4 @@
-# 03 · Plan package format (`pft-plan`, formatVersion 1–6)
+# 03 · Plan package format (`pft-plan`, formatVersion 1–7)
 
 A **plan package** is a single JSON file describing a fitness plan. The app renders whatever valid plan is loaded and has no built-in plan of its own. The machine-readable contract is [`plan.schema.json`](plan.schema.json) (JSON Schema 2020-12). This document defines semantics and the rules the schema cannot express.
 
@@ -12,7 +12,9 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 
 **formatVersion 5** (#51) adds due times: activity and requirement `leadMinutes`, and the plan-level `timing` section (contract 08). A formatVersion 1–4 plan must not contain them; such plans load unchanged and use the format defaults. 
 
-**formatVersion 6** (#49, #53) adds the setup profile: `profile.gender`, `ageBand`, `age`, `weightBand`, `weight`, `fitnessGoals`, `daysPerWeek`, `activityLevel`, `equipment`, `physicalLimits`, `dietary` and `considerations` (contracts 07 and 13). The rules: gradual and faster loss exclude each other and maintain; no weight-loss goal with `ageBand: under_18`; an `age` must match its `ageBand`; `weight` and `weightBand` can't both be set. A formatVersion 1–5 plan must not contain them. Configure with AI and setup write formatVersion 6. Everything else below applies to every version.
+**formatVersion 6** (#49, #53) adds the setup profile: `profile.gender`, `ageBand`, `age`, `weightBand`, `weight`, `fitnessGoals`, `daysPerWeek`, `activityLevel`, `equipment`, `physicalLimits`, `dietary` and `considerations` (contracts 07 and 13). The rules: gradual and faster loss exclude each other and maintain; no weight-loss goal with `ageBand: under_18`; an `age` must match its `ageBand`; `weight` and `weightBand` can't both be set. A formatVersion 1–5 plan must not contain them.
+
+**formatVersion 7** (#56) adds `exercise.restDays` (configured rest days, each weekday once; absent means none, never inferred from the schedule) and activity `movement` (the exercise-inventory movement an activity is, e.g. `"vr_boxing"`, so its muscle work counts; contract 09). A formatVersion 1–6 plan must not contain them. Configure with AI and setup write formatVersion 7. Everything else below applies to every version.
 
 ## Design limits (deliberate)
 
@@ -63,6 +65,7 @@ One list covers exercise, meals and habits, so that a single timeline renders th
 | `flexible` | `false` | **Meals only.** The amount isn't fixed. The row shows the remaining budget instead of values (see below). Must not also have `nutrition`. |
 | `ingredients` | | **Meals only, formatVersion 3.** What to prepare: 1–20 items, each `{ name, grams?, ml?, measure? }`. Each item needs at least one of the three. `grams`/`ml` are the target amount. `measure` is the plan's everyday wording for people without scales ("~¾ cup", "1 scoop", "as needed"). The app shows it **exactly as written and never converts units**, because cup conversions aren't precise. |
 | `notifications` | none | **formatVersion 4.** Up to 3 reminders, each `{ offsetMinutes \| at, title, body }`: `offsetMinutes` counts from the activity's `time` or its day part's start (negative = before; not allowed on "anytime" activities), `at` is `"HH:MM"`. Absent or `[]` means no reminder. Whether reminders are switched on is a device preference, never plan data (10). |
+| `movement` | | **formatVersion 7.** The exercise-inventory movement this whole activity is (contract 09), e.g. `"vr_boxing"`. Its completions then count towards muscle history: rounds for count tracking, the planned `duration` for a done check. |
 | `leadMinutes` | plan `timing`, else format default | **formatVersion 5.** Minutes before this activity's `time` that it becomes due (0–240). Precedence: this value > the plan's `timing.leadMinutes[kind]` > the format default. Ignored without a `time`. Requirements take the same field for their own `time` and their alternatives. |
 | `preparation` | | **Meals only, formatVersion 3.** How to make the meal, in the plan's words (≤ 400 characters), e.g. how much water to add. |
 

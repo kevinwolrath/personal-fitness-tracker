@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import type { ExerciseGuide } from '../../exercises/guide';
-import { illustrations } from '../../exercises/illustrations.generated';
-import { Illustration } from '../../ui/Illustration';
+import { heroIllustrations } from '../../exercises/heroIllustrations';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
@@ -18,12 +17,15 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
-  const steps = (guide?.steps ?? []).filter((s) => illustrations[s.image]);
+  const steps = (guide?.steps ?? []).filter((s) => heroIllustrations[s.image]);
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
   const pager = useRef<ScrollView>(null);
 
-  useEffect(() => setIndex(0), [guide?.movement]); // always start on the first step
+  useEffect(() => {
+    setIndex(0);
+    pager.current?.scrollTo({ x: 0, animated: false });
+  }, [guide?.movement]); // reset both caption and visible page for the next exercise
 
   const go = (i: number) => {
     const next = Math.max(0, Math.min(steps.length - 1, i));
@@ -52,6 +54,7 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                 <View style={styles.pagerFrame} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} testID="guide-pager">
                   <ScrollView
                     ref={pager}
+                    testID="guide-step-scroll"
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
@@ -60,8 +63,15 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                     scrollEnabled={steps.length > 1}
                   >
                     {steps.map((s, i) => (
-                      <View key={s.image} style={{ width: width || undefined }}>
-                        <Illustration xml={illustrations[s.image]} label={`${guide.name}, step ${i + 1}: ${s.caption}`} />
+                      <View key={s.image} style={{ width: width || undefined }} accessible accessibilityRole="image" accessibilityLabel={`${guide.name}, step ${i + 1}: ${s.caption}`}>
+                        <Image
+                          source={heroIllustrations[s.image]}
+                          resizeMode="contain"
+                          style={[styles.heroImage, { height: width * 3 / 4 }]}
+                          accessible={false}
+                          aria-hidden
+                          testID={`guide-image-${i + 1}`}
+                        />
                       </View>
                     ))}
                   </ScrollView>
@@ -142,6 +152,8 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   content: { gap: space.md, paddingBottom: space.xl },
   note: { ...type.detail, color: colors.ink },
   pagerFrame: { width: '100%', borderRadius: radius.md, backgroundColor: colors.bg, overflow: 'hidden' },
+  // Explicit height overrides the intrinsic bitmap dimensions on React Native Web.
+  heroImage: { width: '100%', backgroundColor: '#101519' },
   nav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.sm },
   navButton: { width: touch, height: touch, borderRadius: touch / 2, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
   navText: { fontSize: 26, color: colors.ink, lineHeight: 28 },

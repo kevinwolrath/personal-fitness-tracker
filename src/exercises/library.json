@@ -4,7 +4,9 @@
     {
       "id": "kettlebell_squat",
       "name": "Kettlebell squat",
-      "equipment": ["kettlebell"],
+      "equipment": [
+        "kettlebell"
+      ],
       "instructions": [
         "Hold the kettlebell by the horns at chest height, elbows tucked in.",
         "Feet about shoulder-width apart, toes turned out slightly.",
@@ -12,14 +14,22 @@
         "Drive through the whole foot to stand tall. Breathe out on the way up."
       ],
       "steps": [
-        { "image": "kettlebell-squat-1", "caption": "Stand tall with the kettlebell held at your chest." },
-        { "image": "kettlebell-squat-2", "caption": "Sit down between your heels, chest up, elbows inside the knees." }
+        {
+          "image": "kettlebell-squat-1",
+          "caption": "Stand tall with the kettlebell held at your chest."
+        },
+        {
+          "image": "kettlebell-squat-2",
+          "caption": "Sit down between your heels, chest up, elbows inside the knees."
+        }
       ]
     },
     {
       "id": "chest_press",
       "name": "Seated chest press",
-      "equipment": ["home_gym"],
+      "equipment": [
+        "home_gym"
+      ],
       "instructions": [
         "Set the seat so the handles line up with the middle of your chest.",
         "Keep your back and head against the pad and your feet flat.",
@@ -27,14 +37,22 @@
         "Return slowly until the handles are back level with your chest."
       ],
       "steps": [
-        { "image": "chest-press-1", "caption": "Handles level with mid-chest, back against the pad." },
-        { "image": "chest-press-2", "caption": "Press forward until the arms are nearly straight, without locking the elbows." }
+        {
+          "image": "chest-press-1",
+          "caption": "Handles level with mid-chest, back against the pad."
+        },
+        {
+          "image": "chest-press-2",
+          "caption": "Press forward until the arms are nearly straight, without locking the elbows."
+        }
       ]
     },
     {
       "id": "lat_pulldown",
       "name": "Lat pulldown",
-      "equipment": ["home_gym"],
+      "equipment": [
+        "home_gym"
+      ],
       "instructions": [
         "Lock the thighs under the pad and take a grip a little wider than the shoulders.",
         "Lean back slightly with the chest up.",
@@ -42,14 +60,23 @@
         "Let the bar rise under control until the arms are straight. Never pull behind the neck."
       ],
       "steps": [
-        { "image": "lat-pulldown-1", "caption": "Arms straight overhead, thighs secured under the pad." },
-        { "image": "lat-pulldown-2", "caption": "Pull the bar to your upper chest, in front of you. Never behind the neck." }
+        {
+          "image": "lat-pulldown-1",
+          "caption": "Arms straight overhead, thighs secured under the pad."
+        },
+        {
+          "image": "lat-pulldown-2",
+          "caption": "Pull the bar to your upper chest, in front of you. Never behind the neck."
+        }
       ]
     },
     {
       "id": "cable_row",
       "name": "Seated cable row",
-      "equipment": ["home_gym", "cable_machine"],
+      "equipment": [
+        "home_gym",
+        "cable_machine"
+      ],
       "instructions": [
         "Feet braced on the footplate, knees slightly bent.",
         "Sit tall with the arms long and the shoulders down.",
@@ -57,14 +84,23 @@
         "Let the arms extend again without rounding the back."
       ],
       "steps": [
-        { "image": "cable-row-1", "caption": "Sit tall, arms long, feet braced, knees soft." },
-        { "image": "cable-row-2", "caption": "Pull the handle to your lower ribs and squeeze your shoulder blades together." }
+        {
+          "image": "cable-row-1",
+          "caption": "Sit tall, arms long, feet braced, knees soft."
+        },
+        {
+          "image": "cable-row-2",
+          "caption": "Pull the handle to your lower ribs and squeeze your shoulder blades together."
+        }
       ]
     },
     {
       "id": "hammer_curl",
       "name": "Hammer curl",
-      "equipment": ["dumbbells", "free_weights"],
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
       "instructions": [
         "Hold the weights with palms facing in (thumbs forward) and keep that grip throughout.",
         "Keep the elbows by your sides. Only the forearms move.",
@@ -72,8 +108,261 @@
         "The neutral grip is the elbow-friendly alternative to a standard biceps curl."
       ],
       "steps": [
-        { "image": "hammer-curl-1", "caption": "Arms at your sides, palms facing in, thumbs forward." },
-        { "image": "hammer-curl-2", "caption": "Curl up keeping the thumbs-up grip; elbows stay by your sides." }
+        {
+          "image": "hammer-curl-1",
+          "caption": "Arms at your sides, palms facing in, thumbs forward."
+        },
+        {
+          "image": "hammer-curl-2",
+          "caption": "Curl up keeping the thumbs-up grip; elbows stay by your sides."
+        }
+      ]
+    },
+    {
+      "id": "knuckle_push_up",
+      "name": "Knuckle push-up",
+      "equipment": [],
+      "instructions": [
+        "Use a padded surface and keep wrists straight; use palms instead if knuckles are uncomfortable.",
+        "Set fists below shoulders and extend the legs into a straight plank.",
+        "Bend elbows back about 45 degrees and lower the chest under control.",
+        "Press back up without letting hips sag."
+      ],
+      "steps": [
+        {
+          "image": "knuckle-push-up-1",
+          "caption": "Start in a straight plank on fists and toes."
+        },
+        {
+          "image": "knuckle-push-up-2",
+          "caption": "Lower the chest, keeping the body in one straight line."
+        }
+      ]
+    },
+    {
+      "id": "one_arm_kettlebell_row",
+      "name": "One-arm kettlebell row",
+      "equipment": [
+        "kettlebell"
+      ],
+      "instructions": [
+        "Take a staggered stance, bend the front knee and brace the free hand on the front thigh.",
+        "Keep the spine neutral and let the kettlebell hang below the free shoulder.",
+        "Pull the elbow towards the hip without rotating the torso.",
+        "Lower slowly; repeat on the other side."
+      ],
+      "steps": [
+        {
+          "image": "one-arm-kettlebell-row-1",
+          "caption": "Brace with the free hand and let the kettlebell hang."
+        },
+        {
+          "image": "one-arm-kettlebell-row-2",
+          "caption": "Draw the elbow beside the ribs; keep the torso still."
+        }
+      ]
+    },
+    {
+      "id": "leg_extension",
+      "name": "Leg extension",
+      "equipment": [
+        "home_gym"
+      ],
+      "instructions": [
+        "Set the machine so knees align with its pivot and the roller rests above the ankles.",
+        "Sit against the backrest and hold the side handles.",
+        "Extend both knees under control without locking them.",
+        "Lower slowly to the starting position."
+      ],
+      "steps": [
+        {
+          "image": "leg-extension-1",
+          "caption": "Sit with knees bent and the roller across the lower shins."
+        },
+        {
+          "image": "leg-extension-2",
+          "caption": "Raise the roller until the legs are almost straight."
+        }
+      ]
+    },
+    {
+      "id": "kettlebell_romanian_deadlift",
+      "name": "Kettlebell Romanian deadlift",
+      "equipment": [
+        "kettlebell"
+      ],
+      "instructions": [
+        "Hold one kettlebell in both hands in front of the thighs.",
+        "Keep knees soft and push the hips back, maintaining a neutral spine.",
+        "Lower the bell close to the legs only as far as the back stays neutral.",
+        "Drive the hips forwards to stand; do not lean back."
+      ],
+      "steps": [
+        {
+          "image": "kettlebell-romanian-deadlift-1",
+          "caption": "Stand tall with soft knees and the bell in both hands."
+        },
+        {
+          "image": "kettlebell-romanian-deadlift-2",
+          "caption": "Hinge at the hips, keeping the bell close and the back neutral."
+        }
+      ]
+    },
+    {
+      "id": "overhead_press",
+      "name": "Overhead press",
+      "equipment": [
+        "dumbbells",
+        "free_weights",
+        "kettlebell"
+      ],
+      "instructions": [
+        "Begin with weights at shoulder height and wrists above elbows.",
+        "Brace the abdomen with ribs stacked over the hips.",
+        "Press overhead without arching the lower back or locking elbows.",
+        "Lower under control. The illustration uses dumbbells; a kettlebell can be pressed one side at a time."
+      ],
+      "steps": [
+        {
+          "image": "overhead-press-1",
+          "caption": "Start with weights at shoulder height."
+        },
+        {
+          "image": "overhead-press-2",
+          "caption": "Press overhead while keeping the ribs and hips stacked."
+        }
+      ]
+    },
+    {
+      "id": "plank",
+      "name": "Forearm plank",
+      "equipment": [],
+      "instructions": [
+        "Place elbows directly beneath shoulders, with forearms supported.",
+        "Extend the legs and support the body on forearms and toes.",
+        "Keep a straight line from head to heels and breathe normally.",
+        "Lower the knees when you cannot maintain that position."
+      ],
+      "steps": [
+        {
+          "image": "plank-1",
+          "caption": "Set forearms down with elbows beneath shoulders."
+        },
+        {
+          "image": "plank-2",
+          "caption": "Lift the knees and hold a straight line from head to heels."
+        }
+      ]
+    },
+    {
+      "id": "straight_leg_raise",
+      "name": "Straight-leg lying raise",
+      "equipment": [],
+      "instructions": [
+        "Lie on your back with arms beside the body and legs together.",
+        "Brace the abdomen and gently keep the lower back against the floor.",
+        "Raise the legs towards vertical without lifting the head or swinging.",
+        "Lower only as far as you can keep the lower back supported; bend knees if needed."
+      ],
+      "steps": [
+        {
+          "image": "straight-leg-raise-1",
+          "caption": "Lie back with the abdomen braced and legs extended."
+        },
+        {
+          "image": "straight-leg-raise-2",
+          "caption": "Raise the legs towards vertical, keeping the back supported."
+        }
+      ]
+    },
+    {
+      "id": "standing_calf_raise",
+      "name": "Standing calf raise",
+      "equipment": [],
+      "instructions": [
+        "Stand with feet about hip-width apart and knees soft.",
+        "Rise slowly onto the balls of both feet without rolling the ankles outwards.",
+        "Pause briefly at the top, then lower heels under control.",
+        "Use a stable support for balance if needed."
+      ],
+      "steps": [
+        {
+          "image": "standing-calf-raise-1",
+          "caption": "Stand tall with both heels on the floor."
+        },
+        {
+          "image": "standing-calf-raise-2",
+          "caption": "Lift both heels, balancing over the balls of the feet."
+        }
+      ]
+    },
+    {
+      "id": "heavy_bag",
+      "name": "Heavy bag boxing",
+      "equipment": [
+        "heavy_bag"
+      ],
+      "instructions": [
+        "Wear boxing gloves and wraps, and use a securely mounted bag.",
+        "Take a balanced staggered stance with hands guarding the cheeks.",
+        "Rotate the rear hip and pivot the rear foot as the rear hand punches straight.",
+        "Return to guard under control; keep the wrist straight and avoid locking the elbow."
+      ],
+      "steps": [
+        {
+          "image": "heavy-bag-1",
+          "caption": "Set a balanced stance with both gloves guarding the face."
+        },
+        {
+          "image": "heavy-bag-2",
+          "caption": "Throw a controlled rear straight punch, then return to guard."
+        }
+      ]
+    },
+    {
+      "id": "vr_boxing",
+      "name": "VR boxing",
+      "equipment": [
+        "vr_headset"
+      ],
+      "instructions": [
+        "Clear the play area, fit the headset and secure controller wrist straps.",
+        "Stand balanced with knees soft and controllers near the cheeks.",
+        "Extend a controlled jab without locking the elbow or stepping outside the safe area.",
+        "Return to guard and alternate as the activity requires."
+      ],
+      "steps": [
+        {
+          "image": "vr-boxing-1",
+          "caption": "Start balanced with the controllers in guard."
+        },
+        {
+          "image": "vr-boxing-2",
+          "caption": "Extend a controlled lead jab, keeping the other hand in guard."
+        }
+      ]
+    },
+    {
+      "id": "battle_ropes",
+      "name": "Battle ropes",
+      "equipment": [
+        "battle_ropes"
+      ],
+      "instructions": [
+        "Secure the rope at its midpoint to a suitable anchor and hold one end in each hand.",
+        "Stand with feet shoulder-width apart, knees soft and spine neutral.",
+        "Lift and lower the hands alternately to send waves towards the anchor.",
+        "Keep the torso steady and breathe normally."
+      ],
+      "steps": [
+        {
+          "image": "battle-ropes-1",
+          "caption": "Raise one hand as the other lowers, keeping a steady stance."
+        },
+        {
+          "image": "battle-ropes-2",
+          "caption": "Switch the hand positions to continue alternating waves."
+        }
       ]
     }
   ]

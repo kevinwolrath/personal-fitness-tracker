@@ -3,7 +3,7 @@
 // reads a file in that directory, so a dependency that ships one could steer an agent.
 // Usage: node scripts/check-agent-files.cjs [--warn]   (exit 1 when found, unless --warn)
 const { readdirSync } = require('node:fs');
-const { join } = require('node:path');
+const { join, sep } = require('node:path');
 
 const NAMES = new Set(['claude.md', 'claude.local.md', 'agents.md', 'gemini.md', '.cursorrules', '.windsurfrules', 'copilot-instructions.md']);
 const DIRS = new Set(['.claude', '.cursor', '.windsurf', '.clinerules']);
@@ -27,7 +27,8 @@ function findAgentFiles(root) {
     }
   };
   walk(root);
-  return found.sort();
+  // Same output on every OS: '/' separators (Windows would otherwise give 'pkg\\CLAUDE.md'), then sorted.
+  return found.map((p) => p.split(sep).join('/')).sort();
 }
 
 module.exports = { findAgentFiles };

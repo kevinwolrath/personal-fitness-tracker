@@ -1,0 +1,518 @@
+{
+  "tool": "built-in image_gen",
+  "processing": "Midpoint split, proportional thumbnail max 768x1024, JPEG quality 88. No pose transformation.",
+  "exercises": [
+    {
+      "movement": "kettlebell_squat",
+      "hero": "male",
+      "prompt": "Use case: identity-preserve. Create a two-panel exercise instructional illustration for Body Anvil, one existing male hero demonstrating kettlebell goblet squat. Reference image 1 is the canonical three-character sheet: use ONLY the male hero on the left, never the female or neutral heroes. Reference image 2 is the same male production front image, supporting precise face, hair, costume and rendering identity. Preserve that exact muscular adult male, stern square face, short spiky brown hair, black/charcoal sculpted armour, orange shoulder plates and curved torso stripes, orange thigh/shin panels, fingerless black gloves and black/grey/orange lace-up trainers. Do not redesign. Match the glossy detailed comic illustration style. Wide image with two equal panels, plain charcoal background, no scenery, no logos, no writing. Same hero at same scale and camera angle in each panel, full body including both feet, adequate margins. Subtle front three-quarter camera to clearly show squat depth. Left: standing tall, feet about shoulder width and slightly outward, neutral spine, both hands gripping the two horns of a single realistic cast-iron kettlebell held close at upper chest. Right: bottom goblet squat, hips down between heels, thighs approximately parallel to floor, knees tracking over outward toes, heels firmly planted, chest lifted, neutral spine, elbows inside knees, same kettlebell at upper chest held by horns with both hands. Clear believable anatomy, five fingers per hand, no extra limbs, one kettlebell per panel, no overhead weight or hanging weight. Keep orange restrained to original costume panels.",
+      "sourceSha256": "2131856ada3e0fbf1adbd4ce526c7b9d37aa5bdd91131c4bbf9061b5bcf25941",
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/kettlebell-squat-1.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 91131,
+          "sha256": "51f27b642193dbdde36cec317174ce1e97d90bc66db6a2d4258f96c2a22f677c"
+        },
+        {
+          "file": "assets/exercises/heroes/kettlebell-squat-2.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 86646,
+          "sha256": "d1d3ddbb550b618c93b820c121951a06d029a9a7f1cf30732161e4f92968ade6"
+        }
+      ]
+    },
+    {
+      "movement": "chest_press",
+      "hero": "female",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing female hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration exactly matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, fixed matching camera and scale. Plain dark charcoal background, no writing, no logos, no decorative border. Thin subtle vertical divider exactly at middle. Seated chest press on a black home multi-gym with upright padded backrest and paired lever handles at mid-chest height. LEFT: seated with back against pad, feet flat, hands on handles, elbows bent about 90 degrees just behind torso. RIGHT: press the lever handles forwards to nearly straight arms without locked elbows. Machine frame, weight stack and seat remain identical. Anatomy and grip must be physically believable. One adult hero per panel, same identity in both, no extra limbs. Show all feet without cropping.",
+      "sourceSha256": "cf96837b0ffddf4d9f58906aac992fb8c65220fbf9d655e6ba80b6e68d1f7165",
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "reference": "assets/hero-forge/app/female-front.png",
+      "referenceSha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/chest-press-1.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 120549,
+          "sha256": "e19918a4318b930347278fe8051564a39154d4de92a55f12c8ceeb3d671bcf1f"
+        },
+        {
+          "file": "assets/exercises/heroes/chest-press-2.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 117209,
+          "sha256": "aab4b675401d5ab3d0010769ad9a228a875c8267eb73a6cda764bd653d9208d6"
+        }
+      ]
+    },
+    {
+      "movement": "lat_pulldown",
+      "hero": "neutral",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing neutral hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration exactly matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, fixed matching camera and scale. Plain dark charcoal background, no writing, no logos, no decorative border. Thin subtle vertical divider exactly at middle. Lat pulldown on a home multi-gym. Seated with thighs secured under roller pads and feet flat. Use a wide straight lat bar attached by a taut vertical cable to an overhead pulley. LEFT: arms extended overhead holding the bar wider than shoulders. RIGHT: bar pulled down in FRONT to upper chest, elbows down beside ribs, slight lean back, spine neutral. Never behind neck. Anatomy and grip must be physically believable. One adult hero per panel, same identity in both, no extra limbs. Show all feet without cropping.",
+      "sourceSha256": "e75531c9be9c2ef6431320a96633b8e5d94c2fd7d451c128fa67b03ab6c3e785",
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "reference": "assets/hero-forge/app/neutral-front.png",
+      "referenceSha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/lat-pulldown-1.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 104469,
+          "sha256": "f6272a8a946b3270e0ea9ff2ae7d86fc134e4cec70feef706b051bf00a15c8d8"
+        },
+        {
+          "file": "assets/exercises/heroes/lat-pulldown-2.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 100041,
+          "sha256": "571205f9aa20899cf50969c85a7d10c5e146b5ed092536d63a9c0a7168a624a5"
+        }
+      ]
+    },
+    {
+      "movement": "cable_row",
+      "hero": "male",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing male hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration exactly matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, fixed matching camera and scale. Plain dark charcoal background, no writing, no logos, no decorative border. Thin subtle vertical divider exactly at middle. Seated low cable row on a home cable multi-gym. Sit on low bench, feet braced on footplate, knees slightly bent. Two-handed neutral V-handle attached by taut cable to LOW front pulley. LEFT: tall torso, arms reaching forward, neutral back. RIGHT: handle pulled to lower ribs, elbows behind torso, chest lifted, same fixed torso angle. Show full cable machine and feet. Anatomy and grip must be physically believable. One adult hero per panel, same identity in both, no extra limbs. Show all feet without cropping.",
+      "sourceSha256": "027747fc2a08cfaca543599c2dbfbe9336711f9c59cc4c8f3c837ae1870b609e",
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/cable-row-1.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 90903,
+          "sha256": "8c4756056689a988989a56feea1a47c202aa950ff99db4dbaeb5445844d3a854"
+        },
+        {
+          "file": "assets/exercises/heroes/cable-row-2.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 89154,
+          "sha256": "b85d1fe919d0a52e095b264930ee58359f65a2647a67ac3a07f88856c0ab0bb4"
+        }
+      ]
+    },
+    {
+      "movement": "hammer_curl",
+      "hero": "female",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing female hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Standing hammer curl with two small black dumbbells, one per hand, palms facing IN throughout. LEFT: tall posture, upper arms at sides, elbows extended, weights beside hips. RIGHT: elbows stay by ribs, forearms raised bringing dumbbells near shoulders with thumbs up and wrists straight. No supinated grip, no shoulder swing. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "ba5a93590862a04e25c845ecfa2228f4c0999842dfeaa459e1a8276f69ce71c9",
+      "sourceDimensions": [
+        1024,
+        1536
+      ],
+      "reference": "assets/hero-forge/app/female-front.png",
+      "referenceSha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/hammer-curl-1.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 65603,
+          "sha256": "3dcd40ff57ee70e07920a5aaf4499b0d06462168555f7ec291704433d9344f94"
+        },
+        {
+          "file": "assets/exercises/heroes/hammer-curl-2.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 61367,
+          "sha256": "44a29377ad9d5c9fabe03584ec76dc62ac243777fb7eadd613fde9101f8e7708"
+        }
+      ]
+    },
+    {
+      "movement": "knuckle_push_up",
+      "hero": "male",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing male hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Knuckle push-up on a plain floor, SIDE THREE-QUARTER view. LEFT: high plank supported on closed fists under shoulders and toes, elbows extended, straight head-to-heels line. RIGHT: lower chest near floor by bending elbows back about 45 degrees, same straight line, hips never sag. Both fists rest knuckle-side down, neutral wrists. No equipment. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "e4d551fa2bf1c073db94cb6f2d0b23401fcbc4158a78480db2fc90a11f0e70f8",
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/knuckle-push-up-1.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 61102,
+          "sha256": "daf015aea4d10d1750acd1f1acbf528dd6a74627037f3e71fd669188e8e4927f"
+        },
+        {
+          "file": "assets/exercises/heroes/knuckle-push-up-2.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 52365,
+          "sha256": "c1f4dd67e8f9e5b4fbacf3b3c4d655ad69b3b1934544dad4eb260926653a0c8f"
+        }
+      ]
+    },
+    {
+      "movement": "one_arm_kettlebell_row",
+      "hero": "neutral",
+      "prompt": "Use case: scientific-educational, identity-preserve. Body Anvil two-panel one-arm kettlebell row exercise sequence. Use exact existing gender-neutral hero in attached image, preserving short swept brown hair, face, muscular proportions, black charcoal armour with matching orange panels and trainers, polished comic illustration style. One full hero in each equal side-by-side panel. Plain dark charcoal background, no text or logos, subtle divider at exact midpoint. NO BENCH, NO FURNITURE, NO OTHER EQUIPMENT beyond ONE cast-iron kettlebell per panel. Three-quarter side view, same camera and proportions. Both panels: staggered stance with left foot forward, left knee bent, right foot behind planted; hinge hips back to incline torso near horizontal with neutral spine, brace LEFT FOREARM on LEFT THIGH above knee. LEFT PANEL: RIGHT arm hangs straight below right shoulder holding the kettlebell's handle close to outside of right leg. RIGHT PANEL: pull RIGHT elbow up beside ribs, kettlebell toward right hip, torso stays still and hips square. Clearly show forearm-to-thigh support, five fingers gripping, no back rounding or rotation, full body and all feet visible with generous margins. No extra arms, no bench.",
+      "sourceSha256": "c2190c0468d2f9305a228bfec8312a23164ab1eccf07f009ca5e4f4ab52b4867",
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "reference": "assets/hero-forge/app/neutral-front.png",
+      "referenceSha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/one-arm-kettlebell-row-1.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 67559,
+          "sha256": "eb2bf66e3b053247c9b7ca323f075a857d4587758c5f3b493a78dddc6b69a107"
+        },
+        {
+          "file": "assets/exercises/heroes/one-arm-kettlebell-row-2.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 66340,
+          "sha256": "9f2a4fb1a20009d4bf0a85e11e97c9ce7fadbac6d99fefa907061aac248a69ec"
+        }
+      ]
+    },
+    {
+      "movement": "leg_extension",
+      "hero": "female",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing female hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Seated leg extension on a black home multi-gym. Seated tall against backrest, knees aligned with machine pivot, padded roller across FRONT of lower shins just above ankles. LEFT: knees bent about 90 degrees, shins down. RIGHT: both knees extended almost straight forwards, raising roller with shins. Keep thighs supported on seat, hands holding side grips. SIDE THREE-QUARTER view clearly shows lever/roller. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "a96a15e80d85fbb9ca92e7a655a9b00c0d25301751847592bc2257e10226c3c3",
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "reference": "assets/hero-forge/app/female-front.png",
+      "referenceSha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/leg-extension-1.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 129475,
+          "sha256": "92730d0bd0c3dbc146612d9bb2a55084b9a1cec73aa44f56bbcee646c2840499"
+        },
+        {
+          "file": "assets/exercises/heroes/leg-extension-2.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 123736,
+          "sha256": "0878c2cb83d2b7fd5789c0e02c348aa2d8b8a6e738d3d3579411554a8773a884"
+        }
+      ]
+    },
+    {
+      "movement": "kettlebell_romanian_deadlift",
+      "hero": "male",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing male hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Kettlebell Romanian deadlift with ONE kettlebell held in BOTH hands by its handle. SIDE THREE-QUARTER view. LEFT: stand tall with bell hanging in front of thighs, knees soft, shoulders relaxed. RIGHT: hips hinge backwards, knees remain slightly bent, torso inclines forwards with neutral straight spine, kettlebell hangs close to mid-shins, shoulders above the bell. Not a squat, no rounded back. Both feet flat. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "12a00529d9e666f2e4d9a9c06b247ab540ed70005185aad0776abddee98a01a7",
+      "sourceDimensions": [
+        1024,
+        1536
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/kettlebell-romanian-deadlift-1.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 53413,
+          "sha256": "92e3d8166efc41a5f2465c042d9359de402a1b85e2de63aec5bb9d5b2864faa1"
+        },
+        {
+          "file": "assets/exercises/heroes/kettlebell-romanian-deadlift-2.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 53004,
+          "sha256": "7683971b414de99eb5c7a77832cacbb33fc0cc485cfc8d2b7d2c7e376359d117"
+        }
+      ]
+    },
+    {
+      "movement": "overhead_press",
+      "hero": "neutral",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing neutral hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Standing overhead press with TWO small black dumbbells, one in each hand. LEFT: dumbbells at shoulder height, elbows under wrists, palms facing forward, feet hip width, ribs stacked over hips. RIGHT: press both dumbbells overhead until arms nearly straight, neutral spine and no exaggerated back arch. Full body and overhead dumbbells visible. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "9ffea41dedcc7f1b49246fa695697ad9515544cbcf485d11c6a52a52a7962a0e",
+      "sourceDimensions": [
+        1024,
+        1536
+      ],
+      "reference": "assets/hero-forge/app/neutral-front.png",
+      "referenceSha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/overhead-press-1.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 49931,
+          "sha256": "45eb7adbb484dcbdb1ff28568ba2ec7cbe308f29144ea734695ac78a1d222253"
+        },
+        {
+          "file": "assets/exercises/heroes/overhead-press-2.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 52298,
+          "sha256": "252f905ef5fdb1d9bd93f556eaba3b1db460fe3f7fd5b07992e439ab79c45130"
+        }
+      ]
+    },
+    {
+      "movement": "plank",
+      "hero": "female",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing female hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Forearm plank instructional sequence, SIDE view, no equipment. LEFT: setup on forearms and knees, elbows directly below shoulders, palms on floor, toes tucked, neutral neck. RIGHT: lift knees so only forearms and toes support body, straight line from head through hips to heels, abdomen braced. No sagging hips or high pike. Show both arms, full body and feet. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "69ea9fad99327e15c98aa3563eb3d68e78dd3191baf29deefbf4b7db7ae62bb0",
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "reference": "assets/hero-forge/app/female-front.png",
+      "referenceSha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/plank-1.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 46108,
+          "sha256": "463fbafe828340872af461ecc08ce8cf31ed60bec7adec5041b20ef9979d5407"
+        },
+        {
+          "file": "assets/exercises/heroes/plank-2.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 44011,
+          "sha256": "cc9292a4ccd23a96c1b55a9cb4fae86d4f9b4f3eee5101769931acf737d489db"
+        }
+      ]
+    },
+    {
+      "movement": "straight_leg_raise",
+      "hero": "neutral",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing neutral hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Straight-leg lying raise, SIDE THREE-QUARTER view on a plain floor. LEFT: lie on back, arms beside torso with palms down, head resting, both legs straight together extended close above floor, lower back held gently against floor. RIGHT: both straight legs lifted together to near vertical above hips, back and head stay down. No bent knees, no bench, no floating torso. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.\nCORRECTION TO PRIOR GENERATED SEQUENCE: the hero's HEAD MUST REST ON THE FLOOR in BOTH panels, with back of head touching the same ground plane as shoulders and buttocks. No crunch, no raised head, no neck flexion. Keep chin naturally away from chest. Both straight legs hover a few centimetres above floor in left panel and point upwards in right panel. Preserve all other character costume identity details.",
+      "sourceSha256": "9134ffafda9da15b92195e378363c34272211143148ba1332d36a46d92af9c5e",
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "reference": "assets/hero-forge/app/neutral-front.png",
+      "referenceSha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/straight-leg-raise-1.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 44447,
+          "sha256": "98111fe7ba60fcec3d7ade06b7149eb079ec93c575cbaecf1f6df7e9a12824f8"
+        },
+        {
+          "file": "assets/exercises/heroes/straight-leg-raise-2.jpg",
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 49467,
+          "sha256": "3462274d97c413bd6893a0a68b462fc51ba1ec98e4eb7b1a630ac7118692001d"
+        }
+      ]
+    },
+    {
+      "movement": "standing_calf_raise",
+      "hero": "male",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing male hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Standing bodyweight calf raise, SIDE THREE-QUARTER view. LEFT: stand tall, feet hip width, heels flat, knees soft, arms relaxed at sides. RIGHT: rise onto balls of both feet with heels visibly lifted, ankles extended, same upright posture and straight knees without locking. No equipment. Frame floor closely enough that heel movement is clear while full body remains visible. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "b77ea32c032515830f9a8e0461f7ea37c7c2d585d73184a861b7ab9e2927a404",
+      "sourceDimensions": [
+        1024,
+        1536
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/standing-calf-raise-1.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 59216,
+          "sha256": "fbbd0bc9834c3c92a898ff12fb9a44f75128f61de4f81a314e7dfac0fd5810cc"
+        },
+        {
+          "file": "assets/exercises/heroes/standing-calf-raise-2.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 58838,
+          "sha256": "14b9d2c5deb15485119e5f8bf3677766eaf504d23434e4a2566512042c404f03"
+        }
+      ]
+    },
+    {
+      "movement": "heavy_bag",
+      "hero": "female",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing female hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Heavy bag boxing straight punch sequence. A large black hanging cylindrical punching bag on the RIGHT of each panel, suspended securely by chain from above, body in balanced staggered boxing stance facing the bag, wearing full black/orange padded BOXING GLOVES over hands (only equipment change to costume). LEFT: guard with both gloves at cheeks, elbows tucked, knees soft. RIGHT: rear straight cross extended to bag at shoulder height, rear hip rotates, rear heel pivots, lead glove stays at cheek. Bag same position each panel, full feet visible. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "47b837241514ec2f517146296d86a82a05fecf0a3d8ad16b8a96dbe90c9ec64d",
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "reference": "assets/hero-forge/app/female-front.png",
+      "referenceSha256": "c6e060834aea48ace56033d51cb5643e6cea7572e22e400076ed0cf196c368ef",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/heavy-bag-1.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 91846,
+          "sha256": "4c04bee62d24ae39980e34da853d95cdbbda50af47840cb988a53f34dd47685f"
+        },
+        {
+          "file": "assets/exercises/heroes/heavy-bag-2.jpg",
+          "dimensions": [
+            768,
+            1024
+          ],
+          "bytes": 92378,
+          "sha256": "bf5ab6bc10169c7af17ee2e2cfa3d11968e1912f3f6dfcb370fa824706eb9f7d"
+        }
+      ]
+    },
+    {
+      "movement": "vr_boxing",
+      "hero": "neutral",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing neutral hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. VR boxing guard and jab sequence. Existing hero wearing a simple black VR headset covering eyes with safe head strap and holding a small black VR motion controller in each hand with wrist straps. NO physical punching bag. Balanced staggered boxing stance. LEFT: controllers held by cheeks in guard, elbows tucked, knees soft. RIGHT: lead arm extends a straight jab at shoulder height, rear controller stays at cheek, feet balanced, no exaggerated lunge. Same outfit, hairstyle visible around headset. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "3222468824392cfe4bf7c9a44277340a032477fe55ca206abeff8263e6a71843",
+      "sourceDimensions": [
+        1024,
+        1536
+      ],
+      "reference": "assets/hero-forge/app/neutral-front.png",
+      "referenceSha256": "7313ae1e5e8ff76ac84dedfb07b55d461756dfaaee9250895767ad7a6abdf5ae",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/vr-boxing-1.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 48243,
+          "sha256": "f8edfa6bacf1decb3e31acc51f8ee57b8f2a3f0aa9c88c8aab36d72bf461ac90"
+        },
+        {
+          "file": "assets/exercises/heroes/vr-boxing-2.jpg",
+          "dimensions": [
+            341,
+            1024
+          ],
+          "bytes": 48672,
+          "sha256": "aba6103b531a20701d93cf99f2486d75312115969f3c1d2742ab4b402a5cf25d"
+        }
+      ]
+    },
+    {
+      "movement": "battle_ropes",
+      "hero": "male",
+      "prompt": "Use case: scientific-educational, identity-preserve. Two-panel instructional exercise illustration for Body Anvil. Exact existing male hero from reference: preserve recognizable face, hairstyle, proportions, charcoal/black armour and original orange panel patterns and grey/orange trainers. Do not redesign. Detailed polished comic illustration matching reference style. Two equal-width panels side by side, full body and all equipment visible in EACH panel, matching camera and scale. Plain dark charcoal background, no text, logos or decorative borders. Thin subtle divider exactly at middle. Alternating battle ropes. Hero stands in athletic quarter squat feet shoulder width, neutral spine, holding ONE thick black rope end in each hand. Exactly TWO long ropes extend forwards along floor to a single visible secure anchor in foreground, no extra ropes. LEFT: right hand lifted near waist/chest, left hand low near thigh, right rope forms rising wave. RIGHT: left hand lifted near waist/chest, right hand low near thigh, left rope forms rising wave. Both panels show same stance and realistic rope waves, full feet visible. Physically believable grip and anatomy. One adult hero per panel, same identity in both, no extra limbs. All feet visible.",
+      "sourceSha256": "a374e674134148946483f0d1eeed0772a410f1e1afdbf667319dd22c167768e1",
+      "sourceDimensions": [
+        1199,
+        1312
+      ],
+      "reference": "assets/hero-forge/app/male-front.png",
+      "referenceSha256": "073d50c569f407b744e07487ed3964cdaba9d9fd7dd1c4ceb56eb1ab7e669b18",
+      "outputs": [
+        {
+          "file": "assets/exercises/heroes/battle-ropes-1.jpg",
+          "dimensions": [
+            468,
+            1024
+          ],
+          "bytes": 74080,
+          "sha256": "a507774ee23ca166c9b132c0e2da6b69f6486596c09bcfd59b32ee8320784c8f"
+        },
+        {
+          "file": "assets/exercises/heroes/battle-ropes-2.jpg",
+          "dimensions": [
+            468,
+            1024
+          ],
+          "bytes": 74000,
+          "sha256": "4adffca51509efba9eebb1d2a03d4ebdc2c813f885dff9256d81a66c52ac807d"
+        }
+      ]
+    }
+  ]
+}

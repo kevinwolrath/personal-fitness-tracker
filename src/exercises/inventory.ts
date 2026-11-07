@@ -22,6 +22,8 @@ export const inventorySchema = z.strictObject({
       kind: z.enum(['strength', 'conditioning']),
       /** Any one of these equipment types is enough; empty = no equipment. */
       equipment: z.array(z.enum(equipmentTypes)).max(6),
+      /** Editable log-form draft, not completed work or a recommendation. */
+      defaultDose: z.strictObject({ sets: z.number().int().positive(), seconds: z.number().positive() }).optional(),
       primary: z.array(muscleId).min(1),
       secondary: z.array(muscleId),
     }),

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius, space } from './theme';
+import { radius, space, createThemedStyles } from './theme';
 
 type Props = {
   visible: boolean;
@@ -28,6 +28,8 @@ type Props = {
  * (iOS can only present a modal from the one currently shown).
  */
 export function Sheet({ visible, onClose, children, label, fill, onDismiss }: Props) {
+  const styles = useStyles();
+
   if (Platform.OS === 'ios') {
     return (
       <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose} onDismiss={onDismiss}>
@@ -51,7 +53,7 @@ export function Sheet({ visible, onClose, children, label, fill, onDismiss }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   fill: { flex: 1, justifyContent: 'flex-end' },
   scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
   iosBody: { flex: 1, backgroundColor: colors.surface, paddingHorizontal: space.xl },
@@ -65,4 +67,4 @@ const styles = StyleSheet.create({
   },
   panelFill: { height: '92%' },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginVertical: space.sm },
-});
+}));

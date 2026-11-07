@@ -8,7 +8,7 @@ import type { PrescriptionItem } from '../../prescription/prescribe';
 import { partLabels } from '../../prescription/windows';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { MealDetails } from './MealDetails';
 
 type Props = {
@@ -50,6 +50,9 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
  */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
 export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { item } = next;
   // Nothing is due yet (#51): a compact preview only. No meal, no Done; early completion or skipping is in Details.
   if (next.status === 'later') {
@@ -116,19 +119,19 @@ export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDeta
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg, gap: space.xs },
+const useStyles = createThemedStyles(({ colors, type }) => ({
+  card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, gap: space.xs },
   eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.onInkAction },
-  title: { fontSize: 24, fontWeight: '800', color: colors.onAccent },
+  title: { fontSize: 24, fontWeight: '800', color: colors.onCard },
   sub: { ...type.detail, color: colors.onInkMuted },
   meal: { marginTop: space.sm },
   actions: { gap: space.sm, marginTop: space.md },
   compact: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md },
   compactText: { flex: 1, gap: 2 },
-  compactTitle: { fontSize: 19, fontWeight: '800', color: colors.onAccent },
+  compactTitle: { fontSize: 19, fontWeight: '800', color: colors.onCard },
   compactDetails: { minHeight: touch, paddingHorizontal: space.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.inkRaised, alignItems: 'center', justifyContent: 'center' },
-  compactDetailsText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+  compactDetailsText: { color: colors.onCard, fontSize: 15, fontWeight: '700' },
   pressed: { opacity: 0.75 },
   details: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   detailsText: { color: colors.onInkMuted, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
-});
+}));

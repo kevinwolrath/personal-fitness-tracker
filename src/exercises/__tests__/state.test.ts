@@ -37,6 +37,15 @@ beforeEach(() => {
   store = new KeyValueTrackingStore(new MemoryKeyValue());
 });
 
+it('#79 retries the same submitted exercise ID without duplicating volume, including a rest day', async () => {
+  const input = { id: 'stable-form-submission', movement: 'kettlebell_squat', date: '2026-11-06', at: at('2026-11-06', '18:00'), sets: 2, reps: 8 };
+  await logExercise(store, input); await logExercise(store, input);
+  expect(await store.exerciseLogs()).toHaveLength(1);
+  const state = exerciseState(plan, await loadExerciseHistory(store, plan, input.date), { now: input.at, today: input.date });
+  expect(state.restDay).toBe(true);
+  expect(state.coverage.find(m => m.muscle === 'quadriceps')!.volume).toBe(2);
+});
+
 describe('loading history from the store', () => {
   it('session ticks carry the prescribed dose (from the day snapshot) and their tick time', async () => {
     await tick(store, MON, 'full:0:kettlebell_squat', at(MON, '07:10'));
@@ -148,7 +157,7 @@ describe('exercise state', () => {
     expect((await state(at(MON, '07:05'))).sessionOrders.resistance.full).toEqual(before);
     // The order is display only: keys and ticks are unchanged.
     const progress = sessionProgress(strength.session! as any, (await store.getDay(plan.id, MON)).activities.resistance, { full: before });
-    expect(progress.rows[0]).toMatchObject({ key: `full:${before[0]}:${labels[0]}`, done: true });
+    expect(progress.rows.at(-1)).toMatchObject({ key: `full:${before[0]}:${labels[0]}`, done: true });
     expect(progress.next!.exercise.movement).toBe(labels[1]);
   });
 

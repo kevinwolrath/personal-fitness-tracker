@@ -5,7 +5,7 @@ import type { Measurement, Plan } from '../../plan/schema';
 import { measurementMetric } from '../../observations/planMetrics';
 import { observationSource } from '../../observations/format';
 import type { Observation } from '../../observations/types';
-import { colors, radius, space, type } from '../../ui/theme';
+import { radius, space, useTheme, createThemedStyles } from '../../ui/theme';
 
 type Props = {
   plan: Plan;
@@ -18,6 +18,9 @@ type Props = {
 
 /** Measurements scheduled for this day, with the plan goal for each (contract 03 §6). */
 export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   if (!due.length) return null;
   return (
     <View style={styles.row}>
@@ -64,7 +67,7 @@ export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: P
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   row: { flexDirection: 'row', gap: space.sm },
   cell: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.md, padding: space.lg, minHeight: 96 },
   pressed: { opacity: 0.75 },
@@ -74,4 +77,4 @@ const styles = StyleSheet.create({
   value: { fontSize: 26, fontWeight: '800', color: colors.ink, marginVertical: space.xs, ...type.number },
   valueStale: { color: colors.faint },
   valueEmpty: { fontSize: 20, fontWeight: '700' },
-});
+}));

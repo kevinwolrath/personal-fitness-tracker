@@ -4,7 +4,7 @@ import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native
 import { appName } from '../../observations/format';
 import { daysBetween, type Point } from '../../progress/series';
 import type { Series } from '../../progress/report';
-import { colors, space } from '../../ui/theme';
+import { space, useTheme, createThemedStyles } from '../../ui/theme';
 
 /**
  * A small time chart (#52). Measured values are dots, calculated values are lines; nothing is drawn between
@@ -13,13 +13,17 @@ import { colors, space } from '../../ui/theme';
 const H = 132;
 /** The right edge is reserved for the axis labels, so data never runs under them. */
 const PAD = { top: 10, bottom: 20, left: 6, right: 40 };
-const tones = { accent: colors.accent, ink: colors.ink, warm: colors.warm };
+
 
 const shortDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const source = (p: Point) =>
   p.kind === 'calculated' ? 'calculated' : p.source === 'integration' ? `${p.app ? appName(p.app) : 'another app'}, imported` : p.source === 'screenshot' ? 'from a screenshot' : 'entered by you';
 
 export function LineChart({ series, unit, reference, decimals = 1, testID }: { series: Series[]; unit: string; reference?: { value: number; label: string }; decimals?: number; testID?: string }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
+  const tones = { accent: colors.accent, ink: colors.ink, warm: colors.warm };
   const [width, setWidth] = useState(0);
   const [picked, setPicked] = useState<{ p: Point; label: string } | null>(null);
   const box = useRef<View>(null);
@@ -128,7 +132,7 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   legend: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.md, rowGap: 2, marginTop: space.xs },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   swDot: { width: 8, height: 8, borderRadius: 4 },
@@ -137,4 +141,4 @@ const styles = StyleSheet.create({
   swDash: { backgroundColor: colors.muted, opacity: 0.6 },
   legendText: { fontSize: 12, color: colors.muted, flexShrink: 1 },
   picked: { marginTop: space.xs, fontSize: 13, color: colors.ink, fontWeight: '600' },
-});
+}));

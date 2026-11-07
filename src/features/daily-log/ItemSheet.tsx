@@ -1,5 +1,9 @@
 import type { EnergyDisplay } from '../../energy';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CoverageSheet } from '../muscles/CoverageSheet';
+import { MuscleMap } from '../muscles/MuscleMap';
+import type { LocalDate } from '../../plan/dates';
+import { toLocalDate } from '../../plan/dates';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
@@ -12,13 +16,14 @@ import { partLabels } from '../../prescription/windows';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
-import { space, type } from '../../ui/theme';
+import { space, useTheme } from '../../ui/theme';
 import { MealDetails } from './MealDetails';
 import { ExerciseChecklist, VersionSwitch } from './ExerciseChecklist';
 import { sessionProgress, type ChecklistRow, type SessionOrder, type Variant } from '../../prescription/exercises';
 import { ModalHeader } from '../../ui/ModalHeader';
 
 type Props = {
+  date?: LocalDate;
   /** Today's display order for the session's exercises (#56 option C); absent = plan order. */
   sessionOrder?: SessionOrder;
   item: PrescriptionItem | null;
@@ -37,9 +42,13 @@ type Props = {
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder }: Props) {
+export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder }: Props) {
+  const { colors, type } = useTheme();
+
   const exerciseConfig = plan.exercise;
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
+  const [coverageOpen, setCoverageOpen] = useState(false);
+  useEffect(() => { setCoverageOpen(false); setGuideFor(null); }, [item?.key]);
   const act = (fn: () => void) => () => {
     fn();
     onClose();
@@ -71,6 +80,8 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
 
             {session && progress && (
               <View style={styles.block}>
+                <MuscleMap compact gender={plan.profile?.gender} />
+                <Button title="Muscle coverage & log exercise" variant="secondary" onPress={() => setCoverageOpen(true)} />
                 <Text style={type.section}>
                   {progress.done} of {progress.total} exercises
                 </Text>
@@ -138,7 +149,8 @@ export function ItemSheet({ item, logs, editable, onClose, onSetDone, onSetSkipp
         </View>
       )}
       {/* Nested so closing the guide returns to this sheet (contract 09). */}
-      <ExerciseGuideSheet guide={item && guideFor ? buildGuide(guideFor, exerciseConfig) : null} onClose={() => setGuideFor(null)} />
+      <ExerciseGuideSheet gender={plan.profile?.gender} guide={item && guideFor ? buildGuide(guideFor, exerciseConfig) : null} onClose={() => setGuideFor(null)} />
+      {item && coverageOpen && <CoverageSheet date={date} editable={editable} session={session} onClose={() => setCoverageOpen(false)} />}
     </Sheet>
   );
 }

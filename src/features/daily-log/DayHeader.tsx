@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { LocalDate } from '../../plan/dates';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { dayLabels } from './dayLabels';
 
 type Props = {
@@ -21,6 +21,9 @@ type Props = {
  * The date and title never truncate; they're the answer to "where am I in the log?".
  */
 export function DayHeader(p: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const labels = dayLabels(p.date, p.today);
   const pct = p.progress.total ? p.progress.done / p.progress.total : 0;
   return (
@@ -76,7 +79,7 @@ export function DayHeader(p: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   nav: { flexDirection: 'row', alignItems: 'center', marginLeft: -space.md },
   chevron: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center' },
   chevronText: { fontSize: 28, color: colors.ink, lineHeight: 30 },
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
     minWidth: touch,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -113,4 +116,4 @@ const styles = StyleSheet.create({
   progressText: { ...type.number },
   track: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.line, overflow: 'hidden' },
   fill: { height: 4, backgroundColor: colors.accent },
-});
+}));

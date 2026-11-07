@@ -27,7 +27,7 @@
     { "movement": "kettlebell_romanian_deadlift", "name": "Kettlebell Romanian deadlift", "kind": "strength", "equipment": ["kettlebell"], "primary": ["hamstrings", "glutes"], "secondary": ["lower_back", "core"] },
     { "movement": "hammer_curl", "name": "Hammer curls", "kind": "strength", "equipment": ["dumbbells", "free_weights"], "primary": ["biceps"], "secondary": ["forearms"] },
     { "movement": "overhead_press", "name": "Overhead press", "kind": "strength", "equipment": ["dumbbells", "free_weights", "kettlebell"], "primary": ["shoulders"], "secondary": ["triceps", "core"] },
-    { "movement": "plank", "name": "Plank", "kind": "strength", "equipment": [], "primary": ["core"], "secondary": ["shoulders"] },
+    { "movement": "plank", "name": "Plank", "kind": "strength", "equipment": [], "defaultDose": { "sets": 1, "seconds": 20 }, "primary": ["core"], "secondary": ["shoulders"] },
     { "movement": "straight_leg_raise", "name": "Straight-leg lying raises", "kind": "strength", "equipment": [], "primary": ["hip_flexors"], "secondary": ["core"] },
     { "movement": "standing_calf_raise", "name": "Standing calf raises", "kind": "strength", "equipment": [], "primary": ["calves"], "secondary": [] },
     { "movement": "heavy_bag", "name": "Heavy bag boxing", "kind": "conditioning", "equipment": ["heavy_bag"], "primary": ["shoulders"], "secondary": ["chest", "triceps", "core"] },

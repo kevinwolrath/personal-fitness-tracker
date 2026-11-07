@@ -8,7 +8,7 @@ import { summarizeConfig } from '../../config/summary';
 import { useApp } from '../../providers/AppProvider';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useConfigSession } from './useConfigSession';
 
 const mark: Record<ChangeLine['kind'], string> = { add: '+', remove: '−', change: '~' };
@@ -20,6 +20,9 @@ const listWords = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(
  * sections that change, and there is one primary action at a time. Apply lives in a fixed bottom bar.
  */
 export function ConfigureScreen() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { store, reloadPlan, energy } = useApp();
   const s = useConfigSession(store, reloadPlan, energy);
   const [copied, setCopied] = useState(false);
@@ -178,6 +181,9 @@ export function ConfigureScreen() {
 
 /** A finished step, collapsed to one line with a way back in. */
 function DoneRow(p: { label: string; action: string; actionLabel: string; onPress: () => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   return (
     <View style={styles.doneRow}>
       <View style={styles.tick}>
@@ -195,6 +201,9 @@ function DoneRow(p: { label: string; action: string; actionLabel: string; onPres
 
 /** Only the sections that change, one row each; open a row to see every change in it. */
 function Preview({ sections, notes }: { sections: SectionPreview[]; notes: string[] }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const [open, setOpen] = useState<string | null>(null);
   const [showFixes, setShowFixes] = useState(false);
   const changing = sections.filter((s) => s.supplied && s.lines.length);
@@ -271,7 +280,7 @@ function Preview({ sections, notes }: { sections: SectionPreview[]; notes: strin
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   center: { alignItems: 'center', justifyContent: 'center' },
   header: { paddingHorizontal: space.lg },
@@ -333,4 +342,4 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
     backgroundColor: colors.bg,
   },
-});
+}));

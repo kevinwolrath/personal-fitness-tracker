@@ -9,7 +9,7 @@ import { shareJson } from '../../platform/files';
 import { useApp } from '../../providers/AppProvider';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Toast, type ToastState } from '../../ui/Toast';
-import { colors, space, touch } from '../../ui/theme';
+import { space, touch, createThemedStyles } from '../../ui/theme';
 import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { TabBar } from './TabBar';
 import { AppMenu, type AppMenuItem } from './AppMenu';
@@ -19,6 +19,8 @@ import { SettingsSheet } from '../settings/SettingsSheet';
 import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
 import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
 import { energyDisplayDetail } from '../../energy';
+import { APP_NAME } from '../../brand';
+import { CoverageSheet } from '../muscles/CoverageSheet';
 
 const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
@@ -37,6 +39,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 }
 
 function Shell({ children }: { children: ReactNode }) {
+  const [coverageOpen, setCoverageOpen] = useState(false);
+  const styles = useStyles();
+
   const { store, energy } = useApp();
   const reminders = useReminders();
   const [remindersOpen, setRemindersOpen] = useState(false);
@@ -80,6 +85,7 @@ function Shell({ children }: { children: ReactNode }) {
       onSelect: () => setRemindersOpen(true),
     },
     { key: 'settings', label: 'Settings', detail: energyDisplayDetail(energy), onSelect: () => setSettingsOpen(true) },
+    { key: 'coverage', label: 'Muscle coverage & exercise log', detail: 'Coverage, recovery and eligible exercises', onSelect: () => setCoverageOpen(true) },
     { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
   ];
 
@@ -94,8 +100,8 @@ function Shell({ children }: { children: ReactNode }) {
               <View style={styles.line} />
             </View>
           </Pressable>
-          <Text style={styles.appName} numberOfLines={1}>
-            Personal Fitness Tracker
+          <Text style={styles.appName} numberOfLines={1} testID="app-name">
+            {APP_NAME}
           </Text>
         </View>
       </SafeAreaView>
@@ -109,6 +115,7 @@ function Shell({ children }: { children: ReactNode }) {
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {coverageOpen && <CoverageSheet date={toLocalDate(now)} editable onClose={() => setCoverageOpen(false)} />}
       <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />
       <ConfirmDialog
         visible={confirmExport}
@@ -125,7 +132,7 @@ function Shell({ children }: { children: ReactNode }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   root: { flex: 1, backgroundColor: colors.bg },
   bar: { backgroundColor: colors.bg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line, paddingHorizontal: space.sm },
   barRow: { flexDirection: 'row', alignItems: 'center', height: touch, gap: space.xs },
@@ -135,4 +142,4 @@ const styles = StyleSheet.create({
   appName: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.ink },
   screen: { flex: 1 },
   toastDock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: space.lg },
-});
+}));

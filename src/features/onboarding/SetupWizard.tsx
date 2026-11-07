@@ -44,8 +44,8 @@ import { exerciseStyles } from '../../presets/exercisePlan';
 import { plannedSlots, type MealSlot } from '../../presets/meals';
 import type { StoredPlan, TrackingStore } from '../../storage/types';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { colors, radius, space, touch, type } from '../../ui/theme';
-import { Card, Chip, Chips, Grid, Question, styles as ws, TextLink, WizardFrame } from './WizardParts';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
+import { Card, Chip, Chips, Grid, Question, useWizardStyles, TextLink, WizardFrame } from './WizardParts';
 
 type Props = {
   store: TrackingStore;
@@ -65,6 +65,10 @@ const daysOf = (a: Record<string, any>) => (a.appliesTo?.days as string[] | unde
  * user starts with it (or, editing, confirms the replacement).
  */
 export function SetupWizard({ store, energy, onFinished, edit }: Props) {
+  const { colors, type } = useTheme();
+  const local = useLocal();
+  const ws = useWizardStyles();
+
   const [draft, setDraft] = useState<Draft | null>(edit ? edit.initial : null);
   const [tab, setTab] = useState<'exercise' | 'meals'>('exercise');
   const [swapSlot, setSwapSlot] = useState<MealSlot | null>(null);
@@ -535,6 +539,9 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
 
 /** What a rebuild replaces, before the user confirms (#53). */
 function ChangeSummary({ current, next }: { current: RawPlan; next: RawPlan }) {
+  const local = useLocal();
+  const ws = useWizardStyles();
+
   const c = rebuildSummary(current, next);
   return (
     <Card title="What will change" testID="rebuild-changes">
@@ -548,6 +555,8 @@ function ChangeSummary({ current, next }: { current: RawPlan; next: RawPlan }) {
 }
 
 function Row({ title, sub, action, muted, testID }: { title: string; sub: string; action?: { label: string; a11y: string; onPress: () => void }; muted?: boolean; testID?: string }) {
+  const local = useLocal();
+
   return (
     <View style={local.row} testID={testID}>
       <View style={local.rowText}>
@@ -564,6 +573,10 @@ function Row({ title, sub, action, muted, testID }: { title: string; sub: string
 }
 
 function AgeQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
+  const { colors, type } = useTheme();
+  const local = useLocal();
+  const ws = useWizardStyles();
+
   const [exact, setExact] = useState(draft.age !== undefined);
   const [text, setText] = useState(draft.age !== undefined ? String(draft.age) : '');
   const minor = isMinor(draft);
@@ -626,6 +639,10 @@ function AgeQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) 
 }
 
 function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
+  const { colors, type } = useTheme();
+  const local = useLocal();
+  const ws = useWizardStyles();
+
   const [exact, setExact] = useState(draft.exactWeight !== undefined);
   const [text, setText] = useState(draft.exactWeight !== undefined ? String(draft.exactWeight) : '');
   return (
@@ -693,6 +710,10 @@ function WeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draf
 }
 
 function HeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draft) => Draft) => void }) {
+  const { colors, type } = useTheme();
+  const local = useLocal();
+  const ws = useWizardStyles();
+
   const inches = draft.unit === 'lb';
   const [text, setText] = useState(draft.heightCm ? String(inches ? cmToIn(draft.heightCm) : draft.heightCm) : '');
   return (
@@ -719,6 +740,8 @@ function HeightQuestion({ draft, update }: { draft: Draft; update: (fn: (d: Draf
 }
 
 function GoalOption({ goal, selected, onToggle }: { goal: Goal; selected: boolean; onToggle: () => void }) {
+  const local = useLocal();
+
   const g = goalLabels[goal];
   return (
     <Pressable
@@ -740,7 +763,7 @@ function GoalOption({ goal, selected, onToggle }: { goal: Goal; selected: boolea
   );
 }
 
-const local = StyleSheet.create({
+const useLocal = createThemedStyles(({ colors, type }) => ({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   body: { fontSize: 15, color: colors.ink, lineHeight: 21, flexShrink: 1 },
   small: { fontSize: 13, color: colors.muted, lineHeight: 18 },
@@ -788,4 +811,4 @@ const local = StyleSheet.create({
   mealTitle: { fontSize: 16, fontWeight: '800', color: colors.ink },
   use: { minHeight: touch, minWidth: touch, alignSelf: 'flex-start', justifyContent: 'center' },
   useText: { fontSize: 15, fontWeight: '700', color: colors.accent },
-});
+}));

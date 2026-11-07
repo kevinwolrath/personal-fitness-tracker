@@ -8,9 +8,11 @@ import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 export function TextButton({ title, onPress, disabled, strong }: { title: string; onPress: () => void; disabled?: boolean; strong?: boolean }) {
+  const styles = useStyles();
+
   return (
     <Pressable onPress={onPress} disabled={disabled} style={styles.textButton} accessibilityRole="button" accessibilityLabel={title}>
       <Text style={[styles.textButtonText, strong && styles.strong, disabled && styles.disabled]}>{title}</Text>
@@ -29,6 +31,9 @@ export function MeasureSheet(p: {
   onSave: (value: number) => void;
   onRemove: (id: string) => void;
 }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const m = p.measurement;
   const [text, setText] = useState('');
   useEffect(() => {
@@ -96,6 +101,9 @@ export function DayTypeSheet(p: {
   onClose: () => void;
   onChoose: (dayTypeId: string | null) => void;
 }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   return (
     <Sheet visible={p.visible} onClose={p.onClose} label="Day type">
       <View style={styles.body}>
@@ -127,7 +135,7 @@ export function DayTypeSheet(p: {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   body: { paddingBottom: space.md },
   textButton: { minHeight: touch, minWidth: touch, justifyContent: 'center' },
   textButtonText: { fontSize: 17, color: colors.accent, fontWeight: '600' },
@@ -162,4 +170,4 @@ const styles = StyleSheet.create({
   },
   optionText: { flex: 1 },
   check: { width: 24, fontSize: 18, color: colors.accent, fontWeight: '800', textAlign: 'right' },
-});
+}));

@@ -63,7 +63,9 @@ export function sessionProgress(session: PrescribedSession, log: ActivityLog | u
   });
   const o = order?.[variant];
   const valid = !!o && o.length === planned.length && [...o].sort((a, b) => a - b).every((v, i) => v === i);
-  const rows = valid ? o!.map((i) => planned[i]) : planned;
+  const ordered = valid ? o!.map((i) => planned[i]) : planned;
+  // Display only: preserve the day's frozen priority order within each partition and the original keys.
+  const rows = [...ordered.filter(r => !r.done), ...ordered.filter(r => r.done)];
   const required = rows.filter((r) => !r.optional);
   const done = required.filter((r) => r.done).length;
   return {
@@ -105,7 +107,7 @@ export function tickExercise(ctx: CompletionCtx, activity: Activity, session: Pr
     labelSnapshot: activity.label,
     updatedAt: ctx.now,
     variant: p.variant,
-    exercisesDone: [...otherTicks(cur, p.variant), ...p.rows.filter((r) => ticks.has(r.key)).map((r) => r.key)],
+    exercisesDone: [...otherTicks(cur, p.variant), ...exercisesOf(session, p.variant).map((e, i) => exerciseKey(p.variant, i, e)).filter(key => ticks.has(key))],
   };
   const purpose = activity.purpose ?? ctx.item.purpose;
   if (complete && !wasDone) return change(ctx, activity.id, activity.label, purpose, log, 'complete', p.variant);

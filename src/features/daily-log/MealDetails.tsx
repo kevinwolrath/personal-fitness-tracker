@@ -1,7 +1,7 @@
 import { speakEnergy } from '../../energy';
 import { StyleSheet, Text, View } from 'react-native';
 import type { MealView } from '../../plan/meals';
-import { colors, space, type } from '../../ui/theme';
+import { space, useTheme, createThemedStyles } from '../../ui/theme';
 
 /**
  * "What exactly am I eating, and how much?" (#26). Renders a MealView from the plan: ingredient,
@@ -9,6 +9,9 @@ import { colors, space, type } from '../../ui/theme';
  * `card` sits inside the ink "Do this next" card; `sheet` is the full view in the details sheet.
  */
 export function MealDetails({ meal, variant, testID }: { meal: MealView; variant: 'card' | 'sheet'; testID?: string }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const onInk = variant === 'card';
   return (
     <View style={styles.wrap} testID={testID}>
@@ -51,7 +54,7 @@ export function MealDetails({ meal, variant, testID }: { meal: MealView; variant
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   wrap: { gap: space.sm },
   list: { borderRadius: 16, backgroundColor: colors.surface },
   listOnInk: { paddingHorizontal: space.md },
@@ -64,7 +67,7 @@ const styles = StyleSheet.create({
   measureOnly: { fontSize: 15, color: colors.ink },
   prep: { gap: space.xs },
   prepText: { ...type.body, fontSize: 16, fontWeight: '400', lineHeight: 23 },
-  prepOnInk: { fontSize: 15, lineHeight: 21, color: colors.onAccent },
+  prepOnInk: { fontSize: 15, lineHeight: 21, color: colors.onCard },
   nutrition: { ...type.detail, fontSize: 15, color: colors.ink, ...type.number },
   nutritionOnInk: { fontSize: 14, color: colors.onInkMuted, ...type.number },
-});
+}));

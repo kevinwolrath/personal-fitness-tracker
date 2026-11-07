@@ -29,6 +29,7 @@ artifacts/
 
 # Tests
 test-results/
+test-results-dev/
 playwright-report/
 coverage/
 

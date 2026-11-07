@@ -23,7 +23,7 @@
 ## Visual system
 
 - Use a small set of theme tokens (colours, spacing on a 4 dp scale, radii, type scale) defined in one place. Components never hard-code colour hex values.
-- **Light theme only in V1** (decided in issue #3; `userInterfaceStyle: "light"`). Tokens live in `src/ui/theme.ts` and are structured so a dark theme can be added without touching components.
+- **Hero Forge Theme 01 is the default (#79)**: charcoal/graphite surfaces, metallic edges and restrained ember accents. **Classic light** retains the original palette and remains selectable in Settings → Appearance. A device-only `pft.display.theme` preference persists the choice; absent/invalid values fall back to Hero Forge. Tokens and the typed registry live in `src/ui/theme.ts`, with a root ThemeProvider. Screens and shared components read contextual tokens/styles rather than module-captured colours. Status bar, portals, charts and forms follow the selected theme. A failed preference write applies for the session and is shown in Settings; another selection retries.
 - System font. Show numbers with tabular figures where they change in place, such as counts and weights.
 
 ## Out of scope for V1

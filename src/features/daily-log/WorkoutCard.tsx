@@ -3,7 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ChecklistRow, SessionProgress, Variant } from '../../prescription/exercises';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import type { PrescribedExercise } from '../../prescription/session';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, createThemedStyles } from '../../ui/theme';
 import { ExerciseChecklist, VersionSwitch } from './ExerciseChecklist';
 
 type Props = {
@@ -16,6 +16,7 @@ type Props = {
   onChooseVariant: (v: Variant) => void;
   onOpenExercise: (e: PrescribedExercise) => void;
   onDetails: () => void;
+  onCoverage?: () => void;
   /** Just finished: hold "complete · 5/5" briefly before "Do this next" moves on. */
   completed?: boolean;
   onDismissCompleted?: () => void;
@@ -26,6 +27,8 @@ type Props = {
  * Collapsed is deliberately minimal (identity + progress + next exercise): don't add controls or copy to it.
  */
 export function WorkoutCard(p: Props) {
+  const styles = useStyles();
+
   const { item, progress } = p;
   const s = item.session!;
   const summary = [progress.variant === 'short' ? 'Short' : null, progress.minutes ? `${progress.minutes} min` : null, `${progress.done} of ${progress.total} exercises`]
@@ -109,6 +112,7 @@ export function WorkoutCard(p: Props) {
           <Pressable onPress={p.onDetails} style={styles.link} accessibilityRole="button" accessibilityLabel={`${item.label} options`}>
             <Text style={styles.linkText}>Skip and more</Text>
           </Pressable>
+          {p.onCoverage && <Pressable onPress={p.onCoverage} style={styles.link} accessibilityRole="button" accessibilityLabel="Muscle coverage and log exercise"><Text style={styles.linkText}>Muscle coverage & log exercise ›</Text></Pressable>}
         </>
       ) : progress.next ? (
         <Animated.View style={{ opacity: fade }}>
@@ -119,15 +123,15 @@ export function WorkoutCard(p: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg, paddingBottom: space.md, gap: space.sm },
+const useStyles = createThemedStyles(({ colors, type }) => ({
+  card: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, paddingBottom: space.md, gap: space.sm },
   headRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
   flex: { flex: 1 },
   eyebrow: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.onInkAction },
-  title: { fontSize: 22, fontWeight: '800', color: colors.onAccent },
+  title: { fontSize: 22, fontWeight: '800', color: colors.onCard },
   sub: { ...type.detail, color: colors.onInkMuted, ...type.number },
   expand: { width: touch, height: touch, borderRadius: touch / 2, borderWidth: 1, borderColor: colors.inkRaised, alignItems: 'center', justifyContent: 'center', marginRight: -space.xs },
-  expandText: { color: colors.onAccent, fontSize: 18, fontWeight: '700' },
+  expandText: { color: colors.onCard, fontSize: 18, fontWeight: '700' },
   link: { minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   linkText: { color: colors.onInkMuted, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
-});
+}));

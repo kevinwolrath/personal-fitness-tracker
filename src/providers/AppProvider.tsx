@@ -6,7 +6,7 @@ import { preferences } from '../platform/preferences';
 import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
-import { colors, space, type } from '../ui/theme';
+import { space, useTheme, createThemedStyles } from '../ui/theme';
 import { SetupWizard } from '../features/onboarding/SetupWizard';
 
 type AppData = {
@@ -38,6 +38,9 @@ export function useApp(): AppData {
  * instead of the app; setup creates the user's own plan and then the app opens on Today.
  */
 export function AppProvider({ children }: { children: ReactNode }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { store: TrackingStore; plan: null } | { error: string } | null>(null);
   const [chosenEnergy, setChosenEnergy] = useState<EnergyDisplay | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
@@ -92,7 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl, backgroundColor: colors.bg },
   error: { marginTop: space.sm, textAlign: 'center' },
-});
+}));

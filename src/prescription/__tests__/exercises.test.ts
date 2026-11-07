@@ -92,3 +92,15 @@ it('ticks are kept per version: switching shows the other version’s own ticks,
   expect(switchNeedsConfirm(session, undefined)).toBe(false);
   expect(chooseVariant(ctx(), activity, session, 'full')).toBeNull(); // already full: nothing to record
 });
+it('#79 completed rows move down without changing frozen order or original tick keys', () => {
+  const order = { full: [4, 2, 0, 1, 3] };
+  const first = sessionProgress(session, undefined, order);
+  const key = first.rows[0].key;
+  const changed = tickExercise(ctx(), activity, session, key, true).log!;
+  const next = sessionProgress(session, changed, order);
+  expect(next.rows.map(r => r.key)).toEqual([...first.rows.slice(1).map(r => r.key), key]);
+  expect(next.rows.at(-1)!.done).toBe(true);
+  expect(next.next!.key).toBe(first.rows[1].key);
+  const undone = tickExercise(ctx(changed), activity, session, key, false).log!;
+  expect(sessionProgress(session, undone, order).rows.map(r => r.key)).toEqual(first.rows.map(r => r.key));
+});

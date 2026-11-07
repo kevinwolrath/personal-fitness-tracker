@@ -1,14 +1,20 @@
+import { ThemeProvider } from '@/src/ui/ThemeProvider';
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
+import { APP_NAME } from '@/src/brand';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from '@/src/providers/AppProvider';
 import { PhoneFrame } from '@/src/ui/PhoneFrame';
-import { colors } from '@/src/ui/theme';
+import { useTheme } from '@/src/ui/theme';
 
-export default function RootLayout() {
+function ThemedApp() {
+  const { colors, dark } = useTheme();
+
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <Head><title>{APP_NAME}</title></Head>
+      <StatusBar style={dark ? 'light' : 'dark'} />
       <PhoneFrame>
         <AppProvider>
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
@@ -22,3 +28,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default function RootLayout() { return <ThemeProvider><ThemedApp /></ThemeProvider>; }

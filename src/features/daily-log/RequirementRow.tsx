@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Activity } from '../../plan/schema';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import type { ActivityLog } from '../../storage/types';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 type Props = {
   item: PrescriptionItem;
@@ -18,6 +18,9 @@ type Props = {
  * the others show as not needed instead of becoming more work.
  */
 export function RequirementRow({ item, logs, editable, isNext, onOption, onMore }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const done = item.state === 'done';
   const skipped = item.state === 'skipped';
   const sub = done
@@ -72,7 +75,7 @@ export function RequirementRow({ item, logs, editable, isNext, onOption, onMore 
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   row: { paddingVertical: space.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line, gap: space.sm },
   next: { borderLeftWidth: 4, borderLeftColor: colors.accent, paddingLeft: space.sm, marginLeft: -space.md },
   top: { flexDirection: 'row', alignItems: 'center', gap: space.md },
@@ -100,4 +103,4 @@ const styles = StyleSheet.create({
   optionIdle: { opacity: 0.4 },
   optionText: { fontSize: 15, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
   optionTextDone: { color: colors.onAccent },
-});
+}));

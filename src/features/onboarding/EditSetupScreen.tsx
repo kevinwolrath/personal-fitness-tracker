@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { draftFromProfile } from '../../onboarding/draft';
 import { useApp } from '../../providers/AppProvider';
 import type { StoredPlan } from '../../storage/types';
-import { colors } from '../../ui/theme';
+import { useTheme, createThemedStyles } from '../../ui/theme';
 import { SetupWizard } from './SetupWizard';
 
 /**
@@ -12,6 +12,9 @@ import { SetupWizard } from './SetupWizard';
  * plan's saved answers and replaces the plan only after the user confirms; history is kept (contract 13).
  */
 export function EditSetupScreen() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { store, plan, energy, reloadPlan } = useApp();
   const [current, setCurrent] = useState<StoredPlan | null>(null);
   useEffect(() => {
@@ -38,4 +41,4 @@ export function EditSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({ center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg } });
+const useStyles = createThemedStyles(({ colors, type }) => ({ center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg } }));

@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sheet } from '../../ui/Sheet';
-import { colors, space, touch, type } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { ModalHeader } from '../../ui/ModalHeader';
 
 export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void };
@@ -15,6 +15,9 @@ type Props = { visible: boolean; onClose: () => void; items: AppMenuItem[] };
  * runs inside the tap, which web browsers require before they'll open a file picker.
  */
 export function AppMenu({ visible, onClose, items }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const pending = useRef<(() => void) | null>(null);
   const select = (item: AppMenuItem) => {
     onClose();
@@ -49,9 +52,9 @@ export function AppMenu({ visible, onClose, items }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   list: { marginTop: space.sm, marginBottom: space.lg },
   item: { minHeight: touch + 12, justifyContent: 'center', paddingVertical: space.sm, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 2 },
   pressed: { opacity: 0.6 },
   label: { fontSize: 17, fontWeight: '700', color: colors.ink },
-});
+}));

@@ -4,10 +4,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from './Button';
 import type { ConfirmDialogProps } from './ConfirmDialog';
 import { SHEET_HOST_ID } from './Sheet.web';
-import { colors, radius, space, type } from './theme';
+import { radius, space, useTheme, createThemedStyles } from './theme';
 
 /** Web: a centred dialog inside the phone frame (window.confirm can't label its buttons). */
 export function ConfirmDialog({ visible, title, message, confirmLabel, cancelLabel = 'Cancel', onConfirm, onCancel }: ConfirmDialogProps) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById(SHEET_HOST_ID)), []);
   useEffect(() => {
@@ -35,10 +38,10 @@ export function ConfirmDialog({ visible, title, message, confirmLabel, cancelLab
   return host ? createPortal(content, host) : content;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', padding: space.xl, zIndex: 20 },
   scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
   dialog: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: space.xl, gap: space.md },
   title: { ...type.body, fontSize: 20, fontWeight: '800' },
   actions: { gap: space.sm, marginTop: space.xs },
-});
+}));

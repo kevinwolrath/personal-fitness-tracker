@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, radius, space, touch } from './theme';
+import { radius, space, touch, createThemedStyles } from './theme';
 
 export type ToastState = { key: number; message: string; onUndo?: () => void } | null;
 
 /** Transient confirmation with Undo (contract 02 "Feedback"). */
 export function Toast({ toast, onDone }: { toast: ToastState; onDone: () => void }) {
+  const styles = useStyles();
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(onDone, 4000);
@@ -32,21 +34,21 @@ export function Toast({ toast, onDone }: { toast: ToastState; onDone: () => void
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   toast: {
     position: 'absolute',
     left: space.lg,
     right: space.lg,
     bottom: '100%',
     marginBottom: space.sm,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.card,
     borderRadius: radius.md,
     paddingLeft: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: touch,
   },
-  text: { flex: 1, color: colors.onAccent, fontSize: 15, fontWeight: '600' },
+  text: { flex: 1, color: colors.onCard, fontSize: 15, fontWeight: '600' },
   undo: { minWidth: touch + 16, minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   undoText: { color: colors.onInkAction, fontSize: 15, fontWeight: '800' },
-});
+}));

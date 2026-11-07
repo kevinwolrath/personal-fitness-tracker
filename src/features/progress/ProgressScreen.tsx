@@ -9,7 +9,7 @@ import type { WeekCompare } from '../../progress/series';
 import { useApp } from '../../providers/AppProvider';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useClock } from '../daily-log/useDay';
 import { LineChart } from './LineChart';
 
@@ -18,6 +18,9 @@ import { LineChart } from './LineChart';
  * last, then one card per chart in the user's order. Read-only: values are entered and corrected on Today.
  */
 export function ProgressScreen() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { store, plan, energy, dataVersion } = useApp();
   const { today } = useClock();
   const [observations, setObservations] = useState<Observation[] | null>(null);
@@ -104,6 +107,8 @@ export function ProgressScreen() {
 }
 
 function Stat({ label, c, unit, decimals = 1 }: { label: string; c: WeekCompare; unit: string; decimals?: number }) {
+  const styles = useStyles();
+
   const value = (c.change !== null ? `${c.change > 0 ? '+' : c.change < 0 ? '−' : ''}${Math.abs(c.change).toFixed(decimals)} ${unit}` : c.thisWeek !== null ? `${c.thisWeek.toFixed(decimals)} ${unit}` : '—').trim();
   const sub = c.change !== null ? label : c.thisWeek !== null ? `${label}, no data last week` : `${label}, no data this week`;
   return (
@@ -115,6 +120,9 @@ function Stat({ label, c, unit, decimals = 1 }: { label: string; c: WeekCompare;
 }
 
 function ChartCard({ model }: { model: ChartModel }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   return (
     <View style={styles.card} testID={`chart-${model.id}`} accessibilityLabel={model.summary}>
       <View style={styles.cardHead}>
@@ -139,6 +147,9 @@ function ChartCard({ model }: { model: ChartModel }) {
 
 /** Show, hide and reorder charts with buttons (no drag: works with screen readers and on every platform). */
 function EditChartsSheet({ visible, layout, onChange, onClose }: { visible: boolean; layout: { order: ChartId[]; hidden: ChartId[] }; onChange: (l: { order: ChartId[]; hidden: ChartId[] }) => void; onClose: () => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const move = (i: number, d: -1 | 1) => {
     const order = [...layout.order];
     [order[i], order[i + d]] = [order[i + d], order[i]];
@@ -178,7 +189,7 @@ function EditChartsSheet({ visible, layout, onChange, onClose }: { visible: bool
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: space.xxl, gap: space.md },
   header: { gap: space.sm },
@@ -190,11 +201,11 @@ const styles = StyleSheet.create({
   rangeOn: { borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.accentSoft },
   rangeText: { fontSize: 14, fontWeight: '600', color: colors.ink },
   rangeTextOn: { fontWeight: '800' },
-  summary: { backgroundColor: colors.ink, borderRadius: radius.lg, padding: space.lg, gap: space.sm },
+  summary: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, gap: space.sm },
   summaryTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.onInkAction },
   summaryRow: { flexDirection: 'row', gap: space.lg },
   stat: { flex: 1, gap: 2 },
-  statValue: { fontSize: 20, fontWeight: '800', color: colors.onAccent },
+  statValue: { fontSize: 20, fontWeight: '800', color: colors.onCard },
   statLabel: { fontSize: 12, color: colors.onInkMuted },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: space.lg, gap: space.xs },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -216,4 +227,4 @@ const styles = StyleSheet.create({
   arrow: { minWidth: touch, minHeight: touch, alignItems: 'center', justifyContent: 'center' },
   arrowText: { fontSize: 20, color: colors.ink },
   disabled: { opacity: 0.3 },
-});
+}));

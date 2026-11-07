@@ -51,7 +51,7 @@ export type TodayWorkout = {
   /** First to-do row: the collapsed card's exercise. */
   next: WorkoutRow | null;
   restDay: boolean;
-  /** Today's prescribed (not skipped) strength sessions. */
+  /** The day's strength sessions, skipped ones included (their options can restore them). */
   sessions: PrescriptionItem[];
 };
 
@@ -123,10 +123,10 @@ export function todayWorkout(input: {
   const label = new Map(inventory.muscleGroups.map((m) => [m.id, m.label]));
   const byMovement = new Map(inventory.exercises.map((e) => [e.movement, e]));
 
-  const sessions = items.filter((i) => i.kind === 'activity' && i.session && i.activity && i.state !== 'skipped');
+  const sessions = items.filter((i) => i.kind === 'activity' && i.session && i.activity);
   type Planned = { activityId: string; key: string; done: boolean; dose: Dose; name: string };
   const planned = new Map<string, Planned>();
-  for (const item of sessions) {
+  for (const item of sessions.filter((s) => s.state !== 'skipped')) {
     for (const r of sessionProgress(item.session!, logs[item.key]).rows) {
       if (r.optional || planned.has(r.exercise.movement)) continue;
       planned.set(r.exercise.movement, { activityId: item.key, key: r.key, done: r.done, dose: fromExercise(r.exercise), name: r.exercise.label });

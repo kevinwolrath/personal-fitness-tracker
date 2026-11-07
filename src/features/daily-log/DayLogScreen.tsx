@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
 import { formatAmount } from '../../format';
 import { measurementMetric } from '../../observations/planMetrics';
-import { addDays, type LocalDate } from '../../plan/dates';
+import { addDays, weekdayOf, type LocalDate } from '../../plan/dates';
 import type { Observation } from '../../observations/types';
 import type { Activity, Measurement } from '../../plan/schema';
 import { tap } from '../../ui/haptics';
@@ -25,9 +25,12 @@ import { NextActionCard } from './NextActionCard';
 import { NoPlanCard } from './NoPlanCard';
 import { isDue } from '../../prescription/nextAction';
 import { useReminders } from '../reminders/RemindersProvider';
-import { WorkoutCard } from './WorkoutCard';
+import { TodayWorkoutCard, TodayWorkoutSheet } from './TodayWorkout';
+import { todayWorkout, workoutToggle, type WorkoutRow } from '../../exercises/todayWorkout';
+import { logExercise } from '../../exercises/state';
+import type { ExerciseLog } from '../../storage/types';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
-import { sessionProgress, switchNeedsConfirm, type ChecklistRow, type Variant } from '../../prescription/exercises';
+import { switchNeedsConfirm, type ChecklistRow, type Variant } from '../../prescription/exercises';
 import { RequirementRow } from './RequirementRow';
 import { partLabels, partOrder } from '../../prescription/windows';
 import type { PrescriptionItem } from '../../prescription/prescribe';
@@ -46,11 +49,12 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  * Contains layout and generic copy only — every plan word comes from data.
  */
 export function DayLogScreen() {
-  const [coverageOpen, setCoverageOpen] = useState(false);
+  const [coverage, setCoverage] = useState<null | 'map' | 'inventory'>(null);
+  const [workoutOpen, setWorkoutOpen] = useState(false);
   const { colors, type } = useTheme();
   const styles = useStyles();
 
-  const { store, plan, energy, dataVersion } = useApp();
+  const { store, plan, energy, dataVersion, notifyDataChanged } = useApp();
   const { today, nowMinutes } = useClock();
   const params = useLocalSearchParams<{ date?: string; focus?: string }>();
   const date: LocalDate = isLocalDate(params.date) ? params.date : today;
@@ -65,6 +69,29 @@ export function DayLogScreen() {
   // there's enough history). Display order only: exercise keys and ticks never change.
   const exerciseState = useExerciseState(store, plan, today, prescription, date === today, dataVersion);
   const orderOf = (key: string) => (date === today ? exerciseState?.sessionOrders[key] : undefined);
+
+  // Today's workout (#56, layout A): every eligible strength exercise plus the day's plan, on every date.
+  const [freeLogs, setFreeLogs] = useState<ExerciseLog[]>([]);
+  useEffect(() => {
+    let live = true;
+    store.exerciseLogs({ from: date, to: date }).then((l) => live && setFreeLogs(l), () => live && setFreeLogs([]));
+    return () => {
+      live = false;
+    };
+  }, [store, date, dataVersion]);
+  const workout = useMemo(
+    () =>
+      todayWorkout({
+        plan,
+        date,
+        items: prescription.items,
+        logs: records.activities,
+        freeLogs,
+        state: date === today && exerciseState ? exerciseState : null,
+        restDay: (plan.exercise?.restDays ?? []).includes(weekdayOf(date)),
+      }),
+    [plan, date, today, prescription, records, freeLogs, exerciseState],
+  );
 
   const [firstRecord, setFirstRecord] = useState<LocalDate | null>(null);
   const [jumpOpen, setJumpOpen] = useState(false);
@@ -105,16 +132,6 @@ export function DayLogScreen() {
     setSheetItem(item);
     router.setParams({ focus: undefined });
   }, [params.focus, prescription]);
-  // Workout card (#28): collapsed by default; remembered per day and item for this app session.
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const expandKey = (item: PrescriptionItem) => `${date}|${item.key}`;
-  // A workout just finished from the card: hold "complete · 5/5" briefly before "Do this next" moves on.
-  const [held, setHeld] = useState<string | null>(null);
-  useEffect(() => {
-    if (!held) return;
-    const t = setTimeout(() => setHeld(null), 4000);
-    return () => clearTimeout(t);
-  }, [held]);
   const [pendingSwitch, setPendingSwitch] = useState<{ item: PrescriptionItem; variant: Variant } | null>(null);
   const [guideFor, setGuideFor] = useState<PrescribedExercise | null>(null);
   const [sheetMeasurement, setSheetMeasurement] = useState<Measurement | null>(null);
@@ -138,8 +155,26 @@ export function DayLogScreen() {
     if (!editable || !item.activity) return;
     tap();
     const c = actions.tickExercise(item, item.activity, row.key, !row.done);
-    if (c.event.action === 'complete' && date === today) setHeld(item.key);
+    if (c.event.action === 'complete') setToast({ key: Date.now(), message: `${item.label} complete` });
   };
+  // One tap on Today's workout: the session tick for a planned exercise, else one free log (fixed id per day and
+  // movement, so a repeated tap can't add a second record). Unticking undoes whichever record made it done.
+  const toggleWorkout = (row: WorkoutRow) => {
+    if (!editable) return;
+    const t = workoutToggle(row, date);
+    if (t.kind === 'session') {
+      const item = prescription.items.find((i) => i.key === t.activityId);
+      if (item) tickExercise(item, { key: t.key, done: !t.ticked, exercise: { movement: row.movement, label: row.name }, optional: false });
+      return;
+    }
+    tap();
+    const write =
+      t.kind === 'log'
+        ? logExercise(store, { id: t.id, movement: row.movement, date, at: new Date().toISOString(), sets: t.dose.sets, reps: t.dose.reps, seconds: t.dose.seconds })
+        : Promise.all(t.ids.map((id) => store.removeExerciseLog(id)));
+    write.then(notifyDataChanged, () => setToast({ key: Date.now(), message: "Couldn't save. Try again." }));
+  };
+  const workoutGuide = (row: WorkoutRow) => setGuideFor({ movement: row.movement, label: row.name, sets: row.dose.sets, reps: row.dose.reps, seconds: row.dose.seconds });
   const chooseVariant = (item: PrescriptionItem, variant: Variant) => {
     if (!editable || !item.activity || !item.session) return;
     if (switchNeedsConfirm(item.session, records.activities[item.key])) setPendingSwitch({ item, variant });
@@ -170,7 +205,7 @@ export function DayLogScreen() {
         log={records.activities[item.key]}
         showTime={item.window.part !== 'anytime'}
         note={budgetNote[item.key]}
-        exerciseProgress={item.session ? sessionProgress(item.session, records.activities[item.key], orderOf(item.key)) : null}
+        exerciseProgress={null}
         editable={editable}
         isNext={next?.item.key === item.key}
         onPress={() => press(item, item.activity!)}
@@ -180,7 +215,8 @@ export function DayLogScreen() {
     );
   // Grouped by part of the day; anytime last (contract 08).
   const groups = partOrder
-    .map((part) => ({ part, items: prescription.items.filter((i) => i.window.part === part) }))
+    // Strength sessions live on Today's workout card, not in the time-of-day list (#56).
+    .map((part) => ({ part, items: prescription.items.filter((i) => i.window.part === part && !(i.kind === 'activity' && i.session)) }))
     .filter((g) => g.items.length);
   const nothingPlanned = !prescription.items.length;
   // A new user who skipped the AI step (#49): no plan yet, so Today offers to set one up instead of "Do this next".
@@ -189,12 +225,15 @@ export function DayLogScreen() {
   // nothing reasonable to do now (#41): no placeholder, and the day's checklist below is unchanged.
   const topCard = (() => {
     if (date !== today || noPlan) return null;
-    const heldItem = held ? prescription.items.find((i) => i.key === held && i.state === 'done') : undefined;
-    // A workout's checklist only appears once it's due; before that it's an "Up next" preview like any item (#51).
-    const workout = heldItem ?? (isDue(next) && next?.item.session && next.item.activity ? next.item : undefined);
-    return workout || next ? { heldItem, workout } : null;
+    // The strength session is due (#41): Today's workout card takes the top slot. Before that it's "Up next" (#51).
+    const promoted = isDue(next) && !!next?.item.session && !!next.item.activity;
+    return promoted || next ? { promoted } : null;
   })();
-  const noCardToday = date === today && !noPlan && topCard === null;
+  const showWorkout = !noPlan || workout.total > 0;
+  const workoutCard = (promoted: boolean) => (
+    <TodayWorkoutCard workout={workout} promoted={promoted} editable={editable} onToggle={toggleWorkout} onGuide={workoutGuide} onOpen={() => setWorkoutOpen(true)} />
+  );
+  const noCardToday = date === today && !noPlan && topCard === null && !showWorkout;
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right']}>
@@ -220,30 +259,14 @@ export function DayLogScreen() {
           </View>
         )}
 
-        {topCard && (() => {
-          const { heldItem, workout } = topCard;
-          return (
-            <View style={styles.firstBlock}>
-              {!workout ? (
-                <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />
-              ) : (
-                <WorkoutCard
-                  item={workout}
-                  progress={sessionProgress(workout.session!, records.activities[workout.key], orderOf(workout.key))}
-                  expanded={!!expanded[expandKey(workout)]}
-                  onToggleExpanded={() => setExpanded((e) => ({ ...e, [expandKey(workout)]: !e[expandKey(workout)] }))}
-                  onTick={(row) => tickExercise(workout, row)}
-                  onChooseVariant={(v) => chooseVariant(workout, v)}
-                  onOpenExercise={setGuideFor}
-                  onDetails={() => setSheetItem(workout)}
-                  onCoverage={() => setCoverageOpen(true)}
-                  completed={!!heldItem}
-                  onDismissCompleted={() => setHeld(null)}
-                />
-              )}
-            </View>
-          );
-        })()}
+        {topCard && (
+          <View style={styles.firstBlock}>
+            {topCard.promoted ? workoutCard(true) : <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />}
+          </View>
+        )}
+
+        {/* Today's workout (#56): every day, in the content layer, right after the top card (unless it is the top card). */}
+        {showWorkout && !topCard?.promoted && <View style={topCard ? styles.block : styles.firstBlock}>{workoutCard(false)}</View>}
 
         {/* With no card above, the measurements take its place right under the header (vertical budget, contract 02). */}
         <View style={noCardToday ? styles.firstBlock : styles.block}>
@@ -280,6 +303,21 @@ export function DayLogScreen() {
         <Toast toast={toast} onDone={clearToast} />
       </SafeAreaView>
 
+      {/* Under the sheets it opens (guide, item options, coverage): those render after it, on top. */}
+      {workoutOpen && (
+        <TodayWorkoutSheet
+          workout={workout}
+          coverage={date === today ? exerciseState?.coverage ?? null : null}
+          gender={plan.profile?.gender}
+          editable={editable}
+          onToggle={toggleWorkout}
+          onGuide={workoutGuide}
+          onCoverage={() => setCoverage('map')}
+          onLogDifferent={() => setCoverage('inventory')}
+          onSessionOptions={(s) => setSheetItem(s)}
+          onClose={() => setWorkoutOpen(false)}
+        />
+      )}
       <ItemSheet
         date={date}
         energy={energy}
@@ -306,7 +344,7 @@ export function DayLogScreen() {
         }}
       />
       <ExerciseGuideSheet gender={plan.profile?.gender} guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
-      {coverageOpen && <CoverageSheet date={date} editable={editable} onClose={() => setCoverageOpen(false)} />}
+      {coverage && <CoverageSheet date={date} editable={editable} initialPage={coverage} session={workout.sessions.find((s) => s.state !== 'skipped')?.session} onClose={() => setCoverage(null)} />}
       <MeasureSheet
         plan={plan}
         measurement={sheetMeasurement}

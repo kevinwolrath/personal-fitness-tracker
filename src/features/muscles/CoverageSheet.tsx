@@ -17,7 +17,7 @@ import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import { coverageLabel, MuscleMap, type MapMode } from './MuscleMap';
 
 /** Real #56 history and store actions; this component contains presentation, not a second recovery engine. */
-export function CoverageSheet({ date, editable, session, onClose }: { date: LocalDate; editable: boolean; session?: PrescribedSession; onClose: () => void }) {
+export function CoverageSheet({ date, editable, session, onClose, initialPage = 'map' }: { date: LocalDate; editable: boolean; session?: PrescribedSession; onClose: () => void; initialPage?: 'map' | 'inventory' }) {
   const { store, plan, dataVersion, notifyDataChanged } = useApp();
   const { today } = useClock();
   const { colors, type } = useTheme();
@@ -26,7 +26,7 @@ export function CoverageSheet({ date, editable, session, onClose }: { date: Loca
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [page, setPage] = useState<'map' | 'inventory' | 'exercise'>('map');
+  const [page, setPage] = useState<'map' | 'inventory' | 'exercise'>(initialPage);
   const [mode, setMode] = useState<MapMode>('priority');
   const [selected, setSelected] = useState('chest');
   const [exercise, setExercise] = useState<InventoryExercise | null>(null);

@@ -7,12 +7,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider } from '@/src/providers/AppProvider';
 import { PhoneFrame } from '@/src/ui/PhoneFrame';
 import { useTheme } from '@/src/ui/theme';
+import { ScrollIndicators } from '@/src/ui/ScrollIndicators';
 
 function ThemedApp() {
   const { colors, dark } = useTheme();
 
   return (
     <SafeAreaProvider>
+      <ScrollIndicators />
       <Head><title>{APP_NAME}</title></Head>
       <StatusBar style={dark ? 'light' : 'dark'} />
       <PhoneFrame>

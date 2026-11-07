@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../ui/Button';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';

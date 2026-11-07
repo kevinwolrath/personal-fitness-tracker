@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import type { MuscleCoverage } from '../../exercises/coverage';
 import type { RowStatus, TodayWorkout, WorkoutRow } from '../../exercises/todayWorkout';
 import type { PrescriptionItem } from '../../prescription/prescribe';

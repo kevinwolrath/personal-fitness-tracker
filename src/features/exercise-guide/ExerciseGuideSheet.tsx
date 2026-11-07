@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Image, Pressable, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import type { ExerciseGuide } from '../../exercises/guide';
 import { heroIllustrations } from '../../exercises/heroIllustrations';
 import { ModalHeader } from '../../ui/ModalHeader';
@@ -57,7 +58,6 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                     testID="guide-step-scroll"
                     horizontal
                     pagingEnabled
-                    showsHorizontalScrollIndicator={false}
                     onMomentumScrollEnd={onScrollEnd}
                     onScrollEndDrag={onScrollEnd}
                     scrollEnabled={steps.length > 1}

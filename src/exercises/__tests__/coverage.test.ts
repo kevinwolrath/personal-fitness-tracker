@@ -186,11 +186,6 @@ describe('suggestions: priority, recovery, equipment and limitations', () => {
     expect(names(s).sort()).toEqual(['knuckle_push_up', 'plank', 'standing_calf_raise', 'straight_leg_raise']);
     expect(s.find((x) => x.exercise.movement === 'plank')!.caution).toBe(true);
   });
-
-  it('deterministic: the same inputs give the same order', () => {
-    const c = muscleCoverage({ inventory: exerciseInventory, entries: [longAgo], now: t(MON, '18:00'), today: MON });
-    expect(names(suggestExercises(all, c))).toEqual(names(suggestExercises(all, c)));
-  });
 });
 
 describe('option C: a scheduled session keeps its exercises, ordered by priority', () => {

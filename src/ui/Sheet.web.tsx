@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { colors, radius, space } from './theme';
+import { radius, space, createThemedStyles } from './theme';
 
 /** `onDismiss` is iOS-only (see Sheet.tsx); a web sheet is gone as soon as `visible` is false. */
 type Props = { visible: boolean; onClose: () => void; children: ReactNode; label: string; fill?: boolean; onDismiss?: () => void };
@@ -15,6 +15,8 @@ export const SHEET_HOST_ID = 'sheet-host';
  * the whole frame and stacks on top.
  */
 export function Sheet({ visible, onClose, children, label, fill }: Props) {
+  const styles = useStyles();
+
   const [host, setHost] = useState<HTMLElement | null>(null);
   useEffect(() => setHost(document.getElementById(SHEET_HOST_ID)), []);
   if (!visible) return null;
@@ -30,7 +32,7 @@ export function Sheet({ visible, onClose, children, label, fill }: Props) {
   return host ? createPortal(content, host) : content;
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 10, pointerEvents: 'auto' },
   scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.scrim },
   panel: {
@@ -43,4 +45,4 @@ const styles = StyleSheet.create({
   },
   fill: { height: '92%' },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: colors.line, marginVertical: space.sm },
-});
+}));

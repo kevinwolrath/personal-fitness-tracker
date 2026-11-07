@@ -115,12 +115,15 @@ export function exerciseState(
 /** Log an exercise done outside any session (#56), at any time and on any day, rest days included. */
 export async function logExercise(
   store: TrackingStore,
-  input: { movement: string; date: LocalDate; at: string; sets: number; reps?: number; seconds?: number; intensity?: ExerciseIntensity },
+  input: { id?: string; movement: string; date: LocalDate; at: string; sets: number; reps?: number; seconds?: number; intensity?: ExerciseIntensity },
   inventory: Inventory = exerciseInventory,
 ): Promise<string> {
   if (!inventory.exercises.some((e) => e.movement === input.movement)) throw new Error(`"${input.movement}" is not in the exercise inventory`);
   if (!Number.isInteger(input.sets) || input.sets < 1) throw new Error('sets must be a whole number from 1');
-  const id = newId();
+  if (input.reps !== undefined && (!Number.isInteger(input.reps) || input.reps < 1)) throw new Error('reps must be a whole number from 1');
+  if (input.seconds !== undefined && (!Number.isFinite(input.seconds) || input.seconds <= 0)) throw new Error('seconds must be positive');
+  // A form retains this ID over retries: both store adapters upsert by ID, so a retry cannot double count.
+  const id = input.id ?? newId();
   await store.addExerciseLog({
     id,
     movement: input.movement,

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { addDays, type LocalDate } from '../../plan/dates';
 import { DateField } from '../../ui/DateField';
 import { Sheet } from '../../ui/Sheet';
-import { colors, radius, space, touch } from '../../ui/theme';
+import { radius, space, touch, createThemedStyles } from '../../ui/theme';
 import { dayLabels } from './dayLabels';
 import { ModalHeader } from '../../ui/ModalHeader';
 
@@ -18,6 +18,8 @@ type Props = {
 
 /** Jump straight to any date in the Daily Log (contract 02): shortcuts plus the platform date picker. */
 export function JumpToDateSheet(p: Props) {
+  const styles = useStyles();
+
   const go = (d: LocalDate) => {
     p.onJump(d);
     p.onClose();
@@ -51,7 +53,7 @@ export function JumpToDateSheet(p: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   body: { paddingBottom: space.md, gap: space.lg },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {
@@ -62,7 +64,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     justifyContent: 'center',
   },
-  chipOn: { backgroundColor: colors.ink, borderColor: colors.ink },
+  chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 15, fontWeight: '600', color: colors.ink },
   chipTextOn: { color: colors.onAccent },
-});
+}));

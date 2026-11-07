@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View, useWindowDimensions, type Accessibil
 import { formatClock, formatDuration } from '../../format';
 import type { Activity } from '../../plan/schema';
 import type { ActivityLog } from '../../storage/types';
-import { colors, space, touch, type } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 type Props = {
   activity: Activity;
@@ -21,6 +21,9 @@ type Props = {
 };
 
 export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle, exerciseProgress }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   // The time column keeps rows aligned at 70 dp, scaled with the system font size; it grows rather than truncating (#34).
   const { fontScale } = useWindowDimensions();
   const timeWidth = Math.ceil(70 * Math.max(1, fontScale));
@@ -152,7 +155,7 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   next: { borderLeftWidth: 4, borderLeftColor: colors.accent, paddingLeft: space.sm, marginLeft: -space.md },
   row: { flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', minHeight: 64, paddingVertical: space.md, gap: space.md },
@@ -176,4 +179,4 @@ const styles = StyleSheet.create({
   segmentOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   more: { width: touch, alignItems: 'center', justifyContent: 'center', marginRight: -space.md },
   moreText: { fontSize: 24, color: colors.faint },
-});
+}));

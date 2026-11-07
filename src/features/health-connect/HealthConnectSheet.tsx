@@ -10,7 +10,7 @@ import { useApp } from '../../providers/AppProvider';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
-import { colors, space, touch, type } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useHealthConnect, type HealthConnectState } from './HealthConnectProvider';
 
 const whatIsRead: Record<HcType, string> = {
@@ -46,6 +46,9 @@ export function healthConnectStatus(s: Pick<HealthConnectState, 'availability' |
  * imported values appear in its existing Weight tile and Recorded rows.
  */
 export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const hc = useHealthConnect();
   const { store, plan, energy, dataVersion } = useApp();
   const [today, setToday] = useState<Observation[]>([]);
@@ -199,7 +202,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   scroll: { flexShrink: 1 },
   body: { gap: space.md, paddingBottom: space.md },
   group: { gap: space.md },
@@ -224,4 +227,4 @@ const styles = StyleSheet.create({
   link: { minHeight: touch, justifyContent: 'center' },
   linkText: { fontSize: 16, fontWeight: '700', color: colors.accent },
   center: { textAlign: 'center' },
-});
+}));

@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ChecklistRow, SessionProgress, Variant } from '../../prescription/exercises';
 import type { PrescribedExercise } from '../../prescription/session';
 import { exerciseDose } from '../../prescription/session';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 type Props = {
   rows: ChecklistRow[];
@@ -22,6 +22,9 @@ type Props = {
  * opens its guide. Done exercises stay visible, struck through.
  */
 export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, labelNext, testID }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   return (
     <View style={styles.list} testID={testID}>
       {rows.map((row, i) => {
@@ -88,6 +91,8 @@ export function VersionSwitch({
   onChoose: (v: Variant) => void;
   onInk?: boolean;
 }) {
+  const styles = useStyles();
+
   const option = (v: Variant, label: string) => {
     const on = progress.variant === v;
     return (
@@ -112,7 +117,7 @@ export function VersionSwitch({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   list: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', minHeight: touch },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
@@ -140,4 +145,4 @@ const styles = StyleSheet.create({
   segmentText: { fontSize: 15, fontWeight: '600', color: colors.muted },
   segmentTextInk: { color: colors.onInkMuted },
   segmentTextOn: { color: colors.ink, fontWeight: '800' },
-});
+}));

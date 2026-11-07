@@ -2,7 +2,7 @@ import { router, usePathname } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { colors, space, touch } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 /**
  * The bottom tab bar (contract 02, app shell layer): Today and Progress (#52). It arrived with the second tab.
@@ -23,6 +23,9 @@ const tabs = [
 ] as const;
 
 export function TabBar() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const path = usePathname();
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.bar} testID="tab-bar">
@@ -51,10 +54,10 @@ export function TabBar() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   bar: { backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line },
   row: { flexDirection: 'row', height: touch + 8 },
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: space.xs },
   label: { fontSize: 12, fontWeight: '600' },
   labelOn: { fontWeight: '800' },
-});
+}));

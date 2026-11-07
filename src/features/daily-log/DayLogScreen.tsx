@@ -9,7 +9,7 @@ import { addDays, type LocalDate } from '../../plan/dates';
 import type { Observation } from '../../observations/types';
 import type { Activity, Measurement } from '../../plan/schema';
 import { tap } from '../../ui/haptics';
-import { colors, space, type } from '../../ui/theme';
+import { space, useTheme, createThemedStyles } from '../../ui/theme';
 import { ActivityRow } from './ActivityRow';
 import { DayHeader } from './DayHeader';
 import { loggedOutsidePlan, recordedObservations } from './dayContent';
@@ -35,6 +35,7 @@ import { TargetsLine } from './TargetsLine';
 import { Toast, type ToastState } from '../../ui/Toast';
 import { useClock, useDay } from './useDay';
 import { useExerciseState } from './useExerciseState';
+import { CoverageSheet } from '../muscles/CoverageSheet';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -45,6 +46,10 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  * Contains layout and generic copy only — every plan word comes from data.
  */
 export function DayLogScreen() {
+  const [coverageOpen, setCoverageOpen] = useState(false);
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { store, plan, energy, dataVersion } = useApp();
   const { today, nowMinutes } = useClock();
   const params = useLocalSearchParams<{ date?: string; focus?: string }>();
@@ -231,6 +236,7 @@ export function DayLogScreen() {
                   onChooseVariant={(v) => chooseVariant(workout, v)}
                   onOpenExercise={setGuideFor}
                   onDetails={() => setSheetItem(workout)}
+                  onCoverage={() => setCoverageOpen(true)}
                   completed={!!heldItem}
                   onDismissCompleted={() => setHeld(null)}
                 />
@@ -275,6 +281,7 @@ export function DayLogScreen() {
       </SafeAreaView>
 
       <ItemSheet
+        date={date}
         energy={energy}
         item={sheetItem && (prescription.items.find((i) => i.key === sheetItem.key) ?? null)}
         logs={records.activities}
@@ -298,7 +305,8 @@ export function DayLogScreen() {
           setPendingSwitch(null);
         }}
       />
-      <ExerciseGuideSheet guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
+      <ExerciseGuideSheet gender={plan.profile?.gender} guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
+      {coverageOpen && <CoverageSheet date={date} editable={editable} onClose={() => setCoverageOpen(false)} />}
       <MeasureSheet
         plan={plan}
         measurement={sheetMeasurement}
@@ -342,7 +350,7 @@ export function DayLogScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { paddingHorizontal: space.xl, paddingBottom: space.xxl },
   block: { marginTop: space.xl },
@@ -352,4 +360,4 @@ const styles = StyleSheet.create({
   empty: { marginTop: space.xl, color: colors.muted },
   list: { marginTop: space.xs },
   toastDock: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: space.lg },
-});
+}));

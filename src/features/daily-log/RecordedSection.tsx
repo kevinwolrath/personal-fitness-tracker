@@ -9,7 +9,7 @@ import type { Plan } from '../../plan/schema';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
-import { colors, space, touch, type } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { TextButton } from './Sheets';
 
@@ -24,6 +24,9 @@ export function RecordedSection(p: {
   outsidePlan: ActivityLog[];
   onOpen: (o: Observation) => void;
 }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   if (!p.observations.length && !p.outsidePlan.length) return null;
   return (
     <View testID="recorded">
@@ -80,6 +83,9 @@ export function ObservationSheet(p: {
   onCorrect: (o: Observation, value: number) => void;
   onRemove: (o: Observation) => void;
 }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const o = p.observation;
   // Imported values belong to their source (Health Connect, #36): changed or deleted there, never here.
   const imported = o?.source.type === 'integration';
@@ -171,7 +177,7 @@ export function ObservationSheet(p: {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   list: { marginTop: space.xs },
   row: {
     flexDirection: 'row',
@@ -205,4 +211,4 @@ const styles = StyleSheet.create({
   fact: { flexDirection: 'row', gap: space.md },
   factKey: { width: 92 },
   factValue: { flex: 1, color: colors.ink },
-});
+}));

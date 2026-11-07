@@ -13,7 +13,7 @@ const phone = (width: number, height: number) => ({
 
 /** E2E_DEV=1: run the dev-server smoke test against `expo start --web` instead of the production export. */
 const dev = process.env.E2E_DEV === '1';
-const port = dev ? 8091 : 8081;
+const port = Number(process.env.PFT_E2E_PORT ?? (dev ? 8091 : 8081));
 
 /**
  * Every test starts as an existing install running the bundled seed plan (#49: a fresh install goes through
@@ -48,6 +48,7 @@ const seededStorage = {
 };
 
 export default defineConfig({
+  outputDir: dev ? './test-results-dev' : './test-results',
   testDir: './e2e',
   testMatch: dev ? 'dev-smoke.spec.ts' : undefined,
   testIgnore: dev ? undefined : 'dev-smoke.spec.ts',
@@ -67,6 +68,7 @@ export default defineConfig({
     ? { command: `npx expo start --web --port ${port}`, url: `http://localhost:${port}`, reuseExistingServer: !process.env.CI, timeout: 300_000 }
     : {
         command: 'npx expo export --platform web && node scripts/serve-dist.mjs',
+        env: { PORT: String(port) },
         url: `http://localhost:${port}`,
         reuseExistingServer: !process.env.CI,
         timeout: 300_000,

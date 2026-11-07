@@ -58,7 +58,8 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
-| **Settings** | Opens the Settings sheet: device preferences, for now **Energy units** (kJ, kcal or both). The detail line states the current choice, e.g. "Energy in kJ" (contract 11). |
+| **Settings** | Opens the Settings sheet: **Appearance** (Hero Forge or Classic light) and **Energy units** (kJ, kcal or both). The detail line states the current energy choice, e.g. "Energy in kJ" (contract 11). |
+| **Muscle coverage & exercise log** | Opens the live #56 coverage sheet, including on rest days. It also opens from the expanded workout/checklist flow. No new permanent tab, app-bar control or Today banner (#79). |
 | **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
 
 The menu closes before its item runs. On iOS, the item runs once the sheet has dismissed, because iOS can't present a picker, an alert or a modal route over a closing sheet. On web it runs inside the tap, so the browser allows the file picker.

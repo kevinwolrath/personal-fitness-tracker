@@ -1,11 +1,11 @@
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { formatClock } from '../../format';
 import { notifications } from '../../platform/notifications';
 import type { Reminder } from '../../reminders/schedule';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
-import { colors, space, touch, type } from '../../ui/theme';
+import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useReminders } from './RemindersProvider';
 
 const clock = (minute: number) => formatClock(`${String(Math.floor(minute / 60)).padStart(2, '0')}:${String(minute % 60).padStart(2, '0')}`);
@@ -21,6 +21,9 @@ export function remindersStatus(s: { enabled: boolean; permission: string; today
 
 /** Reminders (contract 10): explicit opt-in, a status, and what the plan reminds about. Read-only otherwise. */
 export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const r = useReminders();
   const now = new Date();
   const nowMinute = now.getHours() * 60 + now.getMinutes();
@@ -42,6 +45,7 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
               </Text>
             </View>
             <Switch
+              {...(Platform.OS === 'web' ? ({ activeThumbColor: colors.surface } as object) : {})}
               value={r.enabled}
               onValueChange={(v) => (v ? r.enable() : r.disable())}
               trackColor={{ true: colors.accent, false: colors.line }}
@@ -102,7 +106,7 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   body: { gap: space.md, paddingBottom: space.md },
   flex: { flex: 1 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch + 8 },
@@ -119,4 +123,4 @@ const styles = StyleSheet.create({
   hint: { marginTop: space.sm },
   actions: { gap: space.sm },
   center: { textAlign: 'center' },
-});
+}));

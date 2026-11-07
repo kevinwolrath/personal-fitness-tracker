@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../ui/Button';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 /**
  * The setup wizard's layout (#49, option A): screen header (step, progress, Skip), a content region that scrolls
@@ -23,6 +23,8 @@ export function WizardFrame(props: {
   children: ReactNode;
   testID: string;
 }) {
+  const styles = useWizardStyles();
+
   const { step, total, title, sub, onSkip, onBack, backLabel = 'Back', above, primary, children, testID } = props;
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']} testID={testID}>
@@ -61,6 +63,9 @@ export function WizardFrame(props: {
 }
 
 export function Question({ label, children, testID }: { label: string; children: ReactNode; testID?: string }) {
+  const { colors, type } = useTheme();
+  const styles = useWizardStyles();
+
   return (
     <View style={styles.question} accessibilityRole="radiogroup" accessibilityLabel={label} testID={testID}>
       <Text style={type.section}>{label}</Text>
@@ -71,6 +76,8 @@ export function Question({ label, children, testID }: { label: string; children:
 
 /** A pill choice. `multi`: a checkbox (several may be on); otherwise a radio. */
 export function Chip({ label, selected, onPress, multi, testID, wide }: { label: string; selected: boolean; onPress: () => void; multi?: boolean; testID?: string; wide?: boolean }) {
+  const styles = useWizardStyles();
+
   return (
     <Pressable
       onPress={onPress}
@@ -86,10 +93,12 @@ export function Chip({ label, selected, onPress, multi, testID, wide }: { label:
   );
 }
 
-export const Chips = ({ children }: { children: ReactNode }) => <View style={styles.chips}>{children}</View>;
-export const Grid = ({ children }: { children: ReactNode }) => <View style={styles.grid}>{children}</View>;
+export const Chips = ({ children }: { children: ReactNode }) => { const styles = useWizardStyles(); return (<View style={styles.chips}>{children}</View>); };
+export const Grid = ({ children }: { children: ReactNode }) => { const styles = useWizardStyles(); return (<View style={styles.grid}>{children}</View>); };
 
 export function TextLink({ title, onPress, testID, label }: { title: string; onPress: () => void; testID?: string; label?: string }) {
+  const styles = useWizardStyles();
+
   return (
     <Pressable onPress={onPress} style={styles.textLink} accessibilityRole="button" accessibilityLabel={label ?? title} testID={testID}>
       <Text style={styles.link}>{title}</Text>
@@ -98,6 +107,9 @@ export function TextLink({ title, onPress, testID, label }: { title: string; onP
 }
 
 export function Card({ title, children, testID }: { title: string; children: ReactNode; testID?: string }) {
+  const { colors, type } = useTheme();
+  const styles = useWizardStyles();
+
   return (
     <View style={styles.card} testID={testID}>
       <Text style={type.section}>{title}</Text>
@@ -106,7 +118,7 @@ export function Card({ title, children, testID }: { title: string; children: Rea
   );
 }
 
-export const styles = StyleSheet.create({
+export const useWizardStyles = createThemedStyles(({ colors, type }) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   header: { paddingHorizontal: space.xl, paddingTop: space.sm, gap: space.xs },
@@ -134,4 +146,4 @@ export const styles = StyleSheet.create({
   textLink: { minHeight: touch, justifyContent: 'center', alignSelf: 'flex-start' },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: space.lg, gap: space.sm },
   hint: { fontSize: 13, color: colors.muted, lineHeight: 18 },
-});
+}));

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, space, touch, type } from './theme';
+import { space, touch, useTheme, createThemedStyles } from './theme';
 
 type Action = { label: string; onPress: () => void; disabled?: boolean };
 
@@ -17,6 +17,9 @@ type Props = {
 
 /** The one header for every modal screen and sheet: dismiss left, centred title, confirm right. */
 export function ModalHeader({ title, dismiss, confirm, titleTestID }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   return (
     <View style={styles.header} testID="modal-header">
       <View style={styles.side}>
@@ -45,7 +48,7 @@ export function ModalHeader({ title, dismiss, confirm, titleTestID }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   header: { flexDirection: 'row', alignItems: 'center', minHeight: touch, marginBottom: space.sm },
   // Equal sides keep the title centred whether or not there is a confirm.
   side: { width: 88, flexDirection: 'row' },
@@ -56,4 +59,4 @@ const styles = StyleSheet.create({
   text: { fontSize: 17, color: colors.accent, fontWeight: '600' },
   strong: { fontWeight: '800' },
   disabled: { color: colors.faint },
-});
+}));

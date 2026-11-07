@@ -9,7 +9,7 @@ import { useApp } from '../../providers/AppProvider';
 import { formatReviewValue, type ReviewedCandidate } from '../../observations/review';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { takeHandedOffScreenshots, useImportSession, type PickedScreenshot } from './useImportSession';
 
 const shownUnit = (u: string) => (u === 'count' || u === 'score' || u === 'min' ? '' : u); // durations carry h/m in the value
@@ -17,6 +17,9 @@ const isDate = (d: unknown): d is LocalDate => typeof d === 'string' && /^\d{4}-
 
 /** Screenshot import: pick → read → review/edit → save with provenance (contract 06). */
 export function ImportScreen() {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const { store } = useApp();
   const params = useLocalSearchParams<{ date?: string }>();
   const today = toLocalDate(new Date());
@@ -127,6 +130,9 @@ export function ImportScreen() {
 }
 
 function ApiKeyPanel({ onSave }: { onSave: (key: string) => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const [key, setKey] = useState('');
   return (
     <View style={styles.keyPanel}>
@@ -152,6 +158,9 @@ function ApiKeyPanel({ onSave }: { onSave: (key: string) => void }) {
 }
 
 function Thumb({ shot, onRemove }: { shot: PickedScreenshot; onRemove: () => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const status =
     shot.status === 'reading' ? 'Reading…' : shot.status === 'done' ? shot.asset.sourceApp ?? 'Read' : shot.status === 'failed' ? 'Problem' : 'Ready';
   return (
@@ -186,6 +195,9 @@ function ShotReview(p: {
   onEdit: (key: string, patch: Partial<ReviewedCandidate>) => void;
   onDate: (d: LocalDate) => void;
 }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const date = p.candidates[0]?.date;
   const observed = p.candidates.filter((c) => c.kind === 'observed');
   const inferred = p.candidates.filter((c) => c.kind === 'inferred');
@@ -238,6 +250,9 @@ function ShotReview(p: {
 }
 
 function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: string; onEdit: (key: string, patch: Partial<ReviewedCandidate>) => void }) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const text = c.editedText ?? formatReviewValue(c.unit, c.value);
   const meta = [`“${c.evidence}”`, c.confidence < 0.8 ? 'check this' : null].filter(Boolean).join(' · ');
   return (
@@ -273,7 +288,7 @@ function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: stri
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: space.lg },
   link: { fontSize: 17, color: colors.accent, fontWeight: '600' },
@@ -364,4 +379,4 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   forget: { minHeight: touch, minWidth: touch, alignItems: 'center', justifyContent: 'center' },
   forgetText: { textDecorationLine: 'underline' },
-});
+}));

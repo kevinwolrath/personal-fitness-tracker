@@ -5,15 +5,19 @@ import { illustrations } from '../../exercises/illustrations.generated';
 import { Illustration } from '../../ui/Illustration';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
-import { colors, radius, space, touch, type } from '../../ui/theme';
+import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
+import { ExerciseMuscles } from '../muscles/ExerciseMuscles';
 
-type Props = { guide: ExerciseGuide | null; onClose: () => void };
+type Props = { guide: ExerciseGuide | null; gender?: unknown; onClose: () => void };
 
 /**
  * "Show me how to do this exercise" (contract 09). Read-only: browsing never changes completion.
  * Render it inside the sheet that opens it (sheets nest) so closing returns to exactly that context.
  */
-export function ExerciseGuideSheet({ guide, onClose }: Props) {
+export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
+  const { colors, type } = useTheme();
+  const styles = useStyles();
+
   const steps = (guide?.steps ?? []).filter((s) => illustrations[s.image]);
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
@@ -124,6 +128,7 @@ export function ExerciseGuideSheet({ guide, onClose }: Props) {
                 ))}
               </View>
             )}
+            <ExerciseMuscles key={guide.movement} movement={guide.movement} gender={gender} />
           </ScrollView>
         </View>
       )}
@@ -131,7 +136,7 @@ export function ExerciseGuideSheet({ guide, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = createThemedStyles(({ colors, type }) => ({
   body: { flex: 1 },
   scroll: { flex: 1 },
   content: { gap: space.md, paddingBottom: space.xl },
@@ -152,4 +157,4 @@ const styles = StyleSheet.create({
   instruction: { flexDirection: 'row', gap: space.sm },
   bullet: { width: 20, fontSize: 15, fontWeight: '800', color: colors.accent },
   instructionText: { flex: 1, fontSize: 15, lineHeight: 21, color: colors.ink },
-});
+}));

@@ -1,9 +1,9 @@
 import data from './library.json';
-import { illustrations } from './illustrations.generated';
+import { illustrationIds } from './illustrationIds';
 import { exerciseLibrarySchema, type ExerciseDefinition, type ExerciseLibrary } from './schema';
 
 /** Validate a library: schema, unique ids, and every step image bundled. Pure. */
-export function validateLibrary(input: unknown, assets: Record<string, string> = illustrations): { ok: true; library: ExerciseLibrary } | { ok: false; errors: string[] } {
+export function validateLibrary(input: unknown, assets: Record<string, unknown> = illustrationIds): { ok: true; library: ExerciseLibrary } | { ok: false; errors: string[] } {
   const r = exerciseLibrarySchema.safeParse(input);
   if (!r.success) return { ok: false, errors: r.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`) };
   const errors: string[] = [];
@@ -11,7 +11,7 @@ export function validateLibrary(input: unknown, assets: Record<string, string> =
   for (const e of r.data.exercises) {
     if (seen.has(e.id)) errors.push(`exercise "${e.id}" is defined twice`);
     seen.add(e.id);
-    for (const s of e.steps) if (!assets[s.image]) errors.push(`exercise "${e.id}": image "${s.image}" is not bundled (assets/exercises/${s.image}.svg)`);
+    for (const s of e.steps) if (!assets[s.image]) errors.push(`exercise "${e.id}": image "${s.image}" is not bundled`);
   }
   return errors.length ? { ok: false, errors } : { ok: true, library: r.data };
 }

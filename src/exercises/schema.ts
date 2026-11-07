@@ -16,7 +16,7 @@ export const exerciseDefinitionSchema = z.strictObject({
   steps: z
     .array(
       z.strictObject({
-        /** Stable asset id: assets/exercises/<image>.svg. */
+        /** Stable asset id, resolved by the bundled exercise illustration registry. */
         image: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
         caption: z.string().min(1).max(160),
       }),

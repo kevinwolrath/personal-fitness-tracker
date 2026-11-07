@@ -74,7 +74,7 @@ test('each exercise has its own guide, and closing returns to the workout sheet 
   await expect(workoutSheet(page).getByRole('checkbox', { name: /^Goblet squat, / })).not.toBeChecked(); // short version: its own dose
 });
 
-test('substitutes and exercises without a guide degrade gracefully', async ({ page }) => {
+test('substitutes retain their labels and newly illustrated exercises keep their cautions', async ({ page }) => {
   await seedPlan(page, example);
   await openAt(page, at('15:00'));
   await openWorkoutSheet(page);
@@ -88,7 +88,8 @@ test('substitutes and exercises without a guide degrade gracefully', async ({ pa
 
   await session.getByRole('button', { name: 'Overhead press. Show how' }).click();
   await expect(guide(page)).toBeVisible();
-  await expect(page.getByTestId('guide-no-image')).toHaveText('No guide for this exercise yet.');
+  await expect(page.getByTestId('guide-position')).toHaveText('1 / 2');
+  await expect(page.getByTestId('guide-image-1')).toBeVisible();
   await expect(guide(page)).toContainText('Caution: shoulder');
   await page.getByRole('button', { name: 'Close guide' }).click();
   await expect(guide(page)).toHaveCount(0);

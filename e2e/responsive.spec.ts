@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, seedPlan, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, openWorkoutSheet, seedPlan, seedRecords, workoutSheet } from './helpers';
 
 /**
  * Responsive sweep (contract 05): every width from a small Android phone to a desktop browser.
@@ -45,7 +45,10 @@ async function layoutProblems(page: Page): Promise<string[]> {
       }
       // Content spilling out of a parent that clips (overflow hidden), e.g. a card.
       const parent = el.parentElement;
-      if (parent && getComputedStyle(parent).overflowX === 'hidden') {
+      // Inside an <svg>, content beyond the viewBox is cropped by design (#81's muscle map crops its artwork this
+      // way); the <svg> element itself is still checked against its parent.
+      const inSvg = el.tagName.toLowerCase() !== 'svg' && !!el.closest('svg');
+      if (parent && !inSvg && getComputedStyle(parent).overflowX === 'hidden') {
         const p = parent.getBoundingClientRect();
         if (r.right > p.right + 0.5 || r.left < p.left - 0.5) problems.push(`spills out of parent: "${describe(el)}"`);
       }
@@ -143,9 +146,9 @@ test('evening next-action card with alternatives and a part-done requirement fit
 test('the exercise guide (long instructions, substitution note, caution) fits at every width', async ({ page }) => {
   await seedPlan(page, require('../fixtures/plans/prescription-example.plan.json'));
   await openAt(page, '2026-11-02T15:00:00+11:00');
-  await page.getByTestId('workout-expand').click();
-  for (const name of [/^Hammer curl/, /^Overhead press/, /^Lat pulldown/]) {
-    await page.getByTestId('next-action-session').getByRole('button', { name }).click();
+  await openWorkoutSheet(page);
+  for (const name of ['Hammer curls. Show how', 'Overhead press. Show how', 'Lat pulldown. Show how']) {
+    await workoutSheet(page).getByRole('button', { name }).click();
     await expect(page.getByTestId('exercise-guide')).toBeVisible();
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 900 });

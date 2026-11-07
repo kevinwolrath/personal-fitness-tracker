@@ -10,6 +10,8 @@ export async function openAt(page: Page, isoTime: string) {
   await page.clock.setFixedTime(new Date(isoTime));
   await page.goto('/');
   await expect(page.getByTestId('day-progress')).toBeVisible();
+  // Today's workout settles once its order has loaded (#56).
+  await expect(page.getByTestId('today-workout-loading')).toHaveCount(0);
 }
 
 /** Activity ids rendered in a section, in order (from data-testid="activity-<id>"). */
@@ -115,4 +117,25 @@ export async function exportAllData(page: Page): Promise<any> {
   await dialog.getByRole('button', { name: 'Export JSON' }).click();
   const { readFileSync } = await import('node:fs');
   return JSON.parse(readFileSync((await (await download).path())!, 'utf8'));
+}
+
+/** Today's workout (#56): the card, its sheet, and a session's options (full/short, skip, mark done) from the sheet. */
+export const workoutCard = (page: Page) => page.getByTestId('today-workout');
+export const workoutSheet = (page: Page) => page.getByTestId('today-workout-sheet');
+export async function openWorkoutSheet(page: Page) {
+  await page.getByTestId('today-workout-show-all').click();
+  await expect(workoutSheet(page)).toBeVisible();
+}
+export async function closeWorkoutSheet(page: Page) {
+  await page.getByRole('button', { name: "Close today's workout" }).click();
+  await expect(workoutSheet(page)).toHaveCount(0);
+}
+export async function openSessionOptions(page: Page, label = 'Strength workout') {
+  if (!(await workoutSheet(page).count())) await openWorkoutSheet(page);
+  await workoutSheet(page).getByRole('button', { name: `${label}: full or short, skip and more` }).click();
+}
+
+/** Close the topmost open sheet (other sheets stay mounted but hidden). */
+export async function closeTopSheet(page: Page) {
+  await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();
 }

@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { presetApiKey, stubClaude } from './claudeStub';
-import { HISTORY_DAY, MONDAY, chooseFromMenu, historyObservations, importScreenshots, openAt, row, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, chooseFromMenu, historyObservations, importScreenshots, openAt, openSessionOptions, row, seedRecords } from './helpers';
 
 /**
  * Issue #21: every modal screen and sheet uses the one header pattern (contract 02), and every surface
@@ -46,7 +46,7 @@ test('sheets on the Daily Log share the header pattern and have one primary acti
     ['weight', () => page.getByTestId('measurement-weight').click(), 'Cancel', 'Save'],
     ['day type', () => page.getByRole('button', { name: /Day type:/ }).click(), 'Close'],
     ['go to date', () => page.getByTestId('date-button').click(), 'Close'],
-    ['workout details', () => row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click(), 'Close'],
+    ["today's workout", () => page.getByTestId('today-workout-show-all').click(), 'Close'],
     ['meal details', () => row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).click(), 'Close'],
   ];
   for (const [what, open, dismiss, confirm] of sheets) {
@@ -60,7 +60,7 @@ test('sheets on the Daily Log share the header pattern and have one primary acti
 
 test('the exercise guide nests with the same header, and closing returns to its sheet', async ({ page }) => {
   await openAt(page, MONDAY);
-  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
+  await openSessionOptions(page); // the session's own sheet, opened from Today's workout (#56)
   await page.getByTestId('sheet-session').getByRole('button', { name: /^Kettlebell squat/ }).click();
   await expectHeaderPattern(topSurface(page), 'Close');
   await topSurface(page).getByTestId('modal-dismiss').click();

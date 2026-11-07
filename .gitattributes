@@ -1,0 +1,4 @@
+# Keep text files LF in every checkout, Windows included (#88). Generated files (e.g.
+# src/exercises/illustrations.generated.ts) are compared byte for byte with their generator's LF output,
+# and the self-hosted Windows CI runner would otherwise check them out as CRLF. Binaries are detected and left alone.
+* text=auto eol=lf

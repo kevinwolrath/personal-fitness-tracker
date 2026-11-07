@@ -1,0 +1,69 @@
+{
+  "note": "Raster diagnostics only; dark armour may produce false background suspects. Not proof of anatomical accuracy.",
+  "results": [
+    {
+      "character": "male",
+      "view": "front",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {},
+      "totalRegionPixels": 29419
+    },
+    {
+      "character": "male",
+      "view": "back",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {},
+      "totalRegionPixels": 44350
+    },
+    {
+      "character": "female",
+      "view": "front",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {},
+      "totalRegionPixels": 23898
+    },
+    {
+      "character": "female",
+      "view": "back",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {
+        "lats": {
+          "suspectPixels": 109,
+          "regionPixels": 1810,
+          "percent": 6.02
+        },
+        "glutes": {
+          "suspectPixels": 865,
+          "regionPixels": 6731,
+          "percent": 12.85
+        },
+        "hamstrings": {
+          "suspectPixels": 1,
+          "regionPixels": 9812,
+          "percent": 0.01
+        }
+      },
+      "totalRegionPixels": 35034
+    },
+    {
+      "character": "neutral",
+      "view": "front",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {
+        "core": {
+          "suspectPixels": 6,
+          "regionPixels": 3824,
+          "percent": 0.16
+        }
+      },
+      "totalRegionPixels": 23261
+    },
+    {
+      "character": "neutral",
+      "view": "back",
+      "overlapPixelsByPair": {},
+      "backgroundSuspects": {},
+      "totalRegionPixels": 34226
+    }
+  ]
+}

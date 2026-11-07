@@ -1,0 +1,14 @@
+{
+  "bg": "#101519",
+  "surface": "#20272d",
+  "raised": "#293139",
+  "text": "#f1f3f4",
+  "muted": "#b5bdc4",
+  "line": "#53616b",
+  "accent": "#ff9e42",
+  "accentSoft": "#35291e",
+  "priority": "#ffbd72",
+  "activated": "#78c9df",
+  "sore": "#f0c46a",
+  "injured": "#ff9c9c"
+}

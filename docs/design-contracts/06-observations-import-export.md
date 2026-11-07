@@ -75,3 +75,26 @@ App menu (☰) → **Export all data** → confirm **Export JSON**. Native opens
 - **Additive in version 1 (#28):** `activityLogs[].exercisesDone` (optional) and the completion-event actions `tick`, `untick` and `switch`.
 - **Additive in version 1 (#56):** `exerciseLogs` and `muscleReports` (contract 04), counted in `counts` and included in `range.from`. Exports written before them read as empty lists. Day snapshots' sessions gain structured doses (`sets`, `reps`, `seconds`, `avoid`), the `short` version and `doses: 1`; older snapshots only have the `dose` text.
 - A breaking change to this shape bumps `exportVersion`. Importers must reject versions they don't know.
+
+## Share this day (#76)
+
+The date row's **Share** (contract 02) shares a short text about the **selected date** through the system share sheet.
+- **Android:** ACTION_SEND, text/plain, with the system chooser. The user picks ChatGPT, Claude or any other app; no target is hard-coded and there's no API, account or key.
+- **Web (dev and test surface):** the Web Share API, else the text is copied to the clipboard and the app says so.
+- **Not shown on future dates.**
+
+**Preview first.** A sheet shows the exact text, notes when it includes the user's weight, and offers **Cancel** (nothing is shared) or **Share**. One pure formatter (`src/share/dailySummary.ts`) produces the string, so the preview and the shared text are identical.
+
+**The text:**
+- **Instruction first:** "Review my daily fitness activity for weight loss. Flag concerns and suggest one practical improvement. Be concise; don't invent missing data."
+- **Heading:** "Body Anvil — Daily activity — Mon 2 Nov 2026 (Home day)".
+- **Weight:** the latest weigh-in recorded **on that date** (never an earlier one carried forward; inferred values aren't weigh-ins), with the plan's target.
+- **Plan counts:** done, skipped and pending, with the same rule as the day's progress.
+- **Strength session:** exercise by exercise. Ticked exercises carry their prescribed dose; the rest are listed as pending. A skipped session says so.
+- **Extra exercises:** with their logged dose.
+- **Conditioning:** which alternative was done or started, with its rounds.
+- **Meals:** labelled "checklist, not intake".
+- **Other items:** each with its state. A label that repeats on the day (two school runs) gets its time.
+- **What's left out:** anything not recorded. No calories, no planned durations shown as time done.
+- **Empty day:** "No activity logged."
+- **Format:** dates and times use one fixed format ("Mon 2 Nov 2026", "8:30 am"), whatever the device locale.

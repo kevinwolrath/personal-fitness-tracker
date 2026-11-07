@@ -23,7 +23,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Content** | The screen | For the Daily Log: **Do this next**, **Today's workout** (#56), measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
 
 **Daily Log header**, at most three compact rows:
-1. `‹ date ▾ ›`, plus **Today** at the right when another date is open.
+1. `‹ date ▾ ›`, then **Share** (#76; contract 06 "Share this day") and **Today** at the right when another date is open. Share shows "⤴ Share" where it fits, the 48 dp ⤴ icon alone where only that fits, and, only where even the icon would crowd the date (a past date on the narrowest phones), it moves to the start of row 2. It is absent on future dates. Its accessible name is always "Share this day".
 2. The day title (26 pt) with the day-type chip on the same row. If both don't fit, the chip wraps below, right-aligned. Neither truncates.
 3. Progress text and the progress bar on one line.
 

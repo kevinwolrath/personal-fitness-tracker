@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import generic from '../fixtures/plans/generic-example.plan.json';
-import { MONDAY, SATURDAY, THURSDAY, expandToFullDay, openAt, renderedActivityIds, row, seedPlan, vrBoxing } from './helpers';
+import { MONDAY, SATURDAY, THURSDAY, closeWorkoutSheet, expandToFullDay, openAt, openSessionOptions, renderedActivityIds, row, seedPlan, vrBoxing, workoutCard } from './helpers';
 
 test.describe('seed plan resolves from JSON', () => {
   test('fresh install starts on Monday with the seed plan', async ({ page }) => {
@@ -13,10 +13,11 @@ test.describe('seed plan resolves from JSON', () => {
       'lunch', 'dog-walk', // midday
       'snack', 'school-run-pm', // afternoon (the snack's afternoon window opens at 14:00, the 15:15 run at 14:45)
       'dinner', // evening, after the conditioning requirement
-      'resistance', // anytime
     ]);
+    // The strength session lives on Today's workout, not in the time-of-day list (#56).
+    await expect(workoutCard(page)).toContainText('Strength workout · plan and more');
     await expect(page.getByTestId('requirement-hard-conditioning')).toContainText('High-intensity conditioning');
-    for (const part of ['Morning', 'Midday', 'Afternoon', 'Evening', 'Anytime today']) {
+    for (const part of ['Morning', 'Midday', 'Afternoon', 'Evening']) {
       await expect(page.getByRole('heading', { name: part, exact: true })).toBeVisible();
     }
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 7 done');
@@ -37,7 +38,8 @@ test.describe('seed plan resolves from JSON', () => {
   test('Saturday renders the weekend', async ({ page }) => {
     await openAt(page, SATURDAY);
     await expect(page.getByRole('button', { name: /Day type: Weekend/ })).toBeVisible();
-    expect(await renderedActivityIds(page)).toEqual(['lunch', 'snack', 'dinner', 'resistance-long', 'weekend-movement']);
+    expect(await renderedActivityIds(page)).toEqual(['lunch', 'snack', 'dinner', 'weekend-movement']);
+    await expect(workoutCard(page)).toContainText('Strength workout · plan and more');
     await expect(page.getByTestId('requirement-hard-conditioning')).toBeVisible();
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 5 done');
   });
@@ -56,10 +58,11 @@ test('happy path persists across reload', async ({ page }) => {
   for (let i = 0; i < 3; i++) await boxing.click();
   await expect(boxing).toHaveAttribute('aria-valuetext', /3 of 3 rounds/);
 
-  // Skip via the details sheet.
-  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
+  // Skip the strength session via its options on Today's workout (#56).
+  await openSessionOptions(page);
   await page.getByRole('button', { name: 'Skip', exact: true }).click();
-  await expect(row(page, 'resistance')).toContainText('Skipped');
+  await closeWorkoutSheet(page);
+  await expect(workoutCard(page)).toContainText('Strength workout · skipped');
 
   // Log a measurement.
   await page.getByTestId('measurement-weight').click();
@@ -75,7 +78,7 @@ test('happy path persists across reload', async ({ page }) => {
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 6 done');
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeChecked();
   await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /3 of 3/);
-  await expect(row(page, 'resistance')).toContainText('Skipped');
+  await expect(workoutCard(page)).toContainText('Strength workout · skipped');
   await expect(page.getByTestId('measurement-weight')).toContainText('97.8 kg');
 });
 

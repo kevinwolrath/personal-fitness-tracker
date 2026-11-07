@@ -83,7 +83,8 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
   - Exercises the inventory doesn't know keep their slot.
   - The order uses history **before today**, so it never reshuffles mid-workout.
   - It's display order only: exercise keys, ticks and session completion are unchanged.
-- **Logging:** `logExercise` (inventory movements, whole sets, any day including rest days) and `reportMuscle` / `clearMuscleReport` exist in code.
+- **Logging:** `logExercise` (inventory movements, whole sets, any day including rest days) and `reportMuscle` / `clearMuscleReport`. On screen: Today's workout (contract 08) ticks with one tap, and the coverage sheet's log form records a different dose.
+- **Default doses:** every strength entry has a `defaultDose` (sets plus reps or seconds). It's the one-tap dose when no plan prescribes the movement, never a recommendation.
 
 **Production UI (#79):** the expanded workout sheet includes a proportionate front/rear artwork preview and **Muscle coverage & log exercise**. The expanded inline workout and app menu also open coverage. The coverage sheet has fixed Close and scrollable art/detail/list content. It uses `loadExerciseHistory` and `exerciseState` for current coverage and suggestions, not a parallel engine. Historical workout logging uses its selected date; the coverage label always names today's date. Future-day forms are read-only.
 

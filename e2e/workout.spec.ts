@@ -1,149 +1,128 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openAt, row, seedPlan, seedRecords, seedWithStrengthWindow } from './helpers';
+import { closeWorkoutSheet, openAt, openSessionOptions, openWorkoutSheet, seedPlan, seedRecords, seedWithStrengthWindow, workoutCard, workoutSheet } from './helpers';
 
-/** Issue #28: a strength workout is a live checklist on "Do this next", collapsed and compact by default. */
+/**
+ * #56 layout A: Today's workout. One compact card on Today, and a sheet with every eligible strength exercise.
+ * A tap on a planned exercise ticks its session (#28 rules); any other exercise is one free log.
+ */
 
 const at = (hhmm: string, day = '02') => `2026-11-${day}T${hhmm}:00+11:00`; // Mon 2 Nov: home day with a strength session
 const DAY = 'weight-loss-v1|2026-11-02';
 const store = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!));
 const schoolRunDone = { [DAY]: { 'school-run-am': { activityId: 'school-run-am', status: 'done', count: 0, labelSnapshot: 'School run', updatedAt: 't' } } };
-const card = (page: Page) => page.getByTestId('next-action');
-/** The top slot: "Do this next" when something is due, "Up next" within the hour, otherwise absent (#51, #41). */
-const slot = (page: Page) => page.getByTestId(/^(next-action|up-next)$/);
-const summary = (page: Page) => page.getByTestId('workout-summary');
-const checklist = (page: Page) => page.getByTestId('next-action-session');
-const tickNext = (page: Page) => checklist(page).getByRole('checkbox', { checked: false }).first().click();
+const counts = (page: Page) => page.getByTestId('today-workout-counts');
+const tick = (page: Page, name: RegExp | string) => workoutSheet(page).getByRole('checkbox', { name });
 
 test.beforeEach(async ({ page }) => {
-  await seedPlan(page, seedWithStrengthWindow('morning')); // a plan-defined window: the 35 min fit before 11:00 (#41)
+  await seedPlan(page, seedWithStrengthWindow('morning')); // a plan-defined window, so the session is due at 10:15 (#41)
   await seedRecords(page, { activities: schoolRunDone });
   await openAt(page, at('10:15'));
-  await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout');
+  await expect(workoutCard(page)).toContainText("Do this next · Today's workout");
 });
 
-test('collapsed by default: just the workout, its progress and the next exercise; no whole-workout Done', async ({ page }) => {
-  await expect(summary(page)).toHaveText('35 min · 0 of 5 exercises');
-  await expect(checklist(page).getByRole('checkbox')).toHaveCount(1);
-  await expect(checklist(page)).toContainText('Next');
-  await expect(checklist(page)).toContainText('Kettlebell squat');
-  await expect(card(page).getByRole('radiogroup')).toHaveCount(0); // no Full/Short in the collapsed card
-  await expect(card(page).getByRole('button', { name: /^Done/ })).toHaveCount(0);
-  await expect(card(page).getByText('Skip and more')).toHaveCount(0);
-  const box = (await card(page).boundingBox())!;
-  expect(box.height, 'collapsed card stays compact').toBeLessThanOrEqual(200);
-  const target = (await checklist(page).getByRole('checkbox').boundingBox())!;
-  expect(Math.min(target.width, target.height)).toBeGreaterThanOrEqual(44);
-});
-
-test('tick → the next exercise appears; ⓘ opens the guide and never ticks', async ({ page }) => {
-  await checklist(page).getByRole('button', { name: /^Kettlebell squat, 3 × 10\. Show how/ }).click();
-  await expect(page.getByTestId('guide-title')).toHaveText('Kettlebell squat');
+test('collapsed: counts, one tickable exercise; ticking moves on, ⓘ never ticks', async ({ page }) => {
+  await expect(counts(page)).toHaveText('0 of 12 done · 12 left');
+  await expect(workoutCard(page).getByRole('checkbox')).toHaveCount(1);
+  await workoutCard(page).getByRole('button', { name: 'Goblet squat. Show how' }).click();
+  await expect(page.getByTestId('exercise-guide')).toBeVisible();
   await page.getByRole('button', { name: 'Close guide' }).click();
-  await expect(summary(page)).toHaveText('35 min · 0 of 5 exercises');
+  await expect(counts(page)).toHaveText('0 of 12 done · 12 left');
 
-  await tickNext(page);
-  await expect(summary(page)).toHaveText('35 min · 1 of 5 exercises');
-  await expect(checklist(page)).toContainText('Chest press (Fortis)');
-  await expect(page.getByTestId('day-progress')).toHaveText('1 of 7 done'); // the workout is still one item
-  await expect(row(page, 'resistance')).toContainText('1 of 5 exercises');
-});
-
-test('expanding shows the whole checklist; collapsing and restarting keep every tick', async ({ page }) => {
-  await tickNext(page);
-  await tickNext(page);
-  await page.getByTestId('workout-expand').click();
-  await expect(checklist(page).getByRole('checkbox')).toHaveCount(5);
-  await expect(checklist(page).getByRole('checkbox', { checked: true })).toHaveCount(2); // done ones stay visible
-  await expect(page.getByRole('radio', { name: 'Full · 35 min' })).toBeChecked();
-  await page.getByTestId('workout-expand').click(); // collapse
-  await expect(summary(page)).toHaveText('35 min · 2 of 5 exercises');
-
-  await page.reload();
-  await expect(summary(page)).toHaveText('35 min · 2 of 5 exercises');
-  await expect(checklist(page).getByRole('checkbox')).toHaveCount(1); // collapsed again by default
-  await expect(checklist(page)).toContainText('Lat pulldown (Fortis)');
+  await workoutCard(page).getByRole('checkbox', { name: 'Goblet squat, 3 × 10' }).click();
+  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
+  await expect(workoutCard(page).getByRole('checkbox')).toHaveAccessibleName(/^Chest press machine/); // the next one
+  // A planned exercise writes its session tick, never a free log.
   const s = await store(page);
-  expect(s.activities[DAY].resistance).toMatchObject({ status: 'pending', variant: 'full', exercisesDone: ['full:0:kettlebell_squat', 'full:1:chest_press'] });
+  expect(s.activities[DAY].resistance.exercisesDone).toEqual(['full:0:kettlebell_squat']);
+  expect(s.exerciseLogs ?? []).toEqual([]);
 });
 
-test('the last tick completes the workout: "complete · 5 of 5" is shown, then "Do this next" moves on', async ({ page }) => {
-  for (let i = 0; i < 5; i++) await tickNext(page);
-  await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout complete');
-  await expect(summary(page)).toHaveText('5 of 5 exercises ✓');
-  await expect(page.getByTestId('day-progress')).toHaveText('2 of 7 done');
-  await expect(row(page, 'resistance').getByRole('checkbox')).toBeChecked();
-  await page.getByRole('button', { name: "Show what's next" }).click();
-  await expect(slot(page)).toHaveCount(0); // 10:15: lunch is due at 11:45, more than an hour away: no card (#41)
+test('the sheet lists every eligible exercise; a non-plan tick is one free log, untick removes it; done rows go last; it persists', async ({ page }) => {
+  await openWorkoutSheet(page);
+  await expect(page.getByTestId('today-workout-totals')).toContainText('12');
+  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(12);
+  await expect(workoutSheet(page)).not.toContainText('VR boxing'); // conditioning stays its own task
 
-  const events = (await store(page)).completionEvents.filter((e: any) => e.activityId === 'resistance').map((e: any) => e.action);
-  expect(events).toEqual(['tick', 'tick', 'tick', 'tick', 'complete']);
+  await tick(page, 'Standing calf raises, 3 × 15').click();
+  await expect(page.getByTestId('today-workout-done').getByRole('checkbox', { name: 'Standing calf raises, 3 × 15' })).toBeChecked();
+  let logs = (await store(page)).exerciseLogs;
+  expect(logs).toEqual([expect.objectContaining({ id: 'tap-2026-11-02-standing_calf_raise', movement: 'standing_calf_raise', sets: 3, reps: 15 })]);
+
+  // Untick removes it; a second tap stores one record again (fixed id per day and movement).
+  await tick(page, 'Standing calf raises, 3 × 15').click();
+  await expect(page.getByTestId('today-workout-todo').getByRole('checkbox', { name: 'Standing calf raises, 3 × 15' })).not.toBeChecked();
+  expect((await store(page)).exerciseLogs).toEqual([]);
+  await tick(page, 'Standing calf raises, 3 × 15').click();
+  await expect(page.getByTestId('today-workout-done').getByRole('checkbox')).toHaveCount(1);
+  logs = (await store(page)).exerciseLogs;
+  expect(logs).toHaveLength(1);
+
+  await closeWorkoutSheet(page);
+  await page.reload();
+  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
 });
 
-test('the completed card also moves on by itself after a moment', async ({ page }) => {
-  for (let i = 0; i < 5; i++) await tickNext(page);
-  await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout complete');
-  await expect(slot(page)).toHaveCount(0, { timeout: 7000 });
+test('ticking every planned exercise completes the session; the card says so; untick reopens it', async ({ page }) => {
+  await openWorkoutSheet(page);
+  for (const name of [/^Goblet squat/, /^Chest press machine/, /^Lat pulldown/, /^One-arm kettlebell row/, /^Hammer curls/]) await tick(page, name).click();
+  await expect(page.getByText('Strength workout complete')).toBeVisible(); // toast
+  expect((await store(page)).activities[DAY].resistance).toMatchObject({ status: 'done', variant: 'full' });
+  await closeWorkoutSheet(page);
+  await expect(workoutCard(page)).toContainText('Strength workout · done ✓');
+  await expect(counts(page)).toHaveText('5 of 12 done · 7 left'); // the rest of the inventory stays available
+
+  await openWorkoutSheet(page);
+  await tick(page, /^Hammer curls/).click();
+  expect((await store(page)).activities[DAY].resistance.status).toBe('pending');
 });
 
-test('unticking a finished exercise in the details sheet reopens the workout; history keeps both', async ({ page }) => {
-  for (let i = 0; i < 5; i++) await tickNext(page);
-  await page.getByRole('button', { name: "Show what's next" }).click();
-  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
-  await page.getByTestId('sheet-session').getByRole('checkbox', { name: /^Hammer curl/ }).click();
-  await expect(page.getByTestId('sheet-session').getByRole('checkbox', { checked: true })).toHaveCount(4);
-  await page.getByTestId('modal-dismiss').click();
-  await expect(row(page, 'resistance').getByRole('checkbox')).not.toBeChecked();
-  await expect(page.getByTestId('day-progress')).toHaveText('1 of 7 done');
-  const actions = (await store(page)).completionEvents.filter((e: any) => e.activityId === 'resistance').map((e: any) => e.action);
-  expect(actions.slice(-2)).toEqual(['complete', 'undo']);
-});
-
-test('Full / Short is an explicit choice; switching mid-workout asks first; Short completes with its own list', async ({ page }) => {
-  await page.getByTestId('workout-expand').click();
+test('Full / Short lives in the session options; switching mid-workout asks first; the inventory stays complete', async ({ page }) => {
+  await openSessionOptions(page);
   await page.getByRole('radio', { name: 'Short · 10 min' }).click(); // nothing ticked yet: no question
-  await expect(summary(page)).toHaveText('Short · 10 min · 0 of 3 exercises');
-  await tickNext(page);
+  await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();
+  await expect(workoutSheet(page).getByRole('checkbox', { name: 'Goblet squat, 2 × 10' })).toBeVisible(); // short dose
+  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(12);
+  await tick(page, 'Goblet squat, 2 × 10').click();
 
+  await workoutSheet(page).getByRole('button', { name: 'Strength workout: full or short, skip and more' }).click();
   await page.getByRole('radio', { name: 'Full · 35 min' }).click();
   const dialog = page.getByRole('alertdialog', { name: 'Switch to the full version?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('radio', { name: 'Short · 10 min' })).toBeChecked();
-
-  await tickNext(page);
-  await tickNext(page);
-  await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout complete');
-  await expect(summary(page)).toHaveText('3 of 3 exercises ✓');
-  expect((await store(page)).activities[DAY].resistance).toMatchObject({ status: 'done', variant: 'short' });
+  expect((await store(page)).activities[DAY].resistance).toMatchObject({ variant: 'short', exercisesDone: ['short:0:kettlebell_squat'] });
 });
 
-test('ticks in the details sheet correct a past day', async ({ page }) => {
+test('a past day is corrected from its own workout card', async ({ page }) => {
   await openAt(page, at('10:00', '04')); // Wednesday; Monday is now in the past
   await page.getByRole('button', { name: 'Previous day' }).click();
   await page.getByRole('button', { name: 'Previous day' }).click();
-  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
-  await page.getByTestId('sheet-session').getByRole('checkbox', { name: /^Kettlebell squat/ }).click();
-  await page.getByTestId('modal-dismiss').click();
-  await expect(row(page, 'resistance')).toContainText('1 of 5 exercises');
+  await openWorkoutSheet(page);
+  await tick(page, /^Goblet squat/).click();
+  await closeWorkoutSheet(page);
+  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
   expect((await store(page)).activities[DAY].resistance.exercisesDone).toEqual(['full:0:kettlebell_squat']);
 });
 
-test('whole-workout completion stays as a manual override in the list', async ({ page }) => {
-  await row(page, 'resistance').getByRole('checkbox').click();
-  await expect(page.getByTestId('day-progress')).toHaveText('2 of 7 done');
-  await expect(slot(page)).toHaveCount(0);
+test('Friday rest day: optional, nothing due, voluntary exercise still logs', async ({ page }) => {
+  await openAt(page, at('09:00', '06'));
+  await expect(page.getByTestId('today-workout-subtitle')).toHaveText('Rest day · optional');
+  await openWorkoutSheet(page);
+  await expect(workoutSheet(page)).not.toContainText('! Due');
+  await tick(page, 'Plank, 1 × 20 s').click();
+  expect((await store(page)).exerciseLogs).toEqual([expect.objectContaining({ movement: 'plank', date: '2026-11-06', sets: 1, seconds: 20 })]);
 });
 
 test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
-  test('workout card: collapsed, expanded, complete', async ({ page }) => {
-    await tickNext(page);
-    await page.waitForTimeout(400); // let the next exercise's fade-in finish (it's a JS animation)
-    await expect(page).toHaveScreenshot('workout-collapsed.png');
-    await page.getByTestId('workout-expand').click();
-    await expect(page).toHaveScreenshot('workout-expanded.png');
-    for (let i = 0; i < 4; i++) await tickNext(page);
-    await expect(page.getByTestId('next-action-title')).toHaveText('Strength workout complete');
-    await expect(page).toHaveScreenshot('workout-complete.png');
+  test("today's workout: card, sheet, ticked", async ({ page }) => {
+    await expect(page).toHaveScreenshot('today-workout-card.png');
+    await openWorkoutSheet(page);
+    await expect(page).toHaveScreenshot('today-workout-sheet.png');
+    await tick(page, 'Standing calf raises, 3 × 15').click();
+    await tick(page, /^Goblet squat/).click();
+    await workoutSheet(page).hover();
+    await page.mouse.wheel(0, 3000);
+    await expect(page).toHaveScreenshot('today-workout-sheet-done.png');
   });
 });

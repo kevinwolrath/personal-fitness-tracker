@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import example from '../fixtures/plans/prescription-example.plan.json';
-import { openAt, row, seedPlan, seedRecords, chooseFromMenu, exportAllData } from './helpers';
+import { openAt, row, seedPlan, seedRecords, chooseFromMenu, exportAllData, closeWorkoutSheet, openSessionOptions, openWorkoutSheet, workoutCard, workoutSheet } from './helpers';
 
 /** Issue #10: "Open app → see what I should do now → do it → tick it off → app tells me what's next." */
 
@@ -25,7 +25,7 @@ test('shows what to do now, ticks it off from the card, and moves on immediately
   // Recalculated (#41): untimed Strength is not promoted just for being open, and lunch is hours away: no card.
   await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
   await expect(page.getByText(/Nothing left|Nothing planned/)).toHaveCount(0);
-  await expect(row(page, 'resistance').getByRole('checkbox')).not.toBeChecked(); // still in the checklist, actionable
+  await expect(workoutCard(page)).toContainText('0 of 12 done'); // Strength stays on Today's workout, actionable (#56)
   await expect(page.getByTestId('activity-school-run-am')).not.toHaveCSS('border-left-width', '4px');
 
   // Undo from the list: the run is next again.
@@ -38,7 +38,7 @@ test('#41 the reported case: Monday 09:34, the overdue school run, untimed Stren
   await expect(page.getByTestId('day-progress')).toBeVisible();
   await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
   await expect(row(page, 'school-run-am').getByRole('checkbox')).not.toBeChecked(); // overdue: left as it was
-  await expect(row(page, 'resistance')).toBeVisible();
+  await expect(workoutCard(page)).toContainText('Strength workout · plan and more'); // listed, not promoted
   await expect(row(page, 'lunch')).toBeVisible();
   // Nearer noon, lunch is recommended.
   await openAt(page, at('11:50'));
@@ -93,12 +93,15 @@ test('any alternative works: heavy bag from the next-action card', async ({ page
 
 test('short version of the strength session is recorded as such', async ({ page }) => {
   await openAt(page, at('09:45'));
-  await row(page, 'resistance').getByRole('button', { name: 'Strength workout details' }).click();
+  await openSessionOptions(page); // full or short now lives in the session's options (#56)
   await page.getByRole('radio', { name: 'Short · 10 min' }).click(); // explicit choice (#28)
   await expect(page.getByTestId('sheet-session')).toContainText('Kettlebell squat');
   await expect(page.getByTestId('sheet-session')).not.toContainText('Lat pulldown');
-  await page.getByRole('button', { name: 'Mark whole workout done (short)' }).click();
-  await expect(row(page, 'resistance')).toContainText('Short version');
+  await page.getByRole('button', { name: 'Mark whole workout done (short)' }).click(); // closes the options sheet
+  // The short version's 3 planned exercises are done; the rest of the inventory stays available.
+  await expect(workoutSheet(page).getByRole('checkbox', { checked: true })).toHaveCount(3);
+  await closeWorkoutSheet(page);
+  await expect(workoutCard(page)).toContainText('Strength workout · done ✓');
   const s = await store(page);
   expect(s.activities['weight-loss-v1|2026-11-02'].resistance).toMatchObject({ status: 'done', variant: 'short' });
 });
@@ -106,13 +109,12 @@ test('short version of the strength session is recorded as such', async ({ page 
 test('avoided movements show the configured substitute (from the #7 exercise config)', async ({ page }) => {
   await seedPlan(page, example);
   await openAt(page, at('15:00'));
-  await expect(nextTitle(page)).toHaveText('Strength workout');
-  await page.getByTestId('workout-expand').click();
-  const session = page.getByTestId('next-action-session');
-  await expect(session).toContainText('Hammer curl');
-  await expect(session).toContainText('instead of biceps curl');
+  await expect(workoutCard(page)).toContainText("Do this next · Today's workout");
+  await openWorkoutSheet(page);
+  const session = workoutSheet(page);
+  await expect(session.getByTestId('workout-row-hammer_curl')).toContainText('instead of biceps curl');
   await expect(session).not.toContainText('Biceps curl');
-  await expect(session).toContainText('caution'); // overhead press
+  await expect(session.getByTestId('workout-row-overhead_press')).toContainText('Caution');
 });
 
 test('respects "after": the snack waits for lunch; overdue lunch stays in the list but is not promoted', async ({ page }) => {
@@ -147,7 +149,9 @@ test('the next-action card is only for today; other days are the plain log', asy
 test('history is not destroyed by a later plan change', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openAt(page, at('10:00'));
-  await row(page, 'resistance').getByRole('checkbox').click();
+  await openSessionOptions(page);
+  await page.getByRole('button', { name: 'Mark whole workout done (full)' }).click(); // closes the options sheet
+  await closeWorkoutSheet(page);
 
   // Remove the Monday strength session from the plan through the #7 protocol.
   const seed = JSON.parse(readFileSync('plans/seed.plan.json', 'utf8'));
@@ -160,7 +164,7 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await expect(page.getByTestId('activity-resistance')).toHaveCount(0); // no longer prescribed
+  await expect(workoutCard(page)).toContainText('Optional · any time today'); // no longer prescribed
   await expect(page.getByTestId('history-resistance')).toContainText('Done'); // but what happened is still on the day
 
   const doc = await exportAllData(page);

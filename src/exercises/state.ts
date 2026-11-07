@@ -81,6 +81,10 @@ export type ExerciseState = {
   restDay: boolean;
   /** Display order for today's scheduled sessions, by activity id (option C). Fixed for the day: see below. */
   sessionOrders: Record<string, SessionOrder>;
+  /** Eligible strength movements in the day's frozen priority order (history before today), for Today's workout. */
+  dayOrder: string[];
+  /** History before today is long enough for priority to decide order (else plan order first). */
+  priorityOrder: boolean;
 };
 
 /**
@@ -109,7 +113,8 @@ export function exerciseState(
     };
   }
   const restDay = restDays.includes(weekdayOf(at.today));
-  return { coverage, suggestions, enoughHistory: hasEnoughHistory(history.entries, inventory, at.today), restDay, sessionOrders };
+  const dayOrder = suggestExercises(eligibleExercises(plan.exercise, inventory), startOfDay).map((s) => s.exercise.movement);
+  return { coverage, suggestions, enoughHistory: hasEnoughHistory(history.entries, inventory, at.today), restDay, sessionOrders, dayOrder, priorityOrder: enoughBefore };
 }
 
 /** Log an exercise done outside any session (#56), at any time and on any day, rest days included. */

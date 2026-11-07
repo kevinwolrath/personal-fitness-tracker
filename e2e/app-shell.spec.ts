@@ -32,15 +32,18 @@ test('the menu is in the same place on any day', async ({ page }) => {
   expect(await where()).toEqual(today);
 });
 
-test('vertical budget: "Do this next" / "Up next" (or, with no card, the measurements) starts within 200 px on a 390 × 844 phone', async ({ page }) => {
+test('vertical budget: "Do this next" / "Up next" (or, with no card, Today\'s workout) starts within 200 px on a 390 × 844 phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // Monday 09:00: the school run is due. Thursday 09:00 (office day): nothing to recommend, so no card (#41).
   for (const [at, hasCard] of [[MONDAY, true], [THURSDAY, false]] as const) {
     await openAt(page, at);
     const card = page.getByTestId(/^(next-action|up-next)$/);
     await expect(card, at).toHaveCount(hasCard ? 1 : 0);
-    const first = (await (hasCard ? card : page.getByTestId('measurement-weight')).boundingBox())!;
+    const first = (await (hasCard ? card : page.getByTestId('today-workout')).boundingBox())!;
     expect(first.y, at).toBeLessThanOrEqual(200);
+    // Today's workout stays compact (#56): at most 200 px collapsed.
+    const workout = (await page.getByTestId('today-workout').boundingBox())!;
+    expect(workout.height, at).toBeLessThanOrEqual(200);
   }
 });
 

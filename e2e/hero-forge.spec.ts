@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, openAt, seedPlan, seedWithStrengthWindow } from './helpers';
+import { MONDAY, closeWorkoutSheet, openAt, openWorkoutSheet, seedPlan, seedWithStrengthWindow, workoutSheet } from './helpers';
 
 async function settings(page: Page) {
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
@@ -94,10 +94,9 @@ test('actual app before/after captures: Today, Progress, Workout and Coverage', 
     await expect(page.getByTestId('progress-summary')).toBeVisible();
     await page.screenshot({ path: `${dir}/${width}-${theme}-progress.png` });
     await page.getByRole('tab', { name: 'Today' }).click();
-    await page.getByTestId('activity-resistance').getByLabel('Strength workout details', { exact: true }).click();
-    await expect(page.getByTestId('sheet-session')).toBeVisible();
+    await openWorkoutSheet(page); // Today's workout (#56)
     await page.screenshot({ path: `${dir}/${width}-${theme}-workout.png` });
-    await page.getByRole('button', { name: 'Muscle coverage & log exercise', exact: true }).click();
+    await workoutSheet(page).getByRole('button', { name: 'Muscle coverage. Open the full view' }).click();
     await expect(page.getByTestId('muscle-detail')).toBeVisible();
     await page.screenshot({ path: `${dir}/${width}-${theme}-coverage.png` });
     const art = page.getByTestId('coverage-sheet').getByTestId('muscle-map-art');
@@ -107,6 +106,6 @@ test('actual app before/after captures: Today, Progress, Workout and Coverage', 
     }))));
     expect(loaded).toEqual([true, true]);
     await page.getByRole('button', { name: 'Close coverage', exact: true }).click();
-    await page.getByTestId('modal-dismiss').click();
+    await closeWorkoutSheet(page);
   }
 });

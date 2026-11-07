@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="utf-8"><title>#56 inventory mock-ups</title><style>
+:root{--bg:#101519;--card:#20262c;--line:#3a434b;--ink:#eef1f3;--mut:#9aa5ae;--or:#ff9d42;--red:#e5484d;--amb:#f5a524;--yel:#e5d34a;--grn:#46a758}
+*{box-sizing:border-box}body{margin:0;background:#555;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+.phone{width:390px;height:844px;background:var(--bg);overflow:hidden;position:relative;margin:0}
+.app{height:56px;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--line);font-weight:700;font-size:18px}
+.wire{position:absolute;right:8px;top:8px;font-size:10px;color:#000;background:#ffd;padding:2px 6px;border-radius:4px;z-index:9}
+.pad{padding:12px 20px}.date{color:var(--ink);font-size:16px;padding:8px 20px}
+h1{margin:4px 0 2px;font-size:30px}.sub{color:var(--mut);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+.eb{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--or)}
+.t{font-size:20px;font-weight:800;margin:2px 0}.btn{background:var(--or);color:#111;border-radius:14px;text-align:center;padding:12px;font-weight:700;margin-top:10px}
+.sec{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase;margin:16px 0 6px}
+.row{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--line);padding:4px 0}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--mut);flex:none}.ck.on{background:var(--grn);border-color:var(--grn);position:relative}
+.ck.on:after{content:"✓";color:#fff;position:absolute;left:5px;top:0;font-size:16px;font-weight:800}
+.nm{flex:1;font-size:15px}.nm small{display:block;color:var(--mut);font-size:12px}.done .nm{color:var(--mut);text-decoration:line-through}
+.dose{color:var(--mut);font-size:13px}.i{width:22px;height:22px;border:1.5px solid var(--or);border-radius:50%;color:var(--or);font-size:12px;text-align:center;line-height:19px;flex:none}
+.chip{font-size:11px;font-weight:700;padding:1px 6px;border-radius:8px;display:inline-block;margin-right:4px}
+.p-red{color:var(--red);border:1px solid var(--red)}.p-amb{color:var(--amb);border:1px dashed var(--amb)}.p-yel{color:var(--yel);border:1px dotted var(--yel)}.p-grn{color:var(--grn);border:1px solid var(--grn)}
+.plan{font-size:11px;color:var(--ink);background:#33404a;border-radius:6px;padding:1px 5px;margin-left:4px}
+.sheet{position:absolute;inset:40px 0 0 0;background:var(--card);border-radius:22px 22px 0 0;padding:8px 20px}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--mut);margin:0 auto 8px}
+.sh{display:flex;justify-content:space-between;align-items:center;height:44px}.sh b{font-size:17px}.sh span{color:var(--or)}
+.map{height:96px;border:1px dashed var(--mut);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--mut);font-size:12px;text-align:center}
+.map div{width:56px;height:80px;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.counts{display:flex;gap:8px;margin:10px 0}.counts div{flex:1;background:#2a3238;border-radius:10px;text-align:center;padding:6px;font-size:12px;color:var(--mut)}.counts b{display:block;font-size:18px;color:var(--ink)}
+.link{color:var(--mut);text-decoration:underline;text-align:center;padding:12px;font-size:14px}
+.ghost{border:1px solid var(--line);border-radius:14px;text-align:center;padding:11px;font-weight:600;margin-top:8px}
+.lbl{position:absolute;bottom:0;left:0;right:0;background:#000c;color:#fff;font-size:12px;padding:6px 10px}
+.tab{position:absolute;bottom:0;left:0;right:0;height:60px;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;color:var(--mut);font-size:13px}.tab b{color:var(--or)}
+</style></head><body>
+<script>
+const EX=[["Kettlebell Romanian deadlift","Hamstrings · Glutes","red","Due","3 × 10",1],["Goblet squat","Quadriceps · Glutes","red","Due","3 × 10",1],["Straight-leg lying raises","Hip flexors","amb","Building","2 × 12",0],["Standing calf raises","Calves","amb","Building","2 × 15",0],["Overhead press","Shoulders","yel","Steady","3 × 10",0],["One-arm kettlebell row","Upper back · Lats","yel","Steady","3 × 10",1],["Lat pulldown","Lats","yel","Steady","3 × 10",1],["Leg extension","Quadriceps","grn","Trained","3 × 12",0],["Plank","Core","grn","Trained","1 × 20 s",0]];
+const DONE=[["Chest press machine","Chest"],["Hammer curls","Biceps"],["Push-ups (knuckles)","Chest"]];
+const row=(e,plan=true)=>`<div class="row"><div class="ck"></div><div class="nm">${e[0]}${plan&&e[5]?'<span class="plan">Plan</span>':''}<small><span class="chip p-${e[2]}">${e[3]}</span>${e[1]}</small></div><div class="dose">${e[4]}</div><div class="i">i</div></div>`;
+const done=d=>`<div class="row done"><div class="ck on"></div><div class="nm">${d[0]}<small>${d[1]}</small></div><div class="i">i</div></div>`;
+const TOP=`<div class="app">☰ <span>Body Anvil</span></div><div class="date">‹ &nbsp;Mon, 2 Nov ▾ &nbsp;›</div>`;
+const today=(card,after='')=>`${TOP}<div class="pad" style="padding-top:0"><h1>Today</h1><div class="sub">2 of 7 done</div>
+<div class="card"><div class="eb">Do this next</div><div class="t">School run</div><div class="sub">Now · 8:30 am · Bike out, walk-jog home</div><div class="btn">Done</div></div>
+${card}${after}</div><div class="tab"><b>Today</b><span>Progress</span></div>`;
+const coll=(extra='')=>`<div class="card"><div class="eb" style="color:var(--mut)">Today's workout</div><div class="t">3 of 12 done · 9 left</div><div class="sub">Any time today · ordered by muscle priority</div>
+${row(EX[0])}${extra}<div class="link" style="padding:8px">Show all 12 ⌄</div></div>`;
+const sheetHead=(t)=>`<div class="grab"></div><div class="sh"><span>Close</span><b>${t}</b><span style="opacity:0">x</span></div>`;
+const map=`<div class="map"><div>front</div><div>back</div><span>coverage preview<br>(approved #81 art)<br>tap to enlarge</span></div>`;
+const counts=`<div class="counts"><div><b>12</b>total</div><div><b>9</b>remaining</div><div><b>3</b>done</div></div>`;
+const S={
+a1:today(coll(),`<div class="sec">Morning</div><div class="row"><div class="ck"></div><div class="nm">School run<small>8:30 am</small></div></div>`)+`<div class="lbl">A1 · Today collapsed: one workout card (content layer), no time-of-day strength row</div>`,
+a2:`<div style="opacity:.4">${today(coll())}</div><div class="sheet">${sheetHead("Today's workout")}${map}${counts}<div class="sec" style="margin-top:4px">To do · by priority</div>${EX.slice(0,6).map(e=>row(e)).join('')}</div><div class="lbl">A2 · Expanded = existing workout sheet: map, counts, whole inventory, done below</div>`,
+a3:`<div style="opacity:.4">${today(coll())}</div><div class="sheet" style="inset:40px 0 0 0">${sheetHead("Today's workout")}<div style="margin-top:-6px">${EX.slice(5).map(e=>row(e)).join('')}<div class="sec">Done today · 3</div>${DONE.map(done).join('')}<div class="ghost">Log with a different dose…</div></div></div><div class="lbl">A3 · Same sheet scrolled: done rows at the bottom, untick to undo</div>`,
+b1:today(`<div class="card"><div class="eb" style="color:var(--mut)">Today's workout</div><div class="t">3 of 12 done · 9 left</div>
+<div class="sub" style="margin-bottom:6px">Coverage ›</div>${EX.slice(0,4).map(e=>row(e)).join('')}<div class="link" style="padding:8px">Show 5 more + 3 done ⌄</div></div>`)+`<div class="lbl">B · Inline: top 4 by priority right on Today, expands in place (no sheet). Costs ~200 px more on Today</div>`,
+c1:`<div style="opacity:.4">${today(coll())}</div><div class="sheet">${sheetHead("Today's workout")}${map}${counts}<div class="sec" style="margin-top:4px">Today's plan · 3 left</div>${EX.filter(e=>e[5]).slice(0,3).map(e=>row(e,false)).join('')}<div class="sec">More you can do · 6</div>${EX.filter(e=>!e[5]).slice(0,3).map(e=>row(e,false)).join('')}</div><div class="lbl">C · Same card + sheet, but plan exercises grouped first, then the rest of the inventory</div>`};
+for(const[k,v]of Object.entries(S)){const d=document.createElement('div');d.className='phone';d.id=k;d.innerHTML='<div class="wire">WIREFRAME · not the running app</div>'+v;document.body.appendChild(d)}
+</script></body></html>

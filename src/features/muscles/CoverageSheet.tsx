@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { exerciseState, loadExerciseHistory, logExercise, reportMuscle, type ExerciseState } from '../../exercises/state';
 import { eligibleExercises, exerciseInventory, type InventoryExercise } from '../../exercises/inventory';
 import { buildGuide } from '../../exercises/guide';
+import { doseFor } from '../../exercises/todayWorkout';
 import { newId, type ExerciseLog } from '../../storage/types';
 import type { LocalDate } from '../../plan/dates';
 import type { PrescribedSession } from '../../prescription/session';
@@ -16,7 +17,7 @@ import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import { coverageLabel, MuscleMap, type MapMode } from './MuscleMap';
 
 /** Real #56 history and store actions; this component contains presentation, not a second recovery engine. */
-export function CoverageSheet({ date, editable, session, onClose }: { date: LocalDate; editable: boolean; session?: PrescribedSession; onClose: () => void }) {
+export function CoverageSheet({ date, editable, session, onClose, initialPage = 'map' }: { date: LocalDate; editable: boolean; session?: PrescribedSession; onClose: () => void; initialPage?: 'map' | 'inventory' }) {
   const { store, plan, dataVersion, notifyDataChanged } = useApp();
   const { today } = useClock();
   const { colors, type } = useTheme();
@@ -25,7 +26,7 @@ export function CoverageSheet({ date, editable, session, onClose }: { date: Loca
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
-  const [page, setPage] = useState<'map' | 'inventory' | 'exercise'>('map');
+  const [page, setPage] = useState<'map' | 'inventory' | 'exercise'>(initialPage);
   const [mode, setMode] = useState<MapMode>('priority');
   const [selected, setSelected] = useState('chest');
   const [exercise, setExercise] = useState<InventoryExercise | null>(null);
@@ -61,12 +62,14 @@ export function CoverageSheet({ date, editable, session, onClose }: { date: Loca
     finally { pending.current = false; if (alive.current) setBusy(false); }
   };
   const choose = (next: InventoryExercise) => {
-    const prescribed = [...(session?.exercises ?? []), ...(session?.short?.exercises ?? []), ...plan.activities.flatMap(a => a.session?.exercises ?? [])].find(e => e.movement === next.movement);
-    setExercise(next); setSets(String(prescribed?.sets ?? next.defaultDose?.sets ?? 1));
-    // No invented completed dose. Without a prescription the user confirms a conservative editable draft.
-    const seconds = next.kind === 'conditioning' || !!prescribed?.seconds || !!next.defaultDose?.seconds;
+    // Same starting dose as Today's one-tap (#56): today's session, else the plan, else the inventory default.
+    const today = [...(session?.exercises ?? []), ...(session?.short?.exercises ?? [])].find(e => e.movement === next.movement);
+    const d = doseFor(next.movement, plan, today);
+    setExercise(next); setSets(String(d.sets));
+    // An editable draft of what was done, never recorded until saved.
+    const seconds = next.kind === 'conditioning' || d.seconds !== undefined;
     setUnit(seconds ? 'seconds' : 'reps');
-    setDose(String(seconds ? prescribed?.seconds ?? next.defaultDose?.seconds ?? 60 : prescribed?.reps ?? 1));
+    setDose(String(seconds ? d.seconds ?? 60 : d.reps ?? 1));
     entryId.current = newId(); setPage('exercise'); setError(''); setNotice(''); scroll.current?.scrollTo({ y: 0 });
   };
   const timed = exercise?.kind === 'conditioning' || unit === 'seconds';

@@ -20,7 +20,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 |---|---|---|---|
 | **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu) on the left, then the app name. The bottom tab bar (#52): Today and Progress. | Rendered by the layout, never by a screen. The app bar is fixed at the top, outside any scroll view, and respects the top safe area: 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. The tab bar is fixed at the bottom (56 dp plus the bottom inset); sheets cover it. |
 | **Screen header** | The screen | For the Daily Log: the date row, then the day line (see below) | Scrolls with the content. Screens never add shell controls (menu, app title) to it. |
-| **Content** | The screen | For the Daily Log: **Do this next**, measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
+| **Content** | The screen | For the Daily Log: **Do this next**, **Today's workout** (#56), measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
 
 **Daily Log header**, at most three compact rows:
 1. `‹ date ▾ ›`, plus **Today** at the right when another date is open.

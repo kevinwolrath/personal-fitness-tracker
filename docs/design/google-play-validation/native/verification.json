@@ -1,0 +1,11 @@
+{
+  "device": "Pixel_9 emulator-5556",
+  "androidApi": "35",
+  "version": "0.1.0",
+  "versionCode": 1,
+  "screen": "Physical size: 1080x2424",
+  "fontScale": "1.0",
+  "installedApkSha256": "c83de35115ceed8da49c448a03dbf7f45b6c454fe6d4dbc06490db8a08c3fda9",
+  "evidence": "Today, workout, guide and Progress captured from installed standalone app; then returned to Today",
+  "tracking": "No completion, measurement, configuration or Health Connect changes made; workout stayed 0/4"
+}

@@ -2,6 +2,8 @@
 
 Issue #100 adds a versioned [en-AU bundle](../store/google-play/README.md), an offline validator/preparer and a manual `.github/workflows/google-play-listing.yml`. It reuses existing Play OAuth/API helpers and resumable AAB upload code. It does not replace the keystore, register another app, change `com.questspire.personalfitnesstracker`, or publish a live release during development.
 
+See the [live environment/validation follow-up](google-play-validation.md) for the configured protections, successful dry-run, native screenshot comparison and current Google `edits.validate` HTTP 403 blocker. No live change was committed by that validation.
+
 ## Audit of the existing pipeline
 
 - Expo name is Body Anvil; package and iOS bundle ID are `com.questspire.personalfitnesstracker`; slug/scheme remain personal-fitness-tracker/personalfitnesstracker, version 0.1.0 and manifest versionCode floor 1. No package, data identity, minSdk or health permissions change.
@@ -16,7 +18,7 @@ Issue #100 adds a versioned [en-AU bundle](../store/google-play/README.md), an o
 | Dispatch mode | Credentials | Behavior |
 |---|---|---|
 | `dry-run` (default) | None | Validate local files and report planned target; no API edit/upload/commit. |
-| `validate-only` | App-scoped service account | Create edit; confirm en-AU exists; patch text; replace only en-AU icon/feature/phone images; optionally upload expected AAB and stage draft; API validate; delete edit. |
+| `validate-only` | App-scoped service account | Create edit; patch existing en-AU or stage a missing en-AU only inside that disposable edit and read it back; replace only en-AU icon/feature/phone images; optionally upload expected AAB and stage draft; API validate; delete edit. |
 | `commit` | Protected environment service account + explicit approval variable | Same validation, then commit with `changesNotSentForReview=true` and `changesInReviewBehavior=ERROR_IF_IN_REVIEW`. No fallback that cancels review/submits on failure. |
 
 Track choices: `internal` (default), `alpha`, `beta`, `production`. These affect **only an optional binary**, never isolate listing assets. Production AAB commits are disabled outright; release through explicit Play Console review/promotion. AABs on permitted testing tracks are **draft**, preserving existing non-draft track releases and refusing to overwrite an existing draft. A validation-only production AAB exercise is discarded. Listing-only dispatches never build or update tracks.
@@ -27,7 +29,7 @@ The API’s review flags are not a substitute for checking Publishing overview. 
 
 ## One-time manual setup — owner must confirm
 
-GitHub metadata was inspected on 8 November 2026: **all five existing repository secret names are present** (`ANDROID_KEYSTORE_BASE64`, the three `ANDROID_UPLOAD_*` secrets and `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`), but the repository has **zero deployment environments**. No secret values were read. Creating/protecting the two environments below therefore remains necessary; existing secret presence does not prove the Play permissions or key contents are valid. Play account settings were **not inspected or changed**. Some setup may already be complete because the existing internal pipeline has been used. Confirm each rather than creating duplicate keys/apps:
+Initial PR #101 inspection found all five existing repository secret names and zero deployment environments. The [follow-up](google-play-validation.md) created/protected both environments and reused the existing service account without reading secret values. Authentication and listing staging now work, but Google's final validation returns HTTP 403. The checklist remains a guide for owner confirmation, not a claim that every account setting is missing. Confirm rather than creating duplicate keys/apps:
 
 1. In the existing Play developer account, locate/create the Body Anvil app and retain package `com.questspire.personalfitnesstracker`. Configure en-AU as the baseline/default listing language and save the initial listing/app setup in Console. The API cannot bootstrap app registration and all first-release declarations. Do not add en-US unless an actual account requirement demands it and a reviewed package is added in a future change.
 2. Confirm Play App Signing and the currently registered **upload certificate**. Continue using the existing upload keystore/alias/password secrets; do not regenerate either key. Google’s app-signing key and the upload key have different roles. Check version-code history before selecting an override.
@@ -59,7 +61,7 @@ The old internal workflow with `build_only=false` still deploys directly to inte
 
 - **Offline validation failure:** rerun the validator; fix reported dimensions/counts/copy/checksum/provenance. Regenerate intentionally changed assets, visually inspect, then commit the manifest with them.
 - **Authentication / 403:** verify API enabled, service account membership and app-scoped permissions. Logs intentionally omit raw credential/parser/API response bodies; consult Console/admin audit rather than logging the JSON key. Never paste token/JWT/upload-session URLs into issues.
-- **en-AU not enabled:** configure/save locale in Console. The tool refuses image uploads rather than accepting a silent locale no-op. It never silently switches to en-US.
+- **en-AU not enabled:** commit still requires the saved locale in Console. Validate-only may stage it inside a temporary edit, read back the listing to confirm acceptance before uploading images, validate, then delete the edit. It never commits the temporary locale, changes the default language or silently switches to en-US.
 - **Edit conflict / review active / ambiguous network result:** check Publishing overview and current listing/track before retrying. An edit can be invalidated by another edit or Console changes. Concurrency covers these two workflows, not manual edits or outside automation. A commit may have succeeded before a lost response; do not blindly repeat it.
 - **Failure before commit:** temporary edit is deleted in finally. If deletion itself fails, inspect Console and remove the unfinished edit before retrying; edits also expire according to Play. Logs do not promise a rollback of a successfully committed change.
 - **Bad committed listing:** revert the versioned bundle to the last approved version, validate, review and commit again through protected approval. Console review remains manual; no automatic rollback of public content.

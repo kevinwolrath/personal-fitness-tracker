@@ -8,6 +8,14 @@ const {
   publish,
   sha
 } = require('../play-listing');
+const { safeFailure } = require('../play-listing');
+const { PlayApiError } = require('../google-play-api');
+test('authenticated diagnostics expose only controlled operation/status, never response or parser secrets', () => {
+  const api = new PlayApiError('Read configured locales', 403, 'private_key=DO-NOT-LOG');
+  expect(safeFailure(api)).toContain('Read configured locales failed (HTTP 403)');
+  expect(safeFailure(api)).not.toContain('DO-NOT-LOG');
+  expect(safeFailure(new SyntaxError('private_key=DO-NOT-LOG'))).not.toContain('DO-NOT-LOG');
+});
 const canonical = path.resolve(__dirname, '../../store/google-play');
 let temporary, fetchOriginal, environment, requests;
 beforeAll(() => {
@@ -182,7 +190,7 @@ describe('publishing transaction', () => {
       }]
     })) : original(url, o);
     await expect(publish({
-      mode: 'validate-only'
+      mode: 'commit', approved: true
     })).rejects.toThrow(/en-AU/);
     expect(requests.filter(r => r.path.includes('/upload/'))).toHaveLength(0);
     expect(requests.at(-1).method).toBe('DELETE');
@@ -232,6 +240,23 @@ describe('publishing transaction', () => {
       : original(url, options);
     await expect(publish({ mode: 'commit', approved: true, aab, versionCode: '42' })).rejects.toThrow();
     expect(requests.some(r => r.method === 'PUT' && r.path.includes('/tracks/'))).toBe(false);
+    expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
+    expect(requests.at(-1).method).toBe('DELETE');
+  });
+  test.each([true, false])('temporary locale is validation-only and must read back before image uploads: %s', async accepted => {
+    const original = global.fetch;
+    let reads = 0;
+    global.fetch = async (url, options) => {
+      if (String(url).endsWith('/listings')) {
+        reads++;
+        return new Response(JSON.stringify({ listings: [{ language: reads > 1 && accepted ? 'en-AU' : 'en-US' }] }));
+      }
+      return original(url, options);
+    };
+    if (accepted) await publish({ mode: 'validate-only' });
+    else await expect(publish({ mode: 'validate-only' })).rejects.toThrow(/not accepted/);
+    expect(requests.some(r => r.method === 'PUT' && r.path.endsWith('/listings/en-AU'))).toBe(true);
+    expect(requests.filter(r => r.path.includes('/upload/'))).toHaveLength(accepted ? 6 : 0);
     expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
     expect(requests.at(-1).method).toBe('DELETE');
   });

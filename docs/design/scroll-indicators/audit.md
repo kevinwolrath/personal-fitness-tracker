@@ -50,6 +50,19 @@ The standard mobile screenshot refresh was also run. A separate unchanged-develo
 - Full production browser run: **431 passed, 108 skipped, 22 failed**. Seventeen existing visual baseline mismatches, three clipboard/share assertions and one meal interaction were previously recorded before this issue. The additional catalogue test hit its 30-second budget on the busy build host; an isolated unchanged-code rerun with a 60-second budget passed in 24.8 seconds. No unrelated exercise logic was changed to hide these failures.
 - Development smoke: **1 passed** with a 120-second cold-bundle budget (35.6 seconds for the test). The initial default 30-second startup attempt timed out while native compilation was running; repository timeout settings remain unchanged.
 - Phone baseline refresh: 186 passed / 1 existing clipboard failure. Unrelated regenerated baselines and older artwork documentation captures were restored after comparison with unchanged develop.
-- Standalone Android release APK compilation and embedded-JS check: passed. Image export and emulator evidence are being completed separately; no Play release or merge is performed.
+- Standalone Android release APK build, image export and embedded-JS check: passed. The built APK was installed and tested on the Pixel 9 Android emulator (API 35); no Expo Go or Metro connection was used for that verification. No Play release or merge is performed.
 
 Logs are local, ignored `artifacts/issue-93-*.log`. Full production browser regression is not entirely green; failures above are disclosed rather than silently refreshed away. Windows development and Android build tooling are local; the owner did not need to run commands.
+
+## Standalone Android device verification
+
+![Installed Android APK, normal and larger text with reachable bottom action](android-verification.jpg)
+
+Pixel 9 emulator, Android API 35, 1080 × 2424 pixels. A fresh local starter plan was created through the app's existing setup; the native fixture has four bodyweight exercises. No equipment/plan-engine source changes were made to manufacture a longer list. The browser fixture independently verifies the 12-exercise list at all three phone widths.
+
+- Native setup and Daily Log respond to real ADB touch swipes without indicators. The Configure editor shows the keyboard while retaining its header; no configuration update was applied during this check.
+- At normal text size the four-row workout fits. At the Android 1.5 font-scale setting it overflows naturally and remains a real native ScrollView. A touch swipe moves the final action into view, with no visible indicator in either the live-swipe or settled screenshot.
+- Close remains at exactly `[63,249][220,375]` before and after the swipe. The final action's text moves from `[172,2232][907,2315]` to `[172,2141][907,2224]`, fully inside the content viewport. Close successfully returns to Today and the completion count remains 0 of 4.
+- The emulator's original 1.0 font scale was restored and the installed app relaunched. iOS is covered by native component tests and Hermes export; no iOS device test is claimed.
+
+Exact results and APK hash/size are in `android-verification.json`. Local APK: `artifacts/issue-93-android/personal-fitness-tracker.apk` (91,867,511 bytes; SHA-256 `c83de35115ceed8da49c448a03dbf7f45b6c454fe6d4dbc06490db8a08c3fda9`). It contains the JS bundle and runs standalone.

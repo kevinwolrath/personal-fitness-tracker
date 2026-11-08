@@ -1,0 +1,22 @@
+{
+  "device": "Pixel_9 emulator-5556",
+  "api": 35,
+  "viewport": [
+    1080,
+    2424
+  ],
+  "fontScale": 1.5,
+  "closeBefore": "[63,249][220,375]",
+  "closeAfter": "[63,249][220,375]",
+  "lastActionBefore": "[172,2232][907,2315]",
+  "lastActionAfter": "[172,2141][907,2224]",
+  "touchScroll": true,
+  "fixedClose": true,
+  "lastActionReachable": true,
+  "closeUsable": true,
+  "doneCountUnchanged": true,
+  "apkSha256": "c83de35115ceed8da49c448a03dbf7f45b6c454fe6d4dbc06490db8a08c3fda9",
+  "apkBytes": 91867511,
+  "runtime": "Standalone release APK with embedded Hermes JS, no Metro connection",
+  "restoredFontScale": 1.0
+}

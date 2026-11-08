@@ -12,7 +12,9 @@ import type {
   StoreSnapshot,
   StoredPlan,
   TrackingStore,
+  MealCompletion,
 } from './types';
+import type { MealLog } from '../nutrition/contract';
 
 /** Minimal synchronous key-value backend: `window.localStorage` on web, a Map in tests. */
 export interface KeyValue {
@@ -36,6 +38,8 @@ type Doc = {
   /** #56. Additive: documents written before it read as empty lists. */
   exerciseLogs: ExerciseLog[];
   muscleReports: MuscleReport[];
+  /** #97. Additive: documents written before it read as an empty list. */
+  mealLogs: MealLog[];
 };
 
 export const STORAGE_KEY = 'pft:tracking:v1';
@@ -44,7 +48,7 @@ const splitKey = (k: string) => {
   const i = k.lastIndexOf('|');
   return { planId: k.slice(0, i), date: k.slice(i + 1) };
 };
-const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: {}, exerciseLogs: [], muscleReports: [] });
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: {}, exerciseLogs: [], muscleReports: [], mealLogs: [] });
 const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
   for (const k of keys) {
     const c = String(a[k]).localeCompare(String(b[k]));
@@ -232,6 +236,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       ...Object.keys(d.overrides).map((k) => splitKey(k).date),
       ...d.quickLogs.map((q) => q.date),
       ...d.exerciseLogs.map((l) => l.date),
+      ...d.mealLogs.map((m) => m.date),
     ];
     return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
   }
@@ -249,6 +254,37 @@ export class KeyValueTrackingStore implements TrackingStore {
   async removeExerciseLog(id: string) {
     this.update((d) => {
       d.exerciseLogs = d.exerciseLogs.filter((l) => l.id !== id);
+    });
+  }
+
+  async mealLogs(range: { from?: string; to?: string } = {}): Promise<MealLog[]> {
+    return this.read()
+      .mealLogs.filter((m) => (!range.from || m.date >= range.from) && (!range.to || m.date <= range.to))
+      .sort(byKey<MealLog>('date', 'at', 'id'));
+  }
+
+  private static applyCompletion(d: Doc, c: MealCompletion) {
+    const k = dayKey(c.planId, c.date);
+    const day = (d.activities[k] ??= {});
+    if (c.log) day[c.activityId] = c.log;
+    else delete day[c.activityId];
+    if (!Object.keys(day).length) delete d.activities[k];
+    upsertById(d.completionEvents, c.event);
+    d.daySnapshots[k] = c.snapshot;
+  }
+
+  async saveMealLog(log: MealLog, completion?: MealCompletion | null) {
+    // One document write: atomic by construction.
+    this.update((d) => {
+      upsertById(d.mealLogs, log);
+      if (completion) KeyValueTrackingStore.applyCompletion(d, completion);
+    });
+  }
+
+  async removeMealLog(id: string, completion?: MealCompletion | null) {
+    this.update((d) => {
+      d.mealLogs = d.mealLogs.filter((m) => m.id !== id);
+      if (completion) KeyValueTrackingStore.applyCompletion(d, completion);
     });
   }
 
@@ -287,6 +323,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       daySnapshots: Object.values(d.daySnapshots).sort(byKey<DaySnapshot>('date', 'planId')),
       exerciseLogs: [...d.exerciseLogs].sort(byKey<ExerciseLog>('at', 'id')),
       muscleReports: [...d.muscleReports].sort(byKey<MuscleReport>('at', 'id')),
+      mealLogs: [...d.mealLogs].sort(byKey<MealLog>('date', 'at', 'id')),
     };
   }
 
@@ -303,6 +340,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       for (const snap of s.daySnapshots ?? []) d.daySnapshots[dayKey(snap.planId, snap.date)] = snap;
       (s.exerciseLogs ?? []).forEach((l) => upsertById(d.exerciseLogs, l));
       (s.muscleReports ?? []).forEach((r) => upsertById(d.muscleReports, r));
+      (s.mealLogs ?? []).forEach((m) => upsertById(d.mealLogs, m));
     });
   }
 }

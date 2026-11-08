@@ -32,7 +32,7 @@ it('migrations are idempotent and set user_version', async () => {
   const db = nodeSqlite(new DatabaseSync(':memory:'));
   await migrate(db);
   await migrate(db);
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 5 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 6 });
 });
 
 it('migrates an existing version-1 database without losing data (plan becomes origin "seed")', async () => {
@@ -58,7 +58,7 @@ it('migrates an existing version-1 database without losing data (plan becomes or
   expect(await store.configHistory()).toEqual([]);
   expect(await store.completionEvents('p', '2026-10-01')).toEqual([]);
   expect((await store.getDay('p', '2026-10-01')).activities.walk).toEqual({ activityId: 'walk', status: 'done', count: 0, labelSnapshot: 'Walk', updatedAt: 't' });
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 5 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 6 });
 });
 
 it('migrates a version-3 database (before #28): exercise ticks are additive, nothing is lost', async () => {
@@ -66,11 +66,11 @@ it('migrates a version-3 database (before #28): exercise ticks are additive, not
   const db = nodeSqlite(raw);
   // Run migrations 1–3 exactly as shipped, then stop at version 3 with data in it.
   await migrate(db);
-  raw.exec(`DROP TABLE exercise_log; DROP TABLE muscle_report; ALTER TABLE activity_log DROP COLUMN exercises_done; PRAGMA user_version = 3;`);
+  raw.exec(`DROP TABLE meal_log; DROP TABLE exercise_log; DROP TABLE muscle_report; ALTER TABLE activity_log DROP COLUMN exercises_done; PRAGMA user_version = 3;`);
   raw.exec(`INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant)
     VALUES ('p', '2026-10-01', 'resistance', 'done', 0, 'Strength workout', 't', 'short');`);
   const store = await SqliteTrackingStore.open(db);
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 5 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 6 });
   expect((await store.getDay('p', '2026-10-01')).activities.resistance).toEqual({
     activityId: 'resistance', status: 'done', count: 0, labelSnapshot: 'Strength workout', updatedAt: 't', variant: 'short',
   });
@@ -85,14 +85,14 @@ it('migrates a version-4 database (before #56): exercise logs and muscle reports
   const db = nodeSqlite(raw);
   // Run migrations 1–4 exactly as shipped, then stop at version 4 with data in every older table.
   await migrate(db);
-  raw.exec(`DROP TABLE exercise_log; DROP TABLE muscle_report; PRAGMA user_version = 4;`);
+  raw.exec(`DROP TABLE meal_log; DROP TABLE exercise_log; DROP TABLE muscle_report; PRAGMA user_version = 4;`);
   raw.exec(`INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at, variant, exercises_done)
     VALUES ('p', '2026-10-01', 'resistance', 'pending', 0, 'Strength workout', 't', 'full', '["full:0:kettlebell_squat"]');
     INSERT INTO completion_event (id, plan_id, date, activity_id, requirement_id, action, count, variant, label, purpose, at)
     VALUES ('e1', 'p', '2026-10-01', 'resistance', NULL, 'tick', 0, 'full', 'Kettlebell squat', 'strength', 't');
     INSERT INTO quick_log (id, plan_id, quick_log_id, date, at) VALUES ('q', 'p', 'hunger', '2026-09-30', 't');`);
   const before = await (await SqliteTrackingStore.open(nodeSqlite(raw))).snapshot();
-  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 5 });
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 6 });
   const store = await SqliteTrackingStore.open(db);
   expect((await store.getDay('p', '2026-10-01')).activities.resistance.exercisesDone).toEqual(['full:0:kettlebell_squat']);
   expect(await store.completionEvents('p', '2026-10-01')).toHaveLength(1);
@@ -103,4 +103,31 @@ it('migrates a version-4 database (before #56): exercise logs and muscle reports
   expect(await store.exerciseLogs()).toHaveLength(1);
   expect(await store.muscleReports()).toHaveLength(1);
   expect(await store.firstRecordDate()).toBe('2026-09-30');
+});
+
+it('migrates a version-5 database (before #97): meal logs are a new table, nothing is lost', async () => {
+  const raw = new DatabaseSync(':memory:');
+  const db = nodeSqlite(raw);
+  // Run migrations 1–5 exactly as shipped, then stop at version 5 with data in the older tables.
+  await migrate(db);
+  raw.exec(`DROP TABLE meal_log; PRAGMA user_version = 5;`);
+  raw.exec(`INSERT INTO activity_log (plan_id, date, activity_id, status, count, label_snapshot, updated_at)
+    VALUES ('p', '2026-10-01', 'lunch', 'done', 0, 'Fixed lunch', 't');
+    INSERT INTO exercise_log (id, movement, date, at, sets, reps, seconds, intensity) VALUES ('x', 'plank', '2026-09-29', 't', 2, NULL, 30, NULL);
+    INSERT INTO observation (id, date, metric, value, unit, kind, source_type, edited, recorded_at)
+    VALUES ('o', '2026-10-01', 'energy_intake', 6000, 'kJ', 'observed', 'manual', 0, 't');`);
+  const store = await SqliteTrackingStore.open(db);
+  expect(await db.getFirstAsync('PRAGMA user_version', [])).toEqual({ user_version: 6 });
+  expect((await store.getDay('p', '2026-10-01')).activities.lunch.status).toBe('done');
+  expect((await store.getDay('p', '2026-10-01')).observations).toHaveLength(1);
+  expect(await store.exerciseLogs()).toHaveLength(1);
+  expect(await store.mealLogs()).toEqual([]);
+  expect((await store.snapshot()).mealLogs).toEqual([]);
+  await store.saveMealLog({
+    id: 'm', date: '2026-09-28', at: 't', planId: null, activityId: null, replacedLabel: null, name: 'Toast',
+    items: [{ name: 'Toast', quantity: 1, unit: 'slice', energyKj: 400, proteinG: 4, carbsG: 15, fatG: 2 }],
+    aiTotals: null, confidence: null, assumptions: [], uncertainties: [], source: 'manual', schemaVersion: null, edited: false,
+    photos: [], recordedAt: 't', updatedAt: 't',
+  });
+  expect(await store.firstRecordDate()).toBe('2026-09-28');
 });

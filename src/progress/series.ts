@@ -1,5 +1,6 @@
 import { addDays, type LocalDate } from '../plan/dates';
 import type { Observation, SourceType } from '../observations/types';
+import { activitySummary, isHealthActivity } from '../observations/activity';
 
 /**
  * Progress reporting (#52), pure. Turns stored observations into dated series and derived values.
@@ -34,7 +35,10 @@ export function dailySeries(observations: Observation[], metric: string, mode: '
   return [...byDate.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, os]) => {
-      if (mode === 'sum') return { date, value: os.reduce((s, o) => s + o.value, 0), kind: 'measured' as const };
+      if (mode === 'sum') {
+        const imported = metric === 'exercise_session' ? os.filter(isHealthActivity) : [];
+        return { date, value: os.filter(o=>!imported.includes(o)).reduce((s,o)=>s+o.value,0) + activitySummary(imported).minutes, kind: 'measured' as const };
+      }
       const best = [...os].sort((a, b) => userFirst(a) - userFirst(b) || b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id))[0];
       return { date, value: best.value, kind: 'measured' as const, source: best.source.type, app: best.source.app };
     });

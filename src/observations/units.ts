@@ -37,9 +37,13 @@ export function round(value: number, decimals: number): number {
   return Math.round(value * f) / f;
 }
 
-/** "465" minutes → "7h 45m". */
+/** Explicit units: m is reserved for metres. Round first to avoid 1 hr 60 min. */
 export function formatMinutes(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = Math.round(min - h * 60);
-  return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+  const total = Math.max(0, Math.round(min));
+  const h = Math.floor(total / 60), m = total % 60;
+  return h ? `${h} hr${m ? ` ${m} min` : ''}` : `${m} min`;
+}
+
+export function formatDistance(metres: number): string {
+  return metres < 1000 ? `${Math.round(metres)} m` : `${Number((metres / 1000).toFixed(2))} km`;
 }

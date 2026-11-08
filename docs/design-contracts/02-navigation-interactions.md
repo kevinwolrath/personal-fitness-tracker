@@ -127,3 +127,7 @@ Additional content is signalled by the natural partial next item. Do not add ins
 
 - With no plan loaded: one screen with **Use example plan** and **Import plan file**. Nothing else.
 - A day with no activities shows "Nothing planned for this day" plus the measurement tiles and recorded observations.
+
+## Recorded content (#104)
+
+Within the existing content layer, Health Connect steps, active energy and sleep use a compact grid. Walking is collapsed into one expandable summary with explicit min/hr duration and available m/km distance. Expanded records show source, time, duration, available distance and the existing read-only detail sheet. No new header or shell controls; the Today header budget is unchanged. Targets remain at least 48dp and essential values wrap. See contract 12 for overlap and optional Distance rules.

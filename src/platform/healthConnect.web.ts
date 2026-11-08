@@ -79,6 +79,7 @@ export const healthConnect = {
     if (ok('steps')) read.steps = (d.steps ?? []).filter((x) => dates.includes(x.date));
     if (ok('active_energy')) read.activeKcal = (d.activeKcal ?? []).filter((x) => dates.includes(x.date));
     if (ok('exercise')) read.exercise = (d.exercise ?? []).filter((x) => day(x.start));
+    if (ok('exercise') && d.distances) read.distances = d.distances.filter(x=>day(x.start));
     if (ok('weight')) read.weight = (d.weight ?? []).filter((x) => day(x.time));
     if (ok('body_fat')) read.bodyFat = (d.bodyFat ?? []).filter((x) => day(x.time));
     if (ok('sleep')) read.sleep = d.sleep ?? [];

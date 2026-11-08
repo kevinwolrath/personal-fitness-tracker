@@ -90,7 +90,8 @@ The app reads health data from Android Health Connect, read only (contract 12). 
   - `READ_EXERCISE`: workouts (type and minutes);
   - `READ_WEIGHT`: weight tile and progress;
   - `READ_BODY_FAT`: body fat % (added in #46; **update an existing declaration** to include it);
-  - `READ_SLEEP`: time asleep.
+  - `READ_SLEEP`: time asleep;
+  - `READ_DISTANCE`: optional recorded workout distance alongside walking duration (#104; update the existing declaration before release).
 
   No write, background or history permission is requested.
 - **Privacy policy URL / Data safety:** the owner must supply an accessible policy URL and declarations reflecting all actual data flows in the shipped app, including optional AI/screenshot processing. Read-only Health Connect permissions do not establish that the entire app never collects or shares data. No legal/privacy declaration is made by this repository document; follow the [manual setup checklist](google-play-listing.md#one-time-manual-setup--owner-must-confirm) before publishing.

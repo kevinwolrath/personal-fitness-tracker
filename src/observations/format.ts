@@ -3,7 +3,7 @@ import type { Plan } from '../plan/schema';
 import { HC_IMPORT_ID } from './healthConnect';
 import { metricDef } from './metrics';
 import type { Observation } from './types';
-import { formatMinutes, fromCanonical } from './units';
+import { formatDistance, formatMinutes, fromCanonical } from './units';
 
 const num = (n: number, decimals: number) =>
   new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: decimals }).format(n);
@@ -20,7 +20,9 @@ export function formatObservationValue(o: Observation, plan: Plan, energy: Energ
   if (!def) return `${num(o.value, 2)}${o.unit ? ` ${o.unit}` : ''}`;
   switch (def.dimension) {
     case 'duration':
-      return formatMinutes(o.value);
+      return `${formatMinutes(o.value)}${o.activity?.distanceMeters !== undefined ? ` · ${formatDistance(o.activity.distanceMeters)}${o.activity.distancePartial ? ' recorded' : ''}` : ''}`;
+    case 'distance':
+      return formatDistance(o.unit === 'm' ? o.value : o.value * 1000);
     case 'mass':
     case 'mass_change': {
       const v = fromCanonical(o.value, plan.units.mass, 'mass') ?? o.value;

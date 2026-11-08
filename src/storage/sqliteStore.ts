@@ -81,6 +81,8 @@ const migrations = [
    CREATE TABLE muscle_report (
      id TEXT PRIMARY KEY, muscle TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('sore', 'injured')),
      at TEXT NOT NULL, cleared_at TEXT);`,
+  // 6 (#104): optional imported exercise interval and recorded distance; old observations stay intact.
+  `ALTER TABLE observation ADD COLUMN activity_json TEXT;`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -109,6 +111,7 @@ type ObservationRow = {
   evidence: string | null;
   edited: number;
   recorded_at: string;
+  activity_json?: string | null;
 };
 
 const toObservation = (r: ObservationRow): Observation => ({
@@ -131,6 +134,7 @@ const toObservation = (r: ObservationRow): Observation => ({
     edited: r.edited === 1,
   },
   recordedAt: r.recorded_at,
+  ...(r.activity_json ? { activity: JSON.parse(r.activity_json) } : {}),
 });
 
 type ActivityRow = {
@@ -263,10 +267,10 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO observation
          (id, date, metric, value, unit, kind, label, note, source_type, source_app, captured_at, confidence,
-          import_id, asset_id, evidence, edited, recorded_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          import_id, asset_id, evidence, edited, recorded_at, activity_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [o.id, o.date, o.metric, o.value, o.unit, o.kind, o.label, o.note, s.type, s.app, s.capturedAt, s.confidence,
-        s.importId, s.assetId, s.evidence, s.edited ? 1 : 0, o.recordedAt],
+        s.importId, s.assetId, s.evidence, s.edited ? 1 : 0, o.recordedAt, o.activity ? JSON.stringify(o.activity) : null],
     );
   }
 

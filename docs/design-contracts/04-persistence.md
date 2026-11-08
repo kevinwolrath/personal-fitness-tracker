@@ -56,3 +56,7 @@ Rules:
 
 - **Export all data** (app menu, after a confirmation) writes the full-history `pft-export` v1 JSON defined in contract 06: everything from the earliest record through today, with provenance. It's shared through the native share sheet on native and downloaded on web.
 - Restore is built and tested at the data layer (`toSnapshot` + `TrackingStore.restore`). A restore UI is not built yet.
+
+## Optional activity facts (#104)
+
+SQLite migration 6 adds nullable `observation.activity_json` without rewriting older observations. Store optional activity facts in both backends, snapshots and v1 exports; old records without these facts remain valid. Migration tests cover upgrading version 5 with existing observations and reopening after saving activity facts.

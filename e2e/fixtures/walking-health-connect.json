@@ -1,0 +1,22 @@
+{
+  "availability":"available",
+  "granted":["steps","active_energy","exercise","sleep"],
+  "grantOnRequest":["steps","active_energy","exercise","sleep"],
+  "data":{
+    "steps":[{"date":"2026-11-02","value":6214,"origins":["com.sec.android.app.shealth"]}],
+    "activeKcal":[{"date":"2026-11-02","value":320,"origins":["com.sec.android.app.shealth"]}],
+    "sleep":[{"id":"sleep","start":"2026-11-01T23:00:00+11:00","end":"2026-11-02T06:45:00+11:00","origin":"com.sec.android.app.shealth"}],
+    "exercise":[
+      {"id":"walk-a","start":"2026-11-02T08:00:00+11:00","end":"2026-11-02T08:45:00+11:00","origin":"com.sec.android.app.shealth","exerciseType":79},
+      {"id":"walk-b","start":"2026-11-02T08:30:00+11:00","end":"2026-11-02T09:15:00+11:00","origin":"com.google.android.apps.fitness","exerciseType":79},
+      {"id":"walk-c","start":"2026-11-02T10:00:00+11:00","end":"2026-11-02T10:30:00+11:00","origin":"com.sec.android.app.shealth","exerciseType":79},
+      {"id":"walk-d","start":"2026-11-02T10:05:00+11:00","end":"2026-11-02T10:25:00+11:00","origin":"com.sec.android.app.shealth","exerciseType":79}
+    ],
+    "distances":[
+      {"id":"distance-a","start":"2026-11-02T08:00:00+11:00","end":"2026-11-02T08:45:00+11:00","origin":"com.sec.android.app.shealth","metres":3000},
+      {"id":"distance-b","start":"2026-11-02T08:30:00+11:00","end":"2026-11-02T09:15:00+11:00","origin":"com.google.android.apps.fitness","metres":3200},
+      {"id":"distance-c","start":"2026-11-02T10:00:00+11:00","end":"2026-11-02T10:30:00+11:00","origin":"com.sec.android.app.shealth","metres":1800},
+      {"id":"distance-d","start":"2026-11-02T10:05:00+11:00","end":"2026-11-02T10:25:00+11:00","origin":"com.sec.android.app.shealth","metres":1200}
+    ]
+  }
+}

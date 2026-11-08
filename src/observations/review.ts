@@ -1,6 +1,7 @@
 import { newId } from '../storage/types';
 import type { Candidate } from './extraction';
 import type { ImportSession, Observation } from './types';
+import { formatMinutes } from './units';
 
 export type ReviewedCandidate = Candidate & {
   /** What the user typed, if they edited the value. */
@@ -20,18 +21,16 @@ function parseNumber(text: string): number | null {
 /** "7h 45m", "7h45", "7:45", "45m" or plain minutes ("465") → minutes. */
 function parseMinutes(text: string): number | null {
   const t = text.trim().toLowerCase();
-  const hm = t.match(/^(\d+)\s*h(?:\s*(\d+)\s*m?)?$/) ?? t.match(/^(\d+):(\d{1,2})$/);
+  const hm = t.match(/^(\d+)\s*h(?:r)?(?:\s*(\d+)\s*m(?:in)?)?$/) ?? t.match(/^(\d+)h(\d+)$/) ?? t.match(/^(\d+):(\d{1,2})$/);
   if (hm) return Number(hm[1]) * 60 + Number(hm[2] ?? 0);
-  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*m?$/);
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*(?:m(?:in)?)?$/);
   return m ? Number(m[1].replace(',', '.')) : null;
 }
 
-/** The value as the review shows it, formatted like the Daily Log: "13,765", "7h 45m", "97.25". Still editable. */
+/** The value as the review shows it, formatted like the Daily Log: "13,765", "7 hr 45 min", "97.25". Still editable. */
 export function formatReviewValue(unit: string, value: number): string {
   if (unit === 'min') {
-    const h = Math.floor(value / 60);
-    const m = Math.round(value - h * 60);
-    return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m`;
+    return formatMinutes(value);
   }
   return Number.isInteger(value) && Math.abs(value) >= 1000 ? value.toLocaleString('en-AU') : String(value);
 }

@@ -43,6 +43,8 @@ export type Observation = {
   source: Provenance;
   /** When this record was saved, ISO. */
   recordedAt: string;
+  /** Imported activity facts; recorded metres only, never distance inferred from time/steps. */
+  activity?: { start: string; end: string; exerciseType?: number; distanceMeters?: number; distancePartial?: boolean };
 };
 
 export type ImportAsset = {

@@ -5,6 +5,7 @@ import { formatTimestamp, formatShortDate } from '../../format';
 import { HC_IMPORT_ID, hcMetric, hcTypeLabel, hcTypes, type HcType } from '../../observations/healthConnect';
 import { appName, formatObservationValue, observationLabel } from '../../observations/format';
 import { formatMinutes } from '../../observations/units';
+import { activitySummary } from '../../observations/activity';
 import type { Observation } from '../../observations/types';
 import { toLocalDate } from '../../plan/dates';
 import { useApp } from '../../providers/AppProvider';
@@ -78,7 +79,8 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
     }
     const src = [...new Set(os.map((o) => (o.source.app ? appName(o.source.app) : null)).filter(Boolean))].join(', ') || null;
     if (t === 'exercise') {
-      const text = os.length === 1 ? `${observationLabel(os[0])} ${formatMinutes(os[0].value)}` : `${os.length} workouts · ${formatMinutes(os.reduce((n, o) => n + o.value, 0))}`;
+      const summary = activitySummary(os);
+      const text = os.length === 1 ? `${observationLabel(os[0])} ${formatMinutes(summary.minutes)}` : `${summary.unique.length} workouts · ${summary.uncertainTime ? '≥ ' : ''}${formatMinutes(summary.minutes)}`;
       return { text, source: src };
     }
     return { text: formatObservationValue(os[0], plan, energy), source: src };
@@ -128,6 +130,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                 </View>
               ))}
               <Text style={[type.detail, styles.hint]}>Not imported: other measurements, such as heart rate.</Text>
+              <Text style={[type.detail, styles.hint]}>Walking distance is shown only when you allow Distance access and the source supplies matching records. No distance is estimated.</Text>
             </View>
             {hc.refused && (
               <View style={styles.note} testID="hc-refused">
@@ -190,6 +193,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
               </Text>
             </View>
             <Button title="Sync now" variant="secondary" onPress={hc.syncNow} disabled={hc.syncing} />
+            <Text style={type.detail}>Walking distance requires Distance access and matching source records. Manage permissions below to allow it. No distance is estimated.</Text>
             <Pressable onPress={hc.openSettings} style={styles.link} accessibilityRole="button" testID="hc-manage">
               <Text style={[styles.linkText, styles.center]}>Manage in Health Connect</Text>
             </Pressable>

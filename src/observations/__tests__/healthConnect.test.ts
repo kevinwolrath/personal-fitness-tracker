@@ -72,7 +72,8 @@ describe('mapping Health Connect data to observations (#36)', () => {
     const gym: HcSession = { id: 'e3', start: '2026-11-03T18:00:00+11:00', end: '2026-11-03T18:35:00+11:00', origin: FITBIT, exerciseType: 70, title: 'Upper body' };
     const { observations } = map({ exercise: [walkFitbit, gym, walkSamsung] });
     expect(observations.map((o) => [o.id, o.label, o.value, o.source.app])).toEqual([
-      ['hc:exercise:e1', 'Walk', 32, 'samsung-health'], // the longer of the two duplicates
+      ['hc:exercise:e1', 'Walk', 32, 'samsung-health'],
+      ['hc:exercise:e2', 'Walk', 29, 'fitbit'], // raw provenance retained; shared projection deduplicates totals
       ['hc:exercise:e3', 'Upper body', 35, 'fitbit'],
     ]);
   });

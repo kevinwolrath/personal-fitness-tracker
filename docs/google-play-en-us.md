@@ -44,3 +44,5 @@ The workflow used existing credentials. A temporary migration-branch exception w
 No UI baselines were refreshed. Documentation captures rewritten by the existing browser tests were restored and excluded from the migration. No new screenshots/artwork were generated; the byte-preservation check was repeated after the checks. Remaining unrelated application/test `en-AU` settings are date/number formatting and general app fixtures, not Play listing locale configuration, and are intentionally unchanged.
 
 Privacy policy wiring, owner-reviewed Data safety and the exact six Health Connect read-permission declarations remain Console/application requirements described in the [declaration checklist](google-play-validation.md#remaining-play-console-requirements); this locale migration does not invent or submit those answers.
+
+App follow-up #104 adds optional `READ_DISTANCE` for recorded workout distance: the current declaration checklist now has seven read permissions. The locale migration itself made no permission changes.

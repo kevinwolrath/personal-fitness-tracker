@@ -62,8 +62,8 @@ it('rejects invalid edits without saving anything', () => {
 describe('review values are shown like the Daily Log and stay editable (#21)', () => {
   it.each([
     ['count', 13765, '13,765'],
-    ['min', 465, '7h 45m'],
-    ['min', 45, '45m'],
+    ['min', 465, '7 hr 45 min'],
+    ['min', 45, '45 min'],
     ['kg', 97.25, '97.25'],
     ['kg', -2.55, '-2.55'],
     ['score', 84, '84'],

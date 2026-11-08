@@ -153,7 +153,7 @@ it('before anything is due, "Up next" is a compact preview within the hour: no m
   await at(10, 45); // lunch (12:00) becomes due at 11:45: exactly an hour away
   expect(screen.getByTestId('up-next-title')).toHaveTextContent('Fixed lunch');
   expect(screen.getByTestId('up-next-when')).toHaveTextContent(/Up next · 12:00/i);
-  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 1 h 15 min/);
+  expect(screen.getByTestId('up-next-countdown')).toHaveTextContent(/^In 1 hr 15 min/);
   expect(screen.queryByTestId('next-action')).toBeNull();
   expect(screen.queryByTestId('next-action-meal-ingredients')).toBeNull();
   expect(screen.queryByLabelText('Done: Fixed lunch')).toBeNull();
@@ -417,23 +417,42 @@ describe('Health Connect (#36)', () => {
     expect(screen.queryByTestId('recorded-steps')).toBeNull();
   });
 
-  it('Connect asks for exactly the five read permissions, imports into the Daily Log with sources, and writes nothing', async () => {
+  it('Connect asks for the existing six read permissions plus optional Distance, imports into the Daily Log with sources, and writes nothing', async () => {
     await launch();
     await chooseFromMenu('Health Connect');
     fireEvent.press(await screen.findByText('Connect Health Connect'));
     await settle();
     expect(hc().requests).toHaveLength(1);
-    expect(hc().requests[0]).toEqual(ALL.map((recordType) => ({ accessType: 'read', recordType })));
+    expect(hc().requests[0]).toEqual([...ALL, 'Distance'].map((recordType) => ({ accessType: 'read', recordType })));
     await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214Samsung Health/));
     expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kgWithings/);
-    expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/);
-    expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/Walk 32m/);
+    expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7 hr 45 min/);
+    expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/Walk 32 min/);
 
     fireEvent.press(screen.getByTestId('modal-dismiss'));
     // The Daily Log shows them in its existing places: Recorded rows and the Weight tile.
     await waitFor(() => expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/6,214/));
-    expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/Health Connect · Samsung Health/);
+    expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/Samsung Health/);
     expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/82\.4/);
+    expect(hc().writes).toEqual([]);
+  });
+
+  it('reads optional Distance only with permission and keeps duration if Distance fails', async () => {
+    hc().grantOnRequest = [...ALL, 'Distance'];
+    hc().records.Distance = [{ startTime: at(5, 7, 30), endTime: at(5, 8, 2), distance: { inMeters: 2500 }, metadata: { id: 'd1', dataOrigin: SAMSUNG } }];
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('recorded-walking-summary')).toHaveTextContent(/2\.5 km/));
+    await chooseFromMenu('Health Connect');
+    hc().failRecordTypes = ['Distance'];
+    fireEvent.press(screen.getByText('Sync now'));
+    await settle();
+    expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/32 min/);
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('recorded-walking-summary')).not.toHaveTextContent(/km/));
     expect(hc().writes).toEqual([]);
   });
 
@@ -475,7 +494,7 @@ describe('Health Connect (#36)', () => {
     await chooseFromMenu('Health Connect');
     fireEvent.press(await screen.findByText('Connect Health Connect'));
     await settle();
-    await waitFor(() => expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7h 45m/));
+    await waitFor(() => expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7 hr 45 min/));
 
     // Sleep revoked in Health Connect; steps still allowed and changed; the sleep data there changed too.
     hc().granted = ALL.filter((t) => t !== 'SleepSession');
@@ -491,7 +510,7 @@ describe('Health Connect (#36)', () => {
     expect(reads).not.toContain('SleepSession');
     expect(hc().requests).toHaveLength(1);
     fireEvent.press(screen.getByTestId('modal-dismiss'));
-    await waitFor(() => expect(screen.getByTestId('recorded-sleep_duration')).toHaveTextContent(/7h 45m/));
+    await waitFor(() => expect(screen.getByTestId('recorded-sleep_duration')).toHaveTextContent(/7 hr 45 min/));
     expect(hc().writes).toEqual([]);
   });
 

@@ -75,8 +75,8 @@ Labels read **"Health Connect · Fitbit + this phone"**.
 Before a release that includes this reaches testers, Play Console needs:
 
 1. **App content → Health apps declaration:** declare the six read permissions above, each with its use (the table). No write access.
-2. **Privacy policy URL** (App content → Privacy policy). It must cover the health data read, that it stays on the device, and that nothing is shared or written back.
-3. **Data safety:** declare "Health and fitness" data collected, processed on the device, not shared.
+2. **Privacy policy URL** (App content → Privacy policy). Supply an owner-reviewed, public policy covering the actual health-data use, storage, optional sharing/export and external processing. Verify the Health Connect permission-rationale entry point displays or links the same policy. A native intent filter alone does not provide a policy URL.
+3. **Data safety:** the owner must classify the shipped app's actual data flows using Google's definitions. On-device processing alone must not be automatically labelled off-device collection. Optional screenshot extraction sends images and request context directly to Anthropic; user-directed export/sharing and AI configuration must also be reviewed. Do not use a blanket "nothing collected/shared" assertion for the whole app or invent provider retention/security guarantees. See the [Play validation/declaration checklist](../google-play-validation.md).
 
 Internal testing may accept an upload before these are approved, but Play can block wider release, or the permissions, until they are.
 

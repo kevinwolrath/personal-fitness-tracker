@@ -1,6 +1,6 @@
 # Body Anvil · Google Play listing bundle
 
-Versioned `en-AU` baseline for package **`com.questspire.personalfitnesstracker`**. No other locale or tablet imagery is uploaded. The Play Console default language must be configured explicitly as en-AU; languages not provided here use Play’s configured default/fallback behavior. The automation checks that en-AU already exists and does not create en-US or delete other translations.
+Versioned `en-AU` baseline for package **`com.questspire.personalfitnesstracker`**. No other locale or tablet imagery is uploaded. The Play Console default language must be configured explicitly as en-AU; languages not provided here use Play’s configured default/fallback behavior. Commit checks that en-AU already exists. Validate-only may stage missing en-AU temporarily and discard it with its edit. The tool does not create en-US, delete other translations or change the default language.
 
 ## Contents and validation
 

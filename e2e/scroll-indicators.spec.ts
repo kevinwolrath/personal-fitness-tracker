@@ -3,6 +3,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { MONDAY, openAt, openWorkoutSheet, workoutSheet } from './helpers';
 
 const before = process.env.PFT_SCROLL_BEFORE === '1';
+// Do not let the runner mask the scrollbar regression we are testing.
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 async function indicatorsHidden(page: Page) {
   if (before) return;
   const visibleIndicators = await page.locator('html, body, body *').evaluateAll(elements => elements.filter(el => {
@@ -107,12 +109,18 @@ test('all routes, long sheets, nested guide pager and multiline web input follow
 });
 
 test.describe('desktop browser preview', () => {
+  // Playwright hides browser scrollbars by default: remove that flag so this test
+  // exercises the application policy rather than the test runner's launch policy.
   test.use({ isMobile: false, hasTouch: false });
   test('desktop browser scrollbars stay hidden too', async ({ page }, info) => {
     test.skip(info.project.name !== 'phone', 'one desktop preview is sufficient');
     await page.setViewportSize({ width: 1280, height: 844 });
     await openAt(page, MONDAY);
     await openWorkoutSheet(page);
+    if (before) {
+      await expect(page.locator('#body-anvil-scroll-indicators')).toHaveCount(0);
+      await expect(workoutSheet(page)).not.toHaveCSS('scrollbar-width', 'none');
+    }
     await indicatorsHidden(page);
     await shot(page, 'desktop-workout-top');
     await bottom(workoutSheet(page));

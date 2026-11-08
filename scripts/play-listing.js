@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const zlib = require('node:zlib');
 const ROOT = path.resolve(__dirname, '..');
 const PACKAGE = 'com.questspire.personalfitnesstracker';
+const LOCALE = 'en-US';
 const sha = b => crypto.createHash('sha256').update(b).digest('hex');
 const crcTable = Array.from({
   length: 256
@@ -76,8 +77,10 @@ function validate(root = path.join(ROOT, 'store/google-play')) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
   assert(manifest.schemaVersion === 1 && manifest.packageName === PACKAGE, 'Listing manifest identity/schema mismatch');
   assert(require(path.join(ROOT, 'app.json')).expo.android.package === PACKAGE, 'Expo package identity changed');
-  assert(manifest.defaultLocale === 'en-AU' && JSON.stringify(manifest.locales) === JSON.stringify(['en-AU']), 'Only reviewed en-AU locale is configured');
-  const base = path.join(root, 'en-AU');
+  assert(manifest.defaultLocale === LOCALE && JSON.stringify(manifest.locales) === JSON.stringify([LOCALE]), 'Only reviewed en-US locale is configured');
+  const localeDirectories = fs.readdirSync(root, { withFileTypes: true }).filter(entry => entry.isDirectory()).map(entry => entry.name);
+  assert(localeDirectories.length === 1 && localeDirectories[0] === LOCALE, 'Only the canonical en-US listing directory is allowed');
+  const base = path.join(root, LOCALE);
   const text = {};
   for (const [key, file, max] of [['title', 'title.txt', 30], ['shortDescription', 'short-description.txt', 80], ['fullDescription', 'full-description.txt', 4000], ['releaseNotes', 'release-notes.txt', 500]]) {
     const value = fs.readFileSync(path.join(base, file), 'utf8').trim();
@@ -91,7 +94,7 @@ function validate(root = path.join(ROOT, 'store/google-play')) {
     groups = {};
   for (const image of manifest.images) {
     assert(['icon', 'featureGraphic', 'phoneScreenshots'].includes(image.type), 'Unsupported image type: no unverified tablet imagery');
-    assert(typeof image.file === 'string' && /^en-AU\/images\/[a-z0-9/-]+\.png$/.test(image.file), 'Invalid image path');
+    assert(typeof image.file === 'string' && /^en-US\/images\/[a-z0-9/-]+\.png$/.test(image.file), 'Invalid image path');
     assert(!seen.has(image.file), 'Duplicate image path');
     seen.add(image.file);
     assert(typeof image.alt === 'string' && image.alt.trim().length > 0 && typeof image.source === 'string' && image.source.length > 0, 'Missing image source/alt');
@@ -109,7 +112,7 @@ function validate(root = path.join(ROOT, 'store/google-play')) {
   assert(groups.phoneScreenshots?.length >= 2 && groups.phoneScreenshots.length <= 8, 'Need 2–8 phone screenshots');
   const disk = fs.readdirSync(path.join(base, 'images'), {
     recursive: true
-  }).filter(f => fs.statSync(path.join(base, 'images', f)).isFile()).map(f => 'en-AU/images/' + f.replaceAll('\\', '/'));
+  }).filter(f => fs.statSync(path.join(base, 'images', f)).isFile()).map(f => 'en-US/images/' + f.replaceAll('\\', '/'));
   assert(disk.length === seen.size && disk.every(f => seen.has(f)), 'Unmanifested or missing PNG files');
   assert(manifest.capture?.engine === 'playwright-production-web' && /^[a-f0-9]{40}$/.test(manifest.capture.sourceCommit), 'Missing screenshot provenance');
   return {
@@ -138,7 +141,7 @@ async function publish({
     mode,
     track,
     packageName: PACKAGE,
-    locale: 'en-AU',
+    locale: LOCALE,
     images: listing.manifest.images.length,
     bundle: !!aab,
     committed: false
@@ -171,34 +174,30 @@ async function publish({
   assert(edit.id, 'Missing edit ID');
   const er = apiRoot + '/edits/' + encodeURIComponent(edit.id);
   try {
-    // Refuse an unsupported locale: image uploads to unsupported languages can silently no-op.
+    // Inspect only: never create a translation or change the app's default language.
+    const details = await requestJson(er + '/details', { headers: auth }, 'Read app default language');
+    assert(details.defaultLanguage === LOCALE, 'Existing Google Play default language must be en-US; no locale changes made');
     const remote = await requestJson(er + '/listings', {
       headers: auth
     }, 'Read configured locales');
-    const localeExists = remote.listings?.some(l => l.language === 'en-AU');
-    assert(localeExists || mode === 'validate-only', 'Enable en-AU in Play Console before uploading');
-    await requestJson(er + '/listings/en-AU', {
-      method: localeExists ? 'PATCH' : 'PUT',
+    assert(remote.listings?.some(l => l.language === LOCALE), 'Existing en-US default listing is missing; no locale created');
+    await requestJson(er + '/listings/' + LOCALE, {
+      method: 'PATCH',
       headers: auth,
       body: JSON.stringify({
-        language: 'en-AU',
+        language: LOCALE,
         title: listing.text.title,
         shortDescription: listing.text.shortDescription,
         fullDescription: listing.text.fullDescription
       })
-    }, 'Update en-AU text');
-    if (!localeExists) {
-      const staged = await requestJson(er + '/listings', { headers: auth }, 'Read staged locales');
-      assert(staged.listings?.some(l => l.language === 'en-AU'), 'Temporary en-AU listing was not accepted; no images uploaded');
-      console.log('[play-listing] Missing en-AU staged only in discardable validation edit.');
-    }
-    console.log('[play-listing] App listing write access and staged en-AU locale confirmed.');
+    }, 'Update en-US text');
+    console.log('[play-listing] Existing en-US default listing confirmed and text staged.');
     for (const [type, images] of Object.entries(listing.groups)) {
-      await requestJson(er + '/listings/en-AU/' + type, {
+      await requestJson(er + '/listings/' + LOCALE + '/' + type, {
         method: 'DELETE',
         headers: auth
       }, 'Replace ' + type);
-      for (const image of images) await requestJson(uploadRoot + '/edits/' + encodeURIComponent(edit.id) + '/listings/en-AU/' + type + '?uploadType=media', {
+      for (const image of images) await requestJson(uploadRoot + '/edits/' + encodeURIComponent(edit.id) + '/listings/' + LOCALE + '/' + type + '?uploadType=media', {
         method: 'POST',
         headers: {
           authorization: 'Bearer ' + token,
@@ -227,7 +226,7 @@ async function publish({
         versionCodes: [String(versionCode)],
         status: 'draft',
         releaseNotes: [{
-          language: 'en-AU',
+          language: LOCALE,
           text: listing.text.releaseNotes
         }]
       });
@@ -288,5 +287,6 @@ module.exports = {
   publish,
   safeFailure,
   sha,
-  PACKAGE
+  PACKAGE,
+  LOCALE
 };

@@ -103,7 +103,7 @@ jobs:
           Result: $env:RESULT
           Mode: $env:MODE
           Track selected: $env:TRACK (AAB drafts only)
-          Locale: en-AU
+          Locale: en-US
           Listing assets are shared across tracks. No production binary rollout is supported.
           Dry-run makes no API calls; validate-only discards its edit. Check Publishing overview before submitting any committed changes.
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

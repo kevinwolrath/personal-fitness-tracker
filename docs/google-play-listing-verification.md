@@ -1,11 +1,11 @@
 # Issue #100 · local verification
 
-8 November 2026, Windows local workspace. No live Play operation or workflow dispatch was performed. No signing key or package identity changed. Google credentials were not retrieved; only GitHub secret names and environment metadata were inspected.
+Historical PR #101 verification snapshot, before the canonical en-US migration. Results below describe the original alternate-locale implementation; see [current en-US verification](google-play-en-us.md) for the migrated package. No live Play operation or workflow dispatch was performed in this original snapshot. No signing key or package identity changed.
 
 | Check | Final result |
 |---|---|
 | `npm run store:prepare` | Passed: production web export, four actual app captures, feature graphic/icon, manifest and offline validation. All six images visually inspected. |
-| `npm run store:validate` | Passed, zero API calls; six assets, en-AU, correct package. |
+| `npm run store:validate` | Passed, zero API calls; six assets, original alternate locale, correct package. |
 | `npm run typecheck` | Passed. |
 | `npm test -- --ci --runInBand --watch=false` | **754 passed**, 55 suites, across scripts/unit/iOS/Android. Initial contended run had one native timeout; isolated rerun and complete final rerun passed. |
 | Release automation coverage within Jest | **25 tests** across new listing validation/transactions and existing resumable upload integration tests. Includes wrong AAB version/existing draft refusal and edit cleanup. |

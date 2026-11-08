@@ -47,7 +47,7 @@ test('complete checked-in package validates without credentials and preserves pa
   expect(r.groups.phoneScreenshots).toHaveLength(4);
 });
 test.each(['title.txt', 'short-description.txt', 'full-description.txt', 'release-notes.txt'])('rejects oversized %s', file => {
-  const dir = fixture(d => fs.writeFileSync(path.join(d, 'en-AU', file), 'x'.repeat(4001)));
+  const dir = fixture(d => fs.writeFileSync(path.join(d, 'en-US', file), 'x'.repeat(4001)));
   expect(() => validate(dir)).toThrow(/characters/);
 });
 test('rejects unsupported tablet art, duplicate/missing entries and changed pixels', () => {
@@ -58,7 +58,7 @@ test('rejects unsupported tablet art, duplicate/missing entries and changed pixe
 test('rejects dimension lies and incompatible screenshot shape', () => {
   expect(() => validate(fixture(d => changeManifest(d, m => m.images[0].width = 512)))).toThrow(/dimension/);
   const dir = fixture(d => {
-    const file = path.join(d, 'en-AU/images/phone/01-today.png');
+    const file = path.join(d, 'en-US/images/phone/01-today.png');
     const b = fs.readFileSync(file);
     b.writeUInt32BE(1, 16);
     fs.writeFileSync(file, b);
@@ -70,11 +70,12 @@ test('rejects dimension lies and incompatible screenshot shape', () => {
   expect(() => validate(dir)).toThrow();
 });
 test('rejects placeholder text, unsafe paths, extra locale, unmanifested imagery and truncated PNG', () => {
-  expect(() => validate(fixture(d => fs.writeFileSync(path.join(d, 'en-AU/title.txt'), 'TODO')))).toThrow(/placeholder/);
+  expect(() => validate(fixture(d => fs.writeFileSync(path.join(d, 'en-US/title.txt'), 'TODO')))).toThrow(/placeholder/);
   expect(() => validate(fixture(d => changeManifest(d, m => m.images[0].file = '../../app.json')))).toThrow(/path/);
-  expect(() => validate(fixture(d => changeManifest(d, m => m.locales.push('en-US'))))).toThrow(/locale/);
-  expect(() => validate(fixture(d => fs.copyFileSync(path.join(d, 'en-AU/images/icon.png'), path.join(d, 'en-AU/images/extra.png'))))).toThrow(/Unmanifested/);
-  expect(() => pngInfo(fs.readFileSync(path.join(canonical, 'en-AU/images/icon.png')).subarray(0, 100))).toThrow(/Truncated|Missing/);
+  expect(() => validate(fixture(d => changeManifest(d, m => m.locales.push('fr-FR'))))).toThrow(/locale/);
+  expect(() => validate(fixture(d => fs.mkdirSync(path.join(d, 'fr-FR'))))).toThrow(/directory/);
+  expect(() => validate(fixture(d => fs.copyFileSync(path.join(d, 'en-US/images/icon.png'), path.join(d, 'en-US/images/extra.png'))))).toThrow(/Unmanifested/);
+  expect(() => pngInfo(fs.readFileSync(path.join(canonical, 'en-US/images/icon.png')).subarray(0, 100))).toThrow(/Truncated|Missing/);
 });
 describe('publishing transaction', () => {
   beforeEach(() => {
@@ -109,9 +110,11 @@ describe('publishing transaction', () => {
         access_token: 'test-token'
       } : u.pathname.endsWith('/edits') ? {
         id: 'test-edit'
+      } : u.pathname.endsWith('/details') ? {
+        defaultLanguage: 'en-US'
       } : u.pathname.endsWith('/listings') ? {
         listings: [{
-          language: 'en-AU'
+          language: 'en-US'
         }]
       } : {};
       return new Response(JSON.stringify(body), {
@@ -144,6 +147,11 @@ describe('publishing transaction', () => {
       method: 'DELETE'
     });
     expect(requests.find(r => r.method === 'PATCH').body).toContain('Body Anvil');
+    expect(requests.find(r => r.method === 'PATCH').path).toMatch(/\/listings\/en-US$/);
+    expect(JSON.parse(requests.find(r => r.method === 'PATCH').body).language).toBe('en-US');
+    expect(requests.filter(r => r.path.includes('/listings/')).every(r => r.path.includes('/listings/en-US'))).toBe(true);
+    expect(requests.some(r => r.method === 'PUT' && /\/listings\//.test(r.path))).toBe(false);
+    expect(requests.some(r => r.method !== 'GET' && r.path.endsWith('/details'))).toBe(false);
   });
   test('commit fails closed without approval before authentication', async () => {
     await expect(publish({
@@ -182,17 +190,18 @@ describe('publishing transaction', () => {
     });
     expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
   });
-  test('unsupported locale stops before deletion/upload and cleans up', async () => {
+  test.each(['validate-only', 'commit'])('missing existing locale refuses %s without creating or uploading', async mode => {
     const original = global.fetch;
     global.fetch = async (url, o) => String(url).endsWith('/listings') ? new Response(JSON.stringify({
       listings: [{
-        language: 'en-US'
+        language: 'fr-FR'
       }]
     })) : original(url, o);
     await expect(publish({
-      mode: 'commit', approved: true
-    })).rejects.toThrow(/en-AU/);
+      mode, approved: true
+    })).rejects.toThrow(/en-US/);
     expect(requests.filter(r => r.path.includes('/upload/'))).toHaveLength(0);
+    expect(requests.some(r => r.method === 'PATCH' || r.method === 'PUT')).toBe(false);
     expect(requests.at(-1).method).toBe('DELETE');
   });
   test('bundle uploader stages expected version as draft and preserves non-draft releases', async () => {
@@ -224,7 +233,7 @@ describe('publishing transaction', () => {
       status: 'draft',
       versionCodes: ['42'],
       releaseNotes: [{
-        language: 'en-AU'
+        language: 'en-US'
       }]
     });
   });
@@ -243,20 +252,17 @@ describe('publishing transaction', () => {
     expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
     expect(requests.at(-1).method).toBe('DELETE');
   });
-  test.each([true, false])('temporary locale is validation-only and must read back before image uploads: %s', async accepted => {
+  test.each([undefined, 'en-GB'])('wrong or absent remote default stops before changing any listing: %s', async defaultLanguage => {
     const original = global.fetch;
-    let reads = 0;
     global.fetch = async (url, options) => {
-      if (String(url).endsWith('/listings')) {
-        reads++;
-        return new Response(JSON.stringify({ listings: [{ language: reads > 1 && accepted ? 'en-AU' : 'en-US' }] }));
+      if (String(url).endsWith('/details')) {
+        return new Response(JSON.stringify({ defaultLanguage }));
       }
       return original(url, options);
     };
-    if (accepted) await publish({ mode: 'validate-only' });
-    else await expect(publish({ mode: 'validate-only' })).rejects.toThrow(/not accepted/);
-    expect(requests.some(r => r.method === 'PUT' && r.path.endsWith('/listings/en-AU'))).toBe(true);
-    expect(requests.filter(r => r.path.includes('/upload/'))).toHaveLength(accepted ? 6 : 0);
+    await expect(publish({ mode: 'validate-only' })).rejects.toThrow(/default language must be en-US/);
+    expect(requests.some(r => r.method === 'PATCH' || r.method === 'PUT')).toBe(false);
+    expect(requests.filter(r => r.path.includes('/upload/'))).toHaveLength(0);
     expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
     expect(requests.at(-1).method).toBe('DELETE');
   });

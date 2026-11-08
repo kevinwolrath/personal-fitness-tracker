@@ -220,6 +220,21 @@ describe('publishing transaction', () => {
       }]
     });
   });
+  test.each(['existing draft', 'wrong version'])('bundle refusal cleans up without changing track: %s', async reason => {
+    const aab = path.join(temporary, 'refused.aab');
+    fs.writeFileSync(aab, 'test');
+    const bundle = require('../upload-play-bundle');
+    jest.spyOn(bundle, 'startUpload').mockResolvedValue('test-session');
+    jest.spyOn(bundle, 'uploadBundle').mockResolvedValue({ versionCode: reason === 'wrong version' ? 41 : 42 });
+    const original = global.fetch;
+    global.fetch = async (url, options) => String(url).endsWith('/tracks/internal')
+      ? new Response(JSON.stringify({ releases: [{ status: 'draft', versionCodes: ['40'] }] }))
+      : original(url, options);
+    await expect(publish({ mode: 'commit', approved: true, aab, versionCode: '42' })).rejects.toThrow();
+    expect(requests.some(r => r.method === 'PUT' && r.path.includes('/tracks/'))).toBe(false);
+    expect(requests.some(r => r.path.endsWith(':commit'))).toBe(false);
+    expect(requests.at(-1).method).toBe('DELETE');
+  });
   test('production binary commit is refused before API calls', async () => {
     const aab = path.join(temporary, 'app.aab');
     fs.writeFileSync(aab, 'test');

@@ -27,7 +27,7 @@ The API’s review flags are not a substitute for checking Publishing overview. 
 
 ## One-time manual setup — owner must confirm
 
-These account-side settings were **not inspected or changed** by this implementation. Some may already be complete because the existing internal pipeline has been used. Confirm each rather than creating duplicate keys/apps:
+GitHub metadata was inspected on 8 November 2026: **all five existing repository secret names are present** (`ANDROID_KEYSTORE_BASE64`, the three `ANDROID_UPLOAD_*` secrets and `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`), but the repository has **zero deployment environments**. No secret values were read. Creating/protecting the two environments below therefore remains necessary; existing secret presence does not prove the Play permissions or key contents are valid. Play account settings were **not inspected or changed**. Some setup may already be complete because the existing internal pipeline has been used. Confirm each rather than creating duplicate keys/apps:
 
 1. In the existing Play developer account, locate/create the Body Anvil app and retain package `com.questspire.personalfitnesstracker`. Configure en-AU as the baseline/default listing language and save the initial listing/app setup in Console. The API cannot bootstrap app registration and all first-release declarations. Do not add en-US unless an actual account requirement demands it and a reviewed package is added in a future change.
 2. Confirm Play App Signing and the currently registered **upload certificate**. Continue using the existing upload keystore/alias/password secrets; do not regenerate either key. Google’s app-signing key and the upload key have different roles. Check version-code history before selecting an override.

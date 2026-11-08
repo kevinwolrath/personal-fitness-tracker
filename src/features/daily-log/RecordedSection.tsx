@@ -108,6 +108,7 @@ export function ObservationSheet(p: {
 }) {
   const { colors, type } = useTheme();
   const styles = useStyles();
+  const { fontScale } = useWindowDimensions();
 
   const o = p.observation;
   // Imported values belong to their source (Health Connect, #36): changed or deleted there, never here.
@@ -181,9 +182,9 @@ export function ObservationSheet(p: {
           {def?.dimension === 'duration' && valid && <Text style={[type.detail, styles.center]}>{formatMinutes(n)}</Text>}
           <View style={styles.facts}>
             {facts.map(([k, v]) => (
-              <View key={k} style={styles.fact}>
-                <Text style={[type.detail, styles.factKey]}>{k}</Text>
-                <Text style={[type.detail, styles.factValue]}>{v}</Text>
+              <View key={k} style={[styles.fact, fontScale > 1.3 && styles.stackedFact]}>
+                <Text style={[type.detail, styles.factKey, fontScale > 1.3 && styles.stackedFactKey]}>{k}</Text>
+                <Text style={[type.detail, styles.factValue, fontScale > 1.3 && styles.stackedFactValue]}>{v}</Text>
               </View>
             ))}
           </View>
@@ -248,4 +249,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   fact: { flexDirection: 'row', gap: space.md },
   factKey: { width: 92 },
   factValue: { flex: 1, color: colors.ink },
+  stackedFact: { flexDirection: 'column', gap: space.xs },
+  stackedFactKey: { width: '100%' },
+  stackedFactValue: { flex: 0 },
 }));

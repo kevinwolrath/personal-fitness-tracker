@@ -54,6 +54,7 @@ No Play changes or releases are submitted by this issue.
 - TypeScript: passed.
 - Complete Jest suite: 768 tests, 58 suites passed (unit, Android and iOS).
 - Final focused Jest run: 87 tests, 8 suites passed after the final unit/source-matching changes.
+- After the native large-text adjustment: 8 relevant tests / 3 suites and TypeScript passed.
 - Focused production E2E: 102 passed across 360, 390 and 430 px, covering Health Connect, walking, historical corrections, upcoming durations and scrolling.
 - Android and iOS production bundle exports: passed.
 - Development-server smoke: passed, including screenshot import.
@@ -66,3 +67,35 @@ under concurrent native-build load. Three old `35m` assertions were corrected to
 failures also pass on retry. Other failures comprise 16 unrelated visual-baseline
 comparisons, three browser clipboard cases and the small-phone meal-row case.
 Those baselines and behaviors were not rewritten to make this issue pass.
+
+## Native Android verification
+
+Built and sideloaded the standalone APK on a dedicated Android 14 / API 34
+emulator (1080 × 2400, 420 dpi, Australia/Sydney). Existing AVDs and the connected
+phone were not modified. These captures use the same clearly isolated QA records,
+shifted to 8 November; the real mapping and SQLite store created the fixture.
+They verify native rendering and interactions, not a real Health Connect provider
+grant/read or physical-device sync.
+
+| Compact | Expanded | Record detail |
+|---|---|---|
+| ![Native compact summary](android-compact.png) | ![Native records](android-expanded.png) | ![Native detail](android-detail.png) |
+
+| 200% text: tiles and summary | 200% text: scrollable details |
+|---|---|
+| ![Large-text native summary](android-large-text.png) | ![Large-text native detail](android-detail-large-text.png) |
+
+Verified tile reflow, readable duration/distance, source-record expansion and
+detail navigation at native font scales 1.0 and 2.0. At larger sizes, detail facts
+stack vertically so labels stay whole. The detail body scrolls while Close stays
+fixed. The installed manifest includes `READ_DISTANCE`; permission is optional
+and was not granted as part of this fixture-based rendering check. Physical-phone
+permission/source verification remains required before merge under contract 12.
+
+[Native Today](android-today.png) · [200% expanded records](android-large-expanded.png)
+
+Local APK: `artifacts/personal-fitness-tracker.apk` (not committed), SHA-256
+`8c4d9711670f84eac94f79b09d5a26d4d9022139a4d32d11607cc4698e49c872`.
+Native compilation and the final source refresh succeeded; the embedded Hermes
+bundle runs without Metro. Close was pressed successfully after scrolling the
+200% detail sheet. The dedicated test emulator was stopped after verification.

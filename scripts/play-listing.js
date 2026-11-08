@@ -175,10 +175,10 @@ async function publish({
     const remote = await requestJson(er + '/listings', {
       headers: auth
     }, 'Read configured locales');
-    assert(remote.listings?.some(l => l.language === 'en-AU'), 'Enable en-AU in Play Console before uploading');
-    console.log('[play-listing] App listing access and en-AU locale confirmed.');
+    const localeExists = remote.listings?.some(l => l.language === 'en-AU');
+    assert(localeExists || mode === 'validate-only', 'Enable en-AU in Play Console before uploading');
     await requestJson(er + '/listings/en-AU', {
-      method: 'PATCH',
+      method: localeExists ? 'PATCH' : 'PUT',
       headers: auth,
       body: JSON.stringify({
         language: 'en-AU',
@@ -187,6 +187,12 @@ async function publish({
         fullDescription: listing.text.fullDescription
       })
     }, 'Update en-AU text');
+    if (!localeExists) {
+      const staged = await requestJson(er + '/listings', { headers: auth }, 'Read staged locales');
+      assert(staged.listings?.some(l => l.language === 'en-AU'), 'Temporary en-AU listing was not accepted; no images uploaded');
+      console.log('[play-listing] Missing en-AU staged only in discardable validation edit.');
+    }
+    console.log('[play-listing] App listing write access and staged en-AU locale confirmed.');
     for (const [type, images] of Object.entries(listing.groups)) {
       await requestJson(er + '/listings/en-AU/' + type, {
         method: 'DELETE',

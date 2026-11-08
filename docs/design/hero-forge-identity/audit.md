@@ -1,0 +1,53 @@
+# App-wide visual and asset audit
+
+Audit date: 8 November 2026. Scope: tracked `app/`, `src/features/`, `src/ui/`, assets and design contracts on the issue branch from develop. The existing app is operational and already has selectable Hero Forge / Classic palettes. This issue concerns visual identity across those working flows, not adding a second application or new functionality.
+
+## Existing visual gaps and proposed treatment
+
+| Surface / owner | Existing screens and states | Generic styling found | Proposed coverage after approval |
+|---|---|---|---|
+| `shell/AppShell`, `AppMenu`, `TabBar` | Main shell, menu open/dismiss, Today/Progress selected states, export confirmation | Three line Views for hamburger, stock-like calendar/trend SVG, plain title, generic pill menu rows | Original bevel-path menu/calendar/progress/anvil, compact identity, selected plate + label; preserve the two tabs and all menu destinations |
+| `daily-log/DayLogScreen`, `DayHeader`, `JumpToDateSheet` | Today, previous/future/historical dates, date jump, return Today, day-type override, no recommendation | Unicode arrows/chevron/share, rounded chip/progress rail | Family glyphs with original accessible names; compact header and genuine progress; no added hero banner |
+| `NextActionCard`, `ActivityRow`, `RequirementRow`, `RecordedSection` | Next action done/skip, meals, optional/required activities, alternatives, done/undone/skipped, imported observations | Rounded cards, circular checks, Unicode chevrons, plain status pills | Metal panels and shared checks/status tokens; retain action ownership, correction/undo and neutral missed state |
+| `TodayWorkout`, `ExerciseChecklist` | Compact card, loading order, full sheet, to-do/done, rest/skipped/complete, full/short/session options, alternate dose | `ⓘ`, `✓`, `⌄`, recovery-status symbols and generic circles/badges | Shared info/check/expand/status glyphs with words; retain data-driven priorities and plan badges; full names wrap in sheets |
+| `ItemSheet`, `Sheets`, `MeasurementPanel`, `MealDetails`, `TargetsLine`, `NoPlanCard` | Activity detail, manual log, measurements, corrections/removal, meal details/swaps, missing-plan entry | Shared rounded buttons, text inputs, small generic links, standard empty cards | Theme-owned form surfaces and button variants; keep quantity/unit semantics, validation, one primary action and no fake placeholder history |
+| `ShareDaySheet` | Preview, native share, web copy/unavailable/error | Unicode share and generic buttons | Same share glyph/actions; native chooser remains system-owned; preserve real daily content and clipboard fallback |
+| `progress/ProgressScreen`, `LineChart` | Ranges, comparison, every chart; calculated/estimate tags; empty and insufficient data; Edit charts show/hide/reorder | Text pills/checkbox checkmarks, generic card frames | Custom segment plate and edit/check/arrows, tag shapes and empty-state styling; chart geometry/legends remain real SVG data, not decorative graphs |
+| `muscles/CoverageSheet`, `MuscleMap`, `ExerciseMuscles` | Priority/activation, front/back, profile character selection, history, dose log, soreness/injury controls, activated-muscle view | Generic tabs/buttons, text/status markers | Family icons and shared controls around unchanged character/region SVG; preserve all 14 canonical groups and pattern/text status redundancy |
+| `exercise-guide/ExerciseGuideSheet` | Every movement; both steps; first/last disabled arrows; missing definition/image; prescription/substitution/caution; muscles | Unicode previous/next, generic dots and section presentation | Custom pager glyphs and bevel step dots; retain 4:3 contain image, dose/library separation, captions/instructions and nested read-only behavior |
+| `settings/SettingsSheet` | Appearance, energy units, persisted/write-failure preferences | Radio circles, standard labels and panel | Coordinated selection marks and engraved group surface; Classic stays selectable and uses its existing appearance; no account/character selector |
+| `health-connect/HealthConnectSheet` | Unsupported web/iOS, Android unavailable/install, permissions denied/off/on, sync/latest/errors | Standard switches, cards/buttons and generic explanation | Health shield glyph, status-word panel; preserve native permissions/install/link behavior and real sync data |
+| `reminders/RemindersSheet` | Consent, enabled/disabled, schedule choices, permission denied/unavailable | Native switch and generic option rows | Reminder glyph + shared group/row system; native switch remains for accessibility; no new reminder rules |
+| `import/ImportScreen` | Choose image, model loading/extraction, review/edit/include/remove, errors, empty/unsupported, save/result | `✕`, `‹/›`, `✓`, generic inputs/cards/buttons | Family close/arrows/check/import; preserve fixed Save bar, provenance/confidence, manual edits and validation |
+| `configure/ConfigureScreen` | Instructions/paste, parse errors, preview, expanded changes, apply/result/undo, AI settings | `✓`, `⌃/⌄`, generic textarea and rounded action plates | Shared expand/check/undo/settings and form states; fixed Apply bar, exact before/after data and existing configuration behavior |
+| `onboarding/SetupWizard`, `EditSetupScreen`, `WizardParts` | First-run profile/goals, review, meal choices/swaps, AI handoff, edit answers; validation/cancel | Generic selected choices, check/arrow glyphs and input cards | Same controls/type hierarchy; native keyboard/date picker behavior; existing profile fields determine character, no new account |
+| Shared `ui/*` | Buttons primary/secondary/quiet/inverse/disabled; Sheet/ModalHeader; ConfirmDialog; Toast; DateField; PhoneFrame; scroll policy | Broad radius-based automatic dark borders; generic button silhouettes; uncoordinated ad-hoc glyphs | Semantic theme component recipes, accessible Icon wrapper and shared status components; keep portals, safe areas, fixed actions, keyboard handling and scrollers |
+
+Each row includes its loading/error/empty/disabled variants where the existing flow provides them. System-owned date pickers, keyboards, native permission/share surfaces remain conventional for accessibility and platform behavior. Native switches stay native; custom framing and labels provide identity around them.
+
+## Artwork and icon inventory
+
+| Asset | Status / source | Decision |
+|---|---|---|
+| Three PNGs under `assets/hero-forge/references/` | Approved #75 ZIP, attachment URL and SHA-256 in `manifest.json`; character sheet includes male, female and neutral, front/back | Visual authority; unchanged. Mobile reference establishes charcoal, metallic panels and orange; muscle-map reference adds faceted rails. Reference example numbers are not app data. |
+| Six PNGs under `assets/hero-forge/app/` | Current production male/female/neutral front/back, selected by `features/muscles/artwork.ts` | Reuse exact files. No new hero design, correction, image generation, recolour or pose changes in #96. |
+| `assets/hero-forge/app/muscle-regions.json` | Existing anatomical overlays used by `MuscleMap`; inventory contains 14 groups | Reuse exact region coordinates and existing viewbox/pattern/text semantics. The reference art’s coloured zones are guides, not new taxonomy or activity observations. |
+| `assets/exercises/heroes/*.jpg` + manifest | 32 step images / 16 guides from #86; bundled by `heroIllustrations.ts` | Reuse full-body images in 4:3 contain frame. No duplicated illustration work; editorial character assignment is independent of viewer profile. |
+| Older `assets/hero-forge/characters/*.svg`, legacy exercise SVGs, historical preview assets | Earlier design iterations/provenance, not current production hero registry | Do not substitute these for canonical production artwork. Loose historical files do not establish new approval. |
+| Proposed `icons/*.svg` | 28 original paths, generated by local `icons.cjs`/`build.cjs`; theme-specific review assets | Pending approval. No icon font or third-party dependency. A single coherent family supplies shell, content and status icons. |
+| Charts, muscle regions, profile-specific map wiring | Functional SVG/data rendering, not stock navigation iconography | Keep rendering and model logic; only surrounding theme tokens/components change after approval. |
+
+## Existing functionality versus placeholders
+
+Today logging, measurements/goals from the plan, actual Progress charts, workout checklists/dose logging/recovery coverage, guides, screenshot import, AI plan configuration, setup, reminders, Android Health Connect, share/export and theme/energy preferences **already exist**. Their details and limitations live in contracts 02 and 06–14 and in the current source, which takes precedence over older V1 exclusions in contract 01.
+
+No new navigation entry is needed to make these mockups match the reference. **No Coming Soon placeholder is needed in the five proposed screens.** Platform-unavailable Health Connect is its existing explanation, not a fake functional integration. Accounts, achievements, levels, streaks, missions, leaderboards and additional navigation are excluded. Gamification remains #73. If a future approved navigation destination lacks implementation, it must use a clearly labelled reusable Coming Soon screen rather than simulated data.
+
+## Gaps requiring implementation and verification after approval
+
+1. The current app has theme colour tokens but no theme-specific icon/component recipe layer. Add that without changing persisted preference IDs or Classic behavior.
+2. The custom anvil/wordmark and complete icon family are proposals; their recognizability, optical weight and theme fit require owner approval. The reference raster logo cannot simply be enlarged into mobile chrome.
+3. The existing muscle map must retain all 14 data groups; screenshot examples here show no inferred activity. Overlay interactions/patterns are deliberately not redesigned or reimplemented in these HTML previews.
+4. The app-wide matrix is an implementation checklist, not a claim that every listed screen is already visually revised. Only the five requested representative surfaces have proposals at this gate.
+5. HTML browser previews cannot prove native accessibility/text scaling or sheet keyboard/safe-area behavior. Validate all of these in the real React Native implementation after approval, including long labels, 200% text and below-fold actions.
+6. The approved images include heavy decorative framing and example summaries. Mobile implementation must translate the metallic treatment while preserving the ≤200 px Today content budget and real app data. Both proposals deliberately simplify that framing.

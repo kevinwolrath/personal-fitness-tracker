@@ -1,0 +1,56 @@
+Body Anvil
+Progress
+Edit charts
+7 days
+30 days
+90 days
+All
+THIS WEEK VS LAST
+—
+Weight (average), no data this week
+—
+Waist, no data this week
+0
+Workouts this week (0 last week)
+WEIGHT
+No weigh-ins in this range. Log your weight on Today.
+WAIST
+No waist measurements in this range. Log one on Today when it’s due.
+BMI
+CALCULATED
+Add your height (☰ menu: Edit setup answers) to see BMI. It’s only calculated from real weigh-ins.
+WEIGHT VS WAIST
+CALCULATED
+Needs at least two weigh-ins and two waist measurements in this range.
+WEEKLY RATE
+CALCULATED
+Needs weigh-ins across at least a week.
+GOAL
+No weigh-ins in this range.
+BODY FAT
+ESTIMATE
+No body-fat readings. A smart scale can provide them through Health Connect.
+WORKOUTS
+This week: 0 of 2 done
+Strength and conditioning sessions per week, against the plan in effect each day
+28 Sept
+2 Nov
+11
+0
+Done
+Scheduled
+ACTIVE MINUTES
+No active minutes or workouts recorded. They can come from Health Connect or a screenshot import.
+STEPS
+No steps recorded. Connect Health Connect or import a screenshot.
+ENERGY EATEN VS BURNED
+ESTIMATE
+Energy appears here when you log or import what you ate, or a wearable reports energy burned. Ticking a planned meal doesn’t count as eaten.
+ENERGY BALANCE
+ESTIMATE
+Needs energy eaten and energy burned recorded on the same days.
+PROTEIN
+Protein appears here when you log or import it. Ticking a planned meal doesn’t count as eaten.
+Dots are values as recorded; lines are calculated. Nothing is filled in between measurements.
+Today
+Progress

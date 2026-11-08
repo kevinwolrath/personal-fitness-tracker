@@ -5,6 +5,8 @@ import { convertEnergy, entryUnit, type EnergyDisplay } from '../energy';
 import { prescribeDay } from '../prescription/prescribe';
 import type { ActivityLogRecord, ConfigChange, DayOverrideRecord } from '../storage/types';
 import { fromCanonical, toCanonical } from '../observations/units';
+import type { MealLog } from '../nutrition/contract';
+import { mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
 import {
   bmiSeries,
   bucketMeans,
@@ -88,7 +90,22 @@ export type ProgressOptions = {
    * compared with the schedule it actually had.
    */
   history?: { activityLogs: ActivityLogRecord[]; dayOverrides: DayOverrideRecord[]; planVersions?: { until: LocalDate; plan: Plan }[] };
+  /** Meals actually eaten (#97): a day's eaten energy and protein when it has no day total of its own. */
+  mealLogs?: MealLog[];
 };
+
+/**
+ * Eaten per day (#97, contract 15): the day total (entered, from a screenshot or imported) where there is one,
+ * otherwise the sum of that day's logged meals. The two are never added together.
+ */
+export function intakeSeries(observations: Observation[], mealLogs: MealLog[], metric: 'energy_intake' | 'protein_intake'): Point[] {
+  const totals = dailySeries(observations, metric);
+  const has = new Set(totals.map((p) => p.date));
+  const meals = [...mealSumsByDate(mealLogs, nutrientForMetric(metric)!)]
+    .filter(([date]) => !has.has(date))
+    .map(([date, value]): Point => ({ date, value, kind: 'measured', source: 'meals' }));
+  return [...totals, ...meals].sort((a, b) => a.date.localeCompare(b.date));
+}
 
 export function progressReport(observations: Observation[], plan: Plan, today: LocalDate, range: RangeId, opts: ProgressOptions = {}) {
   const days = ranges.find((r) => r.id === range)!.days;
@@ -378,7 +395,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   // Energy eaten vs burned (estimates), in the device's energy unit.
   const unit = entryUnit(opts.energy ?? plan.units.energy);
   const toUnit = (p: Point): Point => ({ ...p, value: convertEnergy(p.value, 'kJ', unit) });
-  const eaten = inRange(dailySeries(observations, 'energy_intake'), from, today).map(toUnit);
+  const eaten = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'energy_intake'), from, today).map(toUnit);
   const burned = inRange(dailySeries(observations, 'total_energy'), from, today).map(toUnit);
   const last7 = (ps: Point[]) => meanBetween(ps, addDays(today, -6), today);
   const e7 = last7(eaten);
@@ -420,7 +437,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   };
 
   // Protein vs the plan's protein target.
-  const protein = inRange(dailySeries(observations, 'protein_intake'), from, today);
+  const protein = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'protein_intake'), from, today);
   const target = plan.nutrition.targets.find((t) => t.quantity === 'grams' && /protein/i.test(`${t.id} ${t.label}`));
   const p7 = last7(protein);
   charts.protein = {

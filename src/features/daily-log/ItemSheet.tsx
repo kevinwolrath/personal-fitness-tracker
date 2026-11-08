@@ -22,6 +22,8 @@ import { MealDetails } from './MealDetails';
 import { ExerciseChecklist, VersionSwitch } from './ExerciseChecklist';
 import { sessionProgress, type ChecklistRow, type SessionOrder, type Variant } from '../../prescription/exercises';
 import { ModalHeader } from '../../ui/ModalHeader';
+import type { MealLog } from '../../nutrition/contract';
+import { ReplacedMeal } from '../meal-photo/ReplacedMeal';
 
 type Props = {
   date?: LocalDate;
@@ -40,10 +42,16 @@ type Props = {
   plan: Plan;
   /** How energy is shown (#39). */
   energy: EnergyDisplay;
+  /** What was actually eaten instead of this scheduled meal (#97), if anything. */
+  mealLog?: MealLog | null;
+  /** Open the "Log different meal" wizard for this meal (#97). */
+  onLogDifferent?: (item: PrescriptionItem) => void;
+  onEditMeal?: (log: MealLog) => void;
+  onRemoveMeal?: (log: MealLog) => void;
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder }: Props) {
+export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder, mealLog, onLogDifferent, onEditMeal, onRemoveMeal }: Props) {
   const { colors, type } = useTheme();
 
   const exerciseConfig = plan.exercise;
@@ -72,7 +80,20 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
           </Text>
 
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} testID="item-sheet-scroll">
-            {meal && (
+            {mealLog && (
+              <ReplacedMeal
+                log={mealLog}
+                energy={energy}
+                editable={editable}
+                onEdit={() => {
+                  onClose();
+                  onEditMeal?.(mealLog);
+                }}
+                onRemove={() => onRemoveMeal?.(mealLog)}
+              />
+            )}
+
+            {meal && !mealLog && (
               <View style={styles.block}>
                 {meal.ingredients.length > 0 && <Text style={type.section}>What to prepare</Text>}
                 <MealDetails meal={meal} variant="sheet" testID="meal-details" />
@@ -107,8 +128,13 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
             )}
 
             <View style={styles.actions}>
-              {item.state === 'skipped' ? (
-                <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
+              {mealLog ? null : item.state === 'skipped' ? (
+                <>
+                  <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
+                  {a?.kind === 'meal' && editable && onLogDifferent && (
+                    <Button title="📷 Log different meal" variant="secondary" onPress={act(() => onLogDifferent(item))} testID="sheet-log-different" />
+                  )}
+                </>
               ) : item.kind === 'activity' && a ? (
                 <>
                   {session && progress ? (
@@ -125,6 +151,10 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
                       disabled={!editable}
                       onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
                     />
+                  )}
+                  {a.kind === 'meal' && editable && onLogDifferent && (
+                    // Record what was actually eaten (#97): the plan recipe is never counted as eaten.
+                    <Button title="📷 Log different meal" variant="secondary" onPress={act(() => onLogDifferent(item))} testID="sheet-log-different" />
                   )}
                   <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
                 </>

@@ -23,6 +23,8 @@ type Props = {
   onDetails: (item: PrescriptionItem) => void;
   /** How energy is shown (#39). */
   energy: EnergyDisplay;
+  /** A meal that's due: log what was actually eaten instead (#97). */
+  onLogDifferent?: (item: PrescriptionItem) => void;
 };
 
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -49,7 +51,7 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
  * only for a timed item due within the hour (#41). The screen hides the card when there's nothing to recommend.
  */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
-export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy }: Props) {
+export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy, onLogDifferent }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -110,6 +112,10 @@ export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDeta
               accessibilityLabel={`Do ${o.label}`}
             />
           ))
+        )}
+        {item.activity?.kind === 'meal' && onLogDifferent && (
+          // Secondary, outlined, under Done (#97 entry A): Done stays the card's one primary action.
+          <Button variant="secondary" title="📷 Log different meal" onPress={() => onLogDifferent(item)} accessibilityLabel={`Log a different meal instead of ${item.label}`} testID="next-action-log-different" />
         )}
         <Pressable onPress={() => onDetails(item)} style={styles.details} accessibilityRole="button" accessibilityLabel={`${item.label} options`}>
           <Text style={styles.detailsText}>Skip and more</Text>

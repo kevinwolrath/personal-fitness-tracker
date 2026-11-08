@@ -42,6 +42,12 @@ import { Toast, type ToastState } from '../../ui/Toast';
 import { useClock, useDay } from './useDay';
 import { useExerciseState } from './useExerciseState';
 import { CoverageSheet } from '../muscles/CoverageSheet';
+import type { MealLog } from '../../nutrition/contract';
+import { dayIntake } from '../../nutrition/intake';
+import { intakeLines, mealSummary, sourceTag } from '../../nutrition/format';
+import { replacementCompletion } from '../../nutrition/replace';
+import { deletePhoto } from '../../platform/mealPhotos';
+import { localIsoTimestamp } from '../../format';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -97,6 +103,36 @@ export function DayLogScreen() {
     [plan, date, today, prescription, records, freeLogs, exerciseState],
   );
 
+  // Meals actually eaten (#97): replaced scheduled meals and the day's "Eaten" totals.
+  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
+  const loadMeals = useCallback(() => {
+    let live = true;
+    store.mealLogs({ from: date, to: date }).then((l) => live && setMealLogs(l), () => live && setMealLogs([]));
+    return () => {
+      live = false;
+    };
+  }, [store, date]);
+  useEffect(loadMeals, [loadMeals, dataVersion]);
+  const mealFor = useMemo(() => Object.fromEntries(mealLogs.filter((m) => m.activityId && m.planId === plan.id).map((m) => [m.activityId!, m])) as Record<string, MealLog | undefined>, [mealLogs, plan.id]);
+  const eaten = useMemo(() => intakeLines(dayIntake(date, mealLogs, records.observations), energy), [date, mealLogs, records, energy]);
+  const [removingMeal, setRemovingMeal] = useState<MealLog | null>(null);
+  const logDifferent = (item: PrescriptionItem) => router.push({ pathname: '/meal-photo', params: { date, activity: item.key } });
+  const editMeal = (log: MealLog) => router.push({ pathname: '/meal-photo', params: { date: log.date, edit: log.id } });
+  const removeMeal = async (log: MealLog) => {
+    setRemovingMeal(null);
+    setSheetItem(null);
+    try {
+      const undo = log.activityId && log.planId === plan.id ? replacementCompletion(plan, log.date, records, log.activityId, false, localIsoTimestamp()) : null;
+      await store.removeMealLog(log.id, undo);
+      await Promise.all(log.photos.map((p) => deletePhoto(p.uri)));
+      setToast({ key: Date.now(), message: `Removed ${log.name}` });
+    } catch {
+      setToast({ key: Date.now(), message: "Couldn't remove the meal. Try again." });
+    }
+    reload();
+    notifyDataChanged();
+  };
+
   const [firstRecord, setFirstRecord] = useState<LocalDate | null>(null);
   const [jumpOpen, setJumpOpen] = useState(false);
   useEffect(() => {
@@ -111,8 +147,11 @@ export function DayLogScreen() {
   useFocusEffect(
     useCallback(() => {
       if (firstFocus.current) firstFocus.current = false;
-      else reload();
-    }, [reload]),
+      else {
+        reload();
+        loadMeals();
+      }
+    }, [reload, loadMeals]),
   );
 
   // Past days can be corrected; future days are view-only (contract 04).
@@ -152,6 +191,8 @@ export function DayLogScreen() {
   }, [day.flexibleBudget, plan, energy]);
 
   const press = (item: PrescriptionItem, a: Activity) => {
+    // A replaced meal (#97) is undone by removing what was eaten, in its sheet: a tap opens the sheet instead.
+    if (mealFor[item.key]) return setSheetItem(item);
     tap();
     actions.advance(item, a);
   };
@@ -216,6 +257,7 @@ export function DayLogScreen() {
         onPress={() => press(item, item.activity!)}
         onMore={() => setSheetItem(item)}
         onSkipToggle={() => toggleSkip(item)}
+        replacedBy={mealFor[item.key] ? { name: mealFor[item.key]!.name, summary: mealSummary(mealFor[item.key]!, energy), tag: sourceTag(mealFor[item.key]!) } : null}
       />
     );
   // Grouped by part of the day; anytime last (contract 08).
@@ -270,7 +312,7 @@ export function DayLogScreen() {
 
         {topCard && (
           <View style={styles.firstBlock}>
-            {topCard.promoted ? workoutCard(true) : <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} />}
+            {topCard.promoted ? workoutCard(true) : <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onLogDifferent={logDifferent} />}
           </View>
         )}
 
@@ -287,7 +329,7 @@ export function DayLogScreen() {
             editable={editable}
             onLog={setSheetMeasurement}
           />
-          <TargetsLine plan={plan} targets={day.targets} energy={energy} />
+          <TargetsLine plan={plan} targets={day.targets} energy={energy} eaten={eaten} />
         </View>
 
         {nothingPlanned && !(noPlan && date === today) && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
@@ -353,6 +395,18 @@ export function DayLogScreen() {
         onTickExercise={tickExercise}
         onChooseVariant={chooseVariant}
         sessionOrder={sheetItem ? orderOf(sheetItem.key) : undefined}
+        mealLog={sheetItem ? mealFor[sheetItem.key] ?? null : null}
+        onLogDifferent={logDifferent}
+        onEditMeal={editMeal}
+        onRemoveMeal={setRemovingMeal}
+      />
+      <ConfirmDialog
+        visible={!!removingMeal}
+        title={`Remove ${removingMeal?.name ?? 'this meal'}?`}
+        message={`${removingMeal?.replacedLabel ? `${removingMeal.replacedLabel} goes back to not done. ` : ''}${removingMeal?.photos.length ? `Its ${removingMeal.photos.length} photo${removingMeal.photos.length === 1 ? '' : 's'} will be deleted from this phone.` : ''}`.trim() || 'It will no longer count as eaten.'}
+        confirmLabel="Remove"
+        onCancel={() => setRemovingMeal(null)}
+        onConfirm={() => removingMeal && removeMeal(removingMeal)}
       />
       <ConfirmDialog
         visible={!!pendingSwitch}

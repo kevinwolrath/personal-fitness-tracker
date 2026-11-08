@@ -7,6 +7,7 @@ import type { Observation } from '../../observations/types';
 import { preferences } from '../../platform/preferences';
 import { chartLayout, planVersionsFrom, type ProgressOptions, chartTitles, progressMetrics, progressReport, ranges, type ChartId, type ChartModel, type RangeId } from '../../progress/report';
 import type { WeekCompare } from '../../progress/series';
+import type { MealLog } from '../../nutrition/contract';
 import { useApp } from '../../providers/AppProvider';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
@@ -26,12 +27,14 @@ export function ProgressScreen() {
   const { today } = useClock();
   const [observations, setObservations] = useState<Observation[] | null>(null);
   const [history, setHistory] = useState<ProgressOptions['history']>(undefined);
+  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
   const [range, setRange] = useState<RangeId>('30d');
   const [layout, setLayout] = useState(chartLayout(null));
   const [editing, setEditing] = useState(false);
 
   const load = useCallback(() => {
     store.observationsFor(progressMetrics).then(setObservations, () => setObservations([]));
+    store.mealLogs().then(setMealLogs, () => setMealLogs([]));
     // The plan's records plus its earlier versions (#67), so past days are compared with the schedule they had.
     Promise.all([store.planHistory(plan.id), store.configHistory()]).then(
       ([h, changes]) => setHistory({ ...h, planVersions: planVersionsFrom(changes) }),
@@ -48,7 +51,7 @@ export function ProgressScreen() {
     preferences.setProgressCharts(next).catch(() => undefined);
   };
 
-  const report = useMemo(() => (observations ? progressReport(observations, plan, today, range, { energy, history }) : null), [observations, plan, today, range, energy, history]);
+  const report = useMemo(() => (observations ? progressReport(observations, plan, today, range, { energy, history, mealLogs }) : null), [observations, plan, today, range, energy, history, mealLogs]);
   const visible = layout.order.filter((id) => !layout.hidden.includes(id));
 
   return (

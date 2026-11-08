@@ -2,6 +2,7 @@ import { dayIntake, mealSumsByDate } from '../intake';
 import { energyMismatch, mealTotals, totalsDiscrepancies } from '../totals';
 import type { MealItem, MealLog } from '../contract';
 import { manualSource, type Observation } from '../../observations/types';
+import { intakeSeries } from '../../progress/report';
 
 const item = (name: string, energyKj: number | null, proteinG: number | null, carbsG: number | null = 0, fatG: number | null = 0): MealItem => ({ name, quantity: null, unit: null, energyKj, proteinG, carbsG, fatG });
 
@@ -73,5 +74,19 @@ describe('dayIntake (#97): logged meals and day totals are never added together'
 
   it('sums meals by date for Progress', () => {
     expect([...mealSumsByDate(meals, 'energyKj')]).toEqual([['2026-11-02', 4310], ['2026-11-01', 400]]);
+  });
+});
+
+describe('Progress eaten series (#97)', () => {
+  const meals = [meal('lunch', '2026-11-02', [item('Rice', 980, 5)]), meal('dinner', '2026-11-02', [item('Pasta', 2500, 20)]), meal('x', '2026-11-03', [item('Toast', 400, 4)])];
+
+  it('uses a day total where there is one, else the logged meals, never both', () => {
+    const pts = intakeSeries([obs('energy_intake', '2026-11-03', 6000), obs('energy_intake', '2026-11-04', 7000)], meals, 'energy_intake');
+    expect(pts).toEqual([
+      { date: '2026-11-02', value: 3480, kind: 'measured', source: 'meals' },
+      { date: '2026-11-03', value: 6000, kind: 'measured', source: 'manual', app: null },
+      { date: '2026-11-04', value: 7000, kind: 'measured', source: 'manual', app: null },
+    ]);
+    expect(intakeSeries([], meals, 'protein_intake').map((p) => p.value)).toEqual([25, 4]);
   });
 });

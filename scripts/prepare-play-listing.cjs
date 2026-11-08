@@ -11,7 +11,8 @@ const {
 const {
   sha,
   pngInfo,
-  PACKAGE
+  PACKAGE,
+  LOCALE
 } = require('./play-listing');
 const root = path.resolve(__dirname, '..');
 const dest = path.join(root, 'store/google-play');
@@ -53,7 +54,7 @@ async function prepare() {
   });
   const images = [];
   const save = async (page, type, file, alt, source) => {
-    const full = path.join(dest, 'en-AU/images', file);
+    const full = path.join(dest, LOCALE, 'images', file);
     fs.mkdirSync(path.dirname(full), {
       recursive: true
     });
@@ -66,7 +67,7 @@ async function prepare() {
     const info = pngInfo(data);
     images.push({
       type,
-      file: 'en-AU/images/' + file,
+      file: LOCALE + '/images/' + file,
       width: info.width,
       height: info.height,
       sha256: sha(data),
@@ -102,7 +103,7 @@ async function prepare() {
         height: 780
       },
       deviceScaleFactor: 3,
-      locale: 'en-AU',
+      locale: LOCALE,
       timezoneId: 'Australia/Sydney',
       storageState: {
         cookies: [],
@@ -161,7 +162,7 @@ async function prepare() {
     await graphic.setContent(`<canvas width="512" height="512"></canvas><script>const c=document.querySelector('canvas'),x=c.getContext('2d');x.fillStyle='#101519';x.fillRect(0,0,512,512);const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{x.drawImage(i,12,10,158,68,40,162,432,186);document.body.dataset.ready='true'};i.src='${origin}/assets/hero-forge/references/hero-forge-character-muscle-map-reference.png';</script>`);
     await graphic.waitForFunction(() => document.body.dataset.ready === 'true');
     const icon = Buffer.from((await graphic.locator('canvas').evaluate(c => c.toDataURL('image/png'))).split(',')[1], 'base64');
-    const iconPath = 'en-AU/images/icon.png';
+    const iconPath = LOCALE + '/images/icon.png';
     fs.writeFileSync(path.join(dest, iconPath), icon);
     images.push({
       type: 'icon',
@@ -179,8 +180,8 @@ async function prepare() {
     const manifest = {
       schemaVersion: 1,
       packageName: PACKAGE,
-      defaultLocale: 'en-AU',
-      locales: ['en-AU'],
+      defaultLocale: LOCALE,
+      locales: [LOCALE],
       capture: {
         engine: 'playwright-production-web',
         sourceCommit: commit,

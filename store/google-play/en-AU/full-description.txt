@@ -1,0 +1,20 @@
+Build a fitness routine around your day with Body Anvil.
+
+ONE CONTINUOUS DAILY LOG
+See your planned activity, record what you did and return to earlier days. Keep workouts, meals and measurements together instead of switching between separate trackers.
+
+TRAIN WITH A PLAN
+Follow strength sessions, mark exercises complete and open illustrated exercise guides. Choose a shorter session when time is limited. Review muscle coverage and record soreness or injuries to help organise your training.
+
+MAKE THE PLAN YOURS
+Use the first-run setup to describe your goals and equipment. Configure with AI lets you copy instructions to an AI assistant, then review and apply a plan update in the app.
+
+TRACK YOUR PROGRESS
+Record measurements and review your history. On supported Android devices, you can choose to read supported activity and measurement data from Health Connect. Access is optional and requires your permission.
+
+YOUR HISTORY, ON YOUR DEVICE
+The diary uses local storage. Export your history as JSON for your own backup and restore it later. Screenshot import is optional: it requires your own Anthropic API key and sends only the images you select when you choose to read them. Review the extracted values before saving.
+
+Choose the Hero Forge appearance or Classic light in Settings. Optional reminders help you keep track of your plan.
+
+Body Anvil is a fitness diary, not a medical service.

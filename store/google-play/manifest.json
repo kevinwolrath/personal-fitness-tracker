@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "packageName": "com.questspire.personalfitnesstracker",
+  "defaultLocale": "en-AU",
+  "locales": [
+    "en-AU"
+  ],
+  "images": {
+    "icon": [
+      "images/icon.png"
+    ],
+    "featureGraphic": [
+      "images/feature-graphic.png"
+    ],
+    "phoneScreenshots": [
+      "images/phoneScreenshots/01-daily-log.png",
+      "images/phoneScreenshots/02-progress.png",
+      "images/phoneScreenshots/03-muscle-coverage.png"
+    ]
+  },
+  "capture": {
+    "kind": "actual-web-app",
+    "viewport": {
+      "width": 390,
+      "height": 780
+    },
+    "deviceScaleFactor": 3,
+    "theme": "hero-forge",
+    "fixture": "fixtures/plans/generic-example.plan.json",
+    "observations": "store/google-play/demo-observations.json",
+    "note": "Demonstration data; web rendering, not evidence of native Android-only features."
+  }
+}

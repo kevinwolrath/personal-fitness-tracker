@@ -42,11 +42,21 @@ GitHub → Actions → **Deploy Android to Google Play Internal** → **Run work
 The job prints the package, fixed `internal` target and versionCode before building. The container then:
 
 1. generates the Android project (`expo prebuild`) and points the **release** build type at the upload key;
-2. checks, before the ~25 minute Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
+2. checks, before the Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
 3. builds the signed AAB;
 4. uploads it with `scripts/upload-play-bundle.js`: a resumable upload in 8 MiB chunks that, when the connection drops, asks Google how much arrived and continues from there (up to 8 attempts with backoff), then releases it to the internal track and commits.
 
 The release then appears under Play Console → Testing → Internal testing. If the app has never been published, Play only accepts draft releases: the script then creates a **draft** internal release, and the log says so; roll it out in Play Console.
+
+### Build cache on .45
+
+Gradle's downloads and build outputs are kept in the Docker volume `pft-gradle-cache` (mounted as `GRADLE_USER_HOME`), and the image `pft-google-play` is kept between runs so `npm ci` reruns only when `package-lock.json` changes. The first deploy after this change, or after the cache is cleared, takes the old full time; later deploys reuse the cache. The base image is pinned by digest in `docker/android-play.Dockerfile` (and `docker/android.Dockerfile`), so it is never re-pulled; change both to upgrade.
+
+To start from scratch (for example after a strange Gradle error), on .45:
+
+```bash
+docker volume rm pft-gradle-cache
+```
 
 ## Versioning
 
@@ -60,6 +70,7 @@ The release then appears under Play Console → Testing → Internal testing. If
 - **Play authentication/permission failure:** verify the service account is linked/granted access to this Play Console app and Internal testing releases.
 - **Version code already used:** run the workflow again; the resolver picks the next unused code from Play.
 - **"Unexpected Android applicationId" / "Generated versionCode" / "Release build type is signed with …":** the generated Gradle project isn't what the script expects (usually an Expo template change). It fails before the build; the log prints the lines it found.
+- **Gradle fails with a corrupt or locked cache:** clear the cache volume (see [Build cache on .45](#build-cache-on-45)) and run again.
 - **Upload "kept failing after 8 attempts":** the network between `.45` and Google kept dropping. Check the connection and run again.
 - **Upload refused for the signing key:** the keystore in the secrets isn't the upload key registered in Play Console (Setup → App signing).
 

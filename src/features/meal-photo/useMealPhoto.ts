@@ -137,12 +137,19 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
     return 'discarded' as const;
   }, [status, start, setDraft, checkPhotos]);
 
-  const goTo = useCallback((step: Step) => update((d) => ({ ...d, step })), [update]);
-  const back = useCallback(() => update((d) => {
+  // A notice belongs to the step it was shown on.
+  const goTo = useCallback((step: Step) => {
+    setNotice(null);
+    update((d) => ({ ...d, step }));
+  }, [update]);
+  const back = useCallback(() => {
+    setNotice(null);
+    update((d) => {
     const i = STEPS.indexOf(d.step);
     // With photos already taken, Back from the photos step doesn't return to the empty capture choice.
-    return { ...d, step: i > 0 ? STEPS[i - 1] : d.step };
-  }), [update]);
+      return { ...d, step: i > 0 ? STEPS[i - 1] : d.step };
+    });
+  }, [update]);
 
   const addPhotos = useCallback(async (source: 'camera' | 'library') => {
     const d = current.current;
@@ -227,8 +234,14 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
     setNotice(null);
     update((d) => ({ ...d, reply: t, replyError: null }));
   }, [update]);
-  const checkReply = useCallback(() => update((d) => applyReply(d, d.reply, now())), [update]); // eslint-disable-line react-hooks/exhaustive-deps
-  const enterManually = useCallback(() => update((d) => manualEntry(d, now())), [update]); // eslint-disable-line react-hooks/exhaustive-deps
+  const checkReply = useCallback(() => {
+    setNotice(null);
+    update((d) => applyReply(d, d.reply, now()));
+  }, [update]); // eslint-disable-line react-hooks/exhaustive-deps
+  const enterManually = useCallback(() => {
+    setNotice(null);
+    update((d) => manualEntry(d, now()));
+  }, [update]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setName = useCallback((name: string) => update((d) => ({ ...d, name })), [update]);
   const editItem = useCallback((key: string, patch: Partial<DraftItem>) => {

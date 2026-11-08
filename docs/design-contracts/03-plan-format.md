@@ -76,7 +76,7 @@ A meal's energy and protein come from its existing `nutrition` map, shown in the
 1. **Day type** is the user's override for that date if one exists, otherwise `schedule[weekday]`.
 2. **Activities** are those whose `appliesTo` is absent or matches the date's day type or weekday. Timed ones are sorted by `time`, with untimed ones after them in plan order.
 3. **Nutrition targets** are those whose `appliesTo` is absent or matches.
-4. **Planned intake** is the sum of `nutrition` for the day's **non-flexible meals**. This is planned, not measured. V1 doesn't log food.
+4. **Planned intake** is the sum of `nutrition` for the day's **non-flexible meals**. This is planned, not measured. Food actually eaten is logged separately (contract 15, #97) and never derived from the plan.
 5. **Flexible-meal budget**: for each target, `min − planned` if the target has a `min` ("to go"), otherwise `max − planned` ("left"), clamped to 0 or more. It's shown on the flexible meal row, for example "≈ 2,900 kJ left · ≈ 10 g protein to go". It's shown only if the day has exactly one flexible meal, and a target's line appears only when **every fixed meal that day states a value for it**. A partly specified plan never shows a misleading number.
 6. **Measurements due**: `every:"day"` is due every day, and `every:"week"` is due on its `on` weekday (with a quiet "last logged…" on other days).
 7. **Day completion**: a day is complete when every **required, non-skipped** activity is done. Optional activities never count. A skipped required activity is removed from the total ("2 of 6" rather than "2 of 7"). Any activity may be skipped. This is the only completion rule.

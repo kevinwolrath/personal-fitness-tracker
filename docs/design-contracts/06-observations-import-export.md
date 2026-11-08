@@ -73,7 +73,7 @@ App menu (☰) → **Export all data** → confirm **Export JSON**. Native opens
   - Tests prove export → JSON → empty store → restore → identical data on both store implementations.
   - A "Restore from export" UI is not built yet.
 - **Additive in version 1 (#28):** `activityLogs[].exercisesDone` (optional) and the completion-event actions `tick`, `untick` and `switch`.
-- **Additive in version 1 (#56):** `exerciseLogs` and `muscleReports` (contract 04), counted in `counts` and included in `range.from`. Exports written before them read as empty lists. Day snapshots' sessions gain structured doses (`sets`, `reps`, `seconds`, `avoid`), the `short` version and `doses: 1`; older snapshots only have the `dose` text.
+- **Additive in version 1 (#56):** `exerciseLogs` and `muscleReports` (contract 04), counted in `counts` and included in `range.from`. Exports written before them read as empty lists. **#97** adds `mealLogs` the same way (contract 15); photos are listed by their on-device location only, never image data. Day snapshots' sessions gain structured doses (`sets`, `reps`, `seconds`, `avoid`), the `short` version and `doses: 1`; older snapshots only have the `dose` text.
 - A breaking change to this shape bumps `exportVersion`. Importers must reject versions they don't know.
 
 ## Share this day (#76)

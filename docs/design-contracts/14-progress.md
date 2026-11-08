@@ -37,9 +37,9 @@ Delivered in two parts: measurements and weight trends (PR #64), then activity, 
 | Workouts | Per week: sessions done (bars) and scheduled (dots) | A workout is a required plan item with a session, or a strength or conditioning purpose; walks and errands count in active minutes and steps instead. Scheduled is computed from **the plan in effect on each day** (#67): every configuration change stores the plan it replaced, and that plan applies to the days before the change; days after the last change use the current plan. The day's day-type override applies; skipped isn't done. Sessions recorded by other apps are counted separately in the subtitle, every session (several on one day count separately). |
 | Active minutes | Minutes per week (bars) | A wearable's active minutes for a day, or else that day's recorded workout durations, never both. |
 | Steps | Days (dots) and a 7-day average (line) | Distance over the range in the subtitle. |
-| Energy eaten vs burned | Eaten (logged or imported) and burned (a wearable), **Estimate** | In the phone's energy unit (11). Ticked planned meals never count as eaten. Says both are estimates. |
+| Energy eaten vs burned | Eaten (logged or imported) and burned (a wearable), **Estimate** | In the phone's energy unit (11). Ticked planned meals never count as eaten. A day's eaten is its day total (entered or imported) if it has one, otherwise the sum of its logged meals (#97, contract 15): never both. Tap to inspect says "from logged meals". Says both are estimates. |
 | Energy balance | Weekly average of daily eaten minus burned (bars), **Estimate** | Only **days** with both values count (#67): a day's intake is never compared with another day's expenditure. Weeks without such a day have no bar. Says the weight trend is the better guide. |
-| Protein | Logged or imported protein (dots) against the plan's protein target minimum | Ticked planned meals never count. |
+| Protein | Logged or imported protein (dots) against the plan's protein target minimum | Ticked planned meals never count. Logged meals count on days without a protein day total (#97), never added to one. |
 
 - **Every chart:**
   - units and a legend;

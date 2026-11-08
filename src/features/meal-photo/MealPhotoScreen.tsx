@@ -256,20 +256,18 @@ function ReviewStep({ m, onView }: { m: M; onView: (p: MealPhoto) => void }) {
   const fieldError = (key: string, field: string) => m.errors.find((e) => e.key === key && e.field === field);
   return (
     <View style={styles.stack} testID="meal-review">
-      <View style={styles.titleRow}>
-        <TextInput
-          value={d.name}
-          onChangeText={m.actions.setName}
-          placeholder="Meal name"
-          placeholderTextColor={colors.faint}
-          style={[styles.nameInput, fieldError('meal', 'name') && styles.inputError]}
-          accessibilityLabel="Meal name"
-          testID="meal-name"
-        />
-        {p?.confidence && (
-          <Text style={styles.chip} testID="meal-confidence">{`${p.confidence[0].toUpperCase()}${p.confidence.slice(1)} confidence`}</Text>
-        )}
-      </View>
+      {p?.confidence && (
+        <Text style={styles.chip} testID="meal-confidence">{`${p.confidence[0].toUpperCase()}${p.confidence.slice(1)} confidence`}</Text>
+      )}
+      <TextInput
+        value={d.name}
+        onChangeText={m.actions.setName}
+        placeholder="Meal name"
+        placeholderTextColor={colors.faint}
+        style={[styles.nameInput, fieldError('meal', 'name') && styles.inputError]}
+        accessibilityLabel="Meal name"
+        testID="meal-name"
+      />
       <Text style={type.detail} testID="meal-caveat">
         {d.source === 'photo-ai' ? 'An AI’s estimate from a photo, not a measurement. Portions and hidden oil or sauce can make it well off. Edit anything that looks wrong.' : 'Your own entry. Leave a value empty if you don’t know it.'}
       </Text>
@@ -381,7 +379,7 @@ function BottomBar({ m, onSave }: { m: M; onSave: () => void }) {
   }
   if (d.step === 'paste') primary = <Button title="Check reply" onPress={m.actions.checkReply} disabled={!d.reply.trim()} testID="meal-check" />;
   if (d.step === 'review') {
-    const title = d.mode === 'edit' ? 'Save changes' : d.replacedLabel ? `Save · replaces ${d.replacedLabel}` : 'Save meal';
+    const title = d.mode === 'edit' ? 'Save changes' : 'Save meal';
     primary = <Button title={m.saving ? 'Saving…' : title} onPress={onSave} disabled={m.saving} testID="meal-save" />;
   }
   if (!primary && !back) return null;
@@ -473,10 +471,9 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   hero: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.md, backgroundColor: colors.line },
   prompt: { ...type.detail, fontFamily: 'monospace', fontSize: 12, color: colors.ink, backgroundColor: colors.surface, padding: space.md, borderRadius: radius.sm },
   paste: { minHeight: 160, maxHeight: 280, borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, padding: space.md, fontSize: 14, color: colors.ink, backgroundColor: colors.surface, textAlignVertical: 'top' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
-  nameInput: { flex: 1, minWidth: 180, minHeight: touch, fontSize: 20, fontWeight: '800', color: colors.ink, borderBottomWidth: 1, borderBottomColor: colors.line },
+  nameInput: { minHeight: touch, fontSize: 20, fontWeight: '800', color: colors.ink, borderBottomWidth: 1, borderBottomColor: colors.line },
   inputError: { borderColor: colors.injured, borderBottomColor: colors.injured },
-  chip: { fontSize: 12, fontWeight: '700', color: colors.sore, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.sore, borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: 4 },
+  chip: { alignSelf: 'flex-start', fontSize: 12, fontWeight: '700', color: colors.sore, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.sore, borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: 4 },
   tiles: { flexDirection: 'row', gap: 6 },
   tile: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.sm, paddingVertical: space.sm, alignItems: 'center' },
   tileValue: { fontSize: 16, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },

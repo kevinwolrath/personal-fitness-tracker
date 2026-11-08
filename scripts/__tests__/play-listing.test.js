@@ -8,6 +8,14 @@ const {
   publish,
   sha
 } = require('../play-listing');
+const { safeFailure } = require('../play-listing');
+const { PlayApiError } = require('../google-play-api');
+test('authenticated diagnostics expose only controlled operation/status, never response or parser secrets', () => {
+  const api = new PlayApiError('Read configured locales', 403, 'private_key=DO-NOT-LOG');
+  expect(safeFailure(api)).toContain('Read configured locales failed (HTTP 403)');
+  expect(safeFailure(api)).not.toContain('DO-NOT-LOG');
+  expect(safeFailure(new SyntaxError('private_key=DO-NOT-LOG'))).not.toContain('DO-NOT-LOG');
+});
 const canonical = path.resolve(__dirname, '../../store/google-play');
 let temporary, fetchOriginal, environment, requests;
 beforeAll(() => {

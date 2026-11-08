@@ -20,8 +20,18 @@ function crc32(bytes) {
   for (const b of bytes) c = crcTable[(c ^ b) & 255] ^ c >>> 8;
   return (c ^ 0xffffffff) >>> 0;
 }
+class ListingValidationError extends Error {}
 function assert(ok, message) {
-  if (!ok) throw Error(message);
+  if (!ok) throw new ListingValidationError(message);
+}
+function safeFailure(error) {
+  if (error instanceof ListingValidationError) return error.message;
+  const { PlayApiError } = require('./google-play-api');
+  if (error instanceof PlayApiError) {
+    const operation = /^[A-Za-z0-9 -]{1,80}$/.test(error.operation || '') ? error.operation : 'Play API request';
+    return operation + ' failed (HTTP ' + error.status + '). Check app permissions and Play Console; API response omitted.';
+  }
+  return 'Play listing failed. Check credentials, locale permissions and Play Console pending changes. Credential/parser/API response details omitted.';
 }
 function pngInfo(b) {
   assert(b.length > 33 && b.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), 'Invalid PNG signature');
@@ -144,6 +154,7 @@ async function publish({
   } = require('./google-play-api');
   const credentials = process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_FILE ? JSON.parse(fs.readFileSync(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_FILE, 'utf8')) : JSON.parse(process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON || '{}');
   const token = await getAccessToken(credentials, PACKAGE);
+  console.log('[play-listing] Authentication succeeded.');
   const {
     apiRoot,
     uploadRoot
@@ -165,6 +176,7 @@ async function publish({
       headers: auth
     }, 'Read configured locales');
     assert(remote.listings?.some(l => l.language === 'en-AU'), 'Enable en-AU in Play Console before uploading');
+    console.log('[play-listing] App listing access and en-AU locale confirmed.');
     await requestJson(er + '/listings/en-AU', {
       method: 'PATCH',
       headers: auth,
@@ -242,6 +254,7 @@ async function publish({
         headers: auth
       });
       assert(r.ok || r.status === 404, 'Could not discard edit; inspect Play Console before retrying');
+      console.log('[play-listing] Temporary edit discarded; no commit or review submission.');
     }
   }
 }
@@ -259,7 +272,7 @@ if (require.main === module) {
     approved: process.env.PLAY_PUBLISH_APPROVED === 'true'
   }).catch(error => {
     // API responses and credential parsing errors are intentionally not echoed into CI logs.
-    console.error((value('--mode') || 'dry-run') === 'dry-run' ? error.message : 'Play listing failed. Check manifest, credentials, locale permissions and Play Console pending changes. No automatic retry/rollout was performed.');
+    console.error((value('--mode') || 'dry-run') === 'dry-run' ? error.message : safeFailure(error));
     process.exitCode = 1;
   });
 }
@@ -267,6 +280,7 @@ module.exports = {
   validate,
   pngInfo,
   publish,
+  safeFailure,
   sha,
   PACKAGE
 };

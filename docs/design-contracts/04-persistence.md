@@ -15,7 +15,7 @@
 - **Native:** SQLite via `expo-sqlite`, accessed only through a small repository module, for example `src/storage/`. Screens never run SQL.
 - **Web (test surface):** the same `TrackingStore` interface over `localStorage`: one JSON document under `pft:tracking:v1` (decided in issue #3, so no SQLite/WASM in the browser). It falls back to in-memory storage if `localStorage` is unavailable. Platform selection is by file extension (`openStore.ts` / `openStore.web.ts`).
 - Both implementations must pass the shared suite in `src/storage/__tests__/store.contract.ts`. The SQLite implementation is tested against Node's built-in SQLite through the same `SqlDatabase` interface expo-sqlite provides.
-- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. Migration 3 (#10) is additive too: it adds `activity_log.variant` and `requirement_id`, plus `completion_event` and `day_snapshot`. Migration 4 (#28) adds `activity_log.exercises_done` (a JSON array of exercise keys, contract 08). Migration 5 (#56) adds two new tables, `exercise_log` and `muscle_report`; nothing existing changes. Migration 6 (#97) adds one new table, `meal_log`; nothing existing changes. Tests open real version-1, version-3, version-4 and version-5 databases and check nothing is lost. The web document gains `exerciseLogs` and `muscleReports` lists; documents written before them read as empty. It gains `mealLogs` (#97) the same way.
+- Schema migrations are numbered and run on startup. Never destructive without an export first. Migration 2 (#7) is additive: it adds `plan.origin` (existing plans become `seed`) and `config_change`. Migration 3 (#10) is additive too: it adds `activity_log.variant` and `requirement_id`, plus `completion_event` and `day_snapshot`. Migration 4 (#28) adds `activity_log.exercises_done` (a JSON array of exercise keys, contract 08). Migration 5 (#56) adds two new tables, `exercise_log` and `muscle_report`; nothing existing changes. Migration 6 (#104) adds `observation.activity_json` (see below). Migration 7 (#97) adds one new table, `meal_log`; nothing existing changes. Tests open real version-1, version-3, version-4, version-5 and version-6 databases and check nothing is lost. The web document gains `exerciseLogs` and `muscleReports` lists; documents written before them read as empty. It gains `mealLogs` (#97) the same way.
 
 ## Records (logical model)
 
@@ -58,3 +58,7 @@ Rules:
 
 - **Export all data** (app menu, after a confirmation) writes the full-history `pft-export` v1 JSON defined in contract 06: everything from the earliest record through today, with provenance. It's shared through the native share sheet on native and downloaded on web.
 - Restore is built and tested at the data layer (`toSnapshot` + `TrackingStore.restore`). A restore UI is not built yet.
+
+## Optional activity facts (#104)
+
+SQLite migration 6 adds nullable `observation.activity_json` without rewriting older observations. Store optional activity facts in both backends, snapshots and v1 exports; old records without these facts remain valid. Migration tests cover upgrading version 5 with existing observations and reopening after saving activity facts.

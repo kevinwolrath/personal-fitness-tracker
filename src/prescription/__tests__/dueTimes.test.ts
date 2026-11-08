@@ -182,8 +182,8 @@ describe('clock and countdown', () => {
   });
 
   it.each([
-    [270, 'in 4 h 30 min'],
-    [240, 'in 4 h'],
+    [270, 'in 4 hr 30 min'],
+    [240, 'in 4 hr'],
     [15, 'in 15 min'],
     [1, 'in 1 min'],
     [0, 'now'],

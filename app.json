@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Body Anvil",
+    "icon": "./store/google-play/en-US/images/icon.png",
     "slug": "personal-fitness-tracker",
     "scheme": "personalfitnesstracker",
     "version": "0.1.0",
@@ -39,6 +40,7 @@
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_DISTANCE",
         "android.permission.health.READ_WEIGHT",
         "android.permission.health.READ_BODY_FAT",
         "android.permission.health.READ_SLEEP"

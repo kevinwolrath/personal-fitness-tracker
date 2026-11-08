@@ -76,11 +76,21 @@ fi
 
 export ANDROID_KEYSTORE_FILE="$KEYSTORE"
 cd android
-./gradlew bundleRelease --no-daemon
+# All ABIs (Play serves each phone its own). --build-cache reuses task outputs from earlier deploys, stored with
+# the dependencies in GRADLE_USER_HOME, the pft-gradle-cache volume (#91).
+./gradlew bundleRelease --no-daemon --build-cache
 cd ..
 
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
+
+# Reuse this exact signing/build pipeline for a later listing+AAB draft operation (#100).
+if [ "${PLAY_BUILD_ONLY:-false}" = "true" ]; then
+  [ -d /run/bundle-output ] || { echo "Build-only output mount is missing" >&2; exit 1; }
+  cp "$AAB" /run/bundle-output/app-release.aab
+  echo "Signed AAB retained in runner output mount; no Play upload or release performed."
+  exit 0
+fi
 
 echo "Uploading signed AAB to Google Play INTERNAL testing only..."
 # Resumable, chunked upload that survives dropped connections (scripts/upload-play-bundle.js). The track is

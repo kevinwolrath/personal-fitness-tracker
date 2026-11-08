@@ -56,6 +56,7 @@ export type HcDayTotal = { date: LocalDate; value: number; origins: string[] };
 export type HcSleepStage = { start: string; end: string; stage: number };
 /** An interval record: an exercise session or a sleep session. Times are ISO instants. */
 export type HcSession = { id: string; start: string; end: string; origin: string; exerciseType?: number; title?: string; stages?: HcSleepStage[] };
+export type HcDistance = { id: string; start: string; end: string; origin: string; metres: number };
 export type HcWeight = { id: string; time: string; kg: number; origin: string };
 /** A body fat reading: percent of body weight, 0–100 (#46). */
 export type HcBodyFat = { id: string; time: string; percent: number; origin: string };
@@ -66,6 +67,7 @@ export type HcRead = {
   /** Active energy per day, in kcal, as Health Connect aggregates it. */
   activeKcal?: HcDayTotal[];
   exercise?: HcSession[];
+  distances?: HcDistance[];
   weight?: HcWeight[];
   bodyFat?: HcBodyFat[];
   sleep?: HcSession[];
@@ -203,10 +205,22 @@ export function dedupeSessions(sessions: HcSession[]): HcSession[] {
   const span = (s: HcSession): Span => [ms(s.start), ms(s.end)];
   const kept: HcSession[] = [];
   for (const s of [...sessions].sort((a, b) => total([span(b)]) - total([span(a)]) || a.id.localeCompare(b.id))) {
-    const dup = kept.some((k) => k.origin !== s.origin && overlap(span(k), span(s)) > 0.5 * Math.min(total([span(k)]), total([span(s)])));
+    const dup = kept.some((k) => (k.exerciseType === undefined || s.exerciseType === undefined || k.exerciseType === s.exerciseType) && ((span(k)[0] === span(s)[0] && span(k)[1] === span(s)[1]) || (k.origin !== s.origin && overlap(span(k), span(s)) > 0.5 * Math.min(total([span(k)]), total([span(s)])))));
     if (!dup) kept.push(s);
   }
   return kept.sort((a, b) => ms(a.start) - ms(b.start));
+}
+
+/** Only same-origin distance intervals wholly inside a session are attributable. Never prorate. */
+export function sessionDistance(session: HcSession, distances: HcDistance[] | undefined): { distanceMeters?: number; distancePartial?: boolean } {
+  if (!session.origin) return {}; // Missing provenance cannot establish a matching source.
+  const start=ms(session.start), end=ms(session.end);
+  const candidates=(distances??[]).filter(d=>d.origin===session.origin && Number.isFinite(d.metres) && d.metres>=0 && ms(d.start)>=start && ms(d.end)<=end && ms(d.end)>ms(d.start)).sort((a,b)=>(ms(b.end)-ms(b.start))-(ms(a.end)-ms(a.start)) || a.id.localeCompare(b.id));
+  const kept:HcDistance[]=[];
+  for(const d of candidates) if(!kept.some(k=>overlap([ms(d.start),ms(d.end)],[ms(k.start),ms(k.end)])>0))kept.push(d);
+  if(!kept.length)return {};
+  const covered=total(union(kept.map(d=>[ms(d.start),ms(d.end)])));
+  return {distanceMeters:kept.reduce((n,d)=>n+d.metres,0),distancePartial:covered<end-start || kept.length<candidates.length};
 }
 
 /** Minutes asleep in one session: its asleep stages when it has stages, else its whole length. */
@@ -248,12 +262,12 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
   }
   if (read.exercise) {
     metrics.push('exercise_session');
-    for (const s of dedupeSessions(read.exercise)) {
+    for (const s of [...new Map(read.exercise.map(s=>[s.id,s])).values()]) {
       const date = localDateOf(s.start);
       const min = Math.round(minutes(ms(s.end) - ms(s.start)));
       if (!inWindow.has(date) || min < 1) continue;
       const label = s.title?.trim() || exerciseLabel(s.exerciseType);
-      out.push(observation(`hc:exercise:${s.id}`, date, 'exercise_session', min, 'min', label, source(appForOrigin(s.origin), s.start), recordedAt));
+      out.push({ ...observation(`hc:exercise:${s.id}`, date, 'exercise_session', min, 'min', label, source(appForOrigin(s.origin), s.start), recordedAt), activity:{start:s.start,end:s.end,exerciseType:s.exerciseType,...sessionDistance(s,read.distances)} });
     }
   }
   if (read.weight) {

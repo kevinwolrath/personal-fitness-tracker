@@ -54,6 +54,7 @@ export const exportSchema = z.object({
       note: z.string().nullable(),
       source: provenance,
       recordedAt: z.string(),
+      activity: z.object({ start: z.string().datetime({ offset: true }), end: z.string().datetime({ offset: true }), exerciseType: z.number().int().optional(), distanceMeters: z.number().finite().nonnegative().optional(), distancePartial: z.boolean().optional() }).optional(),
     }),
   ),
   activityLogs: z.array(

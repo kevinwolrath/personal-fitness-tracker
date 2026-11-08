@@ -5,6 +5,8 @@ import { convertEnergy, entryUnit, type EnergyDisplay } from '../energy';
 import { prescribeDay } from '../prescription/prescribe';
 import type { ActivityLogRecord, ConfigChange, DayOverrideRecord } from '../storage/types';
 import { fromCanonical, toCanonical } from '../observations/units';
+import { activitySummary, isHealthActivity, isWalk } from '../observations/activity';
+import { formatDistance } from '../observations/units';
 import type { MealLog } from '../nutrition/contract';
 import { mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
 import {
@@ -330,7 +332,10 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   const done = weeklyTotals(doneDaily);
   const scheduled = weeklyTotals(scheduledDaily);
   // Every recorded session counts, including several on one day (#67).
-  const sessionsRecorded: Point[] = observations
+  const healthSessions=observations.filter(o=>isHealthActivity(o)&&(!from||o.date>=from)&&o.date<=today);
+  const healthSummary = activitySummary(healthSessions);
+  const distinctHealth=[...new Set(healthSessions.map(o=>o.date))].flatMap(date=>activitySummary(healthSessions.filter(o=>o.date===date)).unique);
+  const sessionsRecorded: Point[] = observations.filter(o=>!isHealthActivity(o)||distinctHealth.includes(o))
     .filter((o) => o.metric === 'exercise_session' && o.kind === 'observed' && (!from || o.date >= from) && o.date <= today)
     .map((o) => ({ date: o.date, value: 1, kind: 'measured' }));
   const imported = weeklyTotals(sessionsRecorded);
@@ -348,7 +353,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
       { label: 'Scheduled', points: scheduled.map((w) => ({ date: w.week, value: w.total, kind: 'calculated' })), style: 'dots', tone: 'ink' },
     ],
     empty: scheduled.length ? null : 'No workouts are scheduled in your plan for this range.',
-    note: null,
+    note: healthSummary.uncertainTime ? 'Some imported records have no timing; their separate sessions cannot be verified.' : null,
     summary: scheduled.length ? `Workouts this week: ${thisWeek.done} of ${thisWeek.of} done.` : 'Workouts: none scheduled.',
   };
 
@@ -359,6 +364,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   const minutes = inRange([...active, ...sessions.filter((p) => !activeDays.has(p.date))].sort((a, b) => a.date.localeCompare(b.date)), from, today);
   const minWeeks = weeklyTotals(minutes);
   const minThis = minWeeks.find((w) => w.week === weekStart(today))?.total;
+  const walks=activitySummary(healthSessions.filter(isWalk));
   charts['active-minutes'] = {
     id: 'active-minutes',
     title: chartTitles['active-minutes'],
@@ -368,7 +374,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     unit: 'min',
     series: [{ label: 'Minutes per week', points: minWeeks.map((w) => ({ date: w.week, value: w.total, kind: 'measured' })), style: 'bars', tone: 'accent' }],
     empty: minWeeks.length ? null : 'No active minutes or workouts recorded. They can come from Health Connect or a screenshot import.',
-    note: null,
+    note: healthSessions.length ? `Overlapping Health Connect time counts once.${healthSummary.uncertainTime?' Incomplete timings make duration a lower bound.':''}${walks.metres!==null?` Walking distance: ${formatDistance(walks.metres)} recorded${walks.partialDistance?' (partial)':''}.`:''}` : null,
     summary: minWeeks.length ? `Active minutes this week: ${thousands(minThis ?? 0)}.` : 'Active minutes: none recorded.',
   };
 

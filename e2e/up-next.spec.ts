@@ -42,7 +42,7 @@ test('10:45: within an hour of lunch becoming due, a compact "Up next" card, no 
   await expect(upNext(page)).toBeVisible();
   await expect(page.getByTestId('up-next-when')).toHaveText(/Up next · 12:00\s?pm/i);
   await expect(page.getByTestId('up-next-title')).toHaveText('Fixed lunch');
-  await expect(page.getByTestId('up-next-countdown')).toHaveText(/^In 1 h 15 min/);
+  await expect(page.getByTestId('up-next-countdown')).toHaveText(/^In 1 hr 15 min/);
   await expect(card(page)).toHaveCount(0);
   await expect(page.getByTestId('next-action-meal-ingredients')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Done: Fixed lunch' })).toHaveCount(0);

@@ -279,7 +279,7 @@ function CandidateRow({ c, error, onEdit }: { c: ReviewedCandidate; error?: stri
       <TextInput
         value={text}
         onChangeText={(t) => onEdit(c.key, { editedText: t })}
-        keyboardType={c.unit === 'min' ? 'default' : 'decimal-pad'} // durations read "7h 45m"
+        keyboardType={c.unit === 'min' ? 'default' : 'decimal-pad'} // durations read "7 hr 45 min"
         editable={c.include}
         style={[styles.valueInput, error && styles.valueInputError]}
         accessibilityLabel={`${c.label} value`}

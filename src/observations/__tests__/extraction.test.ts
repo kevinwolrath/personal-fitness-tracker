@@ -13,7 +13,7 @@ describe('units', () => {
     expect(toCanonical(7.75, 'h', 'duration')).toBe(465);
     expect(toCanonical(5, 'mi', 'distance')).toBeCloseTo(8.05, 2);
     expect(toCanonical(1, 'steps', 'mass')).toBeNull();
-    expect(formatMinutes(465)).toBe('7h 45m');
+    expect(formatMinutes(465)).toBe('7 hr 45 min');
   });
   it('normalises source app names', () => {
     expect(slugApp(' Google Fit ')).toBe('google-fit');

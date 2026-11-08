@@ -4,7 +4,7 @@ import { addDays, type LocalDate } from '../plan/dates';
 
 /**
  * Android Health Connect adapter (#36, contract 12). READ ONLY: this file never calls an insert, update or delete
- * API, and the app's manifest declares only the five READ_* permissions. The meaning of the data lives in
+ * API, and the app's manifest declares only READ_* permissions. The meaning of the data lives in
  * src/observations/healthConnect.ts; this file only talks to the platform. See healthConnect.web.ts for the web
  * test surface's stand-in.
  */
@@ -36,7 +36,7 @@ async function ready(): Promise<Lib> {
   return hc;
 }
 
-const permissions = () => hcTypes.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] }));
+const permissions = () => [...hcTypes.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] })), { accessType: 'read' as const, recordType: 'Distance' as const }];
 const typeOf = (recordType: string): HcType | undefined => hcTypes.find((t) => hcRecordType[t] === recordType);
 const grantedTypes = (granted: { accessType: string; recordType: string }[]): HcType[] =>
   hcTypes.filter((t) => granted.some((p) => p.accessType === 'read' && typeOf(p.recordType) === t));
@@ -84,7 +84,7 @@ export const healthConnect = {
     return grantedTypes(await hc.getGrantedPermissions());
   },
 
-  /** Ask for read access to the five types (an explicit user action: the only place we ask). */
+  /** Ask for read access to six main types and optional Distance (an explicit user action: the only place we ask). */
   async request(): Promise<HcType[]> {
     const hc = await ready();
     return grantedTypes(await hc.requestPermission(permissions()));
@@ -123,6 +123,14 @@ export const healthConnect = {
         read.exercise = rs.map(
           (r): HcSession => ({ id: r.metadata?.id ?? `${r.startTime}|${r.metadata?.dataOrigin}`, start: r.startTime, end: r.endTime, origin: r.metadata?.dataOrigin ?? '', exerciseType: r.exerciseType, title: r.title }),
         );
+        // Distance is optional and separately permissioned. Never request permission during sync.
+        try {
+          const granted = await hc.getGrantedPermissions();
+          if (granted.some(p=>p.accessType==='read' && p.recordType==='Distance')) {
+            const ds = await readAll<Meta & {startTime:string;endTime:string;distance:{inMeters:number}}>(hc,'Distance',from,to);
+            read.distances = ds.map(d=>({id:d.metadata?.id??`${d.startTime}|${d.endTime}`,start:d.startTime,end:d.endTime,origin:d.metadata?.dataOrigin??'',metres:d.distance.inMeters}));
+          }
+        } catch { /* Keep durations when optional distance is denied, absent or unavailable. */ }
       },
       weight: async () => {
         const rs = await readAll<Meta & { time: string; weight: { inKilograms: number } }>(hc, 'Weight', from, to);

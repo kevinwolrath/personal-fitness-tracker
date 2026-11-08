@@ -15,6 +15,8 @@ screenshots / manual entry / future APIs ──▶ Observation (canonical) ─�
   - `inferred`: the value was calculated from other values (for example a starting weight worked out from the current weight plus the total loss). It's stored only if the user explicitly includes it, it's always labelled as calculated, and it's **never** used as a measurement. `latestObservation` returns observed values only.
   - A difference that the app itself displays (for example "−2.55 kg") is observed, under metric `weight_change`.
 
+Optional `activity` facts retain source start/end timestamps, exercise type, recorded distance in metres and a partial-distance flag (#104). They are absent on older records. No distance is estimated; v1 export/restore preserves these additive facts. Display durations with `min`/`hr`, and distances with `m`/`km`.
+
 Energy observations are stored in kJ. How they're *shown* (kJ, kcal or both) is a device preference that never changes the stored value (contract 11).
 
 ### Provenance (on every observation)

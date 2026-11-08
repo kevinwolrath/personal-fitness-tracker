@@ -37,13 +37,13 @@ export function formatClock(hhmm: string): string {
   return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-/** Time until something starts: "in 25 min", "in 4 h", "in 4 h 30 min"; "now" at or past it (#51). */
+/** Time until something starts: "in 25 min", "in 4 hr", "in 4 hr 30 min"; "now" at or past it (#51). */
 export function formatCountdown(minutes: number): string {
   if (minutes <= 0) return 'now';
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (!h) return `in ${m} min`;
-  return m ? `in ${h} h ${m} min` : `in ${h} h`;
+  return m ? `in ${h} hr ${m} min` : `in ${h} hr`;
 }
 
 export const formatTimestamp = (iso: string) =>

@@ -40,7 +40,7 @@ test.describe('screenshot import', () => {
     await expect(fitbit).toContainText('fitbit');
     await expect(scale).toContainText('renpho');
     // Values read like the Daily Log, and stay editable (#21).
-    await expect(fitbit.getByLabel('Sleep value')).toHaveValue('7h 45m');
+    await expect(fitbit.getByLabel('Sleep value')).toHaveValue('7 hr 45 min');
     await expect(fitbit.getByLabel('Steps value')).toHaveValue('13,765');
     await expect(fitbit).toContainText('check this'); // low-confidence readiness
 

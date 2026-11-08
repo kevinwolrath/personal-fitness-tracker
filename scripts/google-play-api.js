@@ -34,6 +34,7 @@ class PlayApiError extends Error {
   constructor(label, status, message) {
     super(label + " failed (HTTP " + status + "): " + message);
     this.status = status;
+    this.operation = label;
     this.apiMessage = message;
   }
 }

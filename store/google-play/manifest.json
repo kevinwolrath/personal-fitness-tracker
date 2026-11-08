@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "packageName": "com.questspire.personalfitnesstracker",
+  "defaultLocale": "en-US",
+  "locales": [
+    "en-US"
+  ],
+  "capture": {
+    "engine": "playwright-production-web",
+    "sourceCommit": "e0b5fedc769b5ffd43856017b899bcd04a520b29",
+    "viewport": {
+      "width": 390,
+      "height": 780,
+      "deviceScaleFactor": 3
+    },
+    "plan": "plans/seed.plan.json",
+    "fixtureTime": "2026-11-02T09:00:00+11:00",
+    "tracking": "empty",
+    "note": "Actual production web rendering. Confirm native Android parity in Play Console review; no device frame, overlays or simulated tracking."
+  },
+  "images": [
+    {
+      "type": "phoneScreenshots",
+      "file": "en-US/images/phone/01-today.png",
+      "width": 1170,
+      "height": 2340,
+      "sha256": "97ceee9c914d6c2986276c15ded67db0e53f45500a4dcba0692f08019dd17c30",
+      "alt": "Daily plan and workout checklist with no logged history",
+      "source": "Production React Native Web app, bundled seed plan, empty records"
+    },
+    {
+      "type": "phoneScreenshots",
+      "file": "en-US/images/phone/02-workout.png",
+      "width": 1170,
+      "height": 2340,
+      "sha256": "1272db60618ced01940ed54a7e42e18e4a7c882f61fef610a799abea6cce0751",
+      "alt": "Planned exercises and existing muscle coverage artwork",
+      "source": "Production workout sheet; no fabricated completions"
+    },
+    {
+      "type": "phoneScreenshots",
+      "file": "en-US/images/phone/03-guide.png",
+      "width": 1170,
+      "height": 2340,
+      "sha256": "719ecd656170248b191e4331d5a1e73fa783f9734b53a59f3b1c2e915289f672",
+      "alt": "Kettlebell squat guide with approved hero exercise artwork",
+      "source": "Production read-only exercise guide; existing #86 image"
+    },
+    {
+      "type": "phoneScreenshots",
+      "file": "en-US/images/phone/04-progress.png",
+      "width": 1170,
+      "height": 2340,
+      "sha256": "af9439de518421869e81377125cb4f0d3af940e9a5ea732f9bd77c81f4b3e24f",
+      "alt": "Progress screen showing honest empty measurement states",
+      "source": "Production charts with empty history"
+    },
+    {
+      "type": "featureGraphic",
+      "file": "en-US/images/feature-graphic.png",
+      "width": 1024,
+      "height": 500,
+      "sha256": "15f4e00830c681fdc70df18736f3cfae07a8b2cc57474bba07a613a7c93c60c6",
+      "alt": "Body Anvil daily fitness plan, with its three established heroes",
+      "source": "HTML composition using unchanged canonical hero PNGs; not an app screenshot"
+    },
+    {
+      "type": "icon",
+      "file": "en-US/images/icon.png",
+      "width": 512,
+      "height": 512,
+      "sha256": "105c896c0dc1fead486f4bdedf7183261f339150bb2e6164e099e5cb067c8481",
+      "alt": "Body Anvil metallic anvil emblem on charcoal",
+      "source": "Approved #75 muscle-map reference emblem crop, source rectangle 12,10,158,68; no hero redesign"
+    }
+  ]
+}

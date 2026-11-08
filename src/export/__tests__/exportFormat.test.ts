@@ -28,6 +28,17 @@ async function populatedStore() {
 
 const meta = { exportedAt: '2026-11-01T16:50:00+11:00', today: '2026-11-01', appVersion: '0.1.0' };
 
+it('preserves optional activity timestamps and recorded distance through export and restore', async () => {
+  const store = await populatedStore();
+  const activity = { start: '2026-11-01T08:00:00+11:00', end: '2026-11-01T08:45:00+11:00', exerciseType: 79, distanceMeters: 3000, distancePartial: true };
+  await store.addObservations([{ id: 'walk', date: '2026-11-01', metric: 'exercise_session', value: 45, unit: 'min', kind: 'observed', label: 'Walk', note: null, source: manualSource(), recordedAt: meta.exportedAt, activity }]);
+  const parsed = exportSchema.parse(buildExport(await store.snapshot(), meta));
+  const restored = toSnapshot(parsed);
+  expect(restored.ok).toBe(true);
+  if (!restored.ok) throw new Error(restored.error);
+  expect(restored.snapshot.observations.find(o => o.id === 'walk')?.activity).toEqual(activity);
+});
+
 it('exports the entire history, earliest record through today, versioned', async () => {
   const doc = buildExport(await (await populatedStore()).snapshot(), meta);
   expect(exportSchema.parse(doc)).toBeTruthy();

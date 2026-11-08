@@ -1,12 +1,20 @@
-FROM reactnativecommunity/react-native-android:latest
+# Pinned (#91): the version the Google Play deploys built with, by digest, so a build never re-downloads or
+# silently changes its toolchain. To upgrade, change the tag and digest here and in the other Android Dockerfile.
+FROM reactnativecommunity/react-native-android:v22.0@sha256:e817ea1959719c97c05adbc55348ebe21d286cec2caed1f18ad3c4b88c08cbf7
 
 WORKDIR /app
+
+# Test APKs build for 64-bit ARM phones only, which skips three of the four native builds (#91). Pass
+# --build-arg ANDROID_ABIS=armeabi-v7a,arm64-v8a,x86,x86_64 (build-apk.ps1 -AllAbis) for an emulator or old phone.
+ARG ANDROID_ABIS=arm64-v8a
+ENV GRADLE_USER_HOME=/gradle-cache
 
 # React Native 0.81 / Expo SDK 54 need Node 20.19.4 or newer. Fail early with a clear message.
 RUN node -e "const [a,b,c]=process.versions.node.split('.').map(Number); if (a<20||(a===20&&(b<19||(b===19&&c<4)))) { console.error('Node '+process.versions.node+' is too old: need >= 20.19.4'); process.exit(1) }"
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# BuildKit cache mounts (#91) keep npm's and Gradle's downloads between builds without putting them in the image.
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 
@@ -19,7 +27,8 @@ RUN npx expo prebuild --platform android --no-install --non-interactive
 # (debuggableVariants), so a debug APK shows "Unable to load script" without Metro.
 # Expo's generated project signs release with its debug keystore, so this APK still
 # sideloads without Play Store credentials.
-RUN cd android && ./gradlew assembleRelease --no-daemon
+RUN --mount=type=cache,target=/gradle-cache \
+    cd android && ./gradlew assembleRelease --no-daemon --build-cache -PreactNativeArchitectures=$ANDROID_ABIS
 
 # Refuse to hand out an APK that would need Metro: the JS bundle must be inside it.
 RUN APK=/app/android/app/build/outputs/apk/release/app-release.apk; \

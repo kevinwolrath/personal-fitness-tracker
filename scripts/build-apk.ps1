@@ -1,8 +1,9 @@
 # Build a standalone, sideloadable RELEASE APK on this PC with Docker (no GitHub Actions, no runner).
 # The JS bundle is embedded, so the app starts without Metro, USB or a dev server.
-# Usage, from the repo root in PowerShell:  ./scripts/build-apk.ps1   (add -NoCache for a fully clean build)
+# Usage, from the repo root in PowerShell:  ./scripts/build-apk.ps1   (add -NoCache to rebuild every step)
+# The APK is for 64-bit ARM phones (arm64-v8a); add -AllAbis for an emulator or an old 32-bit phone.
 # Output: artifacts/personal-fitness-tracker.apk (git-ignored)
-param([switch]$NoCache)
+param([switch]$NoCache, [switch]$AllAbis)
 $ErrorActionPreference = 'Stop'
 $tag = 'personal-fitness-tracker-android'
 $out = Join-Path (Get-Location) 'artifacts'
@@ -11,8 +12,12 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 # Never leave an old APK (e.g. a Metro-only debug build) lying around to be installed by mistake.
 if (Test-Path $apk) { Remove-Item $apk }
 
+# BuildKit is needed for the Dockerfile's cache mounts, which keep npm and Gradle downloads between builds.
+$env:DOCKER_BUILDKIT = '1'
 $buildArgs = @('build', '--file', 'docker/android.Dockerfile', '--tag', $tag)
+# -NoCache rebuilds every step (clean prebuild and Gradle build); downloaded npm and Gradle packages stay cached.
 if ($NoCache) { $buildArgs += '--no-cache' }
+if ($AllAbis) { $buildArgs += @('--build-arg', 'ANDROID_ABIS=armeabi-v7a,arm64-v8a,x86,x86_64') }
 docker @buildArgs .
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

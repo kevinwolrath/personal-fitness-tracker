@@ -1,0 +1,109 @@
+name: Prepare or publish Google Play listing
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: dry-run is offline; validate-only stages then discards; commit requires protected approval
+        type: choice
+        options: [dry-run, validate-only, commit]
+        default: dry-run
+      track:
+        description: Optional AAB draft target. Listing metadata is shared across ALL tracks.
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      aab_path:
+        description: Optional signed AAB path on the dedicated runner (blank = listing only, no build)
+        type: string
+        default: ""
+      version_code:
+        description: Required expected versionCode when supplying an AAB
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# Same lock as the existing binary deploy: competing Play edits invalidate each other.
+concurrency:
+  group: personal-fitness-tracker-google-play
+  cancel-in-progress: false
+
+jobs:
+  listing:
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
+    timeout-minutes: 30
+    # Every committed listing can affect the public page, including internal-track dispatches.
+    # Configure required reviewers + disallow self-review/admin bypass before enabling commits.
+    environment: ${{ inputs.mode == 'commit' && 'google-play-production' || 'google-play-validation' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate offline bundle and inputs
+        shell: powershell
+        env:
+          MODE: ${{ inputs.mode }}
+          TRACK: ${{ inputs.track }}
+          AAB: ${{ inputs.aab_path }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:AAB) {
+            $root = [IO.Path]::GetFullPath((Join-Path $env:RUNNER_TEMP 'body-anvil-aab')) + [IO.Path]::DirectorySeparatorChar
+            $file = [IO.Path]::GetFullPath($env:AAB)
+            if (!$file.StartsWith($root, [StringComparison]::OrdinalIgnoreCase) -or ![IO.File]::Exists($file) -or [IO.Path]::GetExtension($file) -ne '.aab') {
+              throw 'AAB must be an existing .aab under RUNNER_TEMP/body-anvil-aab from the build-only pipeline.'
+            }
+            if ($env:VERSION_CODE -notmatch '^[1-9][0-9]*$') { throw 'Expected version_code is required for AAB uploads.' }
+          }
+          if ($env:MODE -eq 'commit' -and $env:TRACK -eq 'production' -and $env:AAB) {
+            throw 'Production binary publication is disabled. Promote manually in Play Console.'
+          }
+          $arguments = @('scripts/play-listing.js', '--mode', 'dry-run', '--track', $env:TRACK)
+          if ($env:AAB) { $arguments += @('--aab', $env:AAB, '--version-code', $env:VERSION_CODE) }
+          node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Offline listing validation failed.' }
+
+      - name: Stage, validate or commit listing
+        if: inputs.mode != 'dry-run'
+        shell: powershell
+        env:
+          MODE: ${{ inputs.mode }}
+          TRACK: ${{ inputs.track }}
+          AAB: ${{ inputs.aab_path }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          # Environment variable, NOT a repository variable. Missing protection token fails closed.
+          PLAY_PUBLISH_APPROVED: ${{ vars.PLAY_PUBLISH_APPROVED }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON)) { throw 'Configure the environment service-account secret.' }
+          $arguments = @('scripts/play-listing.js', '--mode', $env:MODE, '--track', $env:TRACK)
+          if ($env:AAB) { $arguments += @('--aab', $env:AAB, '--version-code', $env:VERSION_CODE) }
+          node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Play operation failed. Inspect Play Console before retry; no automatic rollout.' }
+
+      - name: Operation summary
+        if: always()
+        shell: powershell
+        env:
+          RESULT: ${{ job.status }}
+          MODE: ${{ inputs.mode }}
+          TRACK: ${{ inputs.track }}
+        run: |
+          @"
+          ## Body Anvil Google Play listing
+          Result: $env:RESULT
+          Mode: $env:MODE
+          Track selected: $env:TRACK (AAB drafts only)
+          Locale: en-US
+          Listing assets are shared across tracks. No production binary rollout is supported.
+          Dry-run makes no API calls; validate-only discards its edit. Check Publishing overview before submitting any committed changes.
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append

@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { convertEnergy, entryUnit, roundEnergy, speakEnergy, unitWord, type EnergyDisplay, type EnergyUnit } from '../../energy';
-import { formatObservationValue, observationLabel, observationSource, sourcePackages } from '../../observations/format';
+import { appName, formatObservationValue, observationLabel, observationSource, sourcePackages } from '../../observations/format';
+import { activitySummary, interval, isWalk } from '../../observations/activity';
 import { metricDef } from '../../observations/metrics';
 import type { Observation } from '../../observations/types';
-import { formatMinutes } from '../../observations/units';
+import { formatDistance, formatMinutes } from '../../observations/units';
 import type { Plan } from '../../plan/schema';
 import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { Sheet } from '../../ui/Sheet';
 import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { ModalHeader } from '../../ui/ModalHeader';
+import { ScrollView } from '../../ui/ScrollView';
 import { TextButton } from './Sheets';
 
 /**
@@ -26,6 +28,32 @@ export function RecordedSection(p: {
 }) {
   const { colors, type } = useTheme();
   const styles = useStyles();
+  const [expanded,setExpanded] = useState(false);
+  const {fontScale} = useWindowDimensions();
+  const walks=p.observations.filter(isWalk);
+  const walking=activitySummary(walks);
+  const walkingCount = walking.overlap || walking.uncertainTime ? walking.records.length : walking.unique.length;
+  const walkingNoun = walking.overlap || walking.uncertainTime ? 'record' : 'walk';
+  const walkingCaption = `${walkingCount} ${walkingNoun}${walkingCount === 1 ? '' : 's'}`;
+  const tiles=p.observations.filter(o=>o.source.type==='integration' && o.source.importId==='health-connect' && ['steps','active_energy','sleep_duration'].includes(o.metric));
+  const remaining=p.observations.filter(o=>!walks.includes(o) && !tiles.includes(o));
+  const time=(o:Observation)=> {
+    const start=o.activity?.start??o.source.capturedAt;
+    if(!start || !Number.isFinite(Date.parse(start)))return 'Time unavailable';
+    const display=(s:string)=>new Date(s).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    return `${display(start)}${o.activity?`–${display(o.activity.end)}`:''}`;
+  };
+  const row=(o:Observation,walk=false)=>(
+    <Pressable key={o.id} onPress={()=>p.onOpen(o)} style={({pressed})=>[styles.row,walk&&styles.walkRow,pressed&&styles.pressed]} accessibilityRole="button" accessibilityLabel={speakEnergy(`${observationLabel(o)} ${formatObservationValue(o,p.plan,p.energy)}, ${walk?time(o)+', ':''}${observationSource(o)}. Details`)} testID={`recorded-${o.metric}`}>
+      <View style={styles.text}>
+        <Text style={[type.body,o.kind==='inferred'&&styles.inferred]}>{observationLabel(o)}</Text>
+        <Text style={type.detail}>{walk?`${time(o)} · ${o.source.app?appName(o.source.app):'Health Connect'}`:observationSource(o)}</Text>
+        {walk&&walking.duplicates.has(o.id)&&<Text style={styles.hint}>Overlapping source record</Text>}
+      </View>
+      <Text style={[styles.value,styles.wrappingValue,o.kind==='inferred'&&styles.inferred]}>{formatObservationValue(o,p.plan,p.energy)}</Text>
+      <Text style={styles.chevron}>›</Text>
+    </Pressable>
+  );
 
   if (!p.observations.length && !p.outsidePlan.length) return null;
   return (
@@ -34,29 +62,24 @@ export function RecordedSection(p: {
         Recorded
       </Text>
       <View style={styles.list}>
-        {p.observations.map((o) => (
-          <Pressable
-            key={o.id}
-            onPress={() => p.onOpen(o)}
-            style={({ pressed }) => [styles.row, pressed && styles.pressed]}
-            accessibilityRole="button"
-            accessibilityLabel={speakEnergy(`${observationLabel(o)} ${formatObservationValue(o, p.plan, p.energy)}, ${observationSource(o)}. Details`)}
-            testID={`recorded-${o.metric}`}
-          >
-            <View style={styles.text}>
-              <Text style={[type.body, o.kind === 'inferred' && styles.inferred]} numberOfLines={1}>
-                {observationLabel(o)}
-              </Text>
-              <Text style={type.detail} numberOfLines={1}>
-                {observationSource(o)}
-              </Text>
-            </View>
-            <Text style={[styles.value, o.kind === 'inferred' && styles.inferred]} numberOfLines={1}>
-              {formatObservationValue(o, p.plan, p.energy)}
-            </Text>
-            <Text style={styles.chevron}>›</Text>
+        {!!tiles.length&&<View testID="recorded-health-grid">
+          <Text style={styles.hint}>Health Connect</Text>
+          <View style={styles.grid}>{tiles.map(o=><Pressable key={o.id} onPress={()=>p.onOpen(o)} accessibilityRole="button" accessibilityLabel={speakEnergy(`${observationLabel(o)} ${formatObservationValue(o,p.plan,p.energy)}, ${observationSource(o)}. Details`)} testID={`recorded-${o.metric}`} style={[styles.tile,{minWidth:fontScale>1.3?140:96}]}>
+            <Text style={type.detail}>{observationLabel(o)}</Text><Text style={styles.tileValue}>{formatObservationValue(o,p.plan,p.energy)}</Text>
+            {!!o.source.app&&<Text style={styles.hint}>{appName(o.source.app)}</Text>}
+          </Pressable>)}</View>
+        </View>}
+        {!!walks.length&&<View>
+          <Pressable style={styles.walkSummary} onPress={()=>setExpanded(!expanded)} accessibilityRole="button" accessibilityState={{expanded}} accessibilityLabel={`Walking, ${walkingCaption}, ${walking.uncertainTime?'at least ':''}${formatMinutes(walking.minutes)}${walking.metres!==null?`, ${formatDistance(walking.metres)} recorded`:''}. ${expanded?'Collapse':'Expand'} walks`} testID="recorded-walking-summary">
+            <View style={styles.text}><Text style={type.body}>Walking</Text><Text style={type.detail}>{walkingCaption} · Health Connect</Text></View>
+            <View style={styles.summaryValue}><Text style={styles.value}>{walking.uncertainTime?'≥ ':''}{formatMinutes(walking.minutes)}</Text>{walking.metres!==null&&<Text style={styles.tileValue}>{formatDistance(walking.metres)}{walking.partialDistance?' recorded':''}</Text>}</View><Text style={styles.chevron}>{expanded?'⌃':'⌄'}</Text>
           </Pressable>
-        ))}
+          {expanded&&<View testID="recorded-walking-records">
+            {(walking.overlap||walking.uncertainTime||walking.partialDistance)&&<Text style={styles.hint}>{walking.uncertainTime?'Incomplete timings: duration is a lower bound. ':''}Overlapping time is counted once. Only available, non-overlapping distance is added; no distance is estimated.</Text>}
+            {[...walks].sort((a,b)=>(interval(a)?.[0]??0)-(interval(b)?.[0]??0)||a.id.localeCompare(b.id)).map(o=>row(o,true))}
+          </View>}
+        </View>}
+        {remaining.map((o) => row(o))}
         {p.outsidePlan.map((log) => (
           <View key={log.activityId} style={styles.row} testID={`history-${log.activityId}`}>
             <View style={styles.text}>
@@ -85,6 +108,7 @@ export function ObservationSheet(p: {
 }) {
   const { colors, type } = useTheme();
   const styles = useStyles();
+  const { fontScale } = useWindowDimensions();
 
   const o = p.observation;
   // Imported values belong to their source (Health Connect, #36): changed or deleted there, never here.
@@ -111,6 +135,8 @@ export function ObservationSheet(p: {
         o.source.confidence !== null ? ['Confidence', `${Math.round(o.source.confidence * 100)}%`] : null,
         o.source.capturedAt ? ['Captured', new Date(o.source.capturedAt).toLocaleString()] : null,
         ['Saved', new Date(o.recordedAt).toLocaleString()],
+        o.activity ? ['Activity time', `${new Date(o.activity.start).toLocaleTimeString()}–${new Date(o.activity.end).toLocaleTimeString()}`] : null,
+        o.activity?.distanceMeters !== undefined ? ['Distance', `${formatDistance(o.activity.distanceMeters)}${o.activity.distancePartial?' recorded (partial)':''}`] : null,
       ].filter((x): x is [string, string] => !!x)
     : [];
   return (
@@ -134,6 +160,7 @@ export function ObservationSheet(p: {
                 : undefined
             }
           />
+          <ScrollView style={styles.detailScroll} contentContainerStyle={styles.sheetDetails}>
           {o.kind === 'inferred' && <Text style={[type.detail, styles.center]}>Calculated from other values, not measured.</Text>}
           {imported && (
             <Text style={[type.detail, styles.center]} testID="observation-imported-note">
@@ -155,9 +182,9 @@ export function ObservationSheet(p: {
           {def?.dimension === 'duration' && valid && <Text style={[type.detail, styles.center]}>{formatMinutes(n)}</Text>}
           <View style={styles.facts}>
             {facts.map(([k, v]) => (
-              <View key={k} style={styles.fact}>
-                <Text style={[type.detail, styles.factKey]}>{k}</Text>
-                <Text style={[type.detail, styles.factValue]}>{v}</Text>
+              <View key={k} style={[styles.fact, fontScale > 1.3 && styles.stackedFact]}>
+                <Text style={[type.detail, styles.factKey, fontScale > 1.3 && styles.stackedFactKey]}>{k}</Text>
+                <Text style={[type.detail, styles.factValue, fontScale > 1.3 && styles.stackedFactValue]}>{v}</Text>
               </View>
             ))}
           </View>
@@ -171,6 +198,7 @@ export function ObservationSheet(p: {
               }}
             />
           )}
+          </ScrollView>
         </View>
       )}
     </Sheet>
@@ -179,6 +207,14 @@ export function ObservationSheet(p: {
 
 const useStyles = createThemedStyles(({ colors, type }) => ({
   list: { marginTop: space.xs },
+  grid: {flexDirection:'row',flexWrap:'wrap',gap:space.sm,marginBottom:space.sm},
+  tile:{flex:1,flexBasis:96,minHeight:72,padding:space.sm,borderRadius:8,backgroundColor:colors.surface,gap:space.xs},
+  tileValue:{fontSize:15,fontWeight:'700',color:colors.ink,fontVariant:['tabular-nums']},
+  hint:{fontSize:12,lineHeight:18,color:colors.muted,marginBottom:space.xs},
+  walkSummary:{minHeight:64,flexDirection:'row',alignItems:'center',gap:space.sm,paddingVertical:space.sm},
+  walkRow:{minHeight:56,paddingVertical:space.sm,gap:space.sm},
+  wrappingValue:{flexShrink:1,maxWidth:'44%',fontSize:15},
+  summaryValue:{alignItems:'flex-end',flexShrink:1},
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -192,7 +228,9 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   value: { fontSize: 17, fontWeight: '700', color: colors.ink, fontVariant: ['tabular-nums'], flexShrink: 0 },
   inferred: { color: colors.muted, fontStyle: 'italic' },
   chevron: { fontSize: 24, color: colors.faint, width: 16, textAlign: 'center' },
-  sheet: { paddingBottom: space.md, gap: space.md },
+  sheet: { paddingBottom: space.md, gap: space.md, flexShrink:1 },
+  detailScroll:{flexShrink:1},
+  sheetDetails:{gap:space.md,paddingBottom:space.md},
   center: { textAlign: 'center' },
   inputRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: space.sm },
   input: {
@@ -211,4 +249,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   fact: { flexDirection: 'row', gap: space.md },
   factKey: { width: 92 },
   factValue: { flex: 1, color: colors.ink },
+  stackedFact: { flexDirection: 'column', gap: space.xs },
+  stackedFactKey: { width: '100%' },
+  stackedFactValue: { flex: 0 },
 }));

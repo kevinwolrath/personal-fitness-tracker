@@ -118,7 +118,7 @@ test('imported observations land on their effective date and can be corrected th
   await expect(recorded).toContainText('9,120');
   await expect(recorded).toContainText('Readiness');
   await expect(recorded).toContainText('Weights');
-  await expect(recorded).toContainText('35m');
+  await expect(recorded).toContainText('35 min');
   await expect(recorded).toContainText('Fitbit screenshot');
 
   // Correct an imported value on that day; provenance records the edit.

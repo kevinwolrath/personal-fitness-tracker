@@ -4,7 +4,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
 
 ## Rules
 
-- **Read only.** The app never writes, updates or deletes anything in Health Connect. The manifest declares exactly six permissions (body fat added in #46), and no WRITE permission and no background or history permission:
+- **Read only.** The app never writes, updates or deletes anything in Health Connect. The manifest declares seven read permissions (body fat added in #46; optional distance in #104), and no WRITE permission and no background or history permission:
 
   | Permission | Why it's needed |
   |---|---|
@@ -14,6 +14,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
   | `android.permission.health.READ_WEIGHT` | Weight, in the Daily Log's Weight tile and progress |
   | `android.permission.health.READ_BODY_FAT` | Body fat %, shown under Recorded (#46) |
   | `android.permission.health.READ_SLEEP` | Time asleep, shown under Recorded |
+  | `android.permission.health.READ_DISTANCE` | Optional recorded distance attached to matching workouts; never estimated |
 
 - **Asking:** the app asks only when the user taps **Connect Health Connect**. It never asks on launch, and never asks again by itself after a refusal. Partial grants are fine: only allowed types are read.
 - **Syncing:** on app start, on return to the foreground and on **Sync now**. There is no background sync and no changes token.
@@ -35,7 +36,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
 |---|---|---|
 | Steps | `steps`, one per day, id `hc:steps:<date>` | Health Connect's daily **aggregate**, which dedupes overlapping apps by the user's priority order |
 | Active energy | `active_energy` in kJ, id `hc:active_energy:<date>` | Daily aggregate in kcal × 4.184 |
-| Workouts | `exercise_session` in minutes, label = title or type, id `hc:exercise:<record id>` | Raw sessions on their local start day. Sessions from different apps that overlap by more than half of the shorter one are the same workout: the longer one is kept |
+| Workouts | `exercise_session` in minutes, label = title or type, id `hc:exercise:<record id>` | Raw sessions on their local start day, retaining IDs, start/end and type. Shared projections retain all source records for drill-down, identify compatible sessions overlapping more than half of the shorter interval, and union all time intervals so even partial overlaps cannot inflate minutes |
 | Weight | `weight` in kg, id `hc:weight:<date>` | Raw records: the latest of each local day |
 | Body fat (#46) | `body_fat` in %, id `hc:body_fat:<date>` | Raw records: the latest of each local day; values outside 0–100 % are dropped |
 | Sleep | `sleep_duration` in minutes, id `hc:sleep:<date>` | Raw sessions on their local **wake-up** day. Asleep stages only (sleeping, light, deep, REM) when the session has stages, else its whole length. Overlapping sessions from different apps are merged, not added |
@@ -48,7 +49,7 @@ Provenance: `type: integration`, `importId: health-connect`, `app` = the origina
 
 Labels read **"Health Connect · Fitbit + this phone"**.
 
-**Not imported:** every other measurement outside the six types (heart rate, blood pressure, …). Both sheet states say so ("Not imported: other measurements, such as heart rate"). Adding one needs another READ permission and a Play declaration change.
+**Not imported:** every other measurement outside the six main types and optional workout distance (heart rate, blood pressure, …). Both sheet states say so ("Not imported: other measurements, such as heart rate"). Adding one needs another READ permission and a Play declaration change.
 
 **A type added later** (body fat, #46) isn't requested by itself from someone already connected: its row says "Not allowed" until they turn it on in Health Connect (**Manage in Health Connect**), where every declared permission is listed.
 
@@ -62,7 +63,7 @@ Labels read **"Health Connect · Fitbit + this phone"**.
   - **Today**: each type's value and source app, or "Not allowed" or "Nothing today";
   - "A value you enter yourself is kept and shown first";
   - **Sync now** (secondary), **Manage in Health Connect**, and how to disconnect.
-- **Daily Log:** no new controls. Imported values appear in the Weight tile and the Recorded section.
+- **Daily Log (#104):** Recorded groups steps, active energy and sleep in a compact grid; a content-layer Walking summary expands individual source records (at least 48dp targets). Imported values appear in the Weight tile and the Recorded section.
 
 ## Platform
 
@@ -74,9 +75,9 @@ Labels read **"Health Connect · Fitbit + this phone"**.
 
 Before a release that includes this reaches testers, Play Console needs:
 
-1. **App content → Health apps declaration:** declare the six read permissions above, each with its use (the table). No write access.
-2. **Privacy policy URL** (App content → Privacy policy). It must cover the health data read, that it stays on the device, and that nothing is shared or written back.
-3. **Data safety:** declare "Health and fitness" data collected, processed on the device, not shared.
+1. **App content → Health apps declaration:** declare the seven read permissions above, each with its use (the table). No write access.
+2. **Privacy policy URL** (App content → Privacy policy). Supply an owner-reviewed, public policy covering the actual health-data use, storage, optional sharing/export and external processing. Verify the Health Connect permission-rationale entry point displays or links the same policy. A native intent filter alone does not provide a policy URL.
+3. **Data safety:** the owner must classify the shipped app's actual data flows using Google's definitions. On-device processing alone must not be automatically labelled off-device collection. Optional screenshot extraction sends images and request context directly to Anthropic; user-directed export/sharing and AI configuration must also be reviewed. Do not use a blanket "nothing collected/shared" assertion for the whole app or invent provider retention/security guarantees. See the [Play validation/declaration checklist](../google-play-validation.md).
 
 Internal testing may accept an upload before these are approved, but Play can block wider release, or the permissions, until they are.
 
@@ -93,3 +94,11 @@ The app can only import what Health Connect holds. To check where a value stoppe
 ## Verification
 
 Automated tests cover mapping, store atomicity, precedence, sync behaviour, failures and UI (unit, native mock, web stand-in, responsive sweep). Merge is blocked until Kevin has tested on a physical Android phone: permission, connection, import, refresh, source attribution and deduplication.
+
+## Recorded activity facts (#104)
+
+Distance is optional enrichment, not a daily total or a seventh main status row. Read Distance only when already granted; denial or read failure leaves workouts available without distance. Existing connections enable it through Manage in Health Connect, without an automatic permission prompt. Show this dependency in both connection states. Match raw Distance records only to wholly containing exercise intervals with the same source package; exclude overlapping distance records instead of prorating daily totals. Sum only non-overlapping session distances; label partial coverage as recorded. Never derive distance from steps or elapsed time.
+
+Today, Progress and the connection sheet share activity overlap projections. Raw records remain available. Missing legacy times produce a conservative duration lower bound, labelled accordingly. Display duration as min/hr and distance as m/km, including detail and review screens.
+
+The new READ_DISTANCE permission requires the corresponding Google Play Health Connect declaration before release. No route, background, history or write permission is added. Physical-device permission/source verification remains an owner merge checkpoint; automated/native emulator checks do not replace it.

@@ -1,6 +1,6 @@
 # Google Play internal deployment
 
-The workflow `.github/workflows/google-play-internal.yml` is **manual only** and runs only on the self-hosted Windows `.45` runner. Android tooling, signing and upload run inside Docker. It creates no GitHub Actions artifacts and cannot deploy to production: the container script fixes the track to `internal`.
+The workflow `.github/workflows/google-play-internal.yml` is **manual only** and runs only on the self-hosted Windows `.45` runner. Android tooling, signing and upload run inside Docker. It creates no GitHub Actions artifacts and cannot deploy to production: the container script fixes the track to `internal`. With `build_only=true`, the same pipeline retains its signed AAB on the dedicated runner and exits before uploading. For listing-only or listing-plus-draft updates, see [Google Play listing automation](google-play-listing.md).
 
 ## Immutable app identity
 
@@ -32,7 +32,7 @@ The workflow decodes these only into a unique directory under `RUNNER_TEMP`, bin
 1. Create the Play Console app with package `com.questspire.personalfitnesstracker` and enable Play App Signing.
 2. Create/use a Google Cloud service account for automated Play uploads.
 3. Grant that service account access to this app in Play Console with permission sufficient to create/update releases on the **Internal testing** track. Do not grant production permissions merely for this workflow.
-4. Download its JSON key once, encode it into `GOOGLE_PLAY_SERVICE_ACCOUNT_B64`, then store/delete the local copy according to your credential-storage practice.
+4. Download its JSON key once and store its plain JSON in `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, then store/delete the local copy according to your credential-storage practice. Do not base64-encode this secret.
 5. Add the upload certificate/key to Play Console when Play setup asks for it. Google owns the Play app-signing key; this repository uses only the upload key.
 
 ## Run
@@ -42,11 +42,21 @@ GitHub → Actions → **Deploy Android to Google Play Internal** → **Run work
 The job prints the package, fixed `internal` target and versionCode before building. The container then:
 
 1. generates the Android project (`expo prebuild`) and points the **release** build type at the upload key;
-2. checks, before the ~25 minute Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
+2. checks, before the Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
 3. builds the signed AAB;
 4. uploads it with `scripts/upload-play-bundle.js`: a resumable upload in 8 MiB chunks that, when the connection drops, asks Google how much arrived and continues from there (up to 8 attempts with backoff), then releases it to the internal track and commits.
 
 The release then appears under Play Console → Testing → Internal testing. If the app has never been published, Play only accepts draft releases: the script then creates a **draft** internal release, and the log says so; roll it out in Play Console.
+
+### Build cache on .45
+
+Gradle's downloads and build outputs are kept in the Docker volume `pft-gradle-cache` (mounted as `GRADLE_USER_HOME`), and the image `pft-google-play` is kept between runs so `npm ci` reruns only when `package-lock.json` changes. The first deploy after this change, or after the cache is cleared, takes the old full time; later deploys reuse the cache. The base image is pinned by digest in `docker/android-play.Dockerfile` (and `docker/android.Dockerfile`), so it is never re-pulled; change both to upgrade.
+
+To start from scratch (for example after a strange Gradle error), on .45:
+
+```bash
+docker volume rm pft-gradle-cache
+```
 
 ## Versioning
 
@@ -60,6 +70,7 @@ The release then appears under Play Console → Testing → Internal testing. If
 - **Play authentication/permission failure:** verify the service account is linked/granted access to this Play Console app and Internal testing releases.
 - **Version code already used:** run the workflow again; the resolver picks the next unused code from Play.
 - **"Unexpected Android applicationId" / "Generated versionCode" / "Release build type is signed with …":** the generated Gradle project isn't what the script expects (usually an Expo template change). It fails before the build; the log prints the lines it found.
+- **Gradle fails with a corrupt or locked cache:** clear the cache volume (see [Build cache on .45](#build-cache-on-45)) and run again.
 - **Upload "kept failing after 8 attempts":** the network between `.45` and Google kept dropping. Check the connection and run again.
 - **Upload refused for the signing key:** the keystore in the secrets isn't the upload key registered in Play Console (Setup → App signing).
 
@@ -79,8 +90,8 @@ The app reads health data from Android Health Connect, read only (contract 12). 
   - `READ_EXERCISE`: workouts (type and minutes);
   - `READ_WEIGHT`: weight tile and progress;
   - `READ_BODY_FAT`: body fat % (added in #46; **update an existing declaration** to include it);
-  - `READ_SLEEP`: time asleep.
+  - `READ_SLEEP`: time asleep;
+  - `READ_DISTANCE`: optional recorded workout distance alongside walking duration (#104; update the existing declaration before release).
 
   No write, background or history permission is requested.
-- **Privacy policy URL:** required for health permissions. It must say that health data is read from Health Connect, stays on the device, isn't shared, and nothing is written back. The app's Health Connect permission screen links to it (the rationale intent is wired by the library's config plugin).
-- **Data safety:** "Health and fitness" data, collected and processed on the device, not shared, not required for the app to work.
+- **Privacy policy URL / Data safety:** the owner must supply an accessible policy URL and declarations reflecting all actual data flows in the shipped app, including optional AI/screenshot processing. Read-only Health Connect permissions do not establish that the entire app never collects or shares data. No legal/privacy declaration is made by this repository document; follow the [manual setup checklist](google-play-listing.md#one-time-manual-setup--owner-must-confirm) before publishing.

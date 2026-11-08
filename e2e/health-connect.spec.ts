@@ -75,18 +75,18 @@ test('connect → 30 days imported into the existing Daily Log, labelled with th
   await expect(page.getByTestId('hc-today-steps')).toContainText('Samsung Health');
   await expect(page.getByTestId('hc-today-active_energy')).toContainText('1,340 kJ');
   await expect(page.getByTestId('hc-today-active_energy')).toContainText('Samsung Health');
-  await expect(page.getByTestId('hc-today-exercise')).toContainText('Walk 32m');
+  await expect(page.getByTestId('hc-today-exercise')).toContainText('Walk 32 min');
   await expect(page.getByTestId('hc-today-weight')).toContainText('82.4 kg');
   await expect(page.getByTestId('hc-today-weight')).toContainText('Withings');
-  await expect(page.getByTestId('hc-today-sleep')).toContainText('7h 45m');
+  await expect(page.getByTestId('hc-today-sleep')).toContainText('7 hr 45 min');
   await close(page);
 
   // No Health Connect view of the day: the values sit in the Weight tile and the Recorded rows.
   await expect(page.getByTestId('measurement-weight')).toContainText('82.4 kg');
   await expect(page.getByTestId('measurement-weight')).toContainText('Health Connect · Withings');
   await expect(page.getByTestId('recorded-steps')).toContainText('6,214');
-  await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Samsung Health');
-  await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7h 45m');
+  await expect(page.getByTestId('recorded-steps')).toContainText('Samsung Health');
+  await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7 hr 45 min');
 
   const f = await fixture(page);
   expect(f.requests).toBe(1);
@@ -181,7 +181,7 @@ test('a failing read never blocks the app; the other types still sync and the fa
   await expect(page.getByTestId('hc-sync-status')).toContainText("couldn't read sleep"); // which type, not just "didn't finish"
   await expect(page.getByTestId('hc-today-weight')).toContainText('82.4 kg'); // the others still read
   await expect(page.getByTestId('hc-today-steps')).toContainText('7,000');
-  await expect(page.getByTestId('hc-today-sleep')).toContainText('7h 45m'); // kept from the last good read
+  await expect(page.getByTestId('hc-today-sleep')).toContainText('7 hr 45 min'); // kept from the last good read
   await close(page);
   await expect(page.getByTestId('next-action')).toBeVisible();
 });
@@ -210,7 +210,7 @@ test('revoking one type keeps its imported values while the others refresh (#43)
   expect((await imported(page)).find((o) => o.id === 'hc:sleep:2026-11-02')).toEqual(sleepBefore); // kept, unchanged
 
   await close(page);
-  await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7h 45m');
+  await expect(page.getByTestId('recorded-sleep_duration')).toContainText('7 hr 45 min');
   await expect(page.getByTestId('recorded-steps')).toContainText('8,100');
 });
 
@@ -248,7 +248,7 @@ test('#44: weight not in Health Connect yet → says so; Fitbit exports it later
   await close(page);
   await expect(page.getByTestId('measurement-weight')).toContainText('95.5 kg');
   await expect(page.getByTestId('measurement-weight')).toContainText('Health Connect · Fitbit');
-  await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Fitbit + this phone');
+  await expect(page.getByTestId('recorded-steps')).toContainText('Fitbit + this phone');
 });
 
 test('#44: none today, but earlier in the window → the latest date is shown', async ({ page }) => {
@@ -267,7 +267,7 @@ test('#44: an unknown source app is "Another app" on screen; its ID is only in t
   await connect(page);
   await expect(page.getByTestId('hc-today-steps')).toContainText('Another app');
   await close(page);
-  await expect(page.getByTestId('recorded-steps')).toContainText('Health Connect · Another app');
+  await expect(page.getByTestId('recorded-steps')).toContainText('Another app');
   await page.getByTestId('recorded-steps').click();
   await expect(page.getByText('com.example.tracker')).toBeVisible(); // App ID, for troubleshooting
 });

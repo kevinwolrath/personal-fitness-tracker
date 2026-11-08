@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { themes } from '../../ui/theme';
 import { energyDisplays, formatEnergy, type EnergyDisplay } from '../../energy';
 import { useApp } from '../../providers/AppProvider';

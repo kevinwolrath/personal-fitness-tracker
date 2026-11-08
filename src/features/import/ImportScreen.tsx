@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatShortDate } from '../../format';
 import { formatMinutes } from '../../observations/units';

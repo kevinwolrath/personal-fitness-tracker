@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { Observation } from '../../observations/types';
 import { preferences } from '../../platform/preferences';

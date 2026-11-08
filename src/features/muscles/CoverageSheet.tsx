@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { exerciseState, loadExerciseHistory, logExercise, reportMuscle, type ExerciseState } from '../../exercises/state';
 import { eligibleExercises, exerciseInventory, type InventoryExercise } from '../../exercises/inventory';
 import { buildGuide } from '../../exercises/guide';

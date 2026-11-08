@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useApp } from '../../providers/AppProvider';
 import { formatAmount } from '../../format';

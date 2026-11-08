@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { formatTimestamp, formatShortDate } from '../../format';
 import { HC_IMPORT_ID, hcMetric, hcTypeLabel, hcTypes, type HcType } from '../../observations/healthConnect';
 import { appName, formatObservationValue, observationLabel } from '../../observations/format';

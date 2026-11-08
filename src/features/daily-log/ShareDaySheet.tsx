@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { ScrollView } from '../../ui/ScrollView';
 import { shareText, type ShareResult } from '../../platform/shareText';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';

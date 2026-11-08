@@ -70,5 +70,6 @@ Enforcement in this repo:
 - The Daily Log is the primary surface. Extend the shared model; don't build isolated feature slices (contract 02).
 - The plan is data. No plan content or personal data in UI code (contract 01).
 - Business rules live in pure modules (`src/plan`, `src/prescription`, `src/config`, `src/observations`, `src/exercises`), not in components.
+- All scrollable UI follows contract 02's no-visible-indicators rule: use `src/ui/ScrollView`, preserve scrolling and bottom reachability, and never import raw native list/scroller components in screens. The root web rule covers browser overflow too.
 - Storage changes are additive, numbered migrations, tested against the previous schema (contract 04).
 - Builds never run on GitHub-hosted runners. The test APK is built locally with `scripts/build-apk.ps1`. The Google Play internal release (`.github/workflows/google-play-internal.yml`, `docs/google-play-deploy.md`) runs only on Kevin's self-hosted runner on .45 (`personal-fitness-tracker-deploy`); it is started by hand, never on push.

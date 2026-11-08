@@ -80,6 +80,14 @@ The log shows **one day at a time**. Its screen header (see Layout layers): `‹
 
 ## Interaction rules
 
+### Scrolling: no visible indicators (#93)
+
+No visible horizontal or vertical scrollbars anywhere in the mobile UI or web preview: screens, sheets, modal routes, nested lists, exercise guides, menus and editable multiline fields. Use `src/ui/ScrollView` instead of importing a native scroller directly. It preserves the native ref, scroll events, touch/keyboard behavior and content layout while suppressing both indicators on Android and iOS. New virtualized lists must extend the shared policy before use; the repository guard rejects raw list imports.
+
+The single root `ScrollIndicators.web` rule also suppresses browser indicators for document overflow, portals and multiline fields. It must not set `overflow: hidden`, disable scrolling, intercept wheel/touch events, or remove keyboard access. Sheet/phone clipping is unchanged; scrolling belongs to content. Keep essential existing headers and fixed action bars outside that content. Preserve safe-area insets, keyboard avoidance, dynamic text and bottom padding/reachability.
+
+Additional content is signalled by the natural partial next item. Do not add instructional arrows, scroll labels or automatic fade overlays. A fade may be proposed only when the content needs it and cannot cover controls or the final item. Indicator suppression alone must not change spacing or the screen's vertical budget.
+
 **Tap is the primary interaction everywhere.** Gestures are shortcuts layered on top, and each one must:
 
 - (a) save a step on a frequent action,

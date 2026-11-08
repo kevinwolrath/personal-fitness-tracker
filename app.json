@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "Body Anvil",
+    "icon": "./store/google-play/en-AU/images/icon.png",
     "slug": "personal-fitness-tracker",
     "scheme": "personalfitnesstracker",
     "version": "0.1.0",

@@ -1,0 +1,71 @@
+# Google Play listing automation and operations
+
+Issue #100 adds a versioned [en-AU bundle](../store/google-play/README.md), an offline validator/preparer and a manual `.github/workflows/google-play-listing.yml`. It reuses existing Play OAuth/API helpers and resumable AAB upload code. It does not replace the keystore, register another app, change `com.questspire.personalfitnesstracker`, or publish a live release during development.
+
+## Audit of the existing pipeline
+
+- Expo name is Body Anvil; package and iOS bundle ID are `com.questspire.personalfitnesstracker`; slug/scheme remain personal-fitness-tracker/personalfitnesstracker, version 0.1.0 and manifest versionCode floor 1. No package, data identity, minSdk or health permissions change.
+- Previously no explicit Expo icon was configured. `app.json` now points to the approved-emblem store icon, so a subsequent build uses Body Anvil branding rather than a default fallback.
+- `.github/workflows/google-play-internal.yml` already performs manual signed AAB builds on dedicated Windows self-hosted runner `.45`, inside the pinned `docker/android-play.Dockerfile` image. Gradle cache, version-code resolution and upload-key mounts remain.
+- `google-play-release.sh` still owns native generation, exact applicationId/version/signing checks and Gradle bundleRelease. New `build_only: true` exits before the upload and copies the signed AAB to its runner output mount. Default false preserves the original explicitly dispatched internal-deploy behavior.
+- Existing `upload-play-bundle.js` remains fixed to internal when executed directly. Its resumable-upload functions are now exported for the listing tool; importing them does not execute a release.
+- Store screenshots use actual current app UI and existing #75/#86 assets, not pending #96 identity proposals. No new hero artwork or overlays are made.
+
+## Modes and scope
+
+| Dispatch mode | Credentials | Behavior |
+|---|---|---|
+| `dry-run` (default) | None | Validate local files and report planned target; no API edit/upload/commit. |
+| `validate-only` | App-scoped service account | Create edit; confirm en-AU exists; patch text; replace only en-AU icon/feature/phone images; optionally upload expected AAB and stage draft; API validate; delete edit. |
+| `commit` | Protected environment service account + explicit approval variable | Same validation, then commit with `changesNotSentForReview=true` and `changesInReviewBehavior=ERROR_IF_IN_REVIEW`. No fallback that cancels review/submits on failure. |
+
+Track choices: `internal` (default), `alpha`, `beta`, `production`. These affect **only an optional binary**, never isolate listing assets. Production AAB commits are disabled outright; release through explicit Play Console review/promotion. AABs on permitted testing tracks are **draft**, preserving existing non-draft track releases and refusing to overwrite an existing draft. A validation-only production AAB exercise is discarded. Listing-only dispatches never build or update tracks.
+
+Text is patched to preserve unrelated listing fields such as video. Only the three managed image types in en-AU are replaced; other locales/devices remain. Release notes attach to the optional AAB draft; listing-only updates do not rewrite existing release notes. Use Play Console to enter actual alt text where supported; manifest descriptions are reviewer provenance, not an unsupported image-upload API field.
+
+The API’s review flags are not a substitute for checking Publishing overview. Enable Managed publishing where appropriate and review existing pending changes before a commit. The operation can affect the public page after review. It cannot guarantee that the account’s unrelated pending changes are absent. Failures stop and discard the unfinished edit; there is no automatic retry of commit, track promotion, submission or policy answers. [Google’s edit commit behavior](https://developers.google.com/android-publisher/api-ref/rest/v3/edits/commit) and [image upload](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.images/upload) document these API boundaries.
+
+## One-time manual setup — owner must confirm
+
+These account-side settings were **not inspected or changed** by this implementation. Some may already be complete because the existing internal pipeline has been used. Confirm each rather than creating duplicate keys/apps:
+
+1. In the existing Play developer account, locate/create the Body Anvil app and retain package `com.questspire.personalfitnesstracker`. Configure en-AU as the baseline/default listing language and save the initial listing/app setup in Console. The API cannot bootstrap app registration and all first-release declarations. Do not add en-US unless an actual account requirement demands it and a reviewed package is added in a future change.
+2. Confirm Play App Signing and the currently registered **upload certificate**. Continue using the existing upload keystore/alias/password secrets; do not regenerate either key. Google’s app-signing key and the upload key have different roles. Check version-code history before selecting an override.
+3. Enable Google Play Android Developer API in the chosen Google Cloud project and create/reuse an app-scoped service account. Invite its email in Play Console Users and permissions. Grant app information visibility, store-presence editing for text/images and testing-track release permissions if AAB staging is needed. Avoid account admin, financial permissions and production release privileges for testing automation. Exact permission availability must be confirmed in the current account. See [API setup](https://developers.google.com/android-publisher/getting_started).
+4. Store the JSON key **as plain JSON**, not base64, in GitHub environment secret `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`. Use a dedicated least-privilege account where possible. Do not print, commit or attach keys. The listing job passes it only to the Node process at the API step; it is not an artifact or a command argument. For local authenticated use, use `GOOGLE_PLAY_SERVICE_ACCOUNT_FILE` pointing outside the repository. Local dry-run does not need either variable.
+5. Create GitHub environments **before allowing commits**: `google-play-validation` with the limited service-account secret; `google-play-production` with required owner reviewers, prevent self-review, disable administrator bypass, and restrict deployment branches to reviewed `develop`. In the production environment only, set environment variable `PLAY_PUBLISH_APPROVED=true`. Do not set it as a repository/organization variable. Commit fails when the flag is absent. GitHub plan/repository settings must support required reviewers; otherwise do not enable commits and use Play Console manually. A YAML environment name alone does not configure protection. Follow [GitHub environment protection setup](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+6. Confirm dedicated runner Node ≥20.19.4 and repository access. Listing-only jobs need Node only; screenshot generation needs the existing npm dependencies and Playwright Chromium; AAB building uses the existing Docker toolchain. Keep runner access limited because it handles signing keys. Both workflows share the same non-cancelling Play concurrency lock.
+7. Complete Console app category/contact details (owner’s support email/site), distribution/countries/pricing, content rating, ads and target audience, app access instructions if applicable, health-app declarations and permissions justification. Provide a real accessible **owner-reviewed privacy policy URL** and Data safety answers based on the shipped app and configured services, including optional screenshot/AI processing and Health Connect. This PR does **not** assert legal compliance, “no collection,” “never shared,” retention rules or a privacy URL. Do not copy generic declarations from an older document without reviewing actual data flows.
+8. Confirm account verification and testing eligibility. New personal accounts created after 13 November 2023 can require **12 opted-in closed-test users continuously for 14 days**, followed by an application for production access; internal testing alone does not satisfy it. Follow the account’s actual dashboard requirements and [current testing policy](https://support.google.com/googleplay/android-developer/answer/14151465). No production eligibility claim is made here.
+9. Review every asset and copy against the signed Android binary. Current screenshots are genuine production-web captures; confirm native parity or replace with genuine native captures and update manifest/dimensions/hashes before committing to Play. No tablet screenshot is claimed. Save a copy of the current Console listing for rollback and review any existing pending changes.
+
+## Run listing-only update
+
+1. Review the bundle and run `npm run store:validate` locally.
+2. Actions → **Prepare or publish Google Play listing** → reviewed branch → `mode=dry-run`, `track=internal`, blank AAB path/version. This needs no secrets and performs no build.
+3. Once account setup is confirmed, dispatch `validate-only`. Check summary and Console pending state. There should be no committed edit from this run.
+4. For a reviewed listing change, dispatch `commit`; the `google-play-production` environment approval must be satisfied even for `track=internal`, because the listing is shared. Review Publishing overview manually before sending/publishing. This implementation did not run these authenticated steps.
+
+## Optional signed AAB without duplicating builds
+
+1. Dispatch existing **Deploy Android to Google Play Internal** with **`build_only=true`**. Version-code resolver still contacts Play, signing uses the original secrets, and the build occurs only in the existing Docker pipeline. The workflow summary prints a runner-local path under `RUNNER_TEMP/body-anvil-aab/<commit>-<versionCode>/app-release.aab`. No upload happens in build-only mode.
+2. Dispatch the listing workflow on the same reviewed commit with that exact runner-local `aab_path` and expected `version_code`, track internal, initially validate-only. AAB input is constrained to that output directory; arbitrary runner files cannot be selected. Only one dedicated runner is assumed; if it is replaced or temp storage is cleaned, rebuild first.
+3. After review, commit to stage the internal **draft** plus listing. Roll out testing manually in Console. Existing completed testing releases stay in the track response. If an old draft exists or the bundle version does not match, reconcile in Console before retry.
+4. Do not treat a discarded validate-only upload as a version reservation guarantee; re-resolve when Play reports a used code. Delete reviewed old AAB files from the runner using their exact paths when no longer needed; runner temp files are not permanent artifact storage. No signed AAB or credentials are uploaded to GitHub artifacts.
+
+The old internal workflow with `build_only=false` still deploys directly to internal on explicit dispatch; it does not run the new listing operation and cannot deploy production. Do not use it when you only want validation/build output.
+
+## Recovery and limitations
+
+- **Offline validation failure:** rerun the validator; fix reported dimensions/counts/copy/checksum/provenance. Regenerate intentionally changed assets, visually inspect, then commit the manifest with them.
+- **Authentication / 403:** verify API enabled, service account membership and app-scoped permissions. Logs intentionally omit raw credential/parser/API response bodies; consult Console/admin audit rather than logging the JSON key. Never paste token/JWT/upload-session URLs into issues.
+- **en-AU not enabled:** configure/save locale in Console. The tool refuses image uploads rather than accepting a silent locale no-op. It never silently switches to en-US.
+- **Edit conflict / review active / ambiguous network result:** check Publishing overview and current listing/track before retrying. An edit can be invalidated by another edit or Console changes. Concurrency covers these two workflows, not manual edits or outside automation. A commit may have succeeded before a lost response; do not blindly repeat it.
+- **Failure before commit:** temporary edit is deleted in finally. If deletion itself fails, inspect Console and remove the unfinished edit before retrying; edits also expire according to Play. Logs do not promise a rollback of a successfully committed change.
+- **Bad committed listing:** revert the versioned bundle to the last approved version, validate, review and commit again through protected approval. Console review remains manual; no automatic rollback of public content.
+- **Production disabled:** intentional. Obtain explicit owner release approval and use Console promotion; the listing script cannot roll out a production AAB.
+- **Not exercised here:** live OAuth, Play permissions/default locale, API-side policy validation, upload against a real signed AAB, commit behavior in this account, GitHub environment required reviewers, release eligibility and public storefront changes. Tests use local/mocked API responses and existing resumable-upload integration tests. No credentials were requested or read to make a real Play call, no signing material changed and no workflow was dispatched.
+
+## Checks and review evidence
+
+Offline validation runs in the existing self-hosted unit-test workflow. `scripts/__tests__/play-listing.test.js` covers the package, invalid images/copy/manifest, no-network dry-run, approval/production guards, transactional validation/discard/commit flags, locale handling and draft release preservation. Existing `play-release.test.js` still exercises the real resumable uploader against a local fake server. The implementation PR records actual local test/export results and any unrelated E2E failures.

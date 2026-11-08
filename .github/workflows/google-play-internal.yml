@@ -8,6 +8,11 @@ on:
         required: false
         default: ""
         type: string
+      build_only:
+        description: Build signed AAB without uploading; retain only on this dedicated runner for listing workflow
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: personal-fitness-tracker-google-play
@@ -83,10 +88,11 @@ jobs:
             Remove-Item -Recurse -Force $versionDir -ErrorAction SilentlyContinue
           }
 
-      - name: Build signed AAB in Docker and deploy to INTERNAL
+      - name: Build signed AAB in Docker (upload only when build_only is false)
         shell: powershell
         env:
           ANDROID_VERSION_CODE: ${{ steps.version_code.outputs.value }}
+          PLAY_BUILD_ONLY: ${{ inputs.build_only }}
         run: |
           $ErrorActionPreference = 'Stop'
 
@@ -105,6 +111,7 @@ jobs:
           }
 
           Write-Host "DEPLOY TARGET: Google Play INTERNAL testing"
+          Write-Host "Build only: $env:PLAY_BUILD_ONLY"
           Write-Host "Package: com.questspire.personalfitnesstracker"
           Write-Host "versionCode: $env:ANDROID_VERSION_CODE"
 
@@ -112,6 +119,8 @@ jobs:
           New-Item -ItemType Directory -Path $secretDir | Out-Null
           $keyFile = Join-Path $secretDir 'personal-fitness-tracker-upload.jks'
           $serviceFile = Join-Path $secretDir 'google-play-service-account.json'
+          $bundleDir = Join-Path $env:RUNNER_TEMP "body-anvil-aab\${{ github.sha }}-$env:ANDROID_VERSION_CODE"
+          New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 
           try {
             [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
@@ -122,12 +131,17 @@ jobs:
               --env ANDROID_KEY_ALIAS `
               --env ANDROID_KEY_PASSWORD `
               --env ANDROID_VERSION_CODE `
+              --env PLAY_BUILD_ONLY `
               --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
               --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
               --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `
               --mount "type=volume,source=pft-gradle-cache,target=/gradle-cache" `
+              --mount "type=bind,source=$bundleDir,target=/run/bundle-output" `
               pft-google-play
             if ($LASTEXITCODE -ne 0) { throw "Google Play Docker deployment failed ($LASTEXITCODE)" }
+            if ($env:PLAY_BUILD_ONLY -eq 'true') {
+              "Signed AAB built without upload: $bundleDir\app-release.aab (versionCode $env:ANDROID_VERSION_CODE)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+            }
           }
           finally {
             Remove-Item -Recurse -Force $secretDir -ErrorAction SilentlyContinue

@@ -1,0 +1,18 @@
+Build a fitness routine around your day with Body Anvil.
+
+YOUR DAILY PLAN
+See your planned activities, meals and workouts in one daily log. Mark activities done, record measurements and return to earlier days to make corrections.
+
+WORKOUTS AND EXERCISE GUIDES
+Follow your planned strength session, log a different dose and open illustrated exercise guides. Explore muscle coverage and record soreness or injury to help inform your training choices.
+
+PROGRESS FROM YOUR RECORDS
+View weight, waist, workouts and other available measurements over time. Charts use recorded information and distinguish calculated values and estimates from observations.
+
+BRING YOUR INFORMATION TOGETHER
+Review and import supported fitness screenshots. On compatible Android devices, optionally connect Health Connect to read supported health and fitness records. Permissions and available data determine what appears.
+
+MAKE IT YOURS
+Choose Hero Forge or Classic appearance, choose energy display units and configure your plan through setup answers and the supported AI-assisted configuration workflow. Import and AI-assisted configuration can require an external AI service and your own configuration; they are not automatic coaching services.
+
+Body Anvil is a personal planning and tracking tool. Exercise guides and muscle coverage are informational and do not provide medical advice, diagnosis or treatment.

@@ -4,6 +4,8 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "store:prepare": "npm run export:web && node scripts/prepare-play-listing.cjs && node scripts/play-listing.js",
+    "store:validate": "node scripts/play-listing.js --mode dry-run",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",

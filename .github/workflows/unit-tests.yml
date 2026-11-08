@@ -39,3 +39,6 @@ jobs:
 
       - name: Unit tests
         run: npm test -- --ci --runInBand --watch=false
+
+      - name: Validate Google Play listing without credentials
+        run: npm run store:validate

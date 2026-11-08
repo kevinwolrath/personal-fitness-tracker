@@ -1,6 +1,6 @@
 # Google Play internal deployment
 
-The workflow `.github/workflows/google-play-internal.yml` is **manual only** and runs only on the self-hosted Windows `.45` runner. Android tooling, signing and upload run inside Docker. It creates no GitHub Actions artifacts and cannot deploy to production: the container script fixes the track to `internal`.
+The workflow `.github/workflows/google-play-internal.yml` is **manual only** and runs only on the self-hosted Windows `.45` runner. Android tooling, signing and upload run inside Docker. It creates no GitHub Actions artifacts and cannot deploy to production: the container script fixes the track to `internal`. With `build_only=true`, the same pipeline retains its signed AAB on the dedicated runner and exits before uploading. For listing-only or listing-plus-draft updates, see [Google Play listing automation](google-play-listing.md).
 
 ## Immutable app identity
 
@@ -32,7 +32,7 @@ The workflow decodes these only into a unique directory under `RUNNER_TEMP`, bin
 1. Create the Play Console app with package `com.questspire.personalfitnesstracker` and enable Play App Signing.
 2. Create/use a Google Cloud service account for automated Play uploads.
 3. Grant that service account access to this app in Play Console with permission sufficient to create/update releases on the **Internal testing** track. Do not grant production permissions merely for this workflow.
-4. Download its JSON key once, encode it into `GOOGLE_PLAY_SERVICE_ACCOUNT_B64`, then store/delete the local copy according to your credential-storage practice.
+4. Download its JSON key once and store its plain JSON in `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, then store/delete the local copy according to your credential-storage practice. Do not base64-encode this secret.
 5. Add the upload certificate/key to Play Console when Play setup asks for it. Google owns the Play app-signing key; this repository uses only the upload key.
 
 ## Run
@@ -93,5 +93,4 @@ The app reads health data from Android Health Connect, read only (contract 12). 
   - `READ_SLEEP`: time asleep.
 
   No write, background or history permission is requested.
-- **Privacy policy URL:** required for health permissions. It must say that health data is read from Health Connect, stays on the device, isn't shared, and nothing is written back. The app's Health Connect permission screen links to it (the rationale intent is wired by the library's config plugin).
-- **Data safety:** "Health and fitness" data, collected and processed on the device, not shared, not required for the app to work.
+- **Privacy policy URL / Data safety:** the owner must supply an accessible policy URL and declarations reflecting all actual data flows in the shipped app, including optional AI/screenshot processing. Read-only Health Connect permissions do not establish that the entire app never collects or shares data. No legal/privacy declaration is made by this repository document; follow the [manual setup checklist](google-play-listing.md#one-time-manual-setup--owner-must-confirm) before publishing.

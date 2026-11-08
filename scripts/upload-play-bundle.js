@@ -218,7 +218,8 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+module.exports = { startUpload, uploadBundle };
+if (require.main === module) main().catch((error) => {
   console.error("[play-upload] FAILED: " + error.message);
   process.exitCode = 1;
 });

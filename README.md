@@ -110,3 +110,7 @@ Daily Log → ☰ → **Configure with AI**. Copy the instructions into ChatGPT 
 ## Changing the plan
 
 Day to day, use **Configure with AI** (above). If you've already changed your configuration in the app, the new default lunch won't replace it: paste `fixtures/config/lunch.update.json` into **Configure with AI**. It changes only the lunch (a merge by id), adding its ingredients, preparation and nutrition. Your other meals and everything else stay exactly as they are. To change the bundled default for fresh installs, edit `plans/seed.plan.json`, keeping it valid against `docs/design-contracts/plan.schema.json`. `npm test` checks this. Then bump `revision`. Installed apps pick up a higher revision of the same plan `id` on next launch, unless the user has already changed their configuration in the app, which is never overwritten. Tracking history is always kept.
+
+## Google Play listing
+
+The reviewable `en-AU` listing lives in `store/google-play/`. Run `npm run listing:validate` or `npm run listing:publish` for credential-free validation and an offline dry run. See [listing preparation and manual publishing](docs/google-play-listing.md) for real app captures, required Console setup and protected publishing.

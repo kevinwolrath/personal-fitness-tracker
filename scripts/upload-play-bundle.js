@@ -218,7 +218,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
+if (require.main === module) main().catch((error) => {
   console.error("[play-upload] FAILED: " + error.message);
   process.exitCode = 1;
 });
+
+// Shared resumable transport; listing publishing creates and owns its own edit.
+module.exports = { startUpload, uploadBundle };

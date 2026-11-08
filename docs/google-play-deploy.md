@@ -32,7 +32,7 @@ The workflow decodes these only into a unique directory under `RUNNER_TEMP`, bin
 1. Create the Play Console app with package `com.questspire.personalfitnesstracker` and enable Play App Signing.
 2. Create/use a Google Cloud service account for automated Play uploads.
 3. Grant that service account access to this app in Play Console with permission sufficient to create/update releases on the **Internal testing** track. Do not grant production permissions merely for this workflow.
-4. Download its JSON key once, encode it into `GOOGLE_PLAY_SERVICE_ACCOUNT_B64`, then store/delete the local copy according to your credential-storage practice.
+4. Download its JSON key once, store the plain JSON securely as `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, then store/delete the local copy according to your credential-storage practice.
 5. Add the upload certificate/key to Play Console when Play setup asks for it. Google owns the Play app-signing key; this repository uses only the upload key.
 
 ## Run
@@ -84,3 +84,7 @@ The app reads health data from Android Health Connect, read only (contract 12). 
   No write, background or history permission is requested.
 - **Privacy policy URL:** required for health permissions. It must say that health data is read from Health Connect, stays on the device, isn't shared, and nothing is written back. The app's Health Connect permission screen links to it (the rationale intent is wired by the library's config plugin).
 - **Data safety:** "Health and fitness" data, collected and processed on the device, not shared, not required for the app to work.
+
+## Listing assets and draft-only AAB handoff
+
+See [Google Play listing](google-play-listing.md) for offline asset validation, manual listing-only updates and protected production gates. To reuse this same build without uploading, mount an output directory and set `AAB_OUTPUT_DIR` in the container. The script copies the signed AAB there and exits before any Play upload; the default internal deployment remains unchanged.

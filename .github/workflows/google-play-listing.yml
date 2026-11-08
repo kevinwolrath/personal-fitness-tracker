@@ -1,0 +1,121 @@
+name: Prepare Google Play listing
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Dry-run is offline; validate-only discards the edit; commit saves changes without submitting for review
+        type: choice
+        options: [dry-run, validate-only, commit]
+        default: dry-run
+      track:
+        description: Target track for an optional AAB (always a draft release)
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      aab_path:
+        description: Optional existing signed AAB absolute path on the dedicated runner (no rebuild for listing-only changes)
+        type: string
+        default: ''
+      version_code:
+        description: Required when aab_path is set; must match the signed AAB
+        type: string
+        default: ''
+      approve_production:
+        description: Explicitly request production metadata/draft changes; protected environment approval is also required
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Share the existing binary publisher's lock: Play edits must not race.
+concurrency:
+  group: personal-fitness-tracker-google-play
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
+    steps:
+      - name: Require production approval protection
+        if: inputs.track == 'production' && inputs.mode != 'dry-run'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          REQUEST_APPROVAL: ${{ inputs.approve_production }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:REQUEST_APPROVAL -ne 'true') { throw 'Explicit production approval input is required.' }
+          $uri = "https://api.github.com/repos/$env:REPOSITORY/environments/google-play-production"
+          $config = Invoke-RestMethod -Uri $uri -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json' }
+          $rules = @($config.protection_rules | Where-Object { $_.type -eq 'required_reviewers' })
+          if ($rules.Count -eq 0 -or @($rules[0].reviewers).Count -eq 0 -or -not $rules[0].prevent_self_review) {
+            throw 'google-play-production must have required reviewers and prevent self-review. Refusing unprotected production access.'
+          }
+
+  listing:
+    needs: guard
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
+    # Configure required reviewers for production BEFORE dispatching. Guard fails closed if unreadable.
+    environment: ${{ inputs.track == 'production' && inputs.mode != 'dry-run' && 'google-play-production' || 'google-play-internal' }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        shell: cmd
+        run: npm ci --no-audit --no-fund
+      - name: Validate listing and publisher tests without credentials
+        shell: cmd
+        run: |
+          node scripts/play-listing.cjs
+          npx jest --selectProjects scripts --runInBand --ci --watch=false
+      - name: Preview without Play credentials
+        if: inputs.mode == 'dry-run'
+        shell: powershell
+        env:
+          PLAY_TRACK: ${{ inputs.track }}
+          AAB_PATH: ${{ inputs.aab_path }}
+          VERSION_CODE: ${{ inputs.version_code }}
+        run: |
+          $arguments = @('scripts/publish-play-listing.cjs', '--mode', 'dry-run', '--track', $env:PLAY_TRACK)
+          if (-not [string]::IsNullOrWhiteSpace($env:AAB_PATH)) { $arguments += @('--aab', $env:AAB_PATH, '--version-code', $env:VERSION_CODE) }
+          elseif (-not [string]::IsNullOrWhiteSpace($env:VERSION_CODE)) { throw 'version_code requires aab_path.' }
+          & node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Listing dry-run failed.' }
+      - name: Validate or commit Play edit
+        if: inputs.mode != 'dry-run'
+        shell: powershell
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_MODE: ${{ inputs.mode }}
+          PLAY_TRACK: ${{ inputs.track }}
+          AAB_PATH: ${{ inputs.aab_path }}
+          VERSION_CODE: ${{ inputs.version_code }}
+          PLAY_PRODUCTION_APPROVED: ${{ inputs.track == 'production' && inputs.approve_production && 'production' || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON)) { throw 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON is missing.' }
+          $arguments = @('scripts/publish-play-listing.cjs', '--mode', $env:PLAY_MODE, '--track', $env:PLAY_TRACK)
+          if (-not [string]::IsNullOrWhiteSpace($env:AAB_PATH)) {
+            if (-not [IO.Path]::IsPathRooted($env:AAB_PATH) -or -not (Test-Path -LiteralPath $env:AAB_PATH -PathType Leaf)) { throw 'AAB must be an existing absolute runner path.' }
+            $arguments += @('--aab', $env:AAB_PATH, '--version-code', $env:VERSION_CODE)
+          } elseif (-not [string]::IsNullOrWhiteSpace($env:VERSION_CODE)) { throw 'version_code requires aab_path.' }
+          & node @arguments
+          if ($LASTEXITCODE -ne 0) { throw 'Play listing operation failed. No automatic retry or live rollout.' }
+      - name: Record outcome
+        if: always()
+        shell: powershell
+        env:
+          RESULT: ${{ job.status }}
+          PLAY_MODE: ${{ inputs.mode }}
+          PLAY_TRACK: ${{ inputs.track }}
+        run: |
+          "Play listing: $env:RESULT; mode=$env:PLAY_MODE; track=$env:PLAY_TRACK. No automatic rollout. Review listing changes and draft releases in Play Console." | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

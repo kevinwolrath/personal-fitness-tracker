@@ -82,6 +82,15 @@ cd ..
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
+# Optional artifact handoff for the listing workflow; reuse this build/signing pipeline.
+# No Play upload occurs when the operator explicitly supplies an output mount.
+if [ -n "${AAB_OUTPUT_DIR:-}" ]; then
+  [ -d "$AAB_OUTPUT_DIR" ] || { echo "AAB_OUTPUT_DIR must be an existing mounted directory" >&2; exit 1; }
+  cp "$AAB" "$AAB_OUTPUT_DIR/app-release.aab"
+  echo "Signed AAB copied to output mount; no Play upload performed."
+  exit 0
+fi
+
 echo "Uploading signed AAB to Google Play INTERNAL testing only..."
 # Resumable, chunked upload that survives dropped connections (scripts/upload-play-bundle.js). The track is
 # fixed to internal inside that script; an app that has never been published gets a DRAFT internal release.

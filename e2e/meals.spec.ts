@@ -32,6 +32,8 @@ test('tapping the meal row opens its details without completing it; the circle c
   await page.mouse.wheel(0, 300);
   const scrollTop = () => page.getByTestId('day-scroll').evaluate((el) => (el as HTMLElement).scrollTop);
   await expect.poll(scrollTop).toBeGreaterThan(0);
+  // Clicking an offscreen row scrolls it into view first; the sheet must preserve that visible position.
+  await row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).scrollIntoViewIfNeeded();
   const y = await scrollTop();
 
   await row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).click();

@@ -59,7 +59,6 @@ export function GamificationCard({ gallery = false }: { gallery?: boolean }) {
     <Sheet visible={open} onClose={() => setOpen(false)} label="Quests & achievements" fill>
       <ModalHeader title="Your forge" dismiss={{ label:'Close',onPress:()=>setOpen(false) }} />
       <ScrollView contentContainerStyle={styles.body} testID="achievement-gallery">
-        <GamificationCelebration />
         <Text style={type.body}>Level {game.level} · {game.xp} XP</Text>
         <Text style={type.detail}>Record activities in your daily log. Rewards update when records are corrected. No lost streaks, no extra XP for doing more than planned.</Text>
         <Text style={type.section}>Today's quests</Text>

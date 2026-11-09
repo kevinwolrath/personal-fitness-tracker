@@ -62,7 +62,8 @@ test('no share sheet in the browser: the exact text is copied, and the app says 
   const text = (await preview(page).textContent())!;
   await page.getByTestId('share-confirm').click();
   await expect(page.getByText('Copied. Paste it into ChatGPT, Claude or another app.')).toBeVisible();
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
+  // Windows' system clipboard normalizes line breaks to CRLF; content stays identical.
+  expect((await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n')).toBe(text.replace(/\r\n/g, '\n'));
 });
 
 test('another date shares that date, labelled correctly; a future date has no Share', async ({ page }) => {

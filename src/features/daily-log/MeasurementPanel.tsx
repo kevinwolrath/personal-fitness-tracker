@@ -1,9 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { formatMeasurement, formatShortDate } from '../../format';
 import type { LocalDate } from '../../plan/dates';
 import type { Measurement, Plan } from '../../plan/schema';
-import { measurementMetric } from '../../observations/planMetrics';
-import { observationSource } from '../../observations/format';
+import { measurementTile } from '../../observations/measurementTile';
 import type { Observation } from '../../observations/types';
 import { radius, space, useTheme, createThemedStyles } from '../../ui/theme';
 
@@ -16,25 +14,22 @@ type Props = {
   onLog: (m: Measurement) => void;
 };
 
-/** Measurements scheduled for this day, with the plan goal for each (contract 03 §6). */
+/**
+ * Body measurements (#108): every plan measurement on every day, with its latest value and the date it was measured,
+ * or an "Add" when there's none. A measurement's cadence (waist on Sundays) is only a "Due today" hint; it never hides
+ * the tile or blocks entry, on any date.
+ */
 export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: Props) {
-  const { colors, type } = useTheme();
+  const { type } = useTheme();
   const styles = useStyles();
 
-  if (!due.length) return null;
+  if (!plan.measurements.length) return null;
+  const dueIds = new Set(due.map((m) => m.id));
   return (
-    <View style={styles.row}>
-      {due.map((m) => {
-        const obs = latest[m.id];
-        const entry = obs && { ...obs, value: measurementMetric(plan, m).toPlan(obs.value) };
-        const loggedToday = entry?.date === date;
-        const via = loggedToday && entry.source.type !== 'manual' ? observationSource(entry) : null;
-        const goal = plan.goals.find((g) => g.measurementId === m.id);
-        let goalText = goal ? `${goal.label} ${formatMeasurement(plan, m, goal.target)}` : null;
-        if (goal && entry) {
-          const gap = goal.direction === 'increase' ? goal.target - entry.value : entry.value - goal.target;
-          if (goal.direction !== 'maintain' && gap > 0) goalText += ` · ${formatMeasurement(plan, m, gap)} to go`;
-        }
+    <View style={styles.row} testID="measurements">
+      {plan.measurements.map((m) => {
+        const t = measurementTile(plan, m, latest[m.id], date, dueIds.has(m.id));
+        const empty = t.value === null;
         return (
           <Pressable
             key={m.id}
@@ -42,22 +37,22 @@ export function MeasurementPanel({ plan, date, due, latest, editable, onLog }: P
             disabled={!editable}
             style={({ pressed }) => [styles.cell, pressed && styles.pressed]}
             accessibilityRole="button"
-            accessibilityLabel={`${m.label}: ${entry ? formatMeasurement(plan, m, entry.value) : 'not logged'}${loggedToday ? '' : ', log now'}`}
+            accessibilityLabel={`${m.label}: ${t.value ?? 'not logged'}${t.detail ? `, ${t.detail}` : ''}${editable ? (empty ? `. Add ${m.label.toLowerCase()}` : t.today ? '. Edit' : ', log now') : ''}`}
             testID={`measurement-${m.id}`}
           >
             <View style={styles.cellTop}>
               <Text style={styles.label}>{m.label}</Text>
-              {editable && <Text style={styles.action}>{loggedToday ? 'Edit' : 'Log'}</Text>}
+              {editable && !empty && <Text style={styles.action}>{t.action}</Text>}
             </View>
-            <Text style={[styles.value, !loggedToday && styles.valueStale, !entry && styles.valueEmpty]}>
-              {entry ? formatMeasurement(plan, m, entry.value) : 'Not logged'}
+            <Text style={[styles.value, !t.today && styles.valueStale, empty && (editable ? styles.valueAdd : styles.valueEmpty)]} numberOfLines={1}>
+              {t.value ?? (editable ? `+ Add ${m.label.toLowerCase()}` : 'Not logged')}
             </Text>
-            <Text style={type.detail} numberOfLines={1}>
-              {!loggedToday && entry ? `Last ${formatShortDate(entry.date)}` : (via ?? goalText ?? ' ')}
+            <Text style={type.detail} numberOfLines={1} testID={`measurement-${m.id}-detail`}>
+              {t.detail ?? ' '}
             </Text>
-            {((!loggedToday && entry) || via) && goalText ? (
+            {t.goal ? (
               <Text style={type.detail} numberOfLines={1}>
-                {goalText}
+                {t.goal}
               </Text>
             ) : null}
           </Pressable>
@@ -77,4 +72,5 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   value: { fontSize: 26, fontWeight: '800', color: colors.ink, marginVertical: space.xs, ...type.number },
   valueStale: { color: colors.faint },
   valueEmpty: { fontSize: 20, fontWeight: '700' },
+  valueAdd: { fontSize: 18, fontWeight: '700', color: colors.accent },
 }));

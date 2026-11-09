@@ -24,7 +24,7 @@ test.describe('seed plan resolves from JSON', () => {
     await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,530 kJ');
     await expect(page.getByTestId('targets')).toContainText('Protein 160–180 g');
     await expect(page.getByTestId('measurement-weight')).toBeVisible();
-    await expect(page.getByTestId('measurement-waist')).toHaveCount(0);
+    await expect(page.getByTestId('measurement-waist')).toContainText('Add waist'); // #108: every day, not only Sundays
   });
 
   test('Thursday renders the office day', async ({ page }) => {

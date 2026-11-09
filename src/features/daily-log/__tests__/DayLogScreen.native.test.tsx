@@ -13,6 +13,7 @@ import { installSeedPlan } from '../../../plan/bootstrap';
 import { AppProvider } from '../../../providers/AppProvider';
 import { DayLogScreen } from '../DayLogScreen';
 import { AppShell } from '../../shell/AppShell';
+import { HC_DISTANCE } from '../../../observations/healthConnect';
 
 // One in-memory backend per test; a new store over it simulates an app restart.
 let mockKv = new MemoryKeyValue();
@@ -417,13 +418,13 @@ describe('Health Connect (#36)', () => {
     expect(screen.queryByTestId('recorded-steps')).toBeNull();
   });
 
-  it('Connect asks for the existing six read permissions plus optional Distance, imports into the Daily Log with sources, and writes nothing', async () => {
+  it('Connect asks for the six read permissions (Distance is off until declared in Play), imports into the Daily Log with sources, and writes nothing', async () => {
     await launch();
     await chooseFromMenu('Health Connect');
     fireEvent.press(await screen.findByText('Connect Health Connect'));
     await settle();
     expect(hc().requests).toHaveLength(1);
-    expect(hc().requests[0]).toEqual([...ALL, 'Distance'].map((recordType) => ({ accessType: 'read', recordType })));
+    expect(hc().requests[0]).toEqual(ALL.map((recordType) => ({ accessType: 'read', recordType })));
     await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214Samsung Health/));
     expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kgWithings/);
     expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7 hr 45 min/);
@@ -437,7 +438,21 @@ describe('Health Connect (#36)', () => {
     expect(hc().writes).toEqual([]);
   });
 
-  it('reads optional Distance only with permission and keeps duration if Distance fails', async () => {
+  it('while Distance is off (not yet declared in Play), it is never read, even if granted', async () => {
+    hc().grantOnRequest = [...ALL, 'Distance'];
+    hc().records.Distance = [{ startTime: at(5, 7, 30), endTime: at(5, 8, 2), distance: { inMeters: 2500 }, metadata: { id: 'd1', dataOrigin: SAMSUNG } }];
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByText('Connect Health Connect'));
+    await settle();
+    expect(screen.queryByText(/Distance access/)).toBeNull();
+    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    await waitFor(() => expect(screen.getByTestId('recorded-walking-summary')).toHaveTextContent(/32 min/));
+    expect(screen.getByTestId('recorded-walking-summary')).not.toHaveTextContent(/km/);
+  });
+
+  // Runs again once HC_DISTANCE (src/observations/healthConnect.ts) is turned back on.
+  (HC_DISTANCE ? it : it.skip)('reads optional Distance only with permission and keeps duration if Distance fails', async () => {
     hc().grantOnRequest = [...ALL, 'Distance'];
     hc().records.Distance = [{ startTime: at(5, 7, 30), endTime: at(5, 8, 2), distance: { inMeters: 2500 }, metadata: { id: 'd1', dataOrigin: SAMSUNG } }];
     await launch();

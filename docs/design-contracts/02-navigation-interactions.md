@@ -12,6 +12,8 @@
 
 Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. Two tabs now: **Today** (the Daily Log) and **Progress** (#52, contract 14). The tab bar arrived with the second tab. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
 
+Optional gamification (#73, contract 16) uses content cards on Today (after measurements/targets) and Progress, plus one shared quests/gallery sheet. Its device switch lives in Settings. It adds no shell controls and preserves the vertical budget and existing Plan access.
+
 ## Layout layers (#19)
 
 Every main screen stacks three layers, top to bottom. Each control belongs to one layer only.

@@ -1,6 +1,6 @@
 # Issue #106 · Approved branding and icon audit
 
-Started 9 November 2026 on `claude/issue-106-approved-branding`, from latest `develop` (`2d5a750`). This is discovery, not a completed branding implementation.
+Started 9 November 2026 on `claude/issue-106-approved-branding`, from latest `develop` (`7c42725`). This is discovery, not a completed branding implementation.
 
 ## Required source files
 

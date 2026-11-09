@@ -1,4 +1,5 @@
 // Native-only modules that have no implementation in the Jest host environment.
+jest.mock('expo-splash-screen', () => ({ preventAutoHideAsync: jest.fn(async () => true), hideAsync: jest.fn(async () => undefined) }));
 jest.mock('@react-native-community/datetimepicker', () => {
   const React = require('react');
   const { View } = require('react-native');

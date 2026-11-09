@@ -4,6 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
+    "branding:build": "python scripts/build-branding.py",
     "store:prepare": "npm run export:web && node scripts/prepare-play-listing.cjs && node scripts/play-listing.js",
     "store:validate": "node scripts/play-listing.js --mode dry-run",
     "start": "expo start",
@@ -33,6 +34,7 @@
     "expo-router": "~6.0.0",
     "expo-secure-store": "~15.0.8",
     "expo-sharing": "~14.0.8",
+    "expo-splash-screen": "~31.0.13",
     "expo-sqlite": "~16.0.0",
     "expo-status-bar": "~3.0.0",
     "react": "19.1.0",

@@ -8,6 +8,10 @@ import { AppProvider } from '@/src/providers/AppProvider';
 import { PhoneFrame } from '@/src/ui/PhoneFrame';
 import { useTheme } from '@/src/ui/theme';
 import { ScrollIndicators } from '@/src/ui/ScrollIndicators';
+import * as SplashScreen from 'expo-splash-screen';
+import { Platform } from 'react-native';
+
+if (Platform.OS !== 'web') SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 function ThemedApp() {
   const { colors, dark } = useTheme();

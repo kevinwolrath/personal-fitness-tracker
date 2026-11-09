@@ -1,0 +1,236 @@
+{
+  "kind": "Generated resource inspection; not an installed-device test",
+  "sourcesUnchanged": true,
+  "android": [
+    {
+      "file": "android/app/src/main/res/mipmap-mdpi/ic_launcher.webp",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.webp",
+      "size": [
+        108,
+        108
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-mdpi/ic_launcher_monochrome.webp",
+      "size": [
+        108,
+        108
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-mdpi/notification_icon.png",
+      "size": [
+        24,
+        24
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-mdpi/splashscreen_logo.png",
+      "size": [
+        288,
+        288
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-hdpi/ic_launcher.webp",
+      "size": [
+        72,
+        72
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.webp",
+      "size": [
+        162,
+        162
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-hdpi/ic_launcher_monochrome.webp",
+      "size": [
+        162,
+        162
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-hdpi/notification_icon.png",
+      "size": [
+        36,
+        36
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-hdpi/splashscreen_logo.png",
+      "size": [
+        432,
+        432
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.webp",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.webp",
+      "size": [
+        216,
+        216
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_monochrome.webp",
+      "size": [
+        216,
+        216
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xhdpi/notification_icon.png",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xhdpi/splashscreen_logo.png",
+      "size": [
+        576,
+        576
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.webp",
+      "size": [
+        144,
+        144
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.webp",
+      "size": [
+        324,
+        324
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_monochrome.webp",
+      "size": [
+        324,
+        324
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxhdpi/notification_icon.png",
+      "size": [
+        72,
+        72
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxhdpi/splashscreen_logo.png",
+      "size": [
+        864,
+        864
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.webp",
+      "size": [
+        432,
+        432
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_monochrome.webp",
+      "size": [
+        432,
+        432
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxxhdpi/notification_icon.png",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "android/app/src/main/res/drawable-xxxhdpi/splashscreen_logo.png",
+      "size": [
+        1152,
+        1152
+      ],
+      "mode": "RGBA"
+    }
+  ],
+  "androidAdaptiveLayers": true,
+  "androidColors": {
+    "splashscreen_background": "#000000",
+    "iconBackground": "#1b0835",
+    "colorPrimary": "#023c69",
+    "colorPrimaryDark": "#000000",
+    "notification_icon_color": "#ffb52e"
+  },
+  "ios": {
+    "generator": "Actual installed Expo generateUniversalIconAsync",
+    "size": [
+      1024,
+      1024
+    ],
+    "mode": "RGB",
+    "contents": {
+      "images": [
+        {
+          "filename": "App-Icon-1024x1024@1x.png",
+          "idiom": "universal",
+          "platform": "ios",
+          "size": "1024x1024"
+        }
+      ],
+      "info": {
+        "version": 1,
+        "author": "expo"
+      }
+    }
+  }
+}

@@ -129,6 +129,28 @@ export const exportSchema = z.object({
   muscleReports: z
     .array(z.object({ id: z.string(), muscle: z.string(), kind: z.enum(['sore', 'injured']), at: z.string(), clearedAt: z.string().nullable() }))
     .default([]),
+  /**
+   * Meals actually eaten (#97, contract 15). Added in-version; optional when reading. Photos are listed by their
+   * on-device location only: the export never contains image data.
+   */
+  mealLogs: z
+    .array(
+      z.object({
+        id: z.string(), date, at: z.string(), planId: z.string().nullable(), activityId: z.string().nullable(), replacedLabel: z.string().nullable(),
+        name: z.string(),
+        items: z.array(z.object({
+          name: z.string(), quantity: z.number().nullable(), unit: z.string().nullable(),
+          energyKj: z.number().nullable(), proteinG: z.number().nullable(), carbsG: z.number().nullable(), fatG: z.number().nullable(),
+        })),
+        aiTotals: z.object({ energyKj: z.number().nullable(), proteinG: z.number().nullable(), carbsG: z.number().nullable(), fatG: z.number().nullable() }).nullable(),
+        confidence: z.enum(['low', 'medium', 'high']).nullable(),
+        assumptions: z.array(z.string()), uncertainties: z.array(z.string()),
+        source: z.enum(['photo-ai', 'manual']), schemaVersion: z.number().nullable(), edited: z.boolean(),
+        photos: z.array(z.object({ id: z.string(), uri: z.string(), addedAt: z.string(), width: z.number().nullable(), height: z.number().nullable() })),
+        recordedAt: z.string(), updatedAt: z.string(),
+      }),
+    )
+    .default([]),
 });
 
 export type ExportDocument = z.infer<typeof exportSchema>;
@@ -140,6 +162,7 @@ export function earliestDate(s: StoreSnapshot): LocalDate | null {
     ...s.dayOverrides.map((d) => d.date),
     ...s.quickLogs.map((q) => q.date),
     ...(s.exerciseLogs ?? []).map((l) => l.date),
+    ...(s.mealLogs ?? []).map((m) => m.date),
   ];
   return dates.length ? dates.reduce((a, b) => (b < a ? b : a)) : null;
 }
@@ -163,6 +186,7 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
       daySnapshots: s.daySnapshots.length,
       exerciseLogs: (s.exerciseLogs ?? []).length,
       muscleReports: (s.muscleReports ?? []).length,
+      mealLogs: (s.mealLogs ?? []).length,
     },
     plans: s.plans.map((p) => ({
       planId: p.planId,
@@ -182,6 +206,7 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
     daySnapshots: s.daySnapshots,
     exerciseLogs: s.exerciseLogs ?? [],
     muscleReports: s.muscleReports ?? [],
+    mealLogs: s.mealLogs ?? [],
   };
 }
 
@@ -214,6 +239,7 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
       daySnapshots: e.daySnapshots.map((d) => ({ ...d, prescribed: d.prescribed as unknown })),
       exerciseLogs: e.exerciseLogs,
       muscleReports: e.muscleReports,
+      mealLogs: e.mealLogs,
     },
   };
 }

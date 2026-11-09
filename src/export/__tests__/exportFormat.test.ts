@@ -43,7 +43,7 @@ it('exports the entire history, earliest record through today, versioned', async
   const doc = buildExport(await (await populatedStore()).snapshot(), meta);
   expect(exportSchema.parse(doc)).toBeTruthy();
   expect(doc).toMatchObject({ format: 'pft-export', exportVersion: 1, range: { from: '2024-03-05', to: '2026-11-01' } });
-  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1, configChanges: 0, completionEvents: 0, daySnapshots: 0, exerciseLogs: 0, muscleReports: 0 });
+  expect(doc.counts).toEqual({ observations: 3, activityLogs: 2, dayOverrides: 1, quickLogs: 1, imports: 1, configChanges: 0, completionEvents: 0, daySnapshots: 0, exerciseLogs: 0, muscleReports: 0, mealLogs: 0 });
   expect(doc.activityLogs.map((a) => [a.date, a.activityId, a.status, a.count])).toEqual([
     ['2024-03-05', 'vr-boxing', 'done', 3],
     ['2026-11-01', 'resistance', 'skipped', 0],

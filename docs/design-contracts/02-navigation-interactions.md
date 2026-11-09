@@ -29,7 +29,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 **Vertical budget.** On a 390 × 844 phone, the **Do this next** card starts within **200 px** of the top of the viewport, app bar included. When there's nothing to recommend the card is absent (#41, contract 08), and the first content block (the measurements) starts within the same budget. `e2e/app-shell.spec.ts` measures it. A change that pushes the card lower has to change this contract first.
 
-**Modal routes** (`/import`, `/configure`) are tasks rather than places. They cover the shell and use the modal header below. They don't show the app bar.
+**Modal routes** (`/import`, `/configure`, `/meal-photo`, contract 15) are tasks rather than places. They cover the shell and use the modal header below. They don't show the app bar.
 
 **Modal and sheet header (#21).** Every modal screen and every sheet uses one header, `ModalHeader` (`src/ui/ModalHeader.tsx`). There are no hand-built headers.
 
@@ -101,6 +101,7 @@ Additional content is signalled by the natural partial next item. Do not add ins
 | Complete or uncomplete a `check` activity | Tap the row body. **Meals:** tap the completion circle (48 dp) | None | One tap is already minimal. A swipe would be slower. A meal row holds drill-down information (what to prepare), so completion gets its own explicit control (#26). |
 | See what a meal is (ingredients, amounts, preparation, energy/protein) | **Meals:** tap anywhere on the row except the circle; the `›` marks it. Opens the activity sheet. Viewing never completes anything, and closing returns to the same scroll position | Long-press | "What exactly am I eating, and how much?" is one tap from any day: past, today or future. |
 | Advance a `count` activity | Tap the next segment of the segmented row (for example ●●○) | None | Tapping segments shows progress and is one tap per unit. |
+| Replace a meal with what was actually eaten (#97) | **📷 Log different meal**: outlined, under Done on the due meal's Do this next card, and in every meal's sheet. Opens the `/meal-photo` wizard (contract 15). A replaced meal's circle opens its sheet (Edit / Remove) instead of undoing | None | One tap from the card, no gesture to discover. |
 | Skip an activity (record it as deliberately not done) | Open the activity sheet → **Skip** (any activity, required or optional) | None in V1. Also exposed as the row's `skip` accessibility action | Issue #3 asked for no gesture dependencies unless genuinely required. The swipe row needs gesture-handler + reanimated, so it's deferred until skip frequency justifies it. |
 | Undo done or skipped | Tap the row again (done → not done; tapping a skipped row marks it done), **Undo** in the skip toast, or **Restore** in the sheet | None | — |
 | Open the activity sheet | Tap the row's trailing `›` target (48 dp or larger) | Long-press the row | Long-press is a common native secondary action. The `›` keeps it discoverable. |

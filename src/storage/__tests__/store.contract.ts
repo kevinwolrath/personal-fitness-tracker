@@ -1,5 +1,6 @@
 import { manualSource, type Observation } from '../../observations/types';
-import type { ActivityLog, ExerciseLog, TrackingStore } from '../types';
+import type { ActivityLog, ExerciseLog, MealCompletion, TrackingStore } from '../types';
+import type { MealLog } from '../../nutrition/contract';
 
 const obs = (id: string, metric: string, date: string, value: number, recordedAt: string, over: Partial<Observation> = {}): Observation => ({
   id,
@@ -319,6 +320,64 @@ export function describeTrackingStore(
         const s = await again.snapshot();
         expect(s.exerciseLogs).toHaveLength(1);
         expect(s.muscleReports).toHaveLength(1);
+        const target = await setupEmpty();
+        await target.restore(s);
+        expect(await target.snapshot()).toEqual(s);
+      });
+    });
+
+    describe('meal logs (#97)', () => {
+      const meal = (id: string, date: string, at: string, over: Partial<MealLog> = {}): MealLog => ({
+        id, date, at, planId: 'p', activityId: 'lunch', replacedLabel: 'Fixed lunch', name: 'Burrito bowl',
+        items: [
+          { name: 'Rice', quantity: 180, unit: 'g', energyKj: 980, proteinG: 5, carbsG: 52, fatG: 1 },
+          { name: 'Guacamole', quantity: null, unit: null, energyKj: null, proteinG: null, carbsG: null, fatG: null },
+        ],
+        aiTotals: { energyKj: 3100, proteinG: 38, carbsG: 82, fatG: 24 }, confidence: 'medium',
+        assumptions: ['Sauce not visible'], uncertainties: ['Rice type'], source: 'photo-ai', schemaVersion: 1, edited: true,
+        photos: [{ id: 'ph1', uri: 'file:///doc/meal-photos/ph1.jpg', addedAt: at, width: 1200, height: 900 }],
+        recordedAt: at, updatedAt: at, ...over,
+      });
+      const done = (at: string): MealCompletion => ({
+        planId: 'p', date: '2026-11-02', activityId: 'lunch', log: log('lunch', { labelSnapshot: 'Fixed lunch', updatedAt: at }),
+        event: { id: `e-${at}`, planId: 'p', date: '2026-11-02', activityId: 'lunch', requirementId: null, action: 'complete', count: 0, variant: 'full', label: 'Fixed lunch', purpose: null, at },
+        snapshot: { planId: 'p', date: '2026-11-02', planRevision: 1, prescribed: { items: [] }, updatedAt: at },
+      });
+
+      it('saves a meal log and the replaced meal\'s completion together, and lists by date range', async () => {
+        await store.saveMealLog(meal('m1', '2026-11-02', '2026-11-02T12:40:00+11:00'), done('t1'));
+        await store.saveMealLog(meal('m0', '2026-11-01', '2026-11-01T19:00:00+11:00', { activityId: null, planId: null, replacedLabel: null }));
+        expect((await store.mealLogs()).map((m) => m.id)).toEqual(['m0', 'm1']);
+        expect((await store.mealLogs({ from: '2026-11-02', to: '2026-11-02' }))[0]).toEqual(meal('m1', '2026-11-02', '2026-11-02T12:40:00+11:00'));
+        expect((await store.getDay('p', '2026-11-02')).activities.lunch.status).toBe('done');
+        expect(await store.completionEvents('p', '2026-11-02')).toHaveLength(1);
+        expect(await store.daySnapshot('p', '2026-11-02')).not.toBeNull();
+        expect(await store.firstRecordDate()).toBe('2026-11-01');
+      });
+
+      it('saving the same meal again updates it instead of adding a second one (duplicate-save protection)', async () => {
+        await store.saveMealLog(meal('m1', '2026-11-02', 't1'));
+        await store.saveMealLog(meal('m1', '2026-11-02', 't1', { name: 'Edited bowl', updatedAt: 't2' }));
+        const all = await store.mealLogs();
+        expect(all).toHaveLength(1);
+        expect(all[0].name).toBe('Edited bowl');
+      });
+
+      it('removing a meal log undoes the replaced meal with it', async () => {
+        await store.saveMealLog(meal('m1', '2026-11-02', 't1'), done('t1'));
+        const undo: MealCompletion = { ...done('t2'), log: null, event: { ...done('t2').event, action: 'undo' } };
+        await store.removeMealLog('m1', undo);
+        expect(await store.mealLogs()).toEqual([]);
+        expect((await store.getDay('p', '2026-11-02')).activities.lunch).toBeUndefined();
+        expect((await store.completionEvents('p', '2026-11-02')).map((e) => e.action)).toEqual(['complete', 'undo']);
+      });
+
+      it('survive reopen, and round-trip through snapshot and restore', async () => {
+        await store.saveMealLog(meal('m1', '2026-11-02', 't1'));
+        const again = await reopen();
+        expect(await again.mealLogs()).toEqual([meal('m1', '2026-11-02', 't1')]);
+        const s = await again.snapshot();
+        expect(s.mealLogs).toHaveLength(1);
         const target = await setupEmpty();
         await target.restore(s);
         expect(await target.snapshot()).toEqual(s);

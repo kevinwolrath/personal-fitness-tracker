@@ -1,5 +1,6 @@
 import type { ImportSession, Observation } from '../observations/types';
 import type { LocalDate } from '../plan/dates';
+import type { MealLog } from '../nutrition/contract';
 
 /** The verbatim plan package plus import metadata (contract 04 `plan`). */
 export type StoredPlan = {
@@ -137,7 +138,12 @@ export type StoreSnapshot = {
   /** #56. Absent in snapshots made before it. */
   exerciseLogs?: ExerciseLog[];
   muscleReports?: MuscleReport[];
+  /** #97. Absent in snapshots made before it. */
+  mealLogs?: MealLog[];
 };
+
+/** The scheduled meal's completion written with a meal log, atomically (#97): done when replaced, undone on removal. */
+export type MealCompletion = { planId: string; date: LocalDate; activityId: string; log: ActivityLog | null; event: CompletionEvent; snapshot: DaySnapshot };
 
 /**
  * The only way screens touch persisted data (contract 04).
@@ -202,6 +208,12 @@ export interface TrackingStore {
   addMuscleReport(report: MuscleReport): Promise<void>;
   /** Mark a report cleared from `at`; the report itself is kept. */
   clearMuscleReport(id: string, at: string): Promise<void>;
+  /** Meals actually eaten (#97), by date then time; optionally only dates in [from, to]. */
+  mealLogs(range?: { from?: LocalDate; to?: LocalDate }): Promise<MealLog[]>;
+  /** Upsert a meal log (same id = same meal: saving twice can't duplicate it), with the replaced meal's completion. Atomic. */
+  saveMealLog(log: MealLog, completion?: MealCompletion | null): Promise<void>;
+  /** Remove a meal log, with the replaced meal's undo. Atomic. Photo files are the caller's to delete. */
+  removeMealLog(id: string, completion?: MealCompletion | null): Promise<void>;
   snapshot(): Promise<StoreSnapshot>;
   /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */
   restore(snapshot: StoreSnapshot): Promise<void>;

@@ -15,6 +15,14 @@
       "expo-notifications",
       "react-native-health-connect",
       [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Body Anvil uses the camera to photograph a meal you want to log. Photos stay on this phone.",
+          "photosPermission": "Body Anvil lets you choose a meal photo to log. Photos stay on this phone.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

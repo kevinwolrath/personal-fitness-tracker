@@ -17,7 +17,7 @@ const PAD = { top: 10, bottom: 20, left: 6, right: 40 };
 
 const shortDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const source = (p: Point) =>
-  p.kind === 'calculated' ? 'calculated' : p.source === 'integration' ? `${p.app ? appName(p.app) : 'another app'}, imported` : p.source === 'screenshot' ? 'from a screenshot' : 'entered by you';
+  p.kind === 'calculated' ? 'calculated' : p.source === 'integration' ? `${p.app ? appName(p.app) : 'another app'}, imported` : p.source === 'screenshot' ? 'from a screenshot' : p.source === 'meals' ? 'from logged meals' : 'entered by you';
 
 export function LineChart({ series, unit, reference, decimals = 1, testID }: { series: Series[]; unit: string; reference?: { value: number; label: string }; decimals?: number; testID?: string }) {
   const { colors, type } = useTheme();

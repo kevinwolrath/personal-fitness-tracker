@@ -18,9 +18,11 @@ type Props = {
   onSkipToggle: () => void;
   /** Exercises ticked in a session (#28): the row shows "2 of 5 exercises" while it's under way. */
   exerciseProgress?: { done: number; total: number } | null;
+  /** A meal replaced by what was actually eaten (#97): shown instead of the plan's recipe. */
+  replacedBy?: { name: string; summary: string | null; tag: string } | null;
 };
 
-export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle, exerciseProgress }: Props) {
+export function ActivityRow({ activity: a, log, showTime, note, editable, isNext, onPress, onMore, onSkipToggle, exerciseProgress, replacedBy }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -68,7 +70,16 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
         <Text style={[type.body, (done || skipped) && styles.textDone]} numberOfLines={2}>
           {a.label}
         </Text>
-        {meta ? (
+        {replacedBy ? (
+          <>
+            <Text style={[type.detail, styles.replaced]} numberOfLines={2} testID={`replaced-${a.id}`}>
+              Replaced: {replacedBy.name}
+            </Text>
+            <Text style={[type.detail, styles.meta]} numberOfLines={2}>
+              {[replacedBy.summary, replacedBy.tag].filter(Boolean).join(' · ')}
+            </Text>
+          </>
+        ) : meta ? (
           <Text style={[type.detail, styles.meta]} numberOfLines={2}>
             {meta}
           </Text>
@@ -105,7 +116,7 @@ export function ActivityRow({ activity: a, log, showTime, note, editable, isNext
           onPress={onMore}
           style={({ pressed }) => [styles.main, styles.mealBody, pressed && styles.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`${a.label} details`}
+          accessibilityLabel={replacedBy ? `${a.label}, replaced by ${replacedBy.name}. Details` : `${a.label} details`}
           testID={`details-${a.id}`}
         >
           {body}
@@ -173,6 +184,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   time: { flexShrink: 0, fontSize: 14, fontWeight: '600', color: colors.muted, ...type.number },
   text: { flex: 1 },
   meta: { marginTop: 2 },
+  replaced: { marginTop: 2, color: colors.ink, fontWeight: '600' },
   textDone: { color: colors.faint },
   segments: { flexDirection: 'row', gap: 4 },
   segment: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: colors.faint },

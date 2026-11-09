@@ -1,0 +1,126 @@
+<!doctype html><html><head><meta charset="utf-8"><title>#97 Photo meal wireframes</title><style>
+:root{--bg:#101519;--card:#20262c;--line:#3a434b;--ink:#eef1f3;--mut:#9aa5ae;--or:#ff9d42;--red:#e5484d;--amb:#f5a524;--grn:#46a758;--fld:#151a1e}
+*{box-sizing:border-box}body{margin:0;background:#555;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+.phone{width:390px;height:844px;background:var(--bg);overflow:hidden;position:relative;margin:0}
+.app{height:48px;display:flex;align-items:center;gap:16px;padding:0 20px;border-bottom:1px solid var(--line);font-weight:700;font-size:18px}
+.pad{padding:8px 24px}.dr{padding:12px 24px 4px;font-size:16px}
+h1{margin:4px 0 2px;font-size:28px}.sub{color:var(--mut);font-size:14px}
+.tr{display:flex;align-items:center;justify-content:space-between}.chipdt{border:1px solid var(--line);border-radius:22px;padding:10px 12px;font-size:15px;font-weight:600}
+.prog{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px}.prog i{flex:1;height:3px;background:var(--line);border-radius:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}
+.eb{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--or)}
+.t{font-size:22px;font-weight:800;margin:2px 0}
+.tbl{border:1px solid var(--line);border-radius:12px;margin:10px 0;font-size:15px}.tbl div{display:flex;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--line)}.tbl div:last-child{border:0}.tbl b{font-weight:700}
+.btn{background:var(--or);color:#111;border-radius:14px;text-align:center;padding:15px;font-weight:700;font-size:17px;margin-top:10px}
+.ghost{border:1px solid var(--line);border-radius:14px;text-align:center;padding:13px;font-weight:600;margin-top:10px;font-size:16px}
+.link{color:var(--mut);text-decoration:underline;text-align:center;padding:12px 0 2px;font-size:15px}
+.hl{outline:2px solid var(--or);outline-offset:3px}
+.frame{width:390px;background:#000}.lbl{background:#000;color:#fff;font-size:12.5px;padding:8px 12px 10px;line-height:1.4}
+.tab{position:absolute;bottom:0;left:0;right:0;height:56px;background:var(--card);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;color:var(--mut);font-size:13px}.tab b{color:var(--or)}
+.sheet{position:absolute;inset:150px 0 0 0;background:var(--card);border-radius:22px 22px 0 0;padding:8px 24px;z-index:5}
+.dim{position:absolute;inset:0;background:#0008;z-index:4}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--mut);margin:0 auto 8px}
+.mh{display:flex;justify-content:space-between;align-items:center;height:48px;padding:0 20px;border-bottom:1px solid var(--line)}.mh b{font-size:17px}.mh span{color:var(--or);width:70px}.mh span:last-child{text-align:right}
+.sec{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase;margin:14px 0 6px}
+.done1{display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--line);font-size:15px}.done1 .ok{color:var(--grn);font-weight:800}.done1 .ch{margin-left:auto;color:var(--or);font-size:14px}
+.thumb{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#7a5a3a,#c9a26b 40%,#5f8a4a 70%,#d4c49a);flex:none}
+.photo{height:300px;border-radius:14px;background:linear-gradient(135deg,#6b4a2c,#c9a26b 35%,#5f8a4a 60%,#d9c79c 80%,#8a5e3c);display:flex;align-items:flex-end;justify-content:center;color:#fff8;font-size:12px;padding:8px}
+.note{color:var(--mut);font-size:13px;line-height:1.4}
+.warn{border:1px solid var(--amb);color:var(--ink);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.4;margin:8px 0}.warn b{color:var(--amb)}
+.err{border:1px solid var(--red);border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45;margin:8px 0}.err b{color:var(--red)}
+.paste{background:var(--fld);border:1px solid var(--line);border-radius:12px;padding:10px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--mut);height:110px;overflow:hidden;white-space:pre}
+.chip{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:10px;border:1px dashed var(--amb);color:var(--amb)}
+.item{border-bottom:1px solid var(--line);padding:8px 0}.item .n{display:flex;justify-content:space-between;font-size:15px;font-weight:600}.item .n span{color:var(--mut);font-weight:400}
+.macro{display:flex;gap:6px;margin-top:6px}.macro div{flex:1;background:var(--fld);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:13px}.macro small{display:block;color:var(--mut);font-size:10.5px}
+.tot{display:flex;gap:6px;margin:8px 0}.tot div{flex:1;background:#2a3238;border-radius:10px;text-align:center;padding:6px 2px;font-size:11px;color:var(--mut)}.tot b{display:block;font-size:16px;color:var(--ink)}
+.bar{position:absolute;left:0;right:0;bottom:0;padding:12px 20px 20px;background:var(--bg);border-top:1px solid var(--line);z-index:6}.bar .btn{margin:0}
+.steps{display:flex;gap:6px;padding:10px 20px 0}.steps i{flex:1;height:4px;border-radius:2px;background:var(--line)}.steps i.on{background:var(--or)}
+.row{display:flex;align-items:center;gap:12px;min-height:60px;border-bottom:1px solid var(--line);padding:6px 0}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--mut);flex:none}.ck.rep{background:#2a3238;border-color:var(--grn);color:var(--grn);font-size:13px;display:flex;align-items:center;justify-content:center}
+.tm{width:66px;font-size:15px;flex:none}.nm{flex:1;font-size:16px;font-weight:600}.nm small{display:block;color:var(--mut);font-size:13px;font-weight:400}
+.tag{font-size:11px;font-weight:700;padding:1px 6px;border-radius:8px;border:1px solid var(--mut);color:var(--mut);margin-left:4px}
+.big{border:1px solid var(--line);border-radius:16px;padding:18px;display:flex;gap:14px;align-items:center;margin:10px 0;font-size:16px;font-weight:600}.big small{display:block;color:var(--mut);font-weight:400;font-size:13px}
+.ic{width:44px;height:44px;border-radius:12px;background:#2a3238;display:flex;align-items:center;justify-content:center;font-size:22px;flex:none}
+</style></head><body><div id="x"></div><script>
+const APP=`<div class="app">☰ <span>Body Anvil</span></div>`;
+const HDR=`<div class="dr">‹ &nbsp;Mon, 2 Nov ▾ &nbsp;›</div><div class="pad" style="padding-top:0"><div class="tr"><h1>Today</h1><span class="chipdt">Home day ▾</span></div><div class="prog">1 of 7 done <i></i></div>`;
+const MEAL=`<div class="eb">Do this next</div><div class="t">Fixed lunch</div><div class="sub">Now · 12:00 pm · Protein yoghurt and oats, no heating needed</div>
+<div class="tbl"><div><span>High-protein yoghurt</span><b>200 g</b></div><div><span>Rolled oats</span><b>40 g</b></div><div><span>Protein powder</span><b>30 g</b></div></div>
+<div class="sub">≈ 1,780 kJ · 42 g protein</div><div class="btn">Done</div>`;
+const TAB=`<div class="tab"><b>Today</b><span>Progress</span></div>`;
+const E1=`${APP}${HDR}<div class="card">${MEAL}<div class="ghost hl">📷 Log different meal</div><div class="link">Skip and more</div></div></div>${TAB}
+<div class="lbl"><b>Entry A (recommended)</b> · content layer, inside the Do this next card: a secondary outlined button under Done. Done stays the one primary. Card +58 px; the card still starts at the same place, so the 200 px header budget is unchanged.</div>`;
+const E2=`${APP}${HDR}<div class="card">${MEAL}<div class="link" style="display:flex;justify-content:center;gap:18px"><span class="hl">📷 Different meal</span><span>·</span><span>Skip and more</span></div></div></div>${TAB}
+<div class="lbl"><b>Entry B</b> · content layer, same card: a text link beside "Skip and more". 0 px. Quieter, but two links on one row are tighter at 320 px and easy to miss.</div>`;
+const E3=`${APP}${HDR}<div class="card">${MEAL}<div class="link">Skip and more</div></div></div>${TAB}<div class="dim"></div>
+<div class="sheet"><div class="grab"></div><div class="tr" style="height:44px"><span style="color:var(--or)">Close</span><b>Fixed lunch</b><span style="width:40px"></span></div>
+<div class="sub" style="text-align:center">12:00 pm · Protein yoghurt and oats</div><div class="sec">What to prepare</div><div class="tbl"><div><span>High-protein yoghurt</span><b>200 g</b></div><div><span>Rolled oats</span><b>40 g</b></div></div>
+<div class="btn">Mark done</div><div class="ghost hl">📷 Log different meal</div><div class="ghost">Skip</div></div>
+<div class="lbl"><b>Entry C</b> · only in the meal's sheet ("Skip and more", or any meal row's ›). 0 px on Today, one extra tap. <b>In every option the sheet has this button</b>, so any scheduled meal on any editable day can be replaced, not only the due one.</div>`;
+const CAP=`<div class="mh"><span>Cancel</span><b>Log different meal</b><span></span></div><div class="pad">
+<div class="sub" style="margin:6px 0 4px">Replaces <b style="color:var(--ink)">Fixed lunch</b> · Mon 2 Nov</div>
+<div class="big"><div class="ic">📷</div><div>Take a photo<small>Opens the camera</small></div></div>
+<div class="big"><div class="ic">🖼</div><div>Choose from gallery<small>A photo you already took</small></div></div>
+<div class="sec">If camera access is off</div>
+<div class="warn"><b>Camera access is off.</b> Allow it in Android settings, or choose a photo from the gallery instead.<div style="color:var(--or);margin-top:6px;font-weight:600">Open settings</div></div>
+<div class="note" style="margin-top:14px">🔒 The photo stays on this phone. It leaves only when you tap <b>Share with AI</b> and pick an app.</div></div>
+<div class="lbl"><b>Step 1, capture (both layouts)</b> · full-screen modal route, ModalHeader: Cancel · title. The source sheet opens straight away, like Import. Denied permission never dead-ends: gallery stays available.</div>`;
+const WA1=`<div class="mh"><span>Cancel</span><b>Log different meal</b><span></span></div><div class="pad">
+<div class="sub" style="margin:6px 0 4px">Replaces <b style="color:var(--ink)">Fixed lunch</b> · Mon 2 Nov</div>
+<div class="done1"><div class="thumb"></div><span><span class="ok">✓</span> Photo</span><span class="ch">Retake</span></div>
+<div class="sec">2 · Ask an AI</div>
+<div class="note">Share the photo and the nutrition prompt with ChatGPT, Claude or another app. The prompt is copied too, in case the app takes only the photo: paste it in the same chat.</div>
+<div class="btn hl">Share with AI</div><div class="link" style="text-decoration:none;color:var(--or)">Copy prompt only</div>
+<div class="sec">3 · Paste the reply</div>
+<div class="paste">Paste the AI's whole reply here.
+Text around the JSON is fine.</div>
+<div class="note" style="margin-top:6px">Nothing pasted is run. The app only reads the numbers.</div></div>
+<div class="bar"><div class="btn" style="opacity:.35">Check reply</div></div>
+<div class="lbl"><b>Wizard A (recommended): one page</b>, like Configure (contract 02 "one page"). Finished steps collapse to one line with a way back ("✓ Photo · Retake"). Check reply sits in the fixed bottom bar and enables once text is pasted.</div>`;
+const REV=(hdr)=>`${hdr}<div class="pad" style="padding-top:4px">
+<div class="tr" style="margin-top:4px"><b style="font-size:19px">Chicken burrito bowl</b><span class="chip">Medium confidence</span></div>
+<div class="note">Estimate from a photo, not a measurement. Edit anything that looks wrong.</div>
+<div class="tot"><div><b>≈ 2,950</b>kJ</div><div><b>≈ 38</b>g protein</div><div><b>≈ 82</b>g carbs</div><div><b>≈ 24</b>g fat</div></div>
+<div class="item"><div class="n">Rice <span>≈ 1 cup · 180 g</span></div><div class="macro"><div><small>kJ</small>980</div><div><small>Protein g</small>5</div><div><small>Carbs g</small>52</div><div><small>Fat g</small>1</div></div></div>
+<div class="item"><div class="n">Grilled chicken <span>≈ 120 g</span></div><div class="macro"><div><small>kJ</small>830</div><div><small>Protein g</small>30</div><div><small>Carbs g</small>0</div><div><small>Fat g</small>5</div></div></div>
+<div class="item"><div class="n">Guacamole <span>amount unknown</span></div><div class="macro"><div><small>kJ</small>—</div><div><small>Protein g</small>—</div><div><small>Carbs g</small>—</div><div><small>Fat g</small>—</div></div></div>
+<div class="note" style="margin-top:4px">+ 2 more items · <span style="color:var(--or)">Add item</span></div>
+<div class="sec">Assumptions</div><div class="note">• Sauce not visible, not counted · • Rice looks like white rice</div>
+<div class="warn"><b>Check the totals.</b> The AI said 3,100 kJ; the items add to 2,950 kJ, so the item sum is used. Guacamole has no numbers, so the totals may be low.</div>
+</div><div class="bar"><div class="btn">Save · replaces Fixed lunch</div></div>`;
+const WA2=REV(`<div class="mh"><span>Cancel</span><b>Log different meal</b><span></span></div><div class="pad" style="padding-bottom:0"><div class="done1" style="min-height:44px"><div class="thumb" style="width:32px;height:32px"></div><span><span class="ok">✓</span> Photo · <span class="ok">✓</span> Reply checked</span><span class="ch">Change</span></div></div>`)+`
+<div class="lbl"><b>Wizard A, review</b> · same page, steps collapsed. Values are rounded and marked ≈; unknown stays "—", never filled in. Save is the one primary, in the fixed bar, with what it does.</div>`;
+const WB1=`<div class="mh"><span>Back</span><b>Ask an AI</b><span></span></div><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div><div class="pad">
+<div class="sub" style="margin:8px 0">Step 3 of 5 · Replaces Fixed lunch</div>
+<div class="photo" style="height:250px">your photo</div>
+<div class="note" style="margin-top:12px">Share the photo and the prompt with an AI app. The prompt is also copied, in case the app takes only the photo.</div>
+<div class="link" style="text-decoration:none;color:var(--or)">See the prompt</div></div>
+<div class="bar"><div class="btn hl">Share with AI</div><div class="link" style="padding-top:10px">I've got a reply → Next</div></div>
+<div class="lbl"><b>Wizard B: one step per screen</b> (capture · preview · share · paste · review) with a progress strip. Simpler screens, more taps; Back on each step and Cancel only on the first, which needs an exception to contract 02's "dismiss always on the left" header. Bigger photo preview.</div>`;
+const WB2=REV(`<div class="mh"><span>Back</span><b>Check the estimate</b><span></span></div><div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>`)+`
+<div class="lbl"><b>Wizard B, step 5 review</b> · same review content as A; only the header differs (Back, progress strip).</div>`;
+const ERR=`<div class="mh"><span>Cancel</span><b>Log different meal</b><span></span></div><div class="pad">
+<div class="done1"><div class="thumb"></div><span><span class="ok">✓</span> Photo · <span class="ok">✓</span> Shared</span><span class="ch">Share again</span></div>
+<div class="sec">3 · Paste the reply</div>
+<div class="paste" style="color:var(--ink)">Here's my estimate of your meal:
+\`\`\`json
+{ "schemaVersion": 1, "mealName": "Chicken bur
+</div>
+<div class="err"><b>The reply is cut off.</b> The JSON stops part-way through. Ask the AI to "send the whole JSON again", then paste the new reply.</div>
+<div class="note">Other messages, for example: "Found two meals; paste one reply at a time." · "Made for a newer app version (schemaVersion 2)." · "Rice: protein is negative."</div>
+<div class="link" style="color:var(--or);text-decoration:none">Enter the numbers myself instead</div></div>
+<div class="bar"><div class="btn">Check reply</div></div>
+<div class="lbl"><b>Paste errors (both layouts)</b> · one actionable message, the paste is kept for fixing, and manual entry is always possible. The draft (photo + paste) survives leaving the app to the AI and coming back.</div>`;
+const AFTER=`${APP}<div class="pad" style="padding-top:8px"><div class="sec">Midday</div>
+<div class="row"><div class="ck rep">📷</div><span class="tm">12:00 pm</span><div class="nm"><span style="color:var(--mut);text-decoration:line-through;font-weight:400">Fixed lunch</span><small style="color:var(--ink)">Replaced: Chicken burrito bowl</small><small>≈ 2,950 kJ · 38 g protein</small><small><span class="tag" style="margin:2px 0 0">📷 Photo estimate</span></small></div><span>›</span></div>
+<div class="row"><div class="ck"></div><span class="tm">12:30 pm</span><div class="nm">Dog walk<small>Optional</small></div><span>›</span></div>
+<div class="sec">Eaten today</div>
+<div class="note" style="font-size:14px;color:var(--ink)">≈ 2,950 kJ of ≤ 7,530 · 38 of 160–180 g protein</div><div class="note">Carbs ≈ 82 g · Fat ≈ 24 g · from 1 logged meal; ticked plan meals don't count</div>
+<div class="sec">Recorded</div>
+<div class="row" style="min-height:52px"><div class="nm" style="font-weight:400">Chicken burrito bowl <span class="tag">Photo estimate</span><small>12:41 pm · replaced Fixed lunch</small></div><span>›</span></div>
+</div>${TAB}
+<div class="lbl"><b>After Save</b> · the row reads Replaced (counts as done for "1 of 7"), its plan recipe is not counted as eaten. Day totals come from saved actuals only, once each. Recorded lists it; tap to edit or remove. Wording and placement of "Eaten today" to be settled with the build.</div>`;
+const F={e1:E1,e2:E2,e3:E3,capture:CAP,wa1:WA1,wa2:WA2,wb1:WB1,wb2:WB2,error:ERR,after:AFTER};
+const split=h=>{const i=h.lastIndexOf('<div class="lbl">');return [h.slice(0,i),h.slice(i)]};
+document.getElementById('x').innerHTML=Object.entries(F).map(([k,h])=>{const [a,b]=split(h);return `<div class="frame" id="${k}"><div class="phone">${a}</div>${b}</div>`}).join('<div style="height:20px"></div>');
+</script></body></html>

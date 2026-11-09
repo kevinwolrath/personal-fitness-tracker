@@ -13,7 +13,9 @@ import type {
   StoreSnapshot,
   StoredPlan,
   TrackingStore,
+  MealCompletion,
 } from './types';
+import type { MealLog } from '../nutrition/contract';
 
 type Param = string | number | null;
 
@@ -83,6 +85,13 @@ const migrations = [
      at TEXT NOT NULL, cleared_at TEXT);`,
   // 6 (#104): optional imported exercise interval and recorded distance; old observations stay intact.
   `ALTER TABLE observation ADD COLUMN activity_json TEXT;`,
+  // 7 (#97): meals actually eaten (photo + AI estimate, or typed in). Additive only: one new table.
+  `CREATE TABLE meal_log (
+     id TEXT PRIMARY KEY, date TEXT NOT NULL, at TEXT NOT NULL, plan_id TEXT, activity_id TEXT, replaced_label TEXT,
+     name TEXT NOT NULL, items_json TEXT NOT NULL, ai_totals_json TEXT, confidence TEXT, assumptions_json TEXT NOT NULL,
+     uncertainties_json TEXT NOT NULL, source TEXT NOT NULL, schema_version INTEGER, edited INTEGER NOT NULL DEFAULT 0,
+     photos_json TEXT NOT NULL, recorded_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+   CREATE INDEX meal_log_date ON meal_log (date, at);`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -172,6 +181,18 @@ type ExerciseLogRow = { id: string; movement: string; date: string; at: string; 
 const toExerciseLog = (r: ExerciseLogRow): ExerciseLog => ({ id: r.id, movement: r.movement, date: r.date, at: r.at, sets: r.sets, reps: r.reps, seconds: r.seconds, intensity: r.intensity });
 type MuscleReportRow = { id: string; muscle: string; kind: MuscleReport['kind']; at: string; cleared_at: string | null };
 const toMuscleReport = (r: MuscleReportRow): MuscleReport => ({ id: r.id, muscle: r.muscle, kind: r.kind, at: r.at, clearedAt: r.cleared_at });
+
+type MealLogRow = {
+  id: string; date: string; at: string; plan_id: string | null; activity_id: string | null; replaced_label: string | null; name: string;
+  items_json: string; ai_totals_json: string | null; confidence: MealLog['confidence']; assumptions_json: string; uncertainties_json: string;
+  source: MealLog['source']; schema_version: number | null; edited: number; photos_json: string; recorded_at: string; updated_at: string;
+};
+const toMealLog = (r: MealLogRow): MealLog => ({
+  id: r.id, date: r.date, at: r.at, planId: r.plan_id, activityId: r.activity_id, replacedLabel: r.replaced_label, name: r.name,
+  items: JSON.parse(r.items_json), aiTotals: r.ai_totals_json ? JSON.parse(r.ai_totals_json) : null, confidence: r.confidence,
+  assumptions: JSON.parse(r.assumptions_json), uncertainties: JSON.parse(r.uncertainties_json), source: r.source,
+  schemaVersion: r.schema_version, edited: r.edited === 1, photos: JSON.parse(r.photos_json), recordedAt: r.recorded_at, updatedAt: r.updated_at,
+});
 
 export class SqliteTrackingStore implements TrackingStore {
   private constructor(private db: SqlDatabase) {}
@@ -383,6 +404,46 @@ export class SqliteTrackingStore implements TrackingStore {
     await this.db.runAsync('UPDATE muscle_report SET cleared_at = ? WHERE id = ?', [at, id]);
   }
 
+  async mealLogs(range: { from?: string; to?: string } = {}): Promise<MealLog[]> {
+    const rows = await this.db.getAllAsync<MealLogRow>(
+      'SELECT * FROM meal_log WHERE (? IS NULL OR date >= ?) AND (? IS NULL OR date <= ?) ORDER BY date, at, id',
+      [range.from ?? null, range.from ?? null, range.to ?? null, range.to ?? null],
+    );
+    return rows.map(toMealLog);
+  }
+
+  private async upsertMealLog(m: MealLog): Promise<void> {
+    await this.db.runAsync(
+      `INSERT OR REPLACE INTO meal_log (id, date, at, plan_id, activity_id, replaced_label, name, items_json, ai_totals_json, confidence,
+         assumptions_json, uncertainties_json, source, schema_version, edited, photos_json, recorded_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [m.id, m.date, m.at, m.planId, m.activityId, m.replacedLabel, m.name, JSON.stringify(m.items), m.aiTotals ? JSON.stringify(m.aiTotals) : null,
+        m.confidence, JSON.stringify(m.assumptions), JSON.stringify(m.uncertainties), m.source, m.schemaVersion, m.edited ? 1 : 0,
+        JSON.stringify(m.photos), m.recordedAt, m.updatedAt],
+    );
+  }
+
+  private async writeCompletion(c: MealCompletion): Promise<void> {
+    if (c.log) await this.upsertActivity({ ...c.log, planId: c.planId, date: c.date, activityId: c.activityId });
+    else await this.db.runAsync('DELETE FROM activity_log WHERE plan_id = ? AND date = ? AND activity_id = ?', [c.planId, c.date, c.activityId]);
+    await this.insertEvent(c.event);
+    await this.upsertDaySnapshot(c.snapshot);
+  }
+
+  async saveMealLog(log: MealLog, completion?: MealCompletion | null): Promise<void> {
+    await this.transaction(async () => {
+      await this.upsertMealLog(log);
+      if (completion) await this.writeCompletion(completion);
+    });
+  }
+
+  async removeMealLog(id: string, completion?: MealCompletion | null): Promise<void> {
+    await this.transaction(async () => {
+      await this.db.runAsync('DELETE FROM meal_log WHERE id = ?', [id]);
+      if (completion) await this.writeCompletion(completion);
+    });
+  }
+
   private async insertConfigChange(c: ConfigChange): Promise<void> {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO config_change (id, applied_at, sections, payload, from_revision, to_revision, previous_plan_json)
@@ -454,7 +515,7 @@ export class SqliteTrackingStore implements TrackingStore {
       `SELECT MIN(d) AS first FROM (
          SELECT MIN(date) AS d FROM observation UNION ALL SELECT MIN(date) FROM activity_log
          UNION ALL SELECT MIN(date) FROM day_override UNION ALL SELECT MIN(date) FROM quick_log
-         UNION ALL SELECT MIN(date) FROM exercise_log)`,
+         UNION ALL SELECT MIN(date) FROM exercise_log UNION ALL SELECT MIN(date) FROM meal_log)`,
       [],
     );
     return r?.first ?? null;
@@ -473,11 +534,12 @@ export class SqliteTrackingStore implements TrackingStore {
       ),
     ]);
     const configChanges = (await this.configHistory()).reverse();
-    const [events, snapshots, exerciseLogs, muscleReports] = await Promise.all([
+    const [events, snapshots, exerciseLogs, muscleReports, mealLogs] = await Promise.all([
       this.db.getAllAsync<EventRow>('SELECT * FROM completion_event ORDER BY date, at, id', []),
       this.db.getAllAsync<SnapshotRow>('SELECT * FROM day_snapshot ORDER BY date, plan_id', []),
       this.exerciseLogs(),
       this.muscleReports(),
+      this.mealLogs(),
     ]);
     return {
       configChanges,
@@ -491,6 +553,7 @@ export class SqliteTrackingStore implements TrackingStore {
       imports: imports.map((i) => ({ id: i.id, createdAt: i.created_at, extractor: i.extractor, assets: JSON.parse(i.assets_json) })),
       exerciseLogs,
       muscleReports,
+      mealLogs,
     };
   }
 
@@ -507,6 +570,7 @@ export class SqliteTrackingStore implements TrackingStore {
       for (const d of s.daySnapshots ?? []) await this.upsertDaySnapshot(d);
       for (const l of s.exerciseLogs ?? []) await this.addExerciseLog(l);
       for (const r of s.muscleReports ?? []) await this.addMuscleReport(r);
+      for (const m of s.mealLogs ?? []) await this.upsertMealLog(m);
     });
   }
 }

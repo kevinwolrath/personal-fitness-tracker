@@ -8,6 +8,7 @@ import { preferences } from '../../platform/preferences';
 import { chartLayout, planVersionsFrom, type ProgressOptions, chartTitles, progressMetrics, progressReport, ranges, type ChartId, type ChartModel, type RangeId } from '../../progress/report';
 import type { WeekCompare } from '../../progress/series';
 import type { MealLog } from '../../nutrition/contract';
+import type { TrendInsight } from '../../progress/forecast';
 import { useApp } from '../../providers/AppProvider';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
@@ -89,6 +90,7 @@ export function ProgressScreen() {
         <GamificationCard gallery />
         {report ? (
           <>
+            <TrendCard insight={report.trend} />
             <View style={styles.summary} testID="progress-summary">
               <Text style={styles.summaryTitle}>This week vs last</Text>
               <View style={styles.summaryRow}>
@@ -110,6 +112,33 @@ export function ProgressScreen() {
       </ScrollView>
       <EditChartsSheet visible={editing} layout={layout} onChange={saveLayout} onClose={() => setEditing(false)} />
     </SafeAreaView>
+  );
+}
+
+/** #57 layout A: the weight trend's plain status, with optional steps. Advisory only: nothing changes the plan. */
+function TrendCard({ insight }: { insight: TrendInsight }) {
+  const styles = useStyles();
+  const { type } = useTheme();
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.summary} testID="progress-trend" accessibilityLiveRegion="polite">
+      <Text style={styles.summaryTitle}>Trend</Text>
+      <Text style={styles.trendTitle} testID="progress-trend-title">{insight.title}</Text>
+      <Text style={type.detail}>{insight.body}</Text>
+      {insight.steps ? (
+        <>
+          <Pressable onPress={() => setOpen((o) => !o)} style={[styles.link, styles.trendLink]} accessibilityRole="button" accessibilityState={{ expanded: open }} testID="progress-trend-steps-toggle">
+            <Text style={styles.linkText}>{open ? 'What you can try ⌃' : 'What you can try ⌄'}</Text>
+          </Pressable>
+          {open ? (
+            <View testID="progress-trend-steps">
+              {insight.steps.map((s) => <Text key={s} style={type.detail}>• {s}</Text>)}
+              <Text style={[type.detail, styles.trendNote]}>Nothing changes in your plan unless you change it.</Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -209,6 +238,9 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   rangeText: { fontSize: 14, fontWeight: '600', color: colors.ink },
   rangeTextOn: { fontWeight: '800' },
   summary: { backgroundColor: colors.card, borderRadius: radius.lg, padding: space.lg, gap: space.sm },
+  trendTitle: { fontSize: 20, fontWeight: '800', color: colors.onCard, marginVertical: 2 },
+  trendLink: { alignItems: 'flex-start' },
+  trendNote: { marginTop: space.xs },
   summaryTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.onInkAction },
   summaryRow: { flexDirection: 'row', gap: space.lg },
   stat: { flex: 1, gap: 2 },

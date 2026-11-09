@@ -22,7 +22,8 @@ const tabs = [
   ) },
 ] as const;
 
-export function TabBar() {
+/** `badges`: tabs with something new to see, e.g. a weight-trend finding on Progress (#57). */
+export function TabBar({ badges = {} }: { badges?: Record<string, boolean> } = {}) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -41,10 +42,13 @@ export function TabBar() {
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               aria-selected={on}
-              accessibilityLabel={t.label}
+              accessibilityLabel={badges[t.href] ? `${t.label}, something new` : t.label}
               testID={`tab-${t.label.toLowerCase()}`}
             >
-              {t.icon(c)}
+              <View>
+                {t.icon(c)}
+                {badges[t.href] ? <View style={styles.dot} testID={`tab-${t.label.toLowerCase()}-dot`} /> : null}
+              </View>
               <Text style={[styles.label, { color: c }, on && styles.labelOn]}>{t.label}</Text>
             </Pressable>
           );
@@ -60,4 +64,5 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2, paddingVertical: space.xs },
   label: { fontSize: 12, fontWeight: '600' },
   labelOn: { fontWeight: '800' },
+  dot: { position: 'absolute', top: -2, right: -6, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.accent },
 }));

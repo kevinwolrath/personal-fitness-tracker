@@ -69,5 +69,12 @@ export const notifications = {
   async lastOpened(): Promise<OpenedReminder | null> {
     return null;
   },
+  /** Test surface: records what a phone would show (`window.__pftNotified`), only when allowed. */
+  async notifyNow(id: string, title: string, body: string): Promise<boolean> {
+    if (status !== 'granted') return false;
+    const ww = w as { __pftNotified?: { id: string; title: string; body: string }[] };
+    (ww.__pftNotified ??= []).push({ id, title, body });
+    return true;
+  },
   openSettings() {},
 };

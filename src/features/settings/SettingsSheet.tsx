@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { preferences } from '../../platform/preferences';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import { GamificationSettings } from '../../gamification/Gamification';
@@ -71,8 +73,36 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
           Food “calories” are kilocalories (kcal). 1 kcal = 4.184 kJ. This only changes how energy is shown on this phone: your plan
           and your records stay as they are.
         </Text>
+        <TrendAlertsSetting />
       </ScrollView>
     </Sheet>
+  );
+}
+
+/** #57: weight-trend alerts on or off (a device choice). */
+function TrendAlertsSetting() {
+  const { type } = useTheme();
+  const styles = useStyles();
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => {
+    preferences.trendAlerts().then(setOn, () => setOn(true));
+  }, []);
+  if (on === null) return null;
+  const toggle = () => {
+    setOn(!on);
+    preferences.setTrendAlerts(!on).catch(() => undefined);
+  };
+  return (
+    <View>
+      <Text style={type.section} accessibilityRole="header">Weight trend alerts</Text>
+      <Pressable onPress={toggle} style={({ pressed }) => [styles.choice, pressed && styles.pressed]} role="switch" aria-checked={on} aria-label="Weight trend alerts" testID="trend-alerts">
+        <View style={[styles.radio, on && styles.radioOn]}>{on && <View style={styles.dot} />}</View>
+        <View style={styles.text}>
+          <Text style={styles.label}>{on ? 'On' : 'Off'}</Text>
+          <Text style={type.detail}>A dot on Progress, and a notification if notifications are allowed, when your weight trend has been flat or slower for a few weeks. At most once a week.</Text>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 

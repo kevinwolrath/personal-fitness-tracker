@@ -49,3 +49,10 @@ Delivered in two parts: measurements and weight trends (PR #64), then activity, 
 - **No interpolation:** gaps stay gaps, and measured values are never drawn as continuous lines.
 - **Calculations** are pure functions in `src/progress/series.ts` and `src/progress/report.ts`.
 - **Data** comes from `store.observationsFor(metrics)`, which returns observed values only, never inferred ones, `store.planHistory(planId)` (activity logs and day-type overrides) and `store.configHistory()` (earlier plan versions, `planVersionsFrom`) for workouts.
+
+## Trend and forecast (#57, layout A)
+
+- **Trend card** at the top of Progress: the weight trend's plain status (`trendInsight`, `src/progress/forecast.ts`): **Flat for N weeks**, **Slower than before**, **Trending up**, **Steady**, or **Not enough weigh-ins yet** with what's missing. A plateau needs 3+ weeks and 6+ weigh-ins with a flat trend (under 0.1 kg or 0.2 lb a week); a few flat days never count. Its explanation never says the body refuses to lose fat.
+- **What you can try**: optional steps (intake logging, activity, protein and strength training, sleep, and a deliberate plan change with Configure with AI). Nothing changes a target, intake or training automatically.
+- **Forecast** on the Goal chart (**Estimate**): a dashed line at the recent rate (up to 6 weeks) from the latest 7-day average, with a range that widens with the rate's uncertainty, up to 12 weeks. The first two weeks of weigh-ins are left out once later data exists, so early water weight is never projected. No forecast without 6 weigh-ins over 3 weeks or with no weigh-in in the last 2 weeks.
+- **Alert (option b)**: a dot on the Progress tab, and one phone notification if notifications are already allowed (it never asks), for a new plateau or slowdown. Once per finding, at most once a week, only with a weigh-in in the last 3 days. Opening Progress clears the dot. **Settings → Weight trend alerts** turns it off (a device preference). There is no "behind target" alert until the plan has a target pace or date.

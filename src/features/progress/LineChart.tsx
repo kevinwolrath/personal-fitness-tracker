@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Line, Polyline, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Polygon, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 import { appName } from '../../observations/format';
 import { daysBetween, type Point } from '../../progress/series';
 import type { Series } from '../../progress/report';
@@ -27,7 +27,7 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
   const [width, setWidth] = useState(0);
   const [picked, setPicked] = useState<{ p: Point; label: string } | null>(null);
   const box = useRef<View>(null);
-  const all = series.flatMap((s) => s.points);
+  const all = series.flatMap((s) => [...s.points, ...(s.upper ?? [])]);
   if (!all.length) return null;
 
   const dates = all.map((p) => p.date).sort();
@@ -84,6 +84,14 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
                 const top = Math.min(y(p.value), y(0));
                 return <Rect key={`${i}-${p.date}`} x={x(p.date) - bw / 2} y={top} width={bw} height={Math.max(1, Math.abs(y(0) - y(p.value)))} rx={2} fill={tones[s.tone]} opacity={0.85} />;
               })
+            ) : s.style === 'band' ? (
+              s.points.length > 1 && s.upper ? (
+                <Polygon key={i} points={[...s.points, ...[...s.upper].reverse()].map((p) => `${x(p.date)},${y(p.value)}`).join(' ')} fill={tones[s.tone]} opacity={0.18} />
+              ) : null
+            ) : s.style === 'dashed' ? (
+              s.points.length > 1 ? (
+                <Polyline key={i} points={s.points.map((p) => `${x(p.date)},${y(p.value)}`).join(' ')} fill="none" stroke={tones[s.tone]} strokeWidth={2} strokeDasharray="6 4" />
+              ) : null
             ) : s.style === 'line' ? (
               s.points.length > 1 ? (
                 <Polyline key={i} points={s.points.map((p) => `${x(p.date)},${y(p.value)}`).join(' ')} fill="none" stroke={tones[s.tone]} strokeWidth={2.5} strokeLinejoin="round" />
@@ -112,7 +120,7 @@ export function LineChart({ series, unit, reference, decimals = 1, testID }: { s
       <View style={styles.legend}>
         {series.filter((s) => s.points.length).map((s) => (
           <View key={s.label} style={styles.legendItem}>
-            <View style={[s.style === 'line' ? styles.swLine : s.style === 'bars' ? styles.swBar : styles.swDot, { backgroundColor: tones[s.tone] }]} />
+            <View style={[s.style === 'line' || s.style === 'dashed' ? styles.swLine : s.style === 'bars' ? styles.swBar : s.style === 'band' ? styles.swBand : styles.swDot, { backgroundColor: tones[s.tone] }, s.style === 'band' && styles.swBandFade]} />
             <Text style={styles.legendText}>{s.label}</Text>
           </View>
         ))}
@@ -138,6 +146,8 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   swDot: { width: 8, height: 8, borderRadius: 4 },
   swLine: { width: 14, height: 3, borderRadius: 2 },
   swBar: { width: 8, height: 12, borderRadius: 2 },
+  swBand: { width: 14, height: 10, borderRadius: 2 },
+  swBandFade: { opacity: 0.3 },
   swDash: { backgroundColor: colors.muted, opacity: 0.6 },
   legendText: { fontSize: 12, color: colors.muted, flexShrink: 1 },
   picked: { marginTop: space.xs, fontSize: 13, color: colors.ink, fontWeight: '600' },

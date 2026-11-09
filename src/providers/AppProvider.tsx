@@ -8,6 +8,8 @@ import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
 import { space, useTheme, createThemedStyles } from '../ui/theme';
 import { SetupWizard } from '../features/onboarding/SetupWizard';
+import { observableStore } from '../storage/observableStore';
+import { GamificationProvider } from '../gamification/GamificationProvider';
 
 type AppData = {
   store: TrackingStore;
@@ -49,7 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const store = await openStore();
+      const store = observableStore(await openStore(), notifyDataChanged);
       const [plan, energy] = await Promise.all([loadActivePlan(store), preferences.energyDisplay().catch(() => null)]);
       if (cancelled) return;
       setChosenEnergy(energy);
@@ -92,7 +94,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   if (!state.plan || !value) {
     return <SetupWizard store={state.store} energy={chosenEnergy ?? 'kJ'} onFinished={(plan) => setState({ store: state.store, plan })} />;
   }
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return <AppContext.Provider value={value}><GamificationProvider>{children}</GamificationProvider></AppContext.Provider>;
 }
 
 const useStyles = createThemedStyles(({ colors, type }) => ({

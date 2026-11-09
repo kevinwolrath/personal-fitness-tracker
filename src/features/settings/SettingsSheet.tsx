@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
+import { GamificationSettings } from '../../gamification/Gamification';
 import { themes } from '../../ui/theme';
 import { energyDisplays, formatEnergy, type EnergyDisplay } from '../../energy';
 import { useApp } from '../../providers/AppProvider';
@@ -30,6 +31,7 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
     <Sheet visible={visible} onClose={onClose} label="Settings">
       <ModalHeader title="Settings" dismiss={{ label: 'Close', onPress: onClose }} />
       <ScrollView contentContainerStyle={styles.body} testID="settings-sheet">
+        <GamificationSettings />
         <View role="radiogroup" aria-label="Appearance">
           <Text style={type.section}>Appearance</Text>
           {Object.values(themes).map(theme => (

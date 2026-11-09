@@ -42,6 +42,8 @@ import { Toast, type ToastState } from '../../ui/Toast';
 import { useClock, useDay } from './useDay';
 import { useExerciseState } from './useExerciseState';
 import { CoverageSheet } from '../muscles/CoverageSheet';
+import { GamificationCard, GamificationCelebration } from '../../gamification/Gamification';
+import { useGamification } from '../../gamification/GamificationProvider';
 import type { MealLog } from '../../nutrition/contract';
 import { dayIntake } from '../../nutrition/intake';
 import { intakeLines, mealSummary, sourceTag } from '../../nutrition/format';
@@ -58,6 +60,7 @@ const isLocalDate = (d: unknown): d is LocalDate =>
  * Contains layout and generic copy only — every plan word comes from data.
  */
 export function DayLogScreen() {
+  const gamification = useGamification();
   const [coverage, setCoverage] = useState<null | 'map' | 'inventory'>(null);
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
@@ -331,6 +334,8 @@ export function DayLogScreen() {
           />
           <TargetsLine plan={plan} targets={day.targets} energy={energy} eaten={eaten} />
         </View>
+
+        {date === today && gamification?.enabled && <View style={styles.block}><GamificationCelebration /><GamificationCard /></View>}
 
         {nothingPlanned && !(noPlan && date === today) && <Text style={[type.body, styles.empty]}>Nothing planned for this day</Text>}
 

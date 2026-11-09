@@ -56,7 +56,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | Item | Does |
 |---|---|
 | **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
-| **Health Connect** | Opens the Health Connect sheet: connect (read-only, the only permission request), status, today's imported values with their source, **Sync now** and **Manage in Health Connect** (contract 12). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
+| **Health Connect** | Opens the Health Connect sheet: tick what to import, connect (read-only; the only permission requests), and a setup checklist: per type, whether it's allowed and arriving, with a **Fix** for each problem, **Check again** to confirm, and **Manage in Health Connect** (contract 12, #116). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |

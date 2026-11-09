@@ -36,9 +36,9 @@ async function ready(): Promise<Lib> {
   return hc;
 }
 
-const permissions = () => [
-  ...hcTypes.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] })),
-  ...(HC_DISTANCE ? [{ accessType: 'read' as const, recordType: 'Distance' as const }] : []),
+const permissions = (types: HcType[]) => [
+  ...types.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] })),
+  ...(HC_DISTANCE && types.includes('exercise') ? [{ accessType: 'read' as const, recordType: 'Distance' as const }] : []),
 ];
 const typeOf = (recordType: string): HcType | undefined => hcTypes.find((t) => hcRecordType[t] === recordType);
 const grantedTypes = (granted: { accessType: string; recordType: string }[]): HcType[] =>
@@ -87,10 +87,15 @@ export const healthConnect = {
     return grantedTypes(await hc.getGrantedPermissions());
   },
 
-  /** Ask for read access to six main types and optional Distance (an explicit user action: the only place we ask). */
-  async request(): Promise<HcType[]> {
+  /**
+   * Ask for read access to these types (the ticked ones, #116), plus optional Distance with workouts. Only on an
+   * explicit user action. Returns every type now allowed, read back from Health Connect: Android may grant
+   * nothing without showing its dialog (after two refusals), and the request's own result can omit earlier grants.
+   */
+  async request(types: HcType[] = hcTypes): Promise<HcType[]> {
     const hc = await ready();
-    return grantedTypes(await hc.requestPermission(permissions()));
+    await hc.requestPermission(permissions(types));
+    return grantedTypes(await hc.getGrantedPermissions());
   },
 
   /**

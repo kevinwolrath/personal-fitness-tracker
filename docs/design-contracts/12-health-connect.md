@@ -16,11 +16,12 @@ Imports what the phone already records: steps, active energy, workouts, weight a
   | `android.permission.health.READ_SLEEP` | Time asleep, shown under Recorded |
   | `android.permission.health.READ_DISTANCE` | Optional recorded distance attached to matching workouts; never estimated. **Currently off** (see below) |
 
-- **Asking:** the app asks only when the user taps **Connect Health Connect**. It never asks on launch, and never asks again by itself after a refusal. Partial grants are fine: only allowed types are read.
-- **Syncing:** on app start, on return to the foreground and on **Sync now**. There is no background sync and no changes token.
+- **Choosing (#116):** the user ticks which types to import. Before connecting, all six are ticked; **Connect** asks only for the ticked ones. For someone connected before #116, the ticks start as whatever Health Connect allows at that point, and are then stored. Only ticked types are read. Unticking a type stops reading it; what was already imported stays. The choice is device state (`pft.healthConnect.wanted`), never plan data.
+- **Asking:** the app asks only when the user taps **Connect Health Connect**, or a row's **Allow <type>** (one type, #116). It never asks on launch, and never asks again by itself after a refusal. Partial grants are fine: only allowed and ticked types are read. After asking, the app reads back what Health Connect allows, because Android may show nothing after two refusals.
+- **Syncing:** on app start, on return to the foreground and on **Check again**. There is no background sync and no changes token.
   - **Window:** each sync re-reads a window of local days ending today: **30** until a sync has completed; after that the last **7** days, or **from the day of the last fully successful sync** if that's earlier, at most **90** days (#46). A gap of any length up to 90 days closes itself on the next open. Only a sync that read every allowed type moves that start, so a partial or failed sync's gap is re-read next time. It replaces this integration's observations for those days and the types read, in one transaction (`TrackingStore.replaceIntegrationObservations`).
   - **Idempotent:** re-running a sync changes nothing. Edits and deletions made in other apps within the window show up here.
-  - **Per-type results (#44):** each sync records, per type, whether it was read, couldn't be read, or isn't allowed, with how many records (or days with a total) Health Connect returned and the latest date. These are counts and dates only, never health values, and stored on the device. A successful sync therefore never hides a gap: with no value today, a row says **"Not allowed"**, **"Couldn't read · try Sync now"**, **"None in Health Connect · last N days"** or **"None today · Latest <date>"**. The status line names any type that couldn't be read. When a type has nothing, a help line explains that the data hasn't reached Health Connect and where to check the source app's write access.
+  - **Per-type results (#44):** each sync records, per type, whether it was read, couldn't be read, or isn't allowed, with how many records (or days with a total) Health Connect returned, the latest date and its source app(s) (#116). These are counts, dates and app names only, never health values, and stored on the device. The app each type last came from is kept across syncs, to name it in a fix. A successful sync therefore never hides a gap: with no value today, a row says **"Not allowed"**, **"Couldn't read"**, **"None in Health Connect · last N days"** or **"None today · Latest <date>"**. The status line names any type that couldn't be read. When a type has nothing, its **Fix** explains that the data hasn't reached Health Connect and where to turn on the source app's write access (#116).
   - **Permission check fails** (reading the granted permissions errors on open): the last known connection and imported values stay, the sheet says the check failed, and nothing is shown as "not connected".
   - **Partial access:** only allowed types are read, and only types read successfully are replaced. If one type is revoked between syncs (for example sleep, while steps stays allowed), the next sync refreshes the others and keeps that type's last imported values; the sheet shows it as "Not allowed" and the app doesn't ask again (#43).
   - **Errors:** a type that fails to read is skipped, and its stored values stay. A failed sync is recorded and shown in the sheet and the menu row. It never blocks the app or the Daily Log.
@@ -56,13 +57,25 @@ Labels read **"Health Connect · Fitbit + this phone"**.
 ## UI (option A, app shell layer)
 
 - **Menu → Health Connect**, under Import from screenshots. The detail line is one of: "Off · steps, energy, workouts, weight and sleep", "Connected · synced 7:42 am", "Syncing…", "Last sync didn't finish", "Not installed", "Not available on this device".
-- **Sheet, not connected:** what is read (the six types), **Connect Health Connect** (the one primary action), and "The last 30 days come in first". After a refusal: "Nothing was allowed…" and **Open Health Connect**.
+- **Sheet, not connected:** the six types as a ticked list ("What to bring in"), **Connect Health Connect** (the one primary action; disabled with nothing ticked), and "The last 30 days come in first". After a refusal: "Nothing was allowed…" and **Open Health Connect**.
 - **The sheet scrolls** when its content is taller than the screen (#46), so every action stays reachable.
-- **Sheet, connected:**
-  - the last sync and how many days it checked;
-  - **Today**: each type's value and source app, or "Not allowed" or "Nothing today";
-  - "A value you enter yourself is kept and shown first";
-  - **Sync now** (secondary), **Manage in Health Connect**, and how to disconnect.
+- **Sheet, connected: the setup checklist (#116, option A):**
+  - **"N of M working"** (ticked types), then the last sync and how many days it checked.
+  - **What to bring in:** one row per type, with a tick box ("Import <type>", 48dp target) and two checks in one line:
+    - **working:** "✓ Allowed · ✓ 82.4 kg today · Withings", or "✓ None today · Latest <date> · <app>";
+    - **no data:** "✓ Allowed · ! None in Health Connect · last N days";
+    - **needs access:** "! Not allowed";
+    - **failed:** "✓ Allowed · ! Couldn't read";
+    - **waiting for its first read:** "✓ Allowed · Checking…";
+    - **unticked:** "Not imported".
+  - **Fix:** a row with a problem has **Fix ▾**. It opens in place, one at a time; the first problem is open when the sheet opens. The fix depends on the problem:
+    - **no data:** "Body Anvil can read weight, but none has arrived in the last N days", then three steps: Health Connect → App permissions → **<app>** → **Allow to write** → the type → open that app once. Then **Open Health Connect**. The app named is the one the type last came from, else the named app that sends the most other types (Fitbit on Kevin's phone), else "the app that records it". It also notes that nothing needs fixing if nothing was recorded.
+    - **needs access:** **Allow <type>** (Android's dialog for that type), and the route in Health Connect for when Android doesn't ask.
+    - **failed:** **Check again**.
+  - **Confirming:** **Check again** (secondary), a fix, or coming back from Health Connect re-checks permissions and re-reads. A note at the top then says what changed since the check started: "✓ Weight is working now. 95.2 kg from Fitbit.", "! Weight still isn't arriving.", "! Sleep stopped working.", or "✓ Checked: everything ticked is working." The note clears when the sheet closes.
+  - "A value you enter yourself is kept and shown first", what isn't imported, **Manage in Health Connect**, and how to untick and disconnect.
+- **Menu row:** with a problem: "Connected · 1 needs a fix" (or "2 need a fix").
+- **Platform limit:** Android doesn't tell an app which other apps may write to Health Connect. So "no data" is judged only from records returned for the synced days. It can mean the source app isn't allowed to write, or that nothing was recorded; the fix says both.
 - **Daily Log (#104):** Recorded groups steps, active energy and sleep in a compact grid; a content-layer Walking summary expands individual source records (at least 48dp targets). Imported values appear in the Weight tile and the Recorded section.
 
 ## Platform
@@ -86,10 +99,10 @@ Internal testing may accept an upload before these are approved, but Play can bl
 The app can only import what Health Connect holds. To check where a value stopped, for example a Fitbit weigh-in at 7:48 am that's missing after a 10:54 am sync:
 
 1. **Does Health Connect have it?** Open Health Connect (Settings → Security & privacy → Privacy → Health Connect, or the Health Connect app on Android 13) → **Data and access → Body measurements → Weight → See all entries**. Look for the entry, its time and its app.
-2. **Missing there:** the source app hasn't shared it. In Health Connect, **App permissions → Fitbit**: is **Weight** allowed under "Allow to write"? In the Fitbit app, check its Health Connect sharing. Open Fitbit to let it sync, then check again. Exports can be delayed. The app's 7-day re-read picks up a late record on the next open or **Sync now**.
-3. **Present there, missing here:** ☰ → Health Connect. "Not allowed" means turn on Weight for Personal Fitness Tracker in Health Connect → App permissions. "Couldn't read" means tap **Sync now**. "None in Health Connect" while step 1 shows the entry is an app bug: report it with the entry's time and app, not the value.
+2. **Missing there:** the source app hasn't shared it. In Health Connect, **App permissions → Fitbit**: is **Weight** allowed under "Allow to write"? In the Fitbit app, check its Health Connect sharing. Open Fitbit to let it sync, then check again. Exports can be delayed. The app's 7-day re-read picks up a late record on the next open or **Check again**.
+3. **Present there, missing here:** ☰ → Health Connect. "Not allowed" means tap **Fix → Allow weight**, or turn on Weight for Body Anvil in Health Connect → App permissions. "Couldn't read" means tap **Check again**. "None in Health Connect" while step 1 shows the entry is an app bug: report it with the entry's time and app, not the value.
 
-**Test records** without a real scale: Google's **Health Connect Toolbox** app can insert records. Insert a Weight of 95.5 kg at 7:48 am today, then open this app (or tap **Sync now**). It appears in the Weight tile as "Health Connect · Health Connect Toolbox" (shown as "Another app" unless named) for today's local date. Delete it in Health Connect, sync again, and it disappears here.
+**Test records** without a real scale: Google's **Health Connect Toolbox** app can insert records. Insert a Weight of 95.5 kg at 7:48 am today, then open this app (or tap **Check again**). It appears in the Weight tile as "Health Connect · Health Connect Toolbox" (shown as "Another app" unless named) for today's local date. Delete it in Health Connect, sync again, and it disappears here.
 
 ## Verification
 

@@ -425,8 +425,8 @@ describe('Health Connect (#36)', () => {
     await settle();
     expect(hc().requests).toHaveLength(1);
     expect(hc().requests[0]).toEqual(ALL.map((recordType) => ({ accessType: 'read', recordType })));
-    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214Samsung Health/));
-    expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/82\.4 kgWithings/);
+    await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/✓ 6,214 today · Samsung Health/));
+    expect(screen.getByTestId('hc-today-weight')).toHaveTextContent(/✓ 82\.4 kg today · Withings/);
     expect(screen.getByTestId('hc-today-sleep')).toHaveTextContent(/7 hr 45 min/);
     expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/Walk 32 min/);
 
@@ -435,6 +435,31 @@ describe('Health Connect (#36)', () => {
     await waitFor(() => expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/6,214/));
     expect(screen.getByTestId('recorded-steps')).toHaveTextContent(/Samsung Health/);
     expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/82\.4/);
+    expect(hc().writes).toEqual([]);
+  });
+
+  it('#116: an unticked type isn’t asked for; Allow later asks Android for just that one, and the result is read back', async () => {
+    await launch();
+    await chooseFromMenu('Health Connect');
+    fireEvent.press(await screen.findByLabelText('Import body fat'));
+    fireEvent.press(screen.getByText('Connect Health Connect'));
+    await settle();
+    expect(hc().requests[0].map((p: { recordType: string }) => p.recordType)).toEqual(ALL.filter((t) => t !== 'BodyFat'));
+    await waitFor(() => expect(screen.getByTestId('hc-summary')).toHaveTextContent(/^5 of 5 working$/));
+
+    // Ticked later; Android shows nothing this time (refused twice before): the app reads back what it has.
+    fireEvent.press(screen.getByLabelText('Import body fat'));
+    hc().grantOnRequest = [];
+    fireEvent.press(await screen.findByText('Allow body fat'));
+    await settle();
+    expect(hc().requests[1]).toEqual([{ accessType: 'read', recordType: 'BodyFat' }]);
+    await waitFor(() => expect(screen.getByTestId('hc-check-result')).toHaveTextContent(/Body fat still isn't allowed\./));
+
+    // Allowed in Health Connect's own screen; back in the app it's confirmed.
+    hc().granted = [...hc().granted, 'BodyFat'];
+    fireEvent.press(screen.getByTestId('hc-check-again'));
+    await settle();
+    await waitFor(() => expect(screen.getByTestId('hc-check-result')).toHaveTextContent(/Body fat is working now\. 32\.8 % from Withings\./));
     expect(hc().writes).toEqual([]);
   });
 
@@ -463,7 +488,7 @@ describe('Health Connect (#36)', () => {
     await waitFor(() => expect(screen.getByTestId('recorded-walking-summary')).toHaveTextContent(/2\.5 km/));
     await chooseFromMenu('Health Connect');
     hc().failRecordTypes = ['Distance'];
-    fireEvent.press(screen.getByText('Sync now'));
+    fireEvent.press(screen.getByText('Check again'));
     await settle();
     expect(screen.getByTestId('hc-today-exercise')).toHaveTextContent(/32 min/);
     fireEvent.press(screen.getByTestId('modal-dismiss'));
@@ -486,7 +511,7 @@ describe('Health Connect (#36)', () => {
 
     // Sync again (foreground return): the manual value still shows; both records are kept.
     await chooseFromMenu('Health Connect');
-    fireEvent.press(await screen.findByText('Sync now'));
+    fireEvent.press(await screen.findByText('Check again'));
     await settle();
     fireEvent.press(screen.getByTestId('modal-dismiss'));
     await waitFor(() => expect(screen.getByTestId('measurement-weight')).toHaveTextContent(/81\.9/));
@@ -516,7 +541,7 @@ describe('Health Connect (#36)', () => {
     hc().stepsByDay['2026-11-05'] = 8100;
     hc().records.SleepSession = [];
     const readsBefore = (jest.requireMock('react-native-health-connect') as any).readRecords.mock.calls.length;
-    fireEvent.press(screen.getByText('Sync now'));
+    fireEvent.press(screen.getByText('Check again'));
     await settle();
 
     await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/8,100/));
@@ -537,7 +562,7 @@ describe('Health Connect (#36)', () => {
     await waitFor(() => expect(screen.getByTestId('hc-today-steps')).toHaveTextContent(/6,214/));
     const lib = jest.requireMock('react-native-health-connect') as any;
     lib.getGrantedPermissions.mockRejectedValueOnce(new Error('binder died'));
-    fireEvent.press(screen.getByText('Sync now'));
+    fireEvent.press(screen.getByText('Check again'));
     await settle();
     expect(await screen.findByTestId('hc-check-failed')).toHaveTextContent(/Nothing was changed/);
     expect(screen.queryByText('Connect Health Connect')).toBeNull(); // still connected

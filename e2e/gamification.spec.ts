@@ -95,7 +95,7 @@ test('isolated fictional adult: setup, four months of quests, goals and correcti
     const xpBefore=await page.getByTestId('game-level').textContent();
     await page.getByRole('button',{name:'Menu',exact:true}).click(); await page.getByTestId('menu-health-connect').click();
     await page.getByRole('button',{name:'Connect Health Connect',exact:true}).click(); await expect(page.getByTestId('hc-sync-status')).toContainText('Last synced today');
-    await page.getByRole('button',{name:'Sync now',exact:true}).click(); await expect(page.getByTestId('hc-sync-status')).toContainText('Last synced today'); await close(page);
+    await page.getByTestId('hc-check-again').click(); await expect(page.getByTestId('hc-sync-status')).toContainText('Last synced today'); await close(page);
     await expect(page.getByTestId('game-level')).toHaveText(xpBefore!); checks.push('Health Connect fixture mapping, duplicate import and repeated sync preserve XP.');
 
     await settings(page); await page.getByRole('switch',{name:'Gamification',exact:true}).click(); await close(page);

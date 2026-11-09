@@ -21,15 +21,15 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('collapsed: counts, one tickable exercise; ticking moves on, ⓘ never ticks', async ({ page }) => {
-  await expect(counts(page)).toHaveText('0 of 12 done · 12 left');
+  await expect(counts(page)).toHaveText('0 of 5 done · 5 left');
   await expect(workoutCard(page).getByRole('checkbox')).toHaveCount(1);
   await workoutCard(page).getByRole('button', { name: 'Goblet squat. Show how' }).click();
   await expect(page.getByTestId('exercise-guide')).toBeVisible();
   await page.getByRole('button', { name: 'Close guide' }).click();
-  await expect(counts(page)).toHaveText('0 of 12 done · 12 left');
+  await expect(counts(page)).toHaveText('0 of 5 done · 5 left');
 
   await workoutCard(page).getByRole('checkbox', { name: 'Goblet squat, 3 × 10' }).click();
-  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
+  await expect(counts(page)).toHaveText('1 of 5 done · 4 left');
   await expect(workoutCard(page).getByRole('checkbox')).toHaveAccessibleName(/^Chest press machine/); // the next one
   // A planned exercise writes its session tick, never a free log.
   const s = await store(page);
@@ -39,27 +39,30 @@ test('collapsed: counts, one tickable exercise; ticking moves on, ⓘ never tick
 
 test('the sheet lists every eligible exercise; a non-plan tick is one free log, untick removes it; done rows go last; it persists', async ({ page }) => {
   await openWorkoutSheet(page);
-  await expect(page.getByTestId('today-workout-totals')).toContainText('12');
+  await expect(page.getByTestId('today-workout-totals')).toContainText('5planned'); // #90: the plan only
+  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(5);
+  await page.getByTestId('today-workout-extras').click(); // the rest of the catalogue, kept separate
   await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(12);
   await expect(workoutSheet(page)).not.toContainText('VR boxing'); // conditioning stays its own task
 
   await tick(page, 'Standing calf raises, 3 × 15').click();
-  await expect(page.getByTestId('today-workout-done').getByRole('checkbox', { name: 'Standing calf raises, 3 × 15' })).toBeChecked();
+  await expect(tick(page, 'Standing calf raises, 3 × 15')).toBeChecked();
   let logs = (await store(page)).exerciseLogs;
   expect(logs).toEqual([expect.objectContaining({ id: 'tap-2026-11-02-standing_calf_raise', movement: 'standing_calf_raise', sets: 3, reps: 15 })]);
 
   // Untick removes it; a second tap stores one record again (fixed id per day and movement).
   await tick(page, 'Standing calf raises, 3 × 15').click();
-  await expect(page.getByTestId('today-workout-todo').getByRole('checkbox', { name: 'Standing calf raises, 3 × 15' })).not.toBeChecked();
+  await expect(tick(page, 'Standing calf raises, 3 × 15')).not.toBeChecked();
   expect((await store(page)).exerciseLogs).toEqual([]);
   await tick(page, 'Standing calf raises, 3 × 15').click();
-  await expect(page.getByTestId('today-workout-done').getByRole('checkbox')).toHaveCount(1);
+  await expect(tick(page, 'Standing calf raises, 3 × 15')).toBeChecked();
   logs = (await store(page)).exerciseLogs;
   expect(logs).toHaveLength(1);
 
   await closeWorkoutSheet(page);
   await page.reload();
-  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
+  await expect(counts(page)).toHaveText('0 of 5 done · 5 left'); // an extra never changes the plan count (#90)
+  await expect(page.getByTestId('today-workout-subtitle')).toContainText('+1 extra');
 });
 
 test('ticking every planned exercise completes the session; the card says so; untick reopens it', async ({ page }) => {
@@ -69,7 +72,7 @@ test('ticking every planned exercise completes the session; the card says so; un
   expect((await store(page)).activities[DAY].resistance).toMatchObject({ status: 'done', variant: 'full' });
   await closeWorkoutSheet(page);
   await expect(workoutCard(page)).toContainText('Strength workout · done ✓');
-  await expect(counts(page)).toHaveText('5 of 12 done · 7 left'); // the rest of the inventory stays available
+  await expect(counts(page)).toHaveText('All 5 done');
 
   await openWorkoutSheet(page);
   await tick(page, /^Hammer curls/).click();
@@ -81,7 +84,7 @@ test('Full / Short lives in the session options; switching mid-workout asks firs
   await page.getByRole('radio', { name: 'Short · 10 min' }).click(); // nothing ticked yet: no question
   await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();
   await expect(workoutSheet(page).getByRole('checkbox', { name: 'Goblet squat, 2 × 10' })).toBeVisible(); // short dose
-  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(12);
+  await expect(page.getByTestId('today-workout-totals')).toContainText('3planned'); // the short version's exercises
   await tick(page, 'Goblet squat, 2 × 10').click();
 
   await workoutSheet(page).getByRole('button', { name: 'Strength workout: full or short, skip and more' }).click();
@@ -100,13 +103,13 @@ test('a past day is corrected from its own workout card', async ({ page }) => {
   await openWorkoutSheet(page);
   await tick(page, /^Goblet squat/).click();
   await closeWorkoutSheet(page);
-  await expect(counts(page)).toHaveText('1 of 12 done · 11 left');
+  await expect(counts(page)).toHaveText('1 of 5 done · 4 left');
   expect((await store(page)).activities[DAY].resistance.exercisesDone).toEqual(['full:0:kettlebell_squat']);
 });
 
 test('Friday rest day: optional, nothing due, voluntary exercise still logs', async ({ page }) => {
   await openAt(page, at('09:00', '06'));
-  await expect(page.getByTestId('today-workout-subtitle')).toHaveText('Rest day · optional');
+  await expect(page.getByTestId('today-workout-subtitle')).toHaveText('Rest day · extras are optional');
   await openWorkoutSheet(page);
   await expect(workoutSheet(page)).not.toContainText('! Due');
   await tick(page, 'Plank, 1 × 20 s').click();
@@ -119,6 +122,7 @@ test.describe('visual', () => {
     await expect(page).toHaveScreenshot('today-workout-card.png');
     await openWorkoutSheet(page);
     await expect(page).toHaveScreenshot('today-workout-sheet.png');
+    await page.getByTestId('today-workout-extras').click();
     await tick(page, 'Standing calf raises, 3 × 15').click();
     await tick(page, /^Goblet squat/).click();
     await workoutSheet(page).hover();

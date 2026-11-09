@@ -25,7 +25,7 @@ test('shows what to do now, ticks it off from the card, and moves on immediately
   // Recalculated (#41): untimed Strength is not promoted just for being open, and lunch is hours away: no card.
   await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
   await expect(page.getByText(/Nothing left|Nothing planned/)).toHaveCount(0);
-  await expect(workoutCard(page)).toContainText('0 of 12 done'); // Strength stays on Today's workout, actionable (#56)
+  await expect(workoutCard(page)).toContainText('0 of 5 done'); // Strength stays on Today's workout, actionable (#56)
   await expect(page.getByTestId('activity-school-run-am')).not.toHaveCSS('border-left-width', '4px');
 
   // Undo from the list: the run is next again.
@@ -38,7 +38,7 @@ test('#41 the reported case: Monday 09:34, the overdue school run, untimed Stren
   await expect(page.getByTestId('day-progress')).toBeVisible();
   await expect(page.getByTestId(/^(next-action|up-next)$/)).toHaveCount(0);
   await expect(row(page, 'school-run-am').getByRole('checkbox')).not.toBeChecked(); // overdue: left as it was
-  await expect(workoutCard(page)).toContainText('Strength workout · plan and more'); // listed, not promoted
+  await expect(workoutCard(page)).toContainText('Strength workout · plan'); // listed, not promoted
   await expect(row(page, 'lunch')).toBeVisible();
   // Nearer noon, lunch is recommended.
   await openAt(page, at('11:50'));
@@ -72,10 +72,9 @@ test('one conditioning alternative satisfies the requirement; no redundant ropes
   const vr = page.getByTestId('option-vr-boxing');
   for (let i = 0; i < 3; i++) await vr.click();
   const req = page.getByTestId('requirement-hard-conditioning');
-  await expect(req).toContainText('Done with VR boxing');
-  await expect(page.getByTestId('option-heavy-bag')).toBeDisabled();
-  await expect(page.getByTestId('option-heavy-bag')).toHaveAttribute('aria-label', /not needed today/);
-  await expect(page.getByTestId('option-battle-ropes')).toBeDisabled();
+  await expect(req).toContainText('Done with VR boxing · 3 rounds');
+  await expect(page.getByTestId('option-heavy-bag')).toHaveCount(0); // #90: the others are hidden once one is done
+  await expect(page.getByTestId('option-battle-ropes')).toHaveCount(0);
   await expect(page.getByTestId('day-progress')).toHaveText('All 7 done');
   await expect(card(page)).toHaveCount(0); // never Battle ropes or Heavy bag; nothing left, so no card (#41)
 
@@ -87,8 +86,8 @@ test('any alternative works: heavy bag from the next-action card', async ({ page
   await seedRecords(page, { activities: done(['school-run-am', 'lunch', 'school-run-pm', 'snack', 'dinner', 'resistance']) });
   await openAt(page, at('19:00'));
   await page.getByRole('button', { name: 'Do Heavy bag rounds' }).click();
-  await expect(page.getByTestId('requirement-hard-conditioning')).toContainText('Done with Heavy bag rounds');
-  await expect(page.getByTestId('option-vr-boxing')).toBeDisabled();
+  await expect(page.getByTestId('requirement-hard-conditioning')).toContainText('Done with Heavy bag rounds · 12 min');
+  await expect(page.getByTestId('option-vr-boxing')).toHaveCount(0);
 });
 
 test('short version of the strength session is recorded as such', async ({ page }) => {
@@ -164,7 +163,7 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
 
-  await expect(workoutCard(page)).toContainText('Optional · any time today'); // no longer prescribed
+  await expect(workoutCard(page)).toContainText('No workout planned'); // no longer prescribed
   await expect(page.getByTestId('history-resistance')).toContainText('Done'); // but what happened is still on the day
 
   const doc = await exportAllData(page);

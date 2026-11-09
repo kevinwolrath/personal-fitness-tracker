@@ -196,3 +196,36 @@ describe('engine order for the day', () => {
     expect(s.dayOrder).not.toContain('vr_boxing');
   });
 });
+
+describe('#90: counts are today’s prescription; extras are separate', () => {
+  it('Monday counts the 5 prescribed exercises, not the 12-exercise catalogue', () => {
+    const w = workout(MON);
+    expect(w.plan).toEqual({ total: 5, done: 0, remaining: 5 });
+    expect(w.extras).toEqual({ available: 7, done: 0 });
+  });
+
+  it('ticks move the plan count; a free-logged extra never changes "of 5"', () => {
+    let log: ActivityLog | undefined;
+    for (const key of ['full:0:kettlebell_squat', 'full:1:chest_press']) log = tickExercise(ctx(log), strength, sessionItem().session!, key, true).log ?? undefined;
+    const w = workout(MON, { logs: { resistance: log! }, freeLogs: [free('kettlebell_romanian_deadlift')] });
+    expect(w.plan).toEqual({ total: 5, done: 2, remaining: 3 });
+    expect(w.extras).toEqual({ available: 7, done: 1 });
+  });
+
+  it('all done: 5 of 5; the short version counts its own exercises', () => {
+    const done = setDone(ctx(), strength, true).log!;
+    expect(workout(MON, { logs: { resistance: done } }).plan).toEqual({ total: 5, done: 5, remaining: 0 });
+    const short = chooseVariant(ctx(), strength, sessionItem().session!, 'short')!.log!;
+    expect(workout(MON, { logs: { resistance: short } }).plan).toEqual({ total: 3, done: 0, remaining: 3 });
+  });
+
+  it('a day with no strength session prescribes nothing: 0 planned, the whole catalogue as extras', () => {
+    expect(workout(TUE).plan).toEqual({ total: 0, done: 0, remaining: 0 });
+    expect(workout(TUE).extras.available).toBe(12);
+  });
+
+  it('a skipped session prescribes nothing that day', () => {
+    const skipped = setSkipped(ctx(), true).log!;
+    expect(workout(MON, { logs: { resistance: skipped } }).plan.total).toBe(0);
+  });
+});

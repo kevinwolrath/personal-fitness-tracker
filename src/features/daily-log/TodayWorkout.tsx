@@ -3,6 +3,7 @@ import { ScrollView } from '../../ui/ScrollView';
 import type { MuscleCoverage } from '../../exercises/coverage';
 import type { RowStatus, TodayWorkout, WorkoutRow } from '../../exercises/todayWorkout';
 import type { PrescriptionItem } from '../../prescription/prescribe';
+import { useState } from 'react';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
@@ -64,13 +65,22 @@ function Row({ row, editable, onToggle, onGuide, onCard }: { row: WorkoutRow; ed
   );
 }
 
+const extraDone = (w: TodayWorkout) => (w.extras.done ? ` · +${w.extras.done} extra${w.extras.done === 1 ? '' : 's'}` : '');
+
 /** Rest day, else the day's session and its state (planned, done or skipped), else optional. */
 const subtitle = (w: TodayWorkout) => {
-  if (w.restDay) return 'Rest day · optional';
+  if (w.restDay) return `Rest day · extras are optional${extraDone(w)}`;
   const s = w.sessions[0];
-  if (!s) return 'Optional · any time today';
-  return `${s.label} · ${s.state === 'skipped' ? 'skipped' : s.state === 'done' ? 'done ✓' : 'plan and more'}`;
+  if (!s) return `Optional extras · any time today${extraDone(w)}`;
+  return `${s.label} · ${s.state === 'skipped' ? 'skipped' : s.state === 'done' ? 'done ✓' : 'plan'}${extraDone(w)}`;
 };
+
+/**
+ * #90: counts are today's prescription only ("0 of 5"), never the catalogue. A day with nothing prescribed says so
+ * instead of "0 of 0"; the catalogue stays available as extras.
+ */
+export const workoutCounts = (w: TodayWorkout) =>
+  !w.plan.total ? (w.restDay ? 'Rest day' : 'No workout planned') : w.plan.remaining ? `${w.plan.done} of ${w.plan.total} done · ${w.plan.remaining} left` : `All ${w.plan.total} done`;
 
 export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuide, onOpen, loading = false }: {
   workout: TodayWorkout;
@@ -85,7 +95,10 @@ export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuid
 }) {
   const styles = useStyles();
   const w = workout;
-  const counts = w.remaining ? `${w.done} of ${w.total} done · ${w.remaining} left` : `All ${w.total} done`;
+  const counts = workoutCounts(w);
+  // The card's exercise: the next planned one; with nothing planned, the top extra.
+  const next = w.plan.total ? w.rows.find((r) => r.plan && !r.done) ?? null : w.next;
+  const showAll = w.plan.total ? `Show all ${w.plan.total} ⌄` : `${w.extras.available} extras you can do ⌄`;
   return (
     <View style={styles.card} testID="today-workout" accessibilityLiveRegion="polite">
       <Pressable onPress={onOpen} accessibilityRole="button" accessibilityLabel={`Today's workout: ${counts}. ${subtitle(w)}. Show all exercises`} testID="today-workout-open">
@@ -95,11 +108,11 @@ export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuid
       </Pressable>
       {loading ? (
         <View style={styles.placeholder} testID="today-workout-loading" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
-      ) : w.next ? (
-        <Row row={w.next} editable={editable} onToggle={onToggle} onGuide={onGuide} onCard />
+      ) : next ? (
+        <Row row={next} editable={editable} onToggle={onToggle} onGuide={onGuide} onCard />
       ) : null}
-      <Pressable onPress={onOpen} style={styles.link} accessibilityRole="button" accessibilityLabel={`Show all ${w.total} exercises`} testID="today-workout-show-all">
-        <Text style={styles.linkText}>{`Show all ${w.total} ⌄`}</Text>
+      <Pressable onPress={onOpen} style={styles.link} accessibilityRole="button" accessibilityLabel={w.plan.total ? `Show all ${w.plan.total} planned exercises` : `Show ${w.extras.available} extra exercises`} testID="today-workout-show-all">
+        <Text style={styles.linkText}>{showAll}</Text>
       </Pressable>
     </View>
   );
@@ -121,8 +134,13 @@ export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggl
   const styles = useStyles();
   const { type } = useTheme();
   const w = workout;
-  const todo = w.rows.filter((r) => !r.done);
-  const done = w.rows.filter((r) => r.done);
+  // #90 layout A: the plan first (tiles and list are the plan only), then one Extras row for the rest of the catalogue.
+  const planRows = w.rows.filter((r) => r.plan);
+  const extraRows = w.rows.filter((r) => !r.plan);
+  const todo = planRows.filter((r) => !r.done);
+  const done = planRows.filter((r) => r.done);
+  const [extrasOpen, setExtrasOpen] = useState(!w.plan.total);
+  const row = (r: WorkoutRow) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />;
   return (
     <Sheet visible onClose={onClose} label="Today's workout" fill>
       <ModalHeader title="Today's workout" dismiss={{ label: 'Close', a11yLabel: "Close today's workout", onPress: onClose }} />
@@ -133,19 +151,37 @@ export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggl
           </View>
           <Text style={[type.detail, styles.previewText]}>{w.restDay ? 'Rest day: nothing is due. Muscle coverage ›' : 'Muscle coverage ›'}</Text>
         </Pressable>
-        <View style={styles.counts} testID="today-workout-totals">
-          {([['total', w.total], ['remaining', w.remaining], ['done', w.done]] as const).map(([k, n]) => (
+        {w.plan.total === 0 && <Text style={type.body} testID="today-workout-none">{workoutCounts(w)}</Text>}
+        {w.plan.total > 0 && <View style={styles.counts} testID="today-workout-totals">
+          {([['planned', w.plan.total], ['left', w.plan.remaining], ['done', w.plan.done]] as const).map(([k, n]) => (
             <View key={k} style={styles.count} accessible accessibilityLabel={`${n} ${k}`}>
               <Text style={[styles.countN, styles.onSurface]}>{n}</Text>
               <Text style={type.detail}>{k}</Text>
             </View>
           ))}
-        </View>
-        {todo.length > 0 && <Text style={type.section} accessibilityRole="header">{w.restDay ? 'To do · optional' : 'To do · by priority'}</Text>}
+        </View>}
+        {todo.length > 0 && <Text style={type.section} accessibilityRole="header">Today's plan · by priority</Text>}
         {loading ? <Text style={type.detail} testID="today-workout-loading">Loading today's order…</Text> : null}
-        <View testID="today-workout-todo">{loading ? null : todo.map((r) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />)}</View>
+        <View testID="today-workout-todo">{loading ? null : todo.map(row)}</View>
         {done.length > 0 && <Text style={type.section} accessibilityRole="header">{`Done · ${done.length}`}</Text>}
-        <View testID="today-workout-done">{done.map((r) => <Row key={r.movement} row={r} editable={editable} onToggle={onToggle} onGuide={onGuide} />)}</View>
+        <View testID="today-workout-done">{done.map(row)}</View>
+        {extraRows.length > 0 && (
+          <Pressable
+            onPress={() => setExtrasOpen((o) => !o)}
+            style={styles.extras}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: extrasOpen }}
+            accessibilityLabel={`Extras: ${extraRows.length} more you can add${w.extras.done ? `, ${w.extras.done} done` : ''}`}
+            testID="today-workout-extras"
+          >
+            <View style={styles.flex}>
+              <Text style={[styles.name, styles.onSurface]}>{`Extras · ${w.plan.total ? `${extraRows.length} more you can add` : `${extraRows.length} you can do`}`}</Text>
+              <Text style={type.detail}>{w.extras.done ? `${w.extras.done} done · ` : ''}{w.plan.total ? 'Not counted in your plan' : 'Optional: nothing is planned today'}</Text>
+            </View>
+            <Text style={[styles.infoText, styles.onSurface]}>{extrasOpen ? '⌃' : '⌄'}</Text>
+          </Pressable>
+        )}
+        {extrasOpen && !loading && <View testID="today-workout-extras-list">{[...extraRows.filter((r) => !r.done), ...extraRows.filter((r) => r.done)].map(row)}</View>}
         <Button title="Log with a different dose…" variant="secondary" disabled={!editable} onPress={onLogDifferent} />
         {w.sessions.map((s) => (
           <Button key={s.key} title={`${s.label}: full or short, skip and more`} variant="quiet" onPress={() => onSessionOptions(s)} />
@@ -169,6 +205,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   previewMap: { width: 120 },
   previewText: { flex: 1 },
   counts: { flexDirection: 'row', gap: space.sm },
+  extras: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch + space.sm, paddingHorizontal: space.md, paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.line },
   count: { flex: 1, alignItems: 'center', paddingVertical: space.sm, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line },
   countN: { fontSize: 22, fontWeight: '800', ...type.number },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch + space.sm, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: space.xs },

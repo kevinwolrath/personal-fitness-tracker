@@ -15,7 +15,7 @@ test.describe('seed plan resolves from JSON', () => {
       'dinner', // evening, after the conditioning requirement
     ]);
     // The strength session lives on Today's workout, not in the time-of-day list (#56).
-    await expect(workoutCard(page)).toContainText('Strength workout · plan and more');
+    await expect(workoutCard(page)).toContainText('Strength workout · plan');
     await expect(page.getByTestId('requirement-hard-conditioning')).toContainText('High-intensity conditioning');
     for (const part of ['Morning', 'Midday', 'Afternoon', 'Evening']) {
       await expect(page.getByRole('heading', { name: part, exact: true })).toBeVisible();
@@ -39,7 +39,7 @@ test.describe('seed plan resolves from JSON', () => {
     await openAt(page, SATURDAY);
     await expect(page.getByRole('button', { name: /Day type: Weekend/ })).toBeVisible();
     expect(await renderedActivityIds(page)).toEqual(['lunch', 'snack', 'dinner', 'weekend-movement']);
-    await expect(workoutCard(page)).toContainText('Strength workout · plan and more');
+    await expect(workoutCard(page)).toContainText('Strength workout · plan');
     await expect(page.getByTestId('requirement-hard-conditioning')).toBeVisible();
     await expect(page.getByTestId('day-progress')).toHaveText('0 of 5 done');
   });
@@ -55,8 +55,10 @@ test('happy path persists across reload', async ({ page }) => {
 
   // Advance a count activity to its target.
   const boxing = vrBoxing(page);
-  for (let i = 0; i < 3; i++) await boxing.click();
-  await expect(boxing).toHaveAttribute('aria-valuetext', /3 of 3 rounds/);
+  for (let i = 0; i < 2; i++) await boxing.click();
+  await expect(boxing).toHaveAttribute('aria-valuetext', /2 of 3 rounds/);
+  await boxing.click();
+  await expect(page.getByTestId('requirement-status-hard-conditioning')).toHaveText('Done with VR boxing · 3 rounds'); // #90: collapses once done
 
   // Skip the strength session via its options on Today's workout (#56).
   await openSessionOptions(page);
@@ -77,7 +79,7 @@ test('happy path persists across reload', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('day-progress')).toHaveText('2 of 6 done');
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeChecked();
-  await expect(vrBoxing(page)).toHaveAttribute('aria-valuetext', /3 of 3/);
+  await expect(page.getByTestId('requirement-status-hard-conditioning')).toHaveText('Done with VR boxing · 3 rounds');
   await expect(workoutCard(page)).toContainText('Strength workout · skipped');
   await expect(page.getByTestId('measurement-weight')).toContainText('97.8 kg');
 });

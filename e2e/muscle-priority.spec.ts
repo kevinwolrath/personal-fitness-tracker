@@ -37,10 +37,13 @@ test('with history: the exercise for the muscles most in need comes first; well-
   await expect(workoutCard(page).getByRole('checkbox')).toHaveAccessibleName(/^One-arm kettlebell row/); // upper back and lats untrained
   await openWorkoutSheet(page);
   const names = await order(page);
-  expect(names).toHaveLength(12);
+  expect(names).toHaveLength(5); // #90: the plan, by priority
   expect(names[0]).toBe('One-arm kettlebell row');
   expect(names.indexOf('Chest press machine')).toBeGreaterThan(names.indexOf('Lat pulldown'));
-  expect(names.at(-1)).toBe('Leg extension'); // quads at target: nothing left to gain
+  await page.getByTestId('today-workout-extras').click();
+  const extras = await page.getByTestId('today-workout-extras-list').getByRole('checkbox').evaluateAll((els) => els.map((e) => (e.getAttribute('aria-label') ?? '').split(',')[0]));
+  expect(extras).toHaveLength(7);
+  expect(extras.at(-1)).toBe('Leg extension'); // quads at target: nothing left to gain
   await expect(workoutSheet(page).getByTestId('workout-status-standing_calf_raise')).toHaveText('! Due');
   await expect(workoutSheet(page).getByTestId('workout-status-leg_extension')).toHaveText('✓ Trained');
 

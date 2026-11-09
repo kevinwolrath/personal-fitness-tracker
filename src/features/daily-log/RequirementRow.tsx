@@ -3,6 +3,7 @@ import type { Activity } from '../../plan/schema';
 import type { PrescriptionItem } from '../../prescription/prescribe';
 import type { ActivityLog } from '../../storage/types';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
+import { requirementView } from '../../prescription/conditioning';
 
 type Props = {
   item: PrescriptionItem;
@@ -18,16 +19,14 @@ type Props = {
  * the others show as not needed instead of becoming more work.
  */
 export function RequirementRow({ item, logs, editable, isNext, onOption, onMore }: Props) {
-  const { colors, type } = useTheme();
+  const { type } = useTheme();
   const styles = useStyles();
 
   const done = item.state === 'done';
   const skipped = item.state === 'skipped';
-  const sub = done
-    ? `Done with ${item.satisfiedBy!.label}${item.variant === 'short' ? ' (short)' : ''}`
-    : skipped
-      ? 'Skipped'
-      : item.detail ?? 'Any one of these counts';
+  // #90 layout A: one activity, its methods as stacked choices with doses; the method in progress is highlighted.
+  const view = requirementView(item, logs);
+  const sub = [view.status, item.required ? null : 'Optional'].filter(Boolean).join(' · ');
   return (
     <View style={[styles.row, isNext && styles.next]} testID={`requirement-${item.requirement!.id}`}>
       <View style={styles.top}>
@@ -36,36 +35,43 @@ export function RequirementRow({ item, logs, editable, isNext, onOption, onMore 
         </View>
         <View style={styles.text}>
           <Text style={[type.body, (done || skipped) && styles.faded]}>{item.label}</Text>
-          <Text style={type.detail}>{[sub, item.required ? null : 'Optional'].filter(Boolean).join(' · ')}</Text>
+          <Text style={[type.detail, done && styles.doneSub]} testID={`requirement-status-${item.requirement!.id}`}>{sub}</Text>
         </View>
         <Pressable onPress={onMore} style={styles.more} accessibilityRole="button" accessibilityLabel={`${item.label} details`}>
           <Text style={styles.moreText}>›</Text>
         </Pressable>
       </View>
-      {!skipped && (
+      {/* Done: collapsed to the status line; undo or switch from the sheet (›). */}
+      {!skipped && !done && (
         <View style={styles.options}>
-          {item.options.map((o) => {
-            const log = logs[o.id];
-            const isDone = log?.status === 'done';
-            const notNeeded = done && !isDone;
-            const progress = o.tracking.type === 'count' ? ` ${log?.count ?? 0}/${o.tracking.target}` : '';
+          {view.options.map((o) => {
+            const a = o.activity;
+            const active = o.state === 'active';
+            const detail = active && o.progress ? `${o.progress.count} of ${o.progress.target} ${o.progress.unit}` : o.dose;
             return (
               <Pressable
-                key={o.id}
-                onPress={() => onOption(o)}
-                disabled={!editable || notNeeded}
-                style={[styles.option, isDone && styles.optionDone, notNeeded && styles.optionIdle]}
-                role={o.tracking.type === 'count' ? 'button' : 'checkbox'}
-                aria-checked={o.tracking.type === 'count' ? undefined : isDone}
-                aria-label={`${o.label}${notNeeded ? ', not needed today' : ''}`}
-                aria-valuetext={o.tracking.type === 'count' ? `${log?.count ?? 0} of ${o.tracking.target} ${o.tracking.unitLabel}` : undefined}
-                testID={`option-${o.id}`}
+                key={a.id}
+                onPress={() => onOption(a)}
+                disabled={!editable}
+                style={({ pressed }) => [styles.option, active && styles.optionActive, view.chosen && !active && styles.optionIdle, pressed && styles.pressed]}
+                role={a.tracking.type === 'count' ? 'button' : 'radio'}
+                aria-checked={a.tracking.type === 'count' ? undefined : active}
+                aria-label={`${a.label}${o.dose ? `, ${o.dose}` : ''}`}
+                aria-valuetext={o.progress ? `${o.progress.count} of ${o.progress.target} ${o.progress.unit}` : undefined}
+                testID={`option-${a.id}`}
               >
-                <Text style={[styles.optionText, isDone && styles.optionTextDone]} numberOfLines={1}>
-                  {isDone ? '✓ ' : ''}
-                  {o.label}
-                  {progress}
-                </Text>
+                <View style={[styles.radio, active && styles.radioOn]} />
+                <View style={styles.text}>
+                  <Text style={styles.optionText}>{a.label}</Text>
+                  {detail ? <Text style={type.detail} numberOfLines={2}>{detail}</Text> : null}
+                </View>
+                {o.progress && (
+                  <View style={styles.segments} testID={`option-progress-${a.id}`}>
+                    {Array.from({ length: o.progress.target }, (_, i) => (
+                      <View key={i} style={[styles.segment, i < o.progress!.count && styles.segmentOn]} />
+                    ))}
+                  </View>
+                )}
               </Pressable>
             );
           })}
@@ -88,19 +94,27 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   faded: { color: colors.faint },
   more: { width: touch, height: touch, alignItems: 'center', justifyContent: 'center', marginRight: -space.md },
   moreText: { fontSize: 24, color: colors.faint },
-  options: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, paddingLeft: 28 + space.md },
+  doneSub: { color: colors.ink, fontWeight: '600' },
+  options: { gap: space.sm, paddingLeft: 28 + space.md },
   option: {
-    minHeight: touch,
-    maxWidth: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: touch + space.sm,
     paddingHorizontal: space.md,
-    borderRadius: radius.pill,
+    paddingVertical: space.xs,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.surface,
-    justifyContent: 'center',
   },
-  optionDone: { backgroundColor: colors.accent, borderColor: colors.accent },
-  optionIdle: { opacity: 0.4 },
-  optionText: { fontSize: 15, fontWeight: '600', color: colors.ink, fontVariant: ['tabular-nums'] },
-  optionTextDone: { color: colors.onAccent },
+  optionActive: { borderColor: colors.accent, borderWidth: 2 },
+  optionIdle: { opacity: 0.55 },
+  pressed: { opacity: 0.75 },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.faint },
+  radioOn: { borderWidth: 7, borderColor: colors.accent },
+  optionText: { fontSize: 15, fontWeight: '700', color: colors.ink },
+  segments: { flexDirection: 'row', gap: 4 },
+  segment: { width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: colors.faint },
+  segmentOn: { backgroundColor: colors.accent, borderColor: colors.accent },
 }));

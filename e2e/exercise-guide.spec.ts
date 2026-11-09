@@ -40,7 +40,7 @@ test('opens from Today\'s workout card, steps through the illustrations, and clo
   await page.getByRole('button', { name: 'Close guide' }).click();
   await expect(guide(page)).toHaveCount(0);
   // Read-only: still the next thing to do, nothing logged.
-  await expect(workoutCard(page)).toContainText('0 of 12 done');
+  await expect(workoutCard(page)).toContainText('0 of 5 done');
   await expect(workoutCard(page).getByRole('checkbox', { name: 'Goblet squat, 3 × 10' })).not.toBeChecked();
   await expect(page.getByTestId('day-progress')).toHaveText(progressBefore!);
   expect((await store(page)).completionEvents?.length ?? 0).toBe(eventsBefore);

@@ -34,7 +34,7 @@ test('jump straight to a date months back, then return to Today', async ({ page 
   await expect(title(page)).toHaveText('11 March');
   await expect(dateButton(page)).toContainText('Wed, 11 Mar');
   await expect(page.getByRole('button', { name: /Day type: Home day/ })).toBeVisible();
-  await expect(page.getByTestId('today-workout')).toContainText('Strength workout · plan and more'); // on Today's workout (#56)
+  await expect(page.getByTestId('today-workout')).toContainText('Strength workout · plan'); // on Today's workout (#56)
   expect(new URL(page.url()).searchParams.get('date')).toBe('2026-03-11');
 
   // The date survives a reload (it lives in the URL).

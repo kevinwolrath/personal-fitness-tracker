@@ -48,6 +48,13 @@ export type WorkoutRow = {
 
 export type TodayWorkout = {
   rows: WorkoutRow[];
+  /**
+   * #90: today's prescription only. What the day asked for (the scheduled sessions' exercises in the chosen
+   * version), how many of those are done, and how many are left. Catalogue extras never change these.
+   */
+  plan: { total: number; done: number; remaining: number };
+  /** #90: catalogue exercises outside today's plan: how many can be added, and how many were done (free logs). */
+  extras: { available: number; done: number };
   total: number;
   done: number;
   remaining: number;
@@ -181,7 +188,21 @@ export function todayWorkout(input: {
   const ordered = [...rows].sort(cmp);
   const sorted = [...ordered.filter((r) => !r.done), ...ordered.filter((r) => r.done)];
   const done = sorted.filter((r) => r.done).length;
-  return { rows: sorted, total: sorted.length, done, remaining: sorted.length - done, next: sorted.find((r) => !r.done) ?? null, restDay, sessions };
+  const planRows = sorted.filter((r) => r.plan);
+  // A planned exercise done only through a free log still counts for the plan: the exercise was done once.
+  const planDone = planRows.filter((r) => r.done).length;
+  const extraRows = sorted.filter((r) => !r.plan);
+  return {
+    rows: sorted,
+    plan: { total: planRows.length, done: planDone, remaining: planRows.length - planDone },
+    extras: { available: extraRows.length, done: extraRows.filter((r) => r.done).length },
+    total: sorted.length,
+    done,
+    remaining: sorted.length - done,
+    next: sorted.find((r) => !r.done) ?? null,
+    restDay,
+    sessions,
+  };
 }
 
 /** What one tap on a row does. Pure: the screen carries it out with the existing store actions. */

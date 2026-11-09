@@ -46,6 +46,8 @@ import { GamificationCard, GamificationCelebration } from '../../gamification/Ga
 import { useGamification } from '../../gamification/GamificationProvider';
 import type { MealLog } from '../../nutrition/contract';
 import { dayIntake } from '../../nutrition/intake';
+import { restOfDay } from '../../nutrition/restOfDay';
+import { RestOfDayCard } from './RestOfDayCard';
 import { intakeLines, mealSummary, sourceTag } from '../../nutrition/format';
 import { replacementCompletion } from '../../nutrition/replace';
 import { deletePhoto } from '../../platform/mealPhotos';
@@ -118,6 +120,16 @@ export function DayLogScreen() {
   useEffect(loadMeals, [loadMeals, dataVersion]);
   const mealFor = useMemo(() => Object.fromEntries(mealLogs.filter((m) => m.activityId && m.planId === plan.id).map((m) => [m.activityId!, m])) as Record<string, MealLog | undefined>, [mealLogs, plan.id]);
   const eaten = useMemo(() => intakeLines(dayIntake(date, mealLogs, records.observations), energy), [date, mealLogs, records, energy]);
+  const rest = useMemo(
+    () =>
+      restOfDay({
+        plan, date, today, nowMinutes, items: prescription.items, mealLogs, observations: records.observations, energy,
+        weightKg: latestMeasurement.weight?.value ?? null,
+        restDay: (plan.exercise?.restDays ?? []).includes(weekdayOf(date)),
+        injured: !!exerciseState?.coverage.some((c) => c.report === 'injured'),
+      }),
+    [plan, date, today, nowMinutes, prescription, mealLogs, records, energy, latestMeasurement, exerciseState],
+  );
   const [removingMeal, setRemovingMeal] = useState<MealLog | null>(null);
   const logDifferent = (item: PrescriptionItem) => router.push({ pathname: '/meal-photo', params: { date, activity: item.key } });
   const editMeal = (log: MealLog) => router.push({ pathname: '/meal-photo', params: { date: log.date, edit: log.id } });
@@ -334,6 +346,8 @@ export function DayLogScreen() {
           />
           <TargetsLine plan={plan} targets={day.targets} energy={energy} eaten={eaten} />
         </View>
+        {/* #99: optional rest-of-day suggestions once a meal is logged today. */}
+        {rest.show && <View style={styles.block}><RestOfDayCard model={rest} /></View>}
 
         {date === today && gamification?.enabled && <View style={styles.block}><GamificationCelebration /><GamificationCard /></View>}
 

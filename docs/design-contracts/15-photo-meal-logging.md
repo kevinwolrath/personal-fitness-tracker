@@ -74,3 +74,15 @@ Any number may be `null` (unknown).
 - Carbohydrate and fat come from logged meals only.
 
 Today's targets line gains **Eaten ≈ … kJ · … g protein · … g carbs · … g fat**, with where it came from. Progress (14) uses the same rule for the energy and protein charts. There are no new charts.
+
+## Rest of today (#99)
+
+After a meal is logged on today, a **Rest of today** card (content layer, under the targets and Eaten line) gives optional suggestions from `restOfDay()` (`src/nutrition/restOfDay.ts`), pure and deterministic, no AI:
+
+- **Eaten** is the day's actual intake (`dayIntake`). Scheduled meals still to come add their planned nutrition; a flexible dinner still to come keeps about 1,500 kJ of room. Meals with no numbers make it approximate, and the card says so.
+- **Keep the plan** is always first. Within or under the limit, it's the only food suggestion (with what's left for dinner).
+- **Over the limit:** an optional smaller or skipped snack only if protein still reaches its minimum, otherwise keep the snack for its protein. A remaining dinner is never skipped: a smaller, protein-rich one instead.
+- **Protein short** (10 g or more): protein first.
+- **Activity** only when over by 400+ kJ, before 7:30 pm, not on a rest day, with no injury and a known weight: a planned workout still to do is pointed to; otherwise an optional 30-minute walk as a range for the user's weight (3.5–4.3 MET), an estimate that never "earns" food. Nothing is added to the workout log.
+- **Late** (after the eating window or 8 pm): nothing to change today.
+- **Missing** energy limit or unknown intake: "Keep the plan" with the reason, no numbers.

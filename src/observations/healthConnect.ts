@@ -17,6 +17,13 @@ export const HC_IMPORT_ID = 'health-connect';
 export type HcType = 'steps' | 'active_energy' | 'exercise' | 'weight' | 'body_fat' | 'sleep';
 export const hcTypes: HcType[] = ['steps', 'active_energy', 'exercise', 'weight', 'body_fat', 'sleep'];
 
+/**
+ * Optional workout distance (#104). Off until READ_DISTANCE is declared in Google Play's Health apps form: while
+ * off, the manifest doesn't list it, Connect doesn't ask for it, nothing reads it and the sheet doesn't mention it.
+ * To turn it back on: set true, add READ_DISTANCE to app.json, and declare it in Play Console before release.
+ */
+export const HC_DISTANCE = false;
+
 /** Health Connect record type per data type (also the READ_* permission each needs). */
 export const hcRecordType = {
   steps: 'Steps',

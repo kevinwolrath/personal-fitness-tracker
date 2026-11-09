@@ -1,5 +1,5 @@
 import { Linking, Platform } from 'react-native';
-import { hcRecordType, hcTypes, type HcBodyFat, type HcDayTotal, type HcRead, type HcSession, type HcType, type HcWeight } from '../observations/healthConnect';
+import { HC_DISTANCE, hcRecordType, hcTypes, type HcBodyFat, type HcDayTotal, type HcRead, type HcSession, type HcType, type HcWeight } from '../observations/healthConnect';
 import { addDays, type LocalDate } from '../plan/dates';
 
 /**
@@ -36,7 +36,10 @@ async function ready(): Promise<Lib> {
   return hc;
 }
 
-const permissions = () => [...hcTypes.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] })), { accessType: 'read' as const, recordType: 'Distance' as const }];
+const permissions = () => [
+  ...hcTypes.map((t) => ({ accessType: 'read' as const, recordType: hcRecordType[t] })),
+  ...(HC_DISTANCE ? [{ accessType: 'read' as const, recordType: 'Distance' as const }] : []),
+];
 const typeOf = (recordType: string): HcType | undefined => hcTypes.find((t) => hcRecordType[t] === recordType);
 const grantedTypes = (granted: { accessType: string; recordType: string }[]): HcType[] =>
   hcTypes.filter((t) => granted.some((p) => p.accessType === 'read' && typeOf(p.recordType) === t));
@@ -126,7 +129,7 @@ export const healthConnect = {
         // Distance is optional and separately permissioned. Never request permission during sync.
         try {
           const granted = await hc.getGrantedPermissions();
-          if (granted.some(p=>p.accessType==='read' && p.recordType==='Distance')) {
+          if (HC_DISTANCE && granted.some(p=>p.accessType==='read' && p.recordType==='Distance')) {
             const ds = await readAll<Meta & {startTime:string;endTime:string;distance:{inMeters:number}}>(hc,'Distance',from,to);
             read.distances = ds.map(d=>({id:d.metadata?.id??`${d.startTime}|${d.endTime}`,start:d.startTime,end:d.endTime,origin:d.metadata?.dataOrigin??'',metres:d.distance.inMeters}));
           }

@@ -14,7 +14,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
   | `android.permission.health.READ_WEIGHT` | Weight, in the Daily Log's Weight tile and progress |
   | `android.permission.health.READ_BODY_FAT` | Body fat %, shown under Recorded (#46) |
   | `android.permission.health.READ_SLEEP` | Time asleep, shown under Recorded |
-  | `android.permission.health.READ_DISTANCE` | Optional recorded distance attached to matching workouts; never estimated |
+  | `android.permission.health.READ_DISTANCE` | Optional recorded distance attached to matching workouts; never estimated. **Currently off** (see below) |
 
 - **Asking:** the app asks only when the user taps **Connect Health Connect**. It never asks on launch, and never asks again by itself after a refusal. Partial grants are fine: only allowed types are read.
 - **Syncing:** on app start, on return to the foreground and on **Sync now**. There is no background sync and no changes token.
@@ -101,4 +101,4 @@ Distance is optional enrichment, not a daily total or a seventh main status row.
 
 Today, Progress and the connection sheet share activity overlap projections. Raw records remain available. Missing legacy times produce a conservative duration lower bound, labelled accordingly. Display duration as min/hr and distance as m/km, including detail and review screens.
 
-The new READ_DISTANCE permission requires the corresponding Google Play Health Connect declaration before release. No route, background, history or write permission is added. Physical-device permission/source verification remains an owner merge checkpoint; automated/native emulator checks do not replace it.
+The new READ_DISTANCE permission requires the corresponding Google Play Health Connect declaration before release. **It is off until that declaration exists** (`HC_DISTANCE` in `src/observations/healthConnect.ts`): the manifest doesn't list it, Connect doesn't ask for it, nothing reads it and the sheet doesn't mention distance access. Google Play rejects a release whose bundle requests an undeclared health permission, and the form only lists permissions from an accepted bundle. To turn it on: set `HC_DISTANCE`, add the permission to `app.json`, upload that bundle by hand to internal testing, declare READ_DISTANCE in the Health apps form, then release. No route, background, history or write permission is added. Physical-device permission/source verification remains an owner merge checkpoint; automated/native emulator checks do not replace it.

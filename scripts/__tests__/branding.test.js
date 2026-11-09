@@ -12,7 +12,7 @@ test('approved masters and generated store exports validate; app identities and 
   expect(pngInfo(branding.read('feature-graphic.png'))).toMatchObject({width:1024,height:500,color:2});
   expect(config.android.package).toBe('com.questspire.personalfitnesstracker');
   expect(config.ios.bundleIdentifier).toBe(config.android.package);
-  expect(config.android.permissions).toEqual(['android.permission.health.READ_STEPS','android.permission.health.READ_ACTIVE_CALORIES_BURNED','android.permission.health.READ_EXERCISE','android.permission.health.READ_DISTANCE','android.permission.health.READ_WEIGHT','android.permission.health.READ_BODY_FAT','android.permission.health.READ_SLEEP']);
+  expect(config.android.permissions).toEqual(['android.permission.health.READ_STEPS','android.permission.health.READ_ACTIVE_CALORIES_BURNED','android.permission.health.READ_EXERCISE','android.permission.health.READ_WEIGHT','android.permission.health.READ_BODY_FAT','android.permission.health.READ_SLEEP']);
   for(const file of [config.icon,config.ios.icon,config.web.favicon,config.android.adaptiveIcon.foregroundImage,config.android.adaptiveIcon.monochromeImage]) expect(fs.existsSync(path.resolve(__dirname,'../..',file))).toBe(true);
   expect(config.android.adaptiveIcon.backgroundColor).toBe(branding.manifest.background);
 });

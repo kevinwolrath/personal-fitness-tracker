@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import { formatTimestamp, formatShortDate } from '../../format';
-import { HC_IMPORT_ID, hcMetric, hcTypeLabel, hcTypes, type HcType } from '../../observations/healthConnect';
+import { HC_DISTANCE, HC_IMPORT_ID, hcMetric, hcTypeLabel, hcTypes, type HcType } from '../../observations/healthConnect';
 import { appName, formatObservationValue, observationLabel } from '../../observations/format';
 import { formatMinutes } from '../../observations/units';
 import { activitySummary } from '../../observations/activity';
@@ -130,7 +130,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
                 </View>
               ))}
               <Text style={[type.detail, styles.hint]}>Not imported: other measurements, such as heart rate.</Text>
-              <Text style={[type.detail, styles.hint]}>Walking distance is shown only when you allow Distance access and the source supplies matching records. No distance is estimated.</Text>
+              {HC_DISTANCE && <Text style={[type.detail, styles.hint]}>Walking distance is shown only when you allow Distance access and the source supplies matching records. No distance is estimated.</Text>}
             </View>
             {hc.refused && (
               <View style={styles.note} testID="hc-refused">
@@ -193,7 +193,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
               </Text>
             </View>
             <Button title="Sync now" variant="secondary" onPress={hc.syncNow} disabled={hc.syncing} />
-            <Text style={type.detail}>Walking distance requires Distance access and matching source records. Manage permissions below to allow it. No distance is estimated.</Text>
+            {HC_DISTANCE && <Text style={type.detail}>Walking distance requires Distance access and matching source records. Manage permissions below to allow it. No distance is estimated.</Text>}
             <Pressable onPress={hc.openSettings} style={styles.link} accessibilityRole="button" testID="hc-manage">
               <Text style={[styles.linkText, styles.center]}>Manage in Health Connect</Text>
             </Pressable>

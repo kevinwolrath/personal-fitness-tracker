@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Body Anvil",
-    "icon": "./store/google-play/en-US/images/icon.png",
+    "icon": "./assets/branding/generated/launcher-1024.png",
     "slug": "personal-fitness-tracker",
     "scheme": "personalfitnesstracker",
     "version": "0.1.0",
@@ -12,7 +12,26 @@
       "expo-sqlite",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/branding/generated/notification-small.png",
+          "color": "#ffb52e"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/branding/generated/splash-heroes.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000",
+          "dark": {
+            "image": "./assets/branding/generated/splash-heroes.png",
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
       "react-native-health-connect",
       [
         "expo-image-picker",
@@ -36,6 +55,11 @@
     },
     "android": {
       "package": "com.questspire.personalfitnesstracker",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/branding/generated/adaptive-foreground.png",
+        "backgroundColor": "#1b0835",
+        "monochromeImage": "./assets/branding/generated/adaptive-monochrome.png"
+      },
       "permissions": [
         "android.permission.health.READ_STEPS",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
@@ -48,9 +72,11 @@
       "versionCode": 1
     },
     "ios": {
+      "icon": "./assets/branding/generated/launcher-1024.png",
       "bundleIdentifier": "com.questspire.personalfitnesstracker"
     },
     "web": {
+      "favicon": "./assets/branding/generated/favicon-48.png",
       "bundler": "metro",
       "output": "single"
     }

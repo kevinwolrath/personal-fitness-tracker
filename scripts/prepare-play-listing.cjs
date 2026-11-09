@@ -143,36 +143,18 @@ async function prepare() {
     await page.getByTestId('chart-weight').waitFor();
     await save(page, 'phoneScreenshots', 'phone/04-progress.png', 'Progress screen showing honest empty measurement states', 'Production charts with empty history');
     await context.close();
-    const graphic = await browser.newPage({
-      viewport: {
-        width: 1024,
-        height: 500
-      },
-      deviceScaleFactor: 1
-    });
-    await graphic.goto(origin);
-    await graphic.setContent(`<html><style>*{box-sizing:border-box}body{margin:0;background:#101519;color:#f1f3f4;font-family:Arial,sans-serif;width:1024px;height:500px;overflow:hidden}main{height:100%;display:flex;align-items:center;padding:56px;gap:28px;border-bottom:6px solid #ff9e42}.copy{width:390px;flex-shrink:0}.eyebrow{color:#ff9e42;font-size:15px;letter-spacing:3px;font-weight:bold}h1{font-size:56px;line-height:1.05;margin:20px 0 24px}p{color:#b5bdc4;font-size:24px;line-height:1.5;margin:0}.heroes{display:flex;align-items:center;gap:8px;height:388px}img{width:148px;height:360px;object-fit:contain}</style><main><div class="copy"><div class="eyebrow">BODY ANVIL</div><h1>Your daily<br>fitness plan.</h1><p>Log workouts.<br>Follow your progress.</p></div><div class="heroes">${['male', 'female', 'neutral'].map(c => `<img src="${origin}/assets/hero-forge/app/${c}-front.png" alt="${c} approved hero">`).join('')}</div></main></html>`);
-    await graphic.evaluate(() => Promise.all([...document.images].map(i => i.decode())));
-    await save(graphic, 'featureGraphic', 'feature-graphic.png', 'Body Anvil daily fitness plan, with its three established heroes', 'HTML composition using unchanged canonical hero PNGs; not an app screenshot');
-    // Reuse only the approved anvil emblem from the original reference, not a new logo or hero.
-    await graphic.setViewportSize({
-      width: 512,
-      height: 512
-    });
-    await graphic.setContent(`<canvas width="512" height="512"></canvas><script>const c=document.querySelector('canvas'),x=c.getContext('2d');x.fillStyle='#101519';x.fillRect(0,0,512,512);const i=new Image();i.crossOrigin='anonymous';i.onload=()=>{x.drawImage(i,12,10,158,68,40,162,432,186);document.body.dataset.ready='true'};i.src='${origin}/assets/hero-forge/references/hero-forge-character-muscle-map-reference.png';</script>`);
-    await graphic.waitForFunction(() => document.body.dataset.ready === 'true');
-    const icon = Buffer.from((await graphic.locator('canvas').evaluate(c => c.toDataURL('image/png'))).split(',')[1], 'base64');
-    const iconPath = LOCALE + '/images/icon.png';
-    fs.writeFileSync(path.join(dest, iconPath), icon);
-    images.push({
-      type: 'icon',
-      file: iconPath,
-      width: 512,
-      height: 512,
-      sha256: sha(icon),
-      alt: 'Body Anvil metallic anvil emblem on charcoal',
-      source: 'Approved #75 muscle-map reference emblem crop, source rectangle 12,10,158,68; no hero redesign'
-    });
+    const branding = require('./branding.cjs').approvedBranding();
+    for (const [type, asset, file, alt, master] of [
+      ['featureGraphic', 'feature-graphic.png', 'feature-graphic.png', 'Approved Body Anvil three-hero promotional artwork', 'body-anvil-approved-heroes.png'],
+      ['icon', 'store-icon-512.png', 'icon.png', 'Approved female hero with purple outfit and anvil chest emblem', 'body-anvil-approved-female-launcher-original.png'],
+    ]) {
+      const bytes = branding.read(asset);
+      const target = LOCALE + '/images/' + file;
+      fs.writeFileSync(path.join(dest, target), bytes);
+      const info = pngInfo(bytes);
+      images.push({ type, file: target, width: info.width, height: info.height, sha256: sha(bytes), alt,
+        source: `Deterministic #106 export from assets/branding/${master}; approved master SHA-256 ${branding.manifest.sources[master]}; no regenerated artwork` });
+    }
     const commit = execFileSync('git', ['rev-parse', 'HEAD'], {
       cwd: root,
       encoding: 'utf8'

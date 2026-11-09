@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { EnergyDisplay } from '../energy';
 import { loadActivePlan } from '../plan/bootstrap';
 import { preferences } from '../platform/preferences';
@@ -8,6 +8,8 @@ import { openStore } from '../storage/openStore';
 import type { TrackingStore } from '../storage/types';
 import { space, useTheme, createThemedStyles } from '../ui/theme';
 import { SetupWizard } from '../features/onboarding/SetupWizard';
+import { BrandLoading } from '../ui/BrandLoading';
+import * as SplashScreen from 'expo-splash-screen';
 import { observableStore } from '../storage/observableStore';
 import { GamificationProvider } from '../gamification/GamificationProvider';
 
@@ -46,6 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<{ store: TrackingStore; plan: Plan } | { store: TrackingStore; plan: null } | { error: string } | null>(null);
   const [chosenEnergy, setChosenEnergy] = useState<EnergyDisplay | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  useEffect(() => { if (state) SplashScreen.hideAsync().catch(() => undefined); }, [state]);
   const notifyDataChanged = useCallback(() => setDataVersion((v) => v + 1), []);
 
   useEffect(() => {
@@ -77,11 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   if (!state) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator color={colors.muted} />
-      </View>
-    );
+    return <BrandLoading />;
   }
   if ('error' in state) {
     return (

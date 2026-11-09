@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "background": "#1b0835",
+  "sources": {
+    "body-anvil-approved-female-launcher-original.png": "48cdd6f32a6c647e75573862826359c06726c75e91d5d40c836556aeab251656",
+    "body-anvil-approved-female-launcher-1024.png": "cf67841fadeb0872b35de136c7b2894e7cbcd83c36ba58caace17fe6c6fb542a",
+    "body-anvil-approved-heroes.png": "c9a5bfba44110236c793ceef9acbc6c2e653b1607c25374654dca1cdb3b4a1bf"
+  },
+  "exports": [
+    {
+      "file": "adaptive-foreground.png",
+      "size": [
+        1080,
+        1080
+      ],
+      "mode": "RGBA",
+      "sha256": "b9f93d28cab485386fdbb1d9a62f356061eeedf175be84872141681170c4ddc0"
+    },
+    {
+      "file": "adaptive-monochrome.png",
+      "size": [
+        1080,
+        1080
+      ],
+      "mode": "RGBA",
+      "sha256": "a85221755f9f4f1149df1607a8710c917583ba4560ca0618e8604ef9c89fe5fb"
+    },
+    {
+      "file": "favicon-16.png",
+      "size": [
+        16,
+        16
+      ],
+      "mode": "RGB",
+      "sha256": "77322b6d866fbe60f9ad6d0e867bab23ba43088feb61210286638fd79140402c"
+    },
+    {
+      "file": "favicon-192.png",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGB",
+      "sha256": "cde4645f89508a4c1080bc699949a79a0d7ac4567c9a95045985692c0e827a7e"
+    },
+    {
+      "file": "favicon-32.png",
+      "size": [
+        32,
+        32
+      ],
+      "mode": "RGB",
+      "sha256": "4e629404fd3f0c09504a7218700dde4926511ad85f19118f8156b079daf2a277"
+    },
+    {
+      "file": "favicon-48.png",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGB",
+      "sha256": "6f56fe379bb224088a4516930bad227731f6b32c1c230ecc0a086e022052d227"
+    },
+    {
+      "file": "feature-graphic.png",
+      "size": [
+        1024,
+        500
+      ],
+      "mode": "RGB",
+      "sha256": "0237128df760b754112779f9383a0753e084fac54a7b812aaf9fc8f88521f21c"
+    },
+    {
+      "file": "launcher-1024.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "sha256": "99def9baebe453c733f3bb70eed993825f48ea015f02642226509dff50d5e22e"
+    },
+    {
+      "file": "notification-small.png",
+      "size": [
+        96,
+        96
+      ],
+      "mode": "RGBA",
+      "sha256": "4f76381617d6f2aa0a7c611b57327c90029ef8bfa6664f49257effc448d1892b"
+    },
+    {
+      "file": "splash-heroes.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "sha256": "9110da727f14c3112915039666ffe71c4a842a3286dfb9b6082e0d4021a34fc7"
+    },
+    {
+      "file": "store-icon-512.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sha256": "d5c43703f0e09b1d2109367174dbaf6774bbf4859a796162384fb9ea7cf492e0"
+    },
+    {
+      "file": "website-heroes.png",
+      "size": [
+        1600,
+        900
+      ],
+      "mode": "RGB",
+      "sha256": "7bbbc941c9843fb6af130c29431e07adf57c4511da178f948d5969528e59f495"
+    }
+  ]
+}

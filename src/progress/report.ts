@@ -9,6 +9,7 @@ import { activitySummary, isHealthActivity, isWalk } from '../observations/activ
 import { formatDistance } from '../observations/units';
 import type { MealLog } from '../nutrition/contract';
 import { mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
+import { forecast, trendInsight } from './forecast';
 import {
   bmiSeries,
   bucketMeans,
@@ -60,7 +61,8 @@ export const ranges = [
 ] as const;
 export type RangeId = (typeof ranges)[number]['id'];
 
-export type Series = { label: string; points: Point[]; style: 'dots' | 'line' | 'bars'; tone: 'accent' | 'ink' | 'warm' };
+/** `dashed`: a forecast line; `band`: a shaded range between `points` (low) and `upper` (#57). */
+export type Series = { label: string; points: Point[]; style: 'dots' | 'line' | 'bars' | 'dashed' | 'band'; tone: 'accent' | 'ink' | 'warm'; upper?: Point[] };
 export type ChartModel = {
   id: ChartId;
   title: string;
@@ -245,14 +247,25 @@ export function progressReport(observations: Observation[], plan: Plan, today: L
         : proj.status === 'not-moving-towards'
           ? 'The recent trend isn’t heading towards the goal, so there’s no projection.'
           : 'A projection needs a few weeks of weigh-ins.';
+  // #57: the forecast from the recent trend (early weeks left out), with its widening range. An estimate.
+  const fc = forecast(weight, today);
+  const fcText = fc.status === 'ok' ? `Forecast ${fmt(fc.low[fc.low.length - 1].value)}–${fmt(fc.high[fc.high.length - 1].value)} ${mass} in ${fc.mid.length} weeks.` : null;
   charts.goal = {
     id: 'goal',
     title: chartTitles.goal,
     headline: goal ? `${goal.label}: ${fmt(goal.target)} ${mass}` : null,
-    sub: projText,
-    tag: proj?.status === 'projected' ? 'Calculated' : null,
+    sub: [fcText, projText].filter(Boolean).join(' ') || null,
+    tag: fc.status === 'ok' || proj?.status === 'projected' ? 'Estimate' : null,
     unit: mass,
-    series: [{ label: '7-day average', points: avg, style: 'line', tone: 'ink' }],
+    series: [
+      { label: '7-day average', points: avg, style: 'line', tone: 'ink' },
+      ...(fc.status === 'ok'
+        ? ([
+            { label: 'Forecast range', points: [{ date: fc.from.date, value: fc.from.value, kind: 'calculated' }, ...fc.low], upper: [{ date: fc.from.date, value: fc.from.value, kind: 'calculated' }, ...fc.high], style: 'band', tone: 'accent' },
+            { label: 'Forecast', points: [{ date: fc.from.date, value: fc.from.value, kind: 'calculated' }, ...fc.mid], style: 'dashed', tone: 'accent' },
+          ] as Series[])
+        : []),
+    ],
     reference: goal ? { value: goal.target, label: 'Goal' } : undefined,
     empty: goal ? (avg.length ? null : 'No weigh-ins in this range.') : 'No weight goal in your plan. Add one with Configure with AI.',
     note: null,
@@ -286,7 +299,9 @@ export function progressReport(observations: Observation[], plan: Plan, today: L
     mass,
     length,
   };
-  return { charts, summary };
+  // #57: the weight trend's plain status, over the whole history (not the chart range).
+  const trend = trendInsight(weight, today, mass);
+  return { charts, summary, trend };
 }
 
 /** Saved chart order and visibility, made whole: unknown ids dropped, new charts appended. */

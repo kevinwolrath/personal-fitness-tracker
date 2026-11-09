@@ -11,6 +11,11 @@ const ENERGY = 'pft.display.energy';
 const HC_SYNC = 'pft.healthConnect.sync';
 const SETUP_DRAFT = 'pft.setup.draft';
 const PROGRESS_CHARTS = 'pft.progress.charts';
+const TREND_ALERTS = 'pft.trend.alerts';
+const TREND_STATE = 'pft.trend.state';
+
+/** The last weight-trend alert on this phone and the last one seen on Progress (#57). */
+export type TrendAlertState = { lastKey: string | null; lastAt: string | null; seenKey: string | null };
 
 /** The last Health Connect sync on this phone (#36). Device state, never plan data. */
 export type HcSyncState = {
@@ -71,6 +76,24 @@ export const preferences = {
   },
   async setProgressCharts(v: { order: string[]; hidden: string[] }): Promise<void> {
     await secrets.set(PROGRESS_CHARTS, JSON.stringify(v));
+  },
+  /** Weight-trend alerts (#57): on unless turned off in Settings. */
+  async trendAlerts(): Promise<boolean> {
+    return (await secrets.get(TREND_ALERTS).catch(() => null)) !== 'false';
+  },
+  async setTrendAlerts(on: boolean): Promise<void> {
+    await secrets.set(TREND_ALERTS, on ? 'true' : 'false');
+  },
+  async trendAlertState(): Promise<TrendAlertState> {
+    try {
+      const raw = await secrets.get(TREND_STATE);
+      return { lastKey: null, lastAt: null, seenKey: null, ...(raw ? JSON.parse(raw) : {}) };
+    } catch {
+      return { lastKey: null, lastAt: null, seenKey: null };
+    }
+  },
+  async setTrendAlertState(s: TrendAlertState): Promise<void> {
+    await secrets.set(TREND_STATE, JSON.stringify(s));
   },
   async clearSetupDraft(): Promise<void> {
     await secrets.remove(SETUP_DRAFT);

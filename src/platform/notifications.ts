@@ -82,6 +82,18 @@ export const notifications = {
     return res ? toOpened(res.notification.request.content.data) : null;
   },
 
+  /**
+   * Show one notification now (#57 trend alerts), only if notifications are already allowed: never asks. Its id has
+   * no reminder prefix, so reminder reconciling never touches it.
+   */
+  async notifyNow(id: string, title: string, body: string): Promise<boolean> {
+    const p = await Notifications.getPermissionsAsync();
+    if (!p.granted) return false;
+    await setup();
+    await Notifications.scheduleNotificationAsync({ identifier: id, content: { title, body, data: { open: 'progress' } }, trigger: null });
+    return true;
+  },
+
   openSettings(): void {
     Linking.openSettings();
   },

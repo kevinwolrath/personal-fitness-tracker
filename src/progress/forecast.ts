@@ -109,3 +109,72 @@ export const plateauSteps = [
 
 export const plateauExplanation =
   'As you get lighter, your body uses a little less energy each day, and day-to-day intake and activity vary. A flat trend means those now balance out; it isn’t your body refusing to lose fat.';
+
+export type TrendInsight = {
+  kind: 'plateau' | 'slower' | 'steady' | 'gaining' | 'insufficient';
+  title: string;
+  body: string;
+  /** Optional steps; only for a plateau or a slowdown. */
+  steps: string[] | null;
+  /**
+   * Identifies this finding for an alert (#57 option b): the same plateau or slowdown keeps its key, so it alerts
+   * once. Null when nothing is worth an alert.
+   */
+  alertKey: string | null;
+};
+
+/** One decimal, no "−0.0": weekly rates aren't precise to more. */
+const r2 = (n: number) => {
+  const v = Math.round(n * 10) / 10;
+  return `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(1)}`;
+};
+
+/**
+ * The Progress Trend card (#57, layout A): the plain status of the weight trend, its explanation and optional steps.
+ * Weights in the plan's unit; `unit` labels them ("kg"/"lb"). Advisory only.
+ */
+export function trendInsight(weights: Point[], today: LocalDate, unit: string): TrendInsight {
+  const flat = unit === 'lb' ? 0.2 : 0.1;
+  const p = plateau(weights, today, flat);
+  const f = forecast(weights, today);
+  if (p.status === 'plateau') {
+    const since = addDays(today, -(p.weeks * 7 - 1));
+    return {
+      kind: 'plateau',
+      title: `Flat for ${p.weeks} weeks`,
+      body: `≈ ${r2(p.perWeek)} ${unit}/week over the last ${p.weeks} weeks. ${plateauExplanation}`,
+      steps: plateauSteps,
+      alertKey: `plateau-${since.slice(0, 7)}`,
+    };
+  }
+  if (f.status !== 'ok') return { kind: 'insufficient', title: 'Not enough weigh-ins yet', body: f.reason, steps: null, alertKey: null };
+  const early = f.earlyExcluded ? ', after your first 2 weeks' : '';
+  if (f.perWeek > flat) {
+    return { kind: 'gaining', title: 'Trending up', body: `≈ ${r2(f.perWeek)} ${unit}/week over the last ${Math.round(f.basisDays / 7)} weeks${early}. Water, salt and training can move this; look again after another week or two.`, steps: null, alertKey: null };
+  }
+  // Slower: the last 3 weeks' rate is under half the rate of the whole basis, and still losing.
+  const recent = trend(inRange(weights, addDays(today, -20), today));
+  if (recent && recent.perDay * 7 > f.perWeek / 2 && f.perWeek < -flat) {
+    return {
+      kind: 'slower',
+      title: 'Slower than before',
+      body: `≈ ${r2(recent.perDay * 7)} ${unit}/week over the last 3 weeks, against ${r2(f.perWeek)} ${unit}/week over ${Math.round(f.basisDays / 7)} weeks${early}. ${plateauExplanation.split('. ')[0]}.`,
+      steps: plateauSteps,
+      alertKey: `slower-${today.slice(0, 7)}`,
+    };
+  }
+  return { kind: 'steady', title: 'Steady', body: `≈ ${r2(f.perWeek)} ${unit}/week over the last ${Math.round(f.basisDays / 7)} weeks${early}. Forecasts are estimates, not promises.`, steps: null, alertKey: null };
+}
+
+/**
+ * Whether a finding should alert now (#57 option b): only a new key, at most once a week, and only with a weigh-in
+ * in the last 3 days (fresh data). `last` is the previous alert this phone showed.
+ */
+export function shouldAlert(insight: TrendInsight, weights: Point[], today: LocalDate, last: { key: string; at: LocalDate } | null): boolean {
+  if (!insight.alertKey) return false;
+  const latest = weights[weights.length - 1]?.date;
+  if (!latest || addDays(latest, 3) < today) return false;
+  if (last?.key === insight.alertKey) return false;
+  if (last && addDays(last.at, 7) > today) return false;
+  return true;
+}

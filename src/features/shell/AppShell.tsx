@@ -12,6 +12,8 @@ import { Toast, type ToastState } from '../../ui/Toast';
 import { space, touch, createThemedStyles } from '../../ui/theme';
 import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { TabBar } from './TabBar';
+import { useTrendAlert } from '../progress/useTrendAlert';
+import { useClock } from '../daily-log/useDay';
 import { AppMenu, type AppMenuItem } from './AppMenu';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
@@ -89,6 +91,10 @@ function Shell({ children }: { children: ReactNode }) {
     { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
   ];
 
+  // #57 option b: a dot on Progress for a new weight-trend finding (and one notification when allowed).
+  const { today: clockToday } = useClock();
+  const trendDot = useTrendAlert(clockToday);
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top', 'left', 'right']} style={styles.bar} testID="app-bar">
@@ -107,7 +113,7 @@ function Shell({ children }: { children: ReactNode }) {
       </SafeAreaView>
 
       <View style={styles.screen}>{children}</View>
-      <TabBar />
+      <TabBar badges={{ '/progress': trendDot }} />
 
       <SafeAreaView edges={['bottom']} style={styles.toastDock} pointerEvents="box-none">
         <Toast toast={toast} onDone={clearToast} />

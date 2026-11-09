@@ -65,3 +65,27 @@ describe('plateau (#57)', () => {
     expect(plateau(series(42, (d) => 95 - d * 0.07), end(42))).toMatchObject({ status: 'none' });
   });
 });
+
+describe('trend insight and alerts (#57)', () => {
+  const { trendInsight, shouldAlert } = jest.requireActual('../forecast') as typeof import('../forecast');
+  it('plateau: plain status, explanation without blame, optional steps, an alert key', () => {
+    const w = series(70, (d) => (d < 35 ? 95 - d * 0.1 : 91.5 + (d % 2 ? 0.3 : -0.3)));
+    const i = trendInsight(w, end(70), 'kg');
+    expect(i.kind).toBe('plateau');
+    expect(i.body).toMatch(/isn’t your body refusing/);
+    expect(i.steps?.at(-1)).toMatch(/your choice/);
+    expect(i.alertKey).toMatch(/^plateau-/);
+  });
+  it('steady loss: no alert; too little data: says so', () => {
+    expect(trendInsight(series(42, (d) => 95 - d * 0.07), end(42), 'kg')).toMatchObject({ kind: 'steady', alertKey: null });
+    expect(trendInsight(series(5, () => 90), end(5), 'kg').kind).toBe('insufficient');
+  });
+  it('alerts once per finding, at most weekly, only with a fresh weigh-in', () => {
+    const w = series(70, (d) => (d < 35 ? 95 - d * 0.1 : 91.5 + (d % 2 ? 0.3 : -0.3)));
+    const i = trendInsight(w, end(70), 'kg');
+    expect(shouldAlert(i, w, end(70), null)).toBe(true);
+    expect(shouldAlert(i, w, end(70), { key: i.alertKey!, at: end(60) })).toBe(false); // same finding
+    expect(shouldAlert(i, w, end(70), { key: 'other', at: end(67) })).toBe(false); // within a week
+    expect(shouldAlert(i, w, addDays(end(70), 5), null)).toBe(false); // stale data
+  });
+});

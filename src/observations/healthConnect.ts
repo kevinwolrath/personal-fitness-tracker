@@ -136,6 +136,13 @@ export function appsForOrigins(origins: string[]): string | null {
   return apps.length ? apps.join(',') : null;
 }
 
+/** Provenance slugs (already mapped) joined like appsForOrigins: named apps first, then the phone, then others. */
+function appsOf(slugs: string[]): string | null {
+  const rank = (a: string) => (a === 'phone' ? 1 : a.includes('.') ? 2 : 0);
+  const apps = [...new Set(slugs)].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  return apps.length ? apps.join(',') : null;
+}
+
 /** Health Connect exercise types (ExerciseType constants) → readable labels. Unknown types read "Workout". */
 const exerciseLabels: Record<number, string> = {
   0: 'Workout',
@@ -327,7 +334,7 @@ export function mapHealthConnect(read: HcRead, dates: LocalDate[], recordedAt: s
 
 /**
  * What one sync found per type (#44), so the app can tell "none in Health Connect" from "not allowed" and
- * "couldn't read". Counts and dates only: no health values.
+ * "couldn't read". Counts, dates and source apps only: no health values.
  */
 export type HcTypeResult = {
   status: 'ok' | 'failed' | 'not_allowed';
@@ -335,6 +342,8 @@ export type HcTypeResult = {
   count: number;
   /** Local date of the latest one, or null when there were none. */
   latest: LocalDate | null;
+  /** Source app(s) of the latest one (provenance slugs, comma-joined for a daily total) (#116). */
+  app?: string | null;
 };
 
 export function summarizeRead(
@@ -345,17 +354,21 @@ export function summarizeRead(
   localDateOf: (iso: string) => LocalDate = (iso) => toLocalDate(new Date(iso)),
 ): Record<HcType, HcTypeResult> {
   const inWindow = new Set(dates);
-  const summary = (days: LocalDate[]) => {
-    const ds = days.filter((d) => inWindow.has(d)).sort();
-    return { count: ds.length, latest: ds[ds.length - 1] ?? null };
+  type Found = { date: LocalDate; app: string | null };
+  const summary = (found: Found[]) => {
+    const fs = found.filter((f) => inWindow.has(f.date)).sort((a, b) => a.date.localeCompare(b.date));
+    const latest = fs[fs.length - 1]?.date ?? null;
+    // Every source of the latest day, so "Fitbit + this phone" survives for daily totals and several apps.
+    const apps = fs.filter((f) => f.date === latest).flatMap((f) => (f.app ? f.app.split(',') : []));
+    return { count: fs.length, latest, app: latest ? appsOf(apps) : null };
   };
-  const found: Record<HcType, LocalDate[] | undefined> = {
-    steps: read.steps?.filter((d) => d.value > 0).map((d) => d.date),
-    active_energy: read.activeKcal?.filter((d) => d.value > 0).map((d) => d.date),
-    exercise: read.exercise?.map((s) => localDateOf(s.start)),
-    weight: read.weight?.filter((w) => w.kg > 0).map((w) => localDateOf(w.time)),
-    body_fat: read.bodyFat?.filter((b) => b.percent > 0).map((b) => localDateOf(b.time)),
-    sleep: read.sleep?.map((s) => localDateOf(s.end)),
+  const found: Record<HcType, Found[] | undefined> = {
+    steps: read.steps?.filter((d) => d.value > 0).map((d) => ({ date: d.date, app: appsForOrigins(d.origins) })),
+    active_energy: read.activeKcal?.filter((d) => d.value > 0).map((d) => ({ date: d.date, app: appsForOrigins(d.origins) })),
+    exercise: read.exercise?.map((s) => ({ date: localDateOf(s.start), app: appForOrigin(s.origin) })),
+    weight: read.weight?.filter((w) => w.kg > 0).map((w) => ({ date: localDateOf(w.time), app: appForOrigin(w.origin) })),
+    body_fat: read.bodyFat?.filter((b) => b.percent > 0).map((b) => ({ date: localDateOf(b.time), app: appForOrigin(b.origin) })),
+    sleep: read.sleep?.map((s) => ({ date: localDateOf(s.end), app: appForOrigin(s.origin) })),
   };
   return Object.fromEntries(
     hcTypes.map((t): [HcType, HcTypeResult] => {

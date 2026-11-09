@@ -211,15 +211,35 @@ describe('#44: Fitbit weight, source labels, per-type results', () => {
     };
     const r = summarizeRead(read, ['active_energy'], ['steps', 'active_energy', 'exercise', 'weight', 'sleep'], window7);
     expect(r).toEqual({
-      steps: { status: 'ok', count: 1, latest: today },
+      steps: { status: 'ok', count: 1, latest: today, app: null },
       active_energy: { status: 'failed', count: 0, latest: null },
-      exercise: { status: 'ok', count: 1, latest: '2026-11-03' },
-      weight: { status: 'ok', count: 0, latest: null },
+      exercise: { status: 'ok', count: 1, latest: '2026-11-03', app: 'x' },
+      weight: { status: 'ok', count: 0, latest: null, app: null },
       body_fat: { status: 'not_allowed', count: 0, latest: null },
-      sleep: { status: 'ok', count: 1, latest: today },
+      sleep: { status: 'ok', count: 1, latest: today, app: 'fitbit' },
     });
     expect(summarizeRead({}, [], ['steps'], window7).weight).toEqual({ status: 'not_allowed', count: 0, latest: null });
     expect(JSON.stringify(r)).not.toMatch(/1698|95\.5/); // no health values in diagnostics
+  });
+
+  it('#116: each result names the source app(s) of its latest day, as the provenance shows them', () => {
+    const r = summarizeRead(
+      {
+        steps: [
+          { date: '2026-11-04', value: 900, origins: ['com.sec.android.app.shealth'] },
+          { date: today, value: 1698, origins: ['com.android.healthconnect.phone.j26a4212', 'com.fitbit.FitbitMobile'] },
+        ],
+        weight: [
+          { id: 'a', time: local(4, 7), kg: 95.9, origin: 'com.withings.wiscale2' },
+          { id: 'b', time: local(5, 7, 32), kg: 95.2, origin: 'com.fitbit.FitbitMobile' },
+        ],
+      },
+      [],
+      ['steps', 'weight'],
+      window7,
+    );
+    expect(r.steps.app).toBe('fitbit,phone'); // the latest day only, named apps first
+    expect(r.weight).toEqual({ status: 'ok', count: 2, latest: today, app: 'fitbit' });
   });
 });
 

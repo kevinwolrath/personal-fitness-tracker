@@ -18,8 +18,7 @@ it('updates mounted guide artwork when the profile changes, including clearing g
     for (const [i, step] of squat.steps.entries()) {
       expect(screen.getByTestId(`guide-image-${i + 1}`, { includeHiddenElements: true }).props.source).toEqual(exerciseArtwork(step.image, gender).source);
     }
-    if (gender === 'male') expect(screen.queryByTestId('guide-artwork-note')).toBeNull();
-    else expect(screen.getByTestId('guide-artwork-note')).toHaveTextContent(/Hero portrait only/);
+    expect(screen.queryByTestId('guide-artwork-note')).toBeNull();
   }
 });
 

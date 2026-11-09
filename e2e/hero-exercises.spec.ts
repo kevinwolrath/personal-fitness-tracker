@@ -25,15 +25,16 @@ for (const hero of ['male', 'female', 'neutral'] as const) {
       await expect.poll(() => first.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
       const firstUrl = await first.locator('img').getAttribute('src');
       expect(firstUrl).toContain('/assets/');
-      const pose = manifest.find(entry => entry.movement === exercise.movement && entry.step === 1)!;
-      expect(firstUrl).toContain(pose.hero === hero ? pose.id : `${hero}-front`);
-      if (pose.hero !== hero) await expect(page.getByTestId('guide-artwork-note')).toBeVisible();
+      const pose = manifest.find(entry => entry.movement === exercise.movement && entry.step === 1 && entry.hero === hero)!;
+      expect(firstUrl).toContain(pose.id);
+      await expect(page.getByTestId('guide-artwork-note')).toHaveCount(0);
       await page.getByRole('button', { name: 'Next step', exact: true }).click();
       await expect(page.getByTestId('guide-position')).toHaveText('2 / 2');
       const second = page.getByTestId('guide-image-2');
       await expect.poll(() => second.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
-      if (pose.hero === hero) expect(await second.locator('img').getAttribute('src')).not.toBe(firstUrl);
-      else expect(await second.locator('img').getAttribute('src')).toBe(firstUrl);
+      expect(await second.locator('img').getAttribute('src')).not.toBe(firstUrl);
+      const secondPose = manifest.find(entry => entry.movement === exercise.movement && entry.step === 2 && entry.hero === hero)!;
+      expect(await second.locator('img').getAttribute('src')).toContain(secondPose.id);
       await expect.poll(async () => Math.abs((await second.boundingBox())!.x - (await page.getByTestId('guide-pager').boundingBox())!.x)).toBeLessThan(1);
       if (exercise.movement === 'kettlebell_squat' && info.project.name === 'phone') {
         const dir = 'docs/design/profile-exercise-heroes/screenshots';
@@ -67,7 +68,8 @@ test('saved profile changes replace the guide hero without reloading the app', a
     await page.getByRole('button', { name: 'Choose Goblet squat', exact: true }).click();
     await page.getByRole('button', { name: 'Show exercise guide', exact: true }).click();
     const hero = gender === 'male' || gender === 'female' ? gender : 'neutral';
-    await expect(page.getByTestId('guide-image-1').locator('img')).toHaveAttribute('src', new RegExp(hero === 'male' ? 'kettlebell-squat-1' : `${hero}-front`));
+    const pose = manifest.find(entry => entry.movement === 'kettlebell_squat' && entry.step === 1 && entry.hero === hero)!;
+    await expect(page.getByTestId('guide-image-1').locator('img')).toHaveAttribute('src', new RegExp(pose.id));
     await page.getByRole('button', { name: 'Close guide', exact: true }).click();
     await page.getByRole('button', { name: 'Back to exercise inventory', exact: true }).click();
     await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();

@@ -1,42 +1,61 @@
-# Profile artwork audit
+# Profile exercise heroes
+
+Every one of the 16 guides has two distinct exercise poses for each of the
+three established heroes: **96 bundled JPEGs**. This includes all 15 inventory
+movements and legacy cable row. The original 32 poses remain unchanged; the
+64 missing poses were generated after the owner's explicit request.
+
+## Root cause and selection
 
 Issue #86 was completed by PR #87, merged into develop on 7 November 2026
-(`812391862083a30cc4d23dbf2d5488f19c6bf5d8`). Its implementation deliberately
-assigned one hero per exercise, independently of the profile. The gender prop
-reached all three guide entry points (day log, item sheet and coverage sheet),
-but was used only by ExerciseMuscles, not the demonstration images.
+(`812391862083a30cc4d23dbf2d5488f19c6bf5d8`). It assigned one hero per exercise.
+All three guide entry points passed gender, but the guide used it only for
+ExerciseMuscles. The shared guide now resolves the stable library image ID
+plus current profile against the manifest's `baseImage` and `hero` fields.
+Explicit male/female values select those heroes; absent, other and unknown
+values select neutral, using the muscle map's `characterFor` rule. Resolution
+happens on every render. No shipped guide needs the defensive portrait
+fallback; coverage tests fail if any profile pose is missing.
 
-## Selection
+## Artwork and provenance
 
-The shared guide now resolves each image using the current profile. Explicit
-male/female values select those heroes; other, absent and unknown values select
-neutral, using the same characterFor rule as muscle maps. Resolution happens on
-render, so changing the profile cannot retain a previous character's artwork.
+Built-in `image_gen` created 32 two-panel sequences using the exact existing
+production character PNGs under `assets/hero-forge/app/` as identity references.
+No hero was redesigned. `generation-results.json` records final prompts,
+reference/source/output hashes, dimensions, byte sizes and source paths.
+Two deadlift sequences were corrected for deeper hip hinges and the female
+leg raise was corrected for head contact with the floor before adoption.
 
-The existing manifest has 32 poses across 16 movements (15 inventory movements
-plus legacy cable row). Each movement has just one hero's two poses. Thus only
-32 of the 96 poses needed for complete three-character coverage exist. No
-replacement artwork was generated or edited.
+`scripts/process-profile-poses.py` splits sheets at their midpoint, resizes
+proportionally to at most 768 x 1024 and encodes JPEG quality 88. It does not
+transform anatomy or equipment. `scripts/register-profile-poses.py` updates
+the manifest and static Metro requires. All final project assets are saved
+under `assets/exercises/heroes/`; the complete set totals about 7.3 MB.
 
-Where a matching pose exists it is used unchanged. Otherwise the existing
-approved front portrait for the profile hero is shown with an explicit portrait
-label and exercise-pose-unavailable message. Instructions, captions, navigation
-and tracking behavior are retained. **This fixes character identity, but does
-not provide the missing 64 exercise poses.** Portraits are not demonstrations.
+Each generated sheet was visually reviewed for character identity, distinct
+poses, equipment, grip and full body framing. Complete catalogue contact sheets:
 
-Automated checks audit every library step for male, female, other, unspecified
-and unknown profiles. Native tests change the profile on a mounted guide.
-Playwright audits both steps of all inventory movements for three characters,
-checks tracking data is unchanged, saves screenshots and compares visual
-baselines. Another browser test edits and saves all profile variants through
-the app without reloading.
+- [Male](male-contact-sheet.jpg)
+- [Female](female-contact-sheet.jpg)
+- [Neutral](neutral-contact-sheet.jpg)
 
-Actual 390 px screenshots are in `screenshots/`; visual baselines are in
+Actual application screenshots for both squat steps and all three heroes are
+in `screenshots/`. Three 390 px visual baselines live in
 `e2e/__screenshots__/exercise-profile-{male,female,neutral}.png`.
 
-Validation: TypeScript passed; focused Jest passed 19 tests across unit, iOS and
-Android projects. Production Playwright passed the initial four-test 390 px
-run, including baseline capture for all three characters. The subsequent run
-without baseline updates passed all 12 tests at 360, 390 and 430 px, including
-the three 390 px visual comparisons. Screenshots were visually inspected.
-The full repository regression suite was not run.
+## Verification
+
+- TypeScript passed.
+- Focused Jest: 19 passed across unit, iOS and Android. Tests require exactly
+  one correct pose per library step/profile, distinct files per sequence,
+  96 registry entries, valid file signatures/sizes and mounted profile changes.
+- iOS and Android Hermes production exports passed; all 96 JPEG content hashes
+  were verified against each platform's exported asset metadata.
+- Production Playwright audits both steps of all inventory exercises for all
+  three heroes, tracking immutability, saved profile changes without reload,
+  actual image loading, sizing and pager alignment. Visual baselines are
+  captured and compared in a separate run without snapshot updates.
+- Final combined guide/browser run without snapshot updates: **22 passed,
+  2 configured skips**, across 360, 390 and 430 px. Four 390 px visual baselines
+  passed, including the existing guide baseline and all three profile variants.
+- Full repository regression suite was not run.

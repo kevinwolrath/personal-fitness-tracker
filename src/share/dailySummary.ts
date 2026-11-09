@@ -94,6 +94,12 @@ export function dailySummary(input: {
     }
   }
 
+  // Other body measurements (#108), e.g. waist: only a value measured on this date, never an older one.
+  for (const m of plan.measurements.filter((x) => x !== weightM)) {
+    const onDay = records.observations.filter((o) => o.metric === m.id && o.kind === 'observed' && o.date === date).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt)).at(-1);
+    if (onDay) lines.push(`${m.label}: ${formatMeasurement(plan, m, measurementMetric(plan, m).toPlan(onDay.value))}`);
+  }
+
   // Plan counts: the same rule as the day's progress (required items; a requirement counts once).
   const required = items.filter((i) => i.required);
   if (required.length) {

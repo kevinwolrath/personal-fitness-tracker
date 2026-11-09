@@ -1,4 +1,4 @@
-import { addDays, weekdayOf, type LocalDate } from '../plan/dates';
+import { addDays, weekdayOf, toLocalDate, type LocalDate } from '../plan/dates';
 import type { Plan } from '../plan/schema';
 import { prescribeDay, type PrescriptionItem } from '../prescription/prescribe';
 import type { StoreSnapshot, DayRecords } from '../storage/types';
@@ -14,6 +14,7 @@ export type Game = { xp: number; level: number; next: number; quests: Quest[]; w
 
 const validDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 const safeNumber = (v: number) => Number.isFinite(v) && v > 0;
+const eventDate = (iso: string) => toLocalDate(new Date(iso));
 
 /** Pure projection, never an incrementing reward ledger. Deletions and corrections reverse their rewards. */
 export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate): Game {
@@ -31,14 +32,14 @@ export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate):
     const activities = Object.fromEntries(snapshot.activityLogs.filter(l => l.planId === plan.id && l.date === date).map(l => [l.activityId, l]));
     const records: DayRecords = { activities, dayTypeOverride: snapshot.dayOverrides.find(l => l.planId === plan.id && l.date === date)?.dayTypeId ?? null, observations: [], quickLogs: [] };
     // A saved prescription is the authority for an acted-on historical date. Otherwise use that date's plan revision.
-    const versions = snapshot.configChanges.filter(c => c.appliedAt.slice(0, 10) > date).sort((a,b) => a.appliedAt.localeCompare(b.appliedAt));
+    const versions = snapshot.configChanges.filter(c => eventDate(c.appliedAt) > date).sort((a,b) => a.appliedAt.localeCompare(b.appliedAt));
     let historical = plan;
     try { if (versions[0]) { const p = JSON.parse(versions[0].previousPlanJson) as Plan; if (p.id === plan.id) historical = p; } } catch { /* retain current plan if an old backup is malformed */ }
     const saved = snapshot.daySnapshots.find(s => s.planId === plan.id && s.date === date)?.prescribed as { items?: PrescriptionItem[] } | undefined;
     const prescription = prescribeDay(historical, date, records);
     const items = saved?.items ?? prescription.items;
     const rest = historical.exercise?.restDays?.includes(weekdayOf(date)) ?? false;
-    const injured = (snapshot.muscleReports ?? []).some(r => r.kind === 'injured' && r.at.slice(0,10) <= date && (!r.clearedAt || r.clearedAt.slice(0,10) > date));
+    const injured = (snapshot.muscleReports ?? []).some(r => r.kind === 'injured' && eventDate(r.at) <= date && (!r.clearedAt || eventDate(r.clearedAt) > date));
     const groups = new Map<string, { label: string; done: boolean }>();
     for (const item of items) {
       const meal = item.activity?.kind === 'meal' || historical.activities.find(a => a.id === item.key)?.kind === 'meal' || item.purpose === 'nutrition';

@@ -98,3 +98,11 @@ it('keeps earned goal recognition after natural regression, but reverses deleted
   s.observations=s.observations.filter(o=>!(o.metric==='weight' && o.date===addDays(START,120)));
   expect(goal(s)?.unlocked).toBe(false);
 });
+
+it('uses the local calendar day for injury timestamps around midnight',()=>{
+  const s=journeySnapshot(1);
+  s.activityLogs.push({planId:journeyPlan.id,date:'2026-06-30',activityId:'conditioning',status:'done',count:0,labelSnapshot:'Conditioning',updatedAt:'2026-06-30'});
+  s.muscleReports=[{id:'midnight',muscle:'chest',kind:'injured',at:new Date(2026,6,1,0,30).toISOString(),clearedAt:null}];
+  expect(gameFrom(s,journeyPlan,'2026-06-30').xp).toBe(20);
+  expect(gameFrom(s,journeyPlan,START).quests.some(q=>q.id.endsWith(':strength'))).toBe(false);
+});

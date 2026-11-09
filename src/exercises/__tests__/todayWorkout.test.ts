@@ -215,7 +215,7 @@ describe('#90: counts are today’s prescription; extras are separate', () => {
   it('all done: 5 of 5; the short version counts its own exercises', () => {
     const done = setDone(ctx(), strength, true).log!;
     expect(workout(MON, { logs: { resistance: done } }).plan).toEqual({ total: 5, done: 5, remaining: 0 });
-    const short = chooseVariant(ctx(), strength, sessionItem().session!, 'short').log!;
+    const short = chooseVariant(ctx(), strength, sessionItem().session!, 'short')!.log!;
     expect(workout(MON, { logs: { resistance: short } }).plan).toEqual({ total: 3, done: 0, remaining: 3 });
   });
 

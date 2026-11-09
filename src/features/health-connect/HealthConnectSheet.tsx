@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import { formatTimestamp, formatShortDate } from '../../format';
@@ -76,6 +76,12 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
     };
   }, [visible, connected, store, plan.id, dataVersion]);
 
+  // A check's result is shown at the top: bring it into view (Check again sits at the bottom).
+  const scroll = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (hc.lastCheck) scroll.current?.scrollTo({ y: 0, animated: true });
+  }, [hc.lastCheck]);
+
   const close = () => {
     hc.clearCheck();
     setOpenFix(undefined);
@@ -141,7 +147,7 @@ export function HealthConnectSheet({ visible, onClose }: { visible: boolean; onC
     <Sheet visible={visible} onClose={close} label="Health Connect">
       <ModalHeader title="Health Connect" dismiss={{ label: 'Close', onPress: close }} />
       {/* Tall content (six types, notes) scrolls inside the sheet so every action stays reachable (#46). */}
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} testID="health-connect-sheet">
+      <ScrollView ref={scroll} style={styles.scroll} contentContainerStyle={styles.body} testID="health-connect-sheet">
         {hc.availability === null && <Text style={type.detail}>Checking…</Text>}
         {hc.checkFailed && hc.availability === 'available' && (
           <View style={styles.note} testID="hc-check-failed">

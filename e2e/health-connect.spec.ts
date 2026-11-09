@@ -410,6 +410,7 @@ test('#116: weight not arriving → Fix names Fitbit and opens Health Connect; o
   await setFixture(page, f);
   await page.getByTestId('hc-check-again').click();
   await expect(page.getByTestId('hc-check-result')).toContainText('✓ Weight is working now. 95.2 kg from Fitbit.');
+  await expect(page.getByTestId('hc-check-result')).toBeInViewport(); // scrolled into view from Check again
   await expect(page.getByTestId('hc-check-result')).toContainText('! Workouts still isn’t arriving.'.replace('’', "'"));
   await expect(page.getByTestId('hc-today-weight')).toContainText('✓ 95.2 kg today · Fitbit');
   await expect(page.getByTestId('hc-summary')).toHaveText('4 of 5 working');

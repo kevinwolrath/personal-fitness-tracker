@@ -1,9 +1,11 @@
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { APP_NAME, BRAND_BACKGROUND, BRAND_HIGHLIGHT } from '../brand';
+import { StatusBar } from 'expo-status-bar';
 
 /** Startup only: approved source artwork, no artificial delay or extra navigation controls. */
 export function BrandLoading() {
   return <View style={styles.root} testID="brand-loading">
+    <StatusBar style="light" />
     <Image source={require('../../assets/branding/generated/splash-heroes.png')} resizeMode="contain" style={styles.art} accessibilityLabel={`${APP_NAME} approved three-hero artwork`} />
     <ActivityIndicator color={BRAND_HIGHLIGHT} accessibilityLabel="Loading your plan" />
     <Text style={styles.text} accessibilityLiveRegion="polite">Loading your plan…</Text>

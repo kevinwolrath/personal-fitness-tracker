@@ -4,6 +4,8 @@ Started 9 November 2026 on `claude/issue-106-approved-branding`, from latest `de
 
 ## Required source files
 
+**Resolved:** the owner subsequently supplied `body-anvil-issue-106-assets.zip`. The original files are now preserved under `assets/branding/`, with hashes in its manifest. The missing-source findings below describe the initial audit, not the current implementation state.
+
 Neither exact approved binary is present in the repository, available attachments, local image-generation outputs, or matching filenames in the user's normal image/download folders:
 
 1. Three-hero promotional/splash master, required at `assets/branding/body-anvil-approved-heroes.png`.

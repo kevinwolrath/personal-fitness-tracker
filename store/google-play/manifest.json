@@ -7,7 +7,7 @@
   ],
   "capture": {
     "engine": "playwright-production-web",
-    "sourceCommit": "e0b5fedc769b5ffd43856017b899bcd04a520b29",
+    "sourceCommit": "e96b6d8cdcaa46cb2c3a0ba5116cd1559dd57be7",
     "viewport": {
       "width": 390,
       "height": 780,
@@ -24,7 +24,7 @@
       "file": "en-US/images/phone/01-today.png",
       "width": 1170,
       "height": 2340,
-      "sha256": "97ceee9c914d6c2986276c15ded67db0e53f45500a4dcba0692f08019dd17c30",
+      "sha256": "9ed7862f7019927212ef3d9b72a7e909fa33eceb7ebfc1a72899fc235f68be8b",
       "alt": "Daily plan and workout checklist with no logged history",
       "source": "Production React Native Web app, bundled seed plan, empty records"
     },
@@ -33,7 +33,7 @@
       "file": "en-US/images/phone/02-workout.png",
       "width": 1170,
       "height": 2340,
-      "sha256": "1272db60618ced01940ed54a7e42e18e4a7c882f61fef610a799abea6cce0751",
+      "sha256": "00434425068d7ee4a3ad593b088979ad629e337a3b1acf4cc2f10ee256fdc9e4",
       "alt": "Planned exercises and existing muscle coverage artwork",
       "source": "Production workout sheet; no fabricated completions"
     },
@@ -60,18 +60,18 @@
       "file": "en-US/images/feature-graphic.png",
       "width": 1024,
       "height": 500,
-      "sha256": "15f4e00830c681fdc70df18736f3cfae07a8b2cc57474bba07a613a7c93c60c6",
-      "alt": "Body Anvil daily fitness plan, with its three established heroes",
-      "source": "HTML composition using unchanged canonical hero PNGs; not an app screenshot"
+      "sha256": "0237128df760b754112779f9383a0753e084fac54a7b812aaf9fc8f88521f21c",
+      "alt": "Approved Body Anvil three-hero promotional artwork",
+      "source": "Deterministic #106 export from assets/branding/body-anvil-approved-heroes.png; approved master SHA-256 c9a5bfba44110236c793ceef9acbc6c2e653b1607c25374654dca1cdb3b4a1bf; no regenerated artwork"
     },
     {
       "type": "icon",
       "file": "en-US/images/icon.png",
       "width": 512,
       "height": 512,
-      "sha256": "105c896c0dc1fead486f4bdedf7183261f339150bb2e6164e099e5cb067c8481",
-      "alt": "Body Anvil metallic anvil emblem on charcoal",
-      "source": "Approved #75 muscle-map reference emblem crop, source rectangle 12,10,158,68; no hero redesign"
+      "sha256": "d5c43703f0e09b1d2109367174dbaf6774bbf4859a796162384fb9ea7cf492e0",
+      "alt": "Approved female hero with purple outfit and anvil chest emblem",
+      "source": "Deterministic #106 export from assets/branding/body-anvil-approved-female-launcher-original.png; approved master SHA-256 48cdd6f32a6c647e75573862826359c06726c75e91d5d40c836556aeab251656; no regenerated artwork"
     }
   ]
 }

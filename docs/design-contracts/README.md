@@ -21,6 +21,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 13 | [First-run setup](13-first-run-setup.md) | The setup wizard: questions, the offline starter plan from bundled presets (exercise and sample meals), Exercise and Meals review with swaps, optional AI refinement, under-18s, resume, editing setup on an existing plan, the nutrition hook |
 | 14 | [Progress](14-progress.md) | The Progress tab: range, this week vs last, measurement and weight-trend charts, calculated vs estimated vs measured values, editable chart order and visibility |
 | 15 | [Photo meal logging](15-photo-meal-logging.md) | Log different meal: the photo → share with AI → paste → review wizard, the versioned reply contract and parser, photo storage and privacy, replace semantics, day totals without double counting |
+| 16 | [Optional quests & achievements](16-gamification.md) | Opt-in, capped reversible XP, levels, recovery, milestones, gallery, artwork and deterministic journey |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 

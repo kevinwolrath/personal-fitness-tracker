@@ -52,6 +52,8 @@ Rules:
 
 ## Device preferences
 
+- Optional gamification (#73, contract 16) stores versioned opt-in and celebration acknowledgements under `pft.gamification.v1`. XP/levels/achievements are projections of canonical tracking, not stored counters. Explicit recovery acknowledgements use existing quick-log records (`gamification-recovery`) and therefore survive export/restore. No tracking migration is needed.
+
 - Choices about this phone (**reminders on/off**, contract 10; **energy display**, contract 11; the last **Health Connect sync**, contract 12) live in device storage (`src/platform/preferences.ts`: the keystore natively, `localStorage` on web). They aren't plan data, tracking history or part of the export. A plan change can't alter them.
 
 ## Export and backup

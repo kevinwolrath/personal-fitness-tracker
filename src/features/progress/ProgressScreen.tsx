@@ -14,6 +14,7 @@ import { Sheet } from '../../ui/Sheet';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useClock } from '../daily-log/useDay';
 import { LineChart } from './LineChart';
+import { GamificationCard, GamificationCelebration } from '../../gamification/Gamification';
 
 /**
  * Progress (#52, layout A): a tab beside Today. Screen header: title, range and Edit charts; content: this week vs
@@ -84,6 +85,8 @@ export function ProgressScreen() {
           </View>
         </View>
 
+        <GamificationCelebration />
+        <GamificationCard gallery />
         {report ? (
           <>
             <View style={styles.summary} testID="progress-summary">

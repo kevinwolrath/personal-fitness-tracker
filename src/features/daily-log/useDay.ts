@@ -9,6 +9,7 @@ import { prescribeDay, type PrescriptionItem } from '../../prescription/prescrib
 import { measurementMetric } from '../../observations/planMetrics';
 import { manualSource, type Observation } from '../../observations/types';
 import { localIsoTimestamp } from '../../format';
+import { nextRecordedAt } from '../../observations/recordedAt';
 import { newId, type ActivityLog, type DayRecords, type TrackingStore } from '../../storage/types';
 
 const emptyDay: DayRecords = { activities: {}, dayTypeOverride: null, observations: [], quickLogs: [] };
@@ -175,7 +176,7 @@ export function useDay(store: TrackingStore, plan: Plan, date: LocalDate, dataVe
         label: null,
         note: null,
         source: manualSource(),
-        recordedAt: new Date().toISOString(),
+        recordedAt: nextRecordedAt(new Date(), current.current.observations.filter(o => o.metric === m.id)),
       };
       setPrevious((p) => ({ ...p, [m.id]: entry }));
       commit({ ...current.current, observations: [...current.current.observations, entry] }, () => store.addObservations([entry]));

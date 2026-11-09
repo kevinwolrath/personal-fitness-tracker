@@ -1,0 +1,93 @@
+<!doctype html><html><head><meta charset="utf-8"><title>#116 Health Connect setup wireframes</title><style>
+:root{--bg:#101519;--card:#20262c;--line:#3a434b;--ink:#eef1f3;--mut:#9aa5ae;--or:#ff9d42;--red:#e5484d;--amb:#f5a524;--grn:#46a758}
+*{box-sizing:border-box}body{margin:0;background:#555;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+.phone{width:390px;height:844px;background:var(--bg);overflow:hidden;position:relative}
+.app{height:56px;display:flex;align-items:center;gap:16px;padding:0 20px;font-weight:700;font-size:18px;opacity:.4}
+.sheet{position:absolute;inset:44px 0 0 0;background:var(--card);border-radius:22px 22px 0 0;padding:8px 20px}
+.grab{width:44px;height:5px;border-radius:3px;background:var(--mut);margin:0 auto 6px}
+.sh{display:flex;justify-content:space-between;align-items:center;height:44px}.sh b{font-size:17px}.sh span{color:var(--or);font-weight:600}
+.sum{font-size:17px;font-weight:700;margin:6px 0 0}.mut{color:var(--mut);font-size:13px}
+.sec{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase;margin:14px 0 4px}
+.row{display:flex;align-items:flex-start;gap:10px;min-height:52px;border-bottom:1px solid var(--line);padding:8px 0}
+.box{width:24px;height:24px;border-radius:6px;border:2px solid var(--mut);flex:none;margin-top:2px;position:relative}.box.on{background:var(--or);border-color:var(--or)}
+.box.on:after{content:"✓";color:#111;position:absolute;left:4px;top:-2px;font-size:16px;font-weight:900}
+.nm{flex:1;font-size:16px}.nm small{display:block;font-size:12.5px;color:var(--mut);margin-top:2px}
+.ok{color:var(--grn)}.bad{color:var(--amb)}.off{color:var(--mut)}
+.fix{color:var(--or);font-weight:700;font-size:14px;white-space:nowrap;margin-top:2px}
+.steps{background:#151a1e;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:2px 0 8px 34px;font-size:13px;line-height:1.45}
+.steps ol{margin:4px 0 8px 18px;padding:0}.btn{background:var(--or);color:#111;border-radius:14px;text-align:center;padding:12px;font-weight:700;margin-top:10px}
+.btn.s{padding:9px;font-size:14px;margin-top:6px}.ghost{border:1px solid var(--line);border-radius:14px;text-align:center;padding:12px;font-weight:600;margin-top:10px}
+.card{border:1px solid var(--amb);border-radius:14px;padding:12px;margin:8px 0;font-size:13.5px;line-height:1.45}.card b{font-size:15px}
+.chk{display:flex;gap:8px;font-size:13.5px;margin:3px 0}
+.banner{background:#1e3324;border:1px solid var(--grn);border-radius:12px;padding:10px 12px;font-size:14px;margin:8px 0}
+.stepper{display:flex;gap:6px;margin:4px 0 8px}.stepper i{flex:1;height:4px;border-radius:2px;background:var(--line)}.stepper i.on{background:var(--or)}
+.lbl{position:absolute;bottom:0;left:0;right:0;background:#000d;color:#fff;font-size:12px;padding:6px 10px;line-height:1.4}
+.hl{outline:2px dashed var(--or);outline-offset:3px;border-radius:8px}
+</style></head><body><div id="x"></div><script>
+const TOP=`<div class="app">☰ <span>Body Anvil</span></div>`;
+const head=(t,l='Close')=>`<div class="grab"></div><div class="sh"><span>${l}</span><b>${t}</b><span style="opacity:0">Close</span></div>`;
+const row=(on,n,a,d,fix)=>`<div class="row"><div class="box ${on?'on':''}"></div><div class="nm">${n}${on?`<small><span class="${a[0]}">${a[1]}</span> · <span class="${d[0]}">${d[1]}</span></small>`:`<small class="off">Not imported</small>`}</div>${fix?`<span class="fix">${fix}</span>`:''}</div>`;
+
+/* A: one checklist inside the existing sheet; a failing row expands its fix in place */
+const A=`${TOP}<div class="sheet">${head('Health Connect')}
+<div class="sum">4 of 5 working</div><div class="mut">Checked today at 7:58 am · Weight needs a fix</div>
+<div class="sec">What to bring in</div>
+${row(1,'Steps',['ok','✓ Allowed'],['ok','✓ Today · Fitbit + this phone'])}
+${row(1,'Active energy',['ok','✓ Allowed'],['ok','✓ Today · This phone'])}
+${row(1,'Workouts',['ok','✓ Allowed'],['ok','✓ Latest Mon 9 Nov · Fitbit'])}
+${row(1,'Weight',['ok','✓ Allowed'],['bad','! No data in 7 days'],'Fix ▴')}
+<div class="steps hl"><b>Body Anvil can read weight, but none has arrived.</b><ol><li>Open Health Connect → App permissions → <b>Fitbit</b> (or your scale's app).</li><li>Under <b>Allow to write</b>, turn on <b>Weight</b>.</li><li>Open that app once so it shares, then come back here.</li></ol><div class="btn s">Open Health Connect</div></div>
+${row(0,'Body fat')}
+${row(1,'Sleep',['ok','✓ Allowed'],['ok','✓ Today · Fitbit'])}
+<div class="ghost">Check again</div></div>
+<div class="lbl">A · One checklist in the existing sheet (app shell layer). Tick = import it. Each ticked row shows the two checks; a failing row's "Fix" opens its steps in place. Replaces today's "Today" list and the generic help paragraph.</div>`;
+
+/* B: guided two-step setup */
+const B1=`${TOP}<div class="sheet">${head('Set up Health Connect')}<div class="stepper"><i class="on"></i><i></i></div>
+<div class="sum">1 · What do you want to bring in?</div><div class="mut">Only ticked items are asked for and read.</div>
+<div class="sec">Data</div>
+${['Steps','Active energy','Workouts','Weight','Body fat','Sleep'].map((n,i)=>`<div class="row"><div class="box ${i!==4?'on':''}"></div><div class="nm">${n}<small>${['Daily total','Daily total, shown in energy','Type and minutes','Latest of each day','Latest of each day','Time asleep'][i]}</small></div></div>`).join('')}
+<div class="btn">Check access</div></div>
+<div class="lbl">B, step 1 · A short guided setup: choose first ("Check access" asks Android only for the ticked items)…</div>`;
+const B2=`${TOP}<div class="sheet">${head('Set up Health Connect','Back')}<div class="stepper"><i class="on"></i><i class="on"></i></div>
+<div class="sum">2 · Checking access</div><div class="mut">4 of 5 working · checked 7:58 am</div>
+<div class="card hl"><b>Weight</b><div class="chk ok">✓ Body Anvil is allowed to read it</div><div class="chk bad">! Nothing in Health Connect for 7 days</div>
+<div style="margin-top:6px">Fitbit (or your scale's app) must be allowed to <b>write</b> weight: Health Connect → App permissions → Fitbit → Allow to write → Weight. Then open Fitbit once.</div><div class="btn s">Open Health Connect</div></div>
+<div class="sec">Working</div>
+<div class="row"><div class="nm">Steps<small class="ok">✓ Allowed · ✓ Today · Fitbit + this phone</small></div></div>
+<div class="row"><div class="nm">Active energy<small class="ok">✓ Allowed · ✓ Today · This phone</small></div></div>
+<div class="row"><div class="nm">Workouts<small class="ok">✓ Allowed · ✓ Mon 9 Nov · Fitbit</small></div></div>
+<div class="row"><div class="nm">Sleep<small class="ok">✓ Allowed · ✓ Today · Fitbit</small></div></div>
+<div class="ghost">Check again</div></div>
+<div class="lbl">B, step 2 · …then a check screen: problems as cards with the fix, working items listed below. Reopened later, the sheet starts at step 2 ("Change what's imported" goes back to step 1).</div>`;
+
+/* C: problems first; choices behind an Edit */
+const C=`${TOP}<div class="sheet">${head('Health Connect')}
+<div class="sum">1 needs attention</div><div class="mut">Checked today at 7:58 am</div>
+<div class="card hl"><b>Weight · not arriving</b><div class="chk ok">✓ Body Anvil may read it</div><div class="chk bad">! No weight in Health Connect for 7 days</div>
+<ol style="margin:6px 0 0 18px;padding:0"><li>Health Connect → App permissions → Fitbit</li><li>Allow to write → Weight</li><li>Open Fitbit, then come back</li></ol><div class="btn s">Open Health Connect</div></div>
+<div class="sec" style="display:flex;justify-content:space-between">Working <span style="color:var(--or);letter-spacing:0;text-transform:none;font-size:14px">Choose data ›</span></div>
+<div class="row"><div class="nm">Steps</div><span class="ok">420 · Fitbit + phone</span></div>
+<div class="row"><div class="nm">Active energy</div><span class="ok">140 kJ · This phone</span></div>
+<div class="row"><div class="nm">Workouts</div><span class="ok">Mon 9 Nov · Fitbit</span></div>
+<div class="row"><div class="nm">Sleep</div><span class="ok">5 hr 59 min · Fitbit</span></div>
+<div class="row"><div class="nm off">Body fat</div><span class="off">Not imported</span></div>
+<div class="ghost">Check again</div></div>
+<div class="lbl">C · Problems first: the sheet opens on what needs fixing, then today's values for working items. Ticking what to import is one tap away ("Choose data ›", a small list of toggles).</div>`;
+
+/* Confirmation after returning from Health Connect (same in every option) */
+const D=`${TOP}<div class="sheet">${head('Health Connect')}
+<div class="banner hl"><b class="ok">✓ Weight is working now.</b><br>95.2 kg from Fitbit, today at 7:32 am.</div>
+<div class="sum">5 of 5 working</div><div class="mut">Checked just now</div>
+<div class="sec">What to bring in</div>
+${row(1,'Steps',['ok','✓ Allowed'],['ok','✓ Today · Fitbit + this phone'])}
+${row(1,'Active energy',['ok','✓ Allowed'],['ok','✓ Today · This phone'])}
+${row(1,'Workouts',['ok','✓ Allowed'],['ok','✓ Latest Mon 9 Nov · Fitbit'])}
+${row(1,'Weight',['ok','✓ Allowed'],['ok','✓ Today · Fitbit'])}
+${row(0,'Body fat')}
+${row(1,'Sleep',['ok','✓ Allowed'],['ok','✓ Today · Fitbit'])}
+<div class="ghost">Check again</div></div>
+<div class="lbl">All options · Coming back to the app re-checks and re-syncs by itself. What changed is confirmed at the top ("Weight is working now" or "Weight still isn't arriving: …"). Shown in layout A.</div>`;
+
+document.getElementById('x').innerHTML=[A,B1,B2,C,D].map((h,i)=>`<div class="phone" id="p${i}">${h}</div>`).join('<div style="height:20px"></div>');
+</script></body></html>

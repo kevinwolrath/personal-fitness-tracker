@@ -81,12 +81,22 @@ export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate):
     if (!m) continue;
     const metric = measurementMetric(plan,m);
     const points = dailySeries(snapshot.observations, metric.metric).filter(p => p.date <= today && safeNumber(p.value));
-    const first = points[0], last = points[points.length-1];
-    const baseline = first ? metric.toPlan(first.value) : null, latest = last ? metric.toPlan(last.value) : null;
-    const span = first && last ? (Date.parse(last.date)-Date.parse(first.date))/86400000 : 0;
-    const safe = span >= scoring.sustainedDays && (metric.metric !== 'weight' || !points.some((p,i) => { if (!i) return false; const prev = points[i-1]; const days = (Date.parse(p.date)-Date.parse(prev.date))/86400000; return days > 0 && (prev.value-p.value)/prev.value > scoring.maxWeeklyLossFraction*days/7+1e-8; }));
-    const fraction = baseline === null || latest === null ? 0 : goal.direction === 'maintain' ? (Math.abs(latest-goal.target) <= Math.abs(goal.target)*0.02 ? 1 : 0) : goal.direction === 'decrease' ? (baseline-latest)/Math.max(0.001,baseline-goal.target) : (latest-baseline)/Math.max(0.001,goal.target-baseline);
-    for (const [suffix, threshold] of [['halfway',0.5],['goal',1]] as const) achievements.push({ id: `${plan.id}:${goal.id}:${suffix}:${goal.target}`, title: `${goal.label} · ${suffix === 'goal' ? 'Goal reached' : 'Halfway'}`, detail: `Your own target: ${goal.target} ${metric.planUnit}. Sustained progress, no weight-loss XP.`, unlocked: safe && fraction >= threshold, progress: safe && fraction >= threshold ? 'Reached' : 'Build a gradual record over 28+ days', milestone: true });
+    const first = points[0];
+    const baseline = first ? metric.toPlan(first.value) : null;
+    const unsafeIndex = metric.metric === 'weight' ? points.findIndex((p,i) => { if (!i) return false; const prev = points[i-1]; const days = (Date.parse(p.date)-Date.parse(prev.date))/86400000; return days > 0 && (prev.value-p.value)/prev.value > scoring.maxWeeklyLossFraction*days/7+1e-8; }) : -1;
+    const fractions = points.map((p,i) => {
+      const span = (Date.parse(p.date)-Date.parse(first.date))/86400000;
+      if (baseline === null || span < scoring.sustainedDays || unsafeIndex >= 0 && i >= unsafeIndex) return 0;
+      const value = metric.toPlan(p.value);
+      if (goal.direction === 'maintain') return Math.abs(value-goal.target) <= Math.abs(goal.target)*0.02 ? 1 : 0;
+      if (goal.direction === 'decrease') return goal.target < baseline ? (baseline-value)/(baseline-goal.target) : 0;
+      return goal.target > baseline ? (value-baseline)/(goal.target-baseline) : 0;
+    });
+    // A later regression doesn't erase a healthy milestone. Correcting/deleting its source still reverses it.
+    for (const [suffix, threshold] of [['halfway',0.5],['goal',1]] as const) {
+      const unlocked = fractions.some(f => f >= threshold);
+      achievements.push({ id: `${plan.id}:${goal.id}:${suffix}:${goal.target}`, title: `${goal.label} · ${suffix === 'goal' ? 'Goal reached' : 'Halfway'}`, detail: `Your own target: ${goal.target} ${metric.planUnit}. Sustained progress, no weight-loss XP.`, unlocked, progress: unlocked ? 'Reached' : 'Build a gradual record over 28+ days', milestone: true });
+    }
   }
   achievements.filter(a => a.unlocked).forEach(a => earned.push(`achievement:${a.id}`));
   const level = 1+Math.floor(xp/scoring.level);

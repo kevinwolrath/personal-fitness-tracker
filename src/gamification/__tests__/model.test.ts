@@ -89,3 +89,12 @@ it('actual meal logs share the nutrition reward with checklist meals and reverse
   s.mealLogs=[];s.activityLogs=[];
   expect(gameFrom(s,journeyPlan,START).xp).toBe(0);
 });
+
+it('keeps earned goal recognition after natural regression, but reverses deleted source evidence',()=>{
+  const s=journeySnapshot(121),date=addDays(START,140);
+  s.observations.push(observation('weight',94,date));
+  const goal=(snapshot:typeof s)=>gameFrom(snapshot,journeyPlan,date).achievements.find(a=>a.id.includes('weight-goal:goal'));
+  expect(goal(s)?.unlocked).toBe(true);
+  s.observations=s.observations.filter(o=>!(o.metric==='weight' && o.date===addDays(START,120)));
+  expect(goal(s)?.unlocked).toBe(false);
+});

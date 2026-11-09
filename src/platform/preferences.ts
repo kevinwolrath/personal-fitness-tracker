@@ -1,5 +1,5 @@
 import { isEnergyDisplay, type EnergyDisplay } from '../energy';
-import type { HcTypeResult } from '../observations/healthConnect';
+import { hcTypes, type HcType, type HcTypeResult } from '../observations/healthConnect';
 import { secrets } from './secrets';
 
 /**
@@ -9,6 +9,7 @@ import { secrets } from './secrets';
 const REMINDERS = 'pft.reminders.enabled';
 const ENERGY = 'pft.display.energy';
 const HC_SYNC = 'pft.healthConnect.sync';
+const HC_WANTED = 'pft.healthConnect.wanted';
 const SETUP_DRAFT = 'pft.setup.draft';
 const PROGRESS_CHARTS = 'pft.progress.charts';
 const TREND_ALERTS = 'pft.trend.alerts';
@@ -29,6 +30,8 @@ export type HcSyncState = {
   lastFullSync?: string;
   /** Per type: read / couldn't read / not allowed, with counts and dates only (#44). Missing in older states. */
   types?: Record<string, HcTypeResult>;
+  /** Per type, the app it last came from, kept across syncs (#116): names the app to fix when it stops arriving. */
+  lastApps?: Partial<Record<HcType, string>>;
 };
 
 export const preferences = {
@@ -57,6 +60,19 @@ export const preferences = {
   },
   async setHealthConnectSync(s: HcSyncState): Promise<void> {
     await secrets.set(HC_SYNC, JSON.stringify(s));
+  },
+  /** The Health Connect types the user ticked (#116). Null until they choose (or connect). */
+  async healthConnectWanted(): Promise<HcType[] | null> {
+    try {
+      const raw = await secrets.get(HC_WANTED);
+      const v: unknown = raw ? JSON.parse(raw) : null;
+      return Array.isArray(v) ? hcTypes.filter((t) => v.includes(t)) : null;
+    } catch {
+      return null;
+    }
+  },
+  async setHealthConnectWanted(types: HcType[]): Promise<void> {
+    await secrets.set(HC_WANTED, JSON.stringify(types));
   },
   /** First-run setup answers so far (#49), so setup resumes after a restart. Small: answers and step only. */
   async setupDraft(): Promise<string | null> {

@@ -20,6 +20,7 @@ const data = {
   activeKcal: [{ date: '2026-11-02', value: 320, origins: [SAMSUNG] }],
   exercise: [{ id: 'ex1', start: '2026-11-02T07:30:00+11:00', end: '2026-11-02T08:02:00+11:00', origin: SAMSUNG, exerciseType: 79 }],
   weight: [{ id: 'w1', time: '2026-11-02T06:58:00+11:00', kg: 82.4, origin: WITHINGS }],
+  bodyFat: [{ id: 'bf1', time: '2026-11-02T06:58:00+11:00', percent: 31.5, origin: WITHINGS }],
   sleep: [{ id: 's1', start: '2026-11-01T23:00:00+11:00', end: '2026-11-02T06:45:00+11:00', origin: SAMSUNG }],
 };
 
@@ -95,7 +96,7 @@ test('connect → 30 days imported into the existing Daily Log, labelled with th
   await page.getByRole('button', { name: 'Menu' }).click();
   await expect(page.getByTestId('menu-health-connect')).toContainText('Connected · synced');
   await page.getByTestId('menu-health-connect').click();
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
   expect((await fixture(page)).reads[1].dates).toHaveLength(7);
 });
@@ -106,11 +107,11 @@ test('re-syncing is idempotent and follows Health Connect: changes update, delet
   await connect(page);
   const first = await imported(page);
   expect(first.map((o) => o.id).sort()).toEqual(
-    ['hc:active_energy:2026-11-02', 'hc:exercise:ex1', 'hc:sleep:2026-11-02', 'hc:steps:2026-11-01', 'hc:steps:2026-11-02', 'hc:weight:2026-11-02'],
+    ['hc:active_energy:2026-11-02', 'hc:body_fat:2026-11-02', 'hc:exercise:ex1', 'hc:sleep:2026-11-02', 'hc:steps:2026-11-01', 'hc:steps:2026-11-02', 'hc:weight:2026-11-02'],
   );
 
   // Same data again: identical records.
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
   expect((await imported(page)).map((o) => [o.id, o.value]).sort()).toEqual(first.map((o) => [o.id, o.value]).sort());
 
@@ -119,12 +120,12 @@ test('re-syncing is idempotent and follows Health Connect: changes update, delet
   f.data.steps[0].value = 8100;
   f.data.exercise = [];
   await setFixture(page, f);
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect(page.getByTestId('hc-today-steps')).toContainText('8,100');
   const after = await imported(page);
   expect(after.find((o) => o.id === 'hc:steps:2026-11-02').value).toBe(8100);
   expect(after.find((o) => o.id === 'hc:exercise:ex1')).toBeUndefined();
-  expect(after).toHaveLength(5);
+  expect(after).toHaveLength(6);
 });
 
 test('a weight entered by hand is kept and shown first; syncing never overwrites it', async ({ page }) => {
@@ -176,7 +177,7 @@ test('a failing read never blocks the app; the other types still sync and the fa
   f.failTypes = ['sleep'];
   f.data.steps[0].value = 7000;
   await setFixture(page, f);
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect(page.getByTestId('hc-sync-status')).toContainText("Last sync didn't finish");
   await expect(page.getByTestId('hc-sync-status')).toContainText("couldn't read sleep"); // which type, not just "didn't finish"
   await expect(page.getByTestId('hc-today-weight')).toContainText('82.4 kg'); // the others still read
@@ -200,7 +201,7 @@ test('revoking one type keeps its imported values while the others refresh (#43)
   f.data.steps[0].value = 8100;
   f.data.sleep = [];
   await setFixture(page, f);
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
 
   await expect(page.getByTestId('hc-today-steps')).toContainText('8,100'); // still allowed: refreshed
   await expect(page.getByTestId('hc-today-sleep')).toContainText('Not allowed');
@@ -235,14 +236,18 @@ test('#44: weight not in Health Connect yet → says so; Fitbit exports it later
   // Upstream absence is stated, not hidden behind "synced".
   await expect(page.getByTestId('hc-today-weight')).toContainText('None in Health Connect · last 30 days');
   await expect(page.getByTestId('hc-today-exercise')).toContainText('None in Health Connect');
-  await expect(page.getByTestId('hc-missing-help')).toContainText('hasn’t reached Health Connect yet');
+  // #116: the row says which check failed, and its fix names Fitbit (it sends the other types) and the setting.
+  await page.getByRole('button', { name: 'Fix weight' }).click();
+  await expect(page.getByTestId('hc-fix-weight')).toContainText('Body Anvil can read weight, but none has arrived in the last 30 days.');
+  await expect(page.getByTestId('hc-fix-weight')).toContainText('App permissions → Fitbit');
+  await expect(page.getByTestId('hc-fix-weight')).toContainText('Under Allow to write, turn on Weight');
   await expect(page.getByTestId('hc-not-imported')).toContainText('other measurements');
 
   // Fitbit's export arrives later (7:48 am weigh-in); the next sync picks it up.
   const f = await fixture(page);
   f.data.weight = [{ id: 'fw', time: '2026-11-02T07:48:00+11:00', kg: 95.5, origin: FITBIT }];
   await setFixture(page, f);
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect(page.getByTestId('hc-today-weight')).toContainText('95.5 kg');
   await expect(page.getByTestId('hc-today-weight')).toContainText('Fitbit');
   await close(page);
@@ -309,7 +314,7 @@ test('#46: after 12 days away, the next open backfills every day since the last 
 
   await openSheet(page);
   await expect(page.getByTestId('hc-sync-status')).toContainText('13 days checked');
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
   expect((await fixture(page)).reads[1].dates).toHaveLength(7);
 });
@@ -320,7 +325,7 @@ test('#46: a sync that couldn’t read every type doesn’t move the backfill st
   await expect.poll(async () => (await fixture(page)).reads?.length ?? 0).toBe(1);
   await openSheet(page);
   await expect(page.getByTestId('hc-sync-status')).toContainText("couldn't read sleep");
-  await page.getByRole('button', { name: 'Sync now' }).click();
+  await page.getByTestId('hc-check-again').click();
   await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
   expect((await fixture(page)).reads[1].dates[0]).toBe('2026-10-21'); // the gap is still covered
 });
@@ -343,6 +348,105 @@ test('refused, then allowed later in Health Connect: picked up on the next app o
   await expect(page.getByTestId('recorded-steps')).toContainText('6,214');
   expect((await fixture(page)).requests).toBe(1);
   expect((await imported(page)).map((o) => o.metric).sort()).toEqual(['steps', 'steps', 'weight']);
+});
+
+/** Kevin's phone on 9 Nov (#116): Fitbit shares steps and sleep but isn't allowed to write weight. */
+const FITBIT = 'com.fitbit.FitbitMobile';
+const nov9 = {
+  steps: [{ date: '2026-11-02', value: 420, origins: ['com.android.healthconnect.phone.j26a4212', FITBIT] }],
+  activeKcal: [{ date: '2026-11-02', value: 33, origins: ['com.android.healthconnect.phone.j26a4212'] }],
+  exercise: [],
+  weight: [],
+  sleep: [{ id: 's', start: '2026-11-01T23:30:00+11:00', end: '2026-11-02T05:29:00+11:00', origin: FITBIT }],
+};
+
+test('#116: tick what to import; Connect asks only for those, and only those are read', async ({ page }) => {
+  await installHealthConnect(page);
+  await openAt(page, MONDAY);
+  await openSheet(page);
+  await page.getByRole('checkbox', { name: 'Import body fat' }).click();
+  await page.getByRole('checkbox', { name: 'Import workouts' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Import body fat' })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Connect Health Connect' }).click();
+  await expect(page.getByTestId('hc-summary')).toHaveText('4 of 4 working');
+  const f = await fixture(page);
+  expect(f.requested).toEqual([['steps', 'active_energy', 'weight', 'sleep']]);
+  expect(f.reads[0].types).toEqual(['steps', 'active_energy', 'weight', 'sleep']);
+  await expect(page.getByTestId('hc-today-body_fat')).toContainText('Not imported');
+
+  // Unticking later stops reading it; what was imported stays.
+  await page.getByRole('checkbox', { name: 'Import sleep' }).click();
+  await page.getByTestId('hc-check-again').click();
+  await expect.poll(async () => (await fixture(page)).reads.length).toBe(2);
+  expect((await fixture(page)).reads[1].types).toEqual(['steps', 'active_energy', 'weight']);
+  expect((await imported(page)).some((o) => o.metric === 'sleep_duration')).toBe(true);
+  await expect(page.getByTestId('hc-summary')).toHaveText('3 of 3 working');
+});
+
+test('#116: weight not arriving → Fix names Fitbit and opens Health Connect; on return, "Weight is working now"', async ({ page }) => {
+  await installHealthConnect(page, { granted: ['steps', 'active_energy', 'exercise', 'weight', 'sleep'], data: nov9 });
+  await openAt(page, MONDAY);
+  await openSheet(page);
+  // Connected before #116: what was allowed is what's ticked (body fat wasn't).
+  await expect(page.getByRole('checkbox', { name: 'Import body fat' })).not.toBeChecked();
+  await expect(page.getByTestId('hc-summary')).toHaveText('3 of 5 working');
+  await expect(page.getByTestId('hc-today-steps')).toContainText('✓ Allowed · ✓ 420 today · Fitbit + this phone');
+  await expect(page.getByTestId('hc-today-weight')).toContainText('✓ Allowed · ! None in Health Connect · last 30 days');
+  await expect(page.getByTestId('hc-today-exercise')).toContainText('None in Health Connect');
+  // The first problem's fix is open; one at a time.
+  await expect(page.getByTestId('hc-fix-exercise')).toBeVisible();
+  await page.getByRole('button', { name: 'Fix weight' }).click();
+  await expect(page.getByTestId('hc-fix-exercise')).toHaveCount(0);
+  const fix = page.getByTestId('hc-fix-weight');
+  await expect(fix).toContainText('1. Open Health Connect → App permissions → Fitbit.');
+  await expect(fix).toContainText('2. Under Allow to write, turn on Weight.');
+  await expect(fix).toContainText('3. Open Fitbit once so it shares, then come back here.');
+  await fix.getByRole('button', { name: 'Open Health Connect' }).click();
+  expect((await fixture(page)).opened).toEqual(['settings']);
+
+  // In Health Connect, Fitbit may now write weight; Fitbit shares the 7:32 am weigh-in. Back in the app:
+  const f = await fixture(page);
+  f.data.weight = [{ id: 'fw', time: '2026-11-02T07:32:00+11:00', kg: 95.2, origin: FITBIT }];
+  await setFixture(page, f);
+  await page.getByTestId('hc-check-again').click();
+  await expect(page.getByTestId('hc-check-result')).toContainText('✓ Weight is working now. 95.2 kg from Fitbit.');
+  await expect(page.getByTestId('hc-check-result')).toContainText('! Workouts still isn’t arriving.'.replace('’', "'"));
+  await expect(page.getByTestId('hc-today-weight')).toContainText('✓ 95.2 kg today · Fitbit');
+  await expect(page.getByTestId('hc-summary')).toHaveText('4 of 5 working');
+  expect((await fixture(page)).requests ?? 0).toBe(0); // never asked by itself
+  await close(page);
+  await expect(page.getByTestId('measurement-weight')).toContainText('95.2 kg');
+});
+
+test('#116: ticking a type that isn’t allowed → Allow asks for just that one, then confirms', async ({ page }) => {
+  await installHealthConnect(page, { granted: ['steps', 'active_energy', 'exercise', 'weight', 'sleep'] });
+  await openAt(page, MONDAY);
+  await openSheet(page);
+  await expect(page.getByTestId('hc-summary')).toHaveText('5 of 5 working');
+  await page.getByRole('checkbox', { name: 'Import body fat' }).click();
+  await expect(page.getByTestId('hc-today-body_fat')).toContainText('! Not allowed');
+  await page.getByTestId('hc-fix-body_fat').getByRole('button', { name: 'Allow body fat' }).click();
+  await expect(page.getByTestId('hc-check-result')).toContainText('✓ Body fat is working now. 31.5 % from Withings.');
+  expect((await fixture(page)).requested).toEqual([['body_fat']]);
+  await expect(page.getByTestId('hc-summary')).toHaveText('6 of 6 working');
+});
+
+test('#116: Android doesn’t ask (refused twice) → it says so, and the way to allow it in Health Connect', async ({ page }) => {
+  await installHealthConnect(page, { granted: ['steps', 'sleep'], grantOnRequest: [] });
+  await page.addInitScript(() => localStorage.setItem('pft.healthConnect.wanted', JSON.stringify(['steps', 'weight', 'sleep'])));
+  await openAt(page, MONDAY);
+  await openSheet(page);
+  await page.getByTestId('hc-fix-weight').getByRole('button', { name: 'Allow weight' }).click();
+  await expect(page.getByTestId('hc-check-result')).toContainText("! Weight still isn't allowed.");
+  await expect(page.getByTestId('hc-fix-weight')).toContainText('Health Connect → App permissions → Body Anvil → turn on Weight');
+  await page.getByRole('button', { name: 'Menu' }).click({ force: true }).catch(() => undefined);
+});
+
+test('#116: the menu says when something needs a fix', async ({ page }) => {
+  await installHealthConnect(page, { granted: ['steps', 'active_energy', 'exercise', 'weight', 'sleep'], data: nov9 });
+  await openAt(page, MONDAY);
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByTestId('menu-health-connect')).toContainText('Connected · 2 need a fix');
 });
 
 test('not installed: one way forward, nothing else changes', async ({ page }) => {
@@ -381,7 +485,8 @@ test.describe('visual', () => {
     });
     await openAt(page, MONDAY);
     await connect(page);
-    await expect(page.getByTestId('hc-missing-help')).toBeVisible();
+    await page.getByRole('button', { name: 'Fix weight' }).click();
+    await expect(page.getByTestId('hc-fix-weight')).toBeVisible();
     await expect(page).toHaveScreenshot('health-connect-missing.png');
   });
   test('today-health-connect-full', async ({ page }) => {

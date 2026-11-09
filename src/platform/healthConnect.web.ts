@@ -18,6 +18,8 @@ type Fixture = {
   failTypes?: HcType[];
   data: HcRead;
   requests?: number;
+  /** The types asked for, per request (#116). */
+  requested?: HcType[][];
   reads?: { types: HcType[]; dates: LocalDate[] }[];
   opened?: string[];
 };
@@ -59,10 +61,11 @@ export const healthConnect = {
     return need().granted;
   },
 
-  async request(): Promise<HcType[]> {
+  async request(types: HcType[] = hcTypes): Promise<HcType[]> {
     const f = need();
     f.requests = (f.requests ?? 0) + 1;
-    f.granted = hcTypes.filter((t) => f.grantOnRequest.includes(t) || f.granted.includes(t));
+    f.requested = [...(f.requested ?? []), types];
+    f.granted = hcTypes.filter((t) => (types.includes(t) && f.grantOnRequest.includes(t)) || f.granted.includes(t));
     save(f);
     return f.granted;
   },

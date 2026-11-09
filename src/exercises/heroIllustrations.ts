@@ -1,4 +1,13 @@
 import type { ImageSourcePropType } from 'react-native';
+import manifest from '../../assets/exercises/heroes/manifest.json';
+import { artwork, characterFor } from '../features/muscles/artwork';
+
+/** Never substitute another character's pose for the saved profile. */
+export function exerciseArtwork(image: string, gender: unknown) {
+  const hero = characterFor(gender);
+  const pose = manifest.find(entry => entry.id === image && entry.hero === hero);
+  return { hero, isPose: !!pose, source: pose ? heroIllustrations[image] : artwork[hero].front };
+}
 
 /** Static requires let Metro bundle every hero step offline, on web/iOS/Android. */
 export const heroIllustrations: Record<string, ImageSourcePropType> = {

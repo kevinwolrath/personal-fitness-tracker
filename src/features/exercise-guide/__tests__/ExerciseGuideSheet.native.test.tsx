@@ -6,9 +6,22 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { buildGuide, type ExerciseGuide } from '../../../exercises/guide';
 import { ExerciseGuideSheet } from '../ExerciseGuideSheet';
+import { exerciseArtwork } from '../../../exercises/heroIllustrations';
 
 const squat = buildGuide({ movement: 'kettlebell_squat', label: 'Kettlebell squat', sets: 3, reps: 10 });
 const layout = { nativeEvent: { layout: { x: 0, y: 0, width: 342, height: 256 } } };
+
+it('updates mounted guide artwork when the profile changes, including clearing gender', () => {
+  const { rerender } = render(<ExerciseGuideSheet guide={squat} gender="male" onClose={() => {}} />);
+  for (const gender of ['male', 'female', 'other', undefined, 'male']) {
+    rerender(<ExerciseGuideSheet guide={squat} gender={gender} onClose={() => {}} />);
+    for (const [i, step] of squat.steps.entries()) {
+      expect(screen.getByTestId(`guide-image-${i + 1}`, { includeHiddenElements: true }).props.source).toEqual(exerciseArtwork(step.image, gender).source);
+    }
+    if (gender === 'male') expect(screen.queryByTestId('guide-artwork-note')).toBeNull();
+    else expect(screen.getByTestId('guide-artwork-note')).toHaveTextContent(/Hero portrait only/);
+  }
+});
 
 it('steps through the illustrations with previous/next and closes', () => {
   const onClose = jest.fn();

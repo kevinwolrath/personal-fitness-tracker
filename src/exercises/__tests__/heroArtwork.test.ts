@@ -1,8 +1,20 @@
 import { readFileSync, statSync } from 'node:fs';
 import manifest from '../../../assets/exercises/heroes/manifest.json';
-import { heroIllustrations } from '../heroIllustrations';
+import { exerciseArtwork, heroIllustrations } from '../heroIllustrations';
+import { artwork } from '../../features/muscles/artwork';
 import { exerciseLibrary } from '../library';
 import inventory from '../inventory.json';
+
+it.each(['male', 'female', 'other', undefined, null, 'non-binary'])('selects only the profile hero for every demonstration: %s', gender => {
+  const hero = gender === 'male' || gender === 'female' ? gender : 'neutral';
+  for (const definition of exerciseLibrary.exercises) {
+    for (const step of definition.steps) {
+      const result = exerciseArtwork(step.image, gender);
+      const pose = manifest.find(entry => entry.id === step.image && entry.hero === hero);
+      expect(result).toEqual({ hero, isPose: !!pose, source: pose ? heroIllustrations[step.image] : artwork[hero].front });
+    }
+  }
+});
 
 it('bundles two distinct real image steps for every tracked movement and all three existing heroes', () => {
   expect(new Set(manifest.map(e => e.hero))).toEqual(new Set(['male', 'female', 'neutral']));

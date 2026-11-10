@@ -58,4 +58,7 @@ in `screenshots/`. Three 390 px visual baselines live in
 - Final combined guide/browser run without snapshot updates: **22 passed,
   2 configured skips**, across 360, 390 and 430 px. Four 390 px visual baselines
   passed, including the existing guide baseline and all three profile variants.
-- Full repository regression suite was not run.
+- Full Jest suite after fixing logical step IDs in the validation registry:
+  **75 suites passed, 899 tests passed, 1 skipped**. The coverage test still
+  checks all logical library steps are used; profile variants are separately
+  required by the 96-pose artwork checks. Full browser regression was not run.

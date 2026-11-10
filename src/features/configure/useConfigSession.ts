@@ -52,8 +52,10 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     setCheck({ kind: 'idle' });
   }, []);
 
-  const runCheck = useCallback(() => {
+  /** Check `t` (default: the pasted text). A link (#120) passes its text, which also becomes the pasted text. */
+  const checkText = useCallback((t: string) => {
     if (!raw) return;
+    const text = t;
     const parsed = parseConfigUpdate(text);
     if (!parsed.ok) return setCheck({ kind: 'invalid', errors: parsed.errors, recoverable: parsed.recoverable, diagnostics: parsed.diagnostics });
     const applied = applyConfigUpdate(raw, parsed.update);
@@ -70,7 +72,12 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       changeCount: sections.reduce((n, s) => n + s.lines.length, 0),
       notes: parsed.notes,
     });
-  }, [raw, text, energy]);
+  }, [raw, energy]);
+  const runCheck = useCallback(() => checkText(text), [checkText, text]);
+  const checkLinkText = useCallback((t: string) => {
+    setText(t);
+    checkText(t);
+  }, [checkText]);
 
   const apply = useCallback(async () => {
     if (!stored || check.kind !== 'preview' || !check.changeCount) return;
@@ -103,5 +110,5 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (check.kind === 'invalid') await Clipboard.setStringAsync(check.diagnostics);
   }, [check]);
 
-  return { stored, raw, history, text, check, busy, sharePayload, pasteFromClipboard, editText, runCheck, apply, undoLatest, copyDiagnostics };
+  return { stored, raw, history, text, check, busy, sharePayload, pasteFromClipboard, editText, runCheck, checkLinkText, apply, undoLatest, copyDiagnostics };
 }

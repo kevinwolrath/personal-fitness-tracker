@@ -30,7 +30,7 @@ import { TodayWorkoutCard, TodayWorkoutSheet } from './TodayWorkout';
 import { ShareDaySheet } from './ShareDaySheet';
 import { dailySummary } from '../../share/dailySummary';
 import { todayWorkout, workoutToggle, type WorkoutRow } from '../../exercises/todayWorkout';
-import { logExercise } from '../../exercises/state';
+import { HISTORY_DAYS, logExercise } from '../../exercises/state';
 import type { ExerciseLog } from '../../storage/types';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { switchNeedsConfirm, type ChecklistRow, type Variant } from '../../prescription/exercises';
@@ -52,6 +52,10 @@ import { intakeLines, mealSummary, sourceTag } from '../../nutrition/format';
 import { replacementCompletion } from '../../nutrition/replace';
 import { deletePhoto } from '../../platform/mealPhotos';
 import { localIsoTimestamp } from '../../format';
+import { MUSCLE_GROWTH, inventoryFor, muscleGrowthDay, muscleGrowthLog, muscleGrowthLogId, progressionHint, type MuscleGrowthRow } from '../../exercises/catalogue';
+import { MuscleGrowthEditor } from '../muscle-growth/MuscleGrowthEditor';
+import { MuscleGrowthLogSheet } from './MuscleGrowthLogSheet';
+import { MuscleGrowthSection } from './MuscleGrowthSection';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -86,14 +90,17 @@ export function DayLogScreen() {
   const orderOf = (key: string) => (date === today ? exerciseState?.sessionOrders[key] : undefined);
 
   // Today's workout (#56, layout A): every eligible strength exercise plus the day's plan, on every date.
-  const [freeLogs, setFreeLogs] = useState<ExerciseLog[]>([]);
+  const [dayLogs, setDayLogs] = useState<ExerciseLog[]>([]);
   useEffect(() => {
     let live = true;
-    store.exerciseLogs({ from: date, to: date }).then((l) => live && setFreeLogs(l), () => live && setFreeLogs([]));
+    store.exerciseLogs({ from: date, to: date }).then((l) => live && setDayLogs(l), () => live && setDayLogs([]));
     return () => {
       live = false;
     };
   }, [store, date, dataVersion]);
+  // Muscle Growth items (#122) have their own checklist: Today's workout counts only free logs as extras.
+  const freeLogs = useMemo(() => dayLogs.filter((l) => l.routine !== MUSCLE_GROWTH), [dayLogs]);
+  const catalogue = useMemo(() => inventoryFor(plan), [plan]);
   const workout = useMemo(
     () =>
       todayWorkout({
@@ -104,9 +111,46 @@ export function DayLogScreen() {
         freeLogs,
         state: date === today && exerciseState ? exerciseState : null,
         restDay: (plan.exercise?.restDays ?? []).includes(weekdayOf(date)),
+        inventory: catalogue,
       }),
-    [plan, date, today, prescription, records, freeLogs, exerciseState],
+    [plan, date, today, prescription, records, freeLogs, exerciseState, catalogue],
   );
+
+  // Muscle Growth (#122): the day's checklist, and progression hints from earlier completed sessions (advice only).
+  const growth = useMemo(() => muscleGrowthDay(plan, date, dayLogs, catalogue), [plan, date, dayLogs, catalogue]);
+  const [growthHistory, setGrowthHistory] = useState<ExerciseLog[]>([]);
+  const growthOn = !!plan.exercise?.muscleGrowth;
+  useEffect(() => {
+    if (!growthOn) return setGrowthHistory([]);
+    let live = true;
+    store.exerciseLogs({ from: addDays(date, -HISTORY_DAYS), to: addDays(date, -1) }).then((l) => live && setGrowthHistory(l), () => live && setGrowthHistory([]));
+    return () => {
+      live = false;
+    };
+  }, [store, date, dataVersion, growthOn]);
+  const growthHints = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const r of growth?.rows ?? []) {
+      const h = r.status === 'pending' ? progressionHint(r.movement, r.planned, growthHistory, date) : null;
+      if (h) out[r.movement] = h;
+    }
+    return out;
+  }, [growth, growthHistory, date]);
+  const [growthEditor, setGrowthEditor] = useState(false);
+  const [growthDetails, setGrowthDetails] = useState<MuscleGrowthRow | null>(null);
+  const writeGrowth = (write: Promise<unknown>) => write.then(notifyDataChanged, () => setToast({ key: Date.now(), message: "Couldn't save. Try again." }));
+  // The circle completes (or, when done, clears); Skip skips (or, when skipped, clears). One record per date and
+  // movement, so switching between them never duplicates a log.
+  const completeGrowth = (r: MuscleGrowthRow) => {
+    if (!editable) return;
+    tap();
+    writeGrowth(r.status === 'done' ? store.removeExerciseLog(muscleGrowthLogId(date, r.movement)) : store.addExerciseLog(muscleGrowthLog(r, date, localIsoTimestamp(), 'done')));
+  };
+  const skipGrowth = (r: MuscleGrowthRow) => {
+    if (!editable) return;
+    tap();
+    writeGrowth(r.status === 'skipped' ? store.removeExerciseLog(muscleGrowthLogId(date, r.movement)) : store.addExerciseLog(muscleGrowthLog(r, date, localIsoTimestamp(), 'skipped')));
+  };
 
   // Meals actually eaten (#97): replaced scheduled meals and the day's "Eaten" totals.
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
@@ -230,7 +274,7 @@ export function DayLogScreen() {
     tap();
     const write =
       t.kind === 'log'
-        ? logExercise(store, { id: t.id, movement: row.movement, date, at: new Date().toISOString(), sets: t.dose.sets, reps: t.dose.reps, seconds: t.dose.seconds })
+        ? logExercise(store, { id: t.id, movement: row.movement, date, at: new Date().toISOString(), sets: t.dose.sets, reps: t.dose.reps, seconds: t.dose.seconds }, catalogue)
         : Promise.all(t.ids.map((id) => store.removeExerciseLog(id)));
     write.then(notifyDataChanged, () => setToast({ key: Date.now(), message: "Couldn't save. Try again." }));
   };
@@ -333,6 +377,25 @@ export function DayLogScreen() {
 
         {/* Today's workout (#56): every day, in the content layer, right after the top card (unless it is the top card). */}
         {showWorkout && !topCard?.promoted && <View style={topCard ? styles.block : styles.firstBlock}>{workoutCard(false)}</View>}
+
+        {/* Muscle Growth (#122): its own section after Today's workout, only when the user has set it up. */}
+        {growth && (growth.offered || growth.rows.length > 0) && (
+          <View style={styles.block}>
+            <MuscleGrowthSection
+              day={growth}
+              when={plan.exercise?.muscleGrowth?.when}
+              inventory={catalogue}
+              coverage={date === today ? exerciseState?.coverage ?? null : null}
+              hints={growthHints}
+              editable={editable}
+              onComplete={completeGrowth}
+              onSkip={skipGrowth}
+              onGuide={setGuideFor}
+              onDetails={setGrowthDetails}
+              onEdit={() => setGrowthEditor(true)}
+            />
+          </View>
+        )}
 
         {/* With no card above, the measurements take its place right under the header (vertical budget, contract 02). */}
         <View style={noCardToday ? styles.firstBlock : styles.block}>
@@ -439,6 +502,18 @@ export function DayLogScreen() {
         }}
       />
       <ExerciseGuideSheet gender={plan.profile?.gender} guide={guideFor ? buildGuide(guideFor, plan.exercise) : null} onClose={() => setGuideFor(null)} />
+      {growthEditor && <MuscleGrowthEditor onClose={() => setGrowthEditor(false)} />}
+      {growthDetails && (
+        <MuscleGrowthLogSheet
+          row={growthDetails}
+          onClose={() => setGrowthDetails(null)}
+          onSave={(d) => {
+            const r = growthDetails;
+            setGrowthDetails(null);
+            writeGrowth(store.addExerciseLog(muscleGrowthLog(r, date, r.log?.at ?? localIsoTimestamp(), 'done', d)));
+          }}
+        />
+      )}
       {coverage && <CoverageSheet date={date} editable={editable} initialPage={coverage} session={workout.sessions.find((s) => s.state !== 'skipped')?.session} onClose={() => setCoverage(null)} />}
       <MeasureSheet
         plan={plan}

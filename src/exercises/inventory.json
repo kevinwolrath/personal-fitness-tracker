@@ -15,7 +15,8 @@
     { "id": "quadriceps", "label": "Quadriceps" },
     { "id": "hamstrings", "label": "Hamstrings" },
     { "id": "calves", "label": "Calves" },
-    { "id": "hip_flexors", "label": "Hip flexors" }
+    { "id": "hip_flexors", "label": "Hip flexors" },
+    { "id": "traps", "label": "Traps (upper)", "optional": true }
   ],
   "exercises": [
     { "movement": "knuckle_push_up", "name": "Push-ups (knuckles)", "kind": "strength", "equipment": [], "defaultDose": { "sets": 3, "reps": 8 }, "primary": ["chest"], "secondary": ["triceps", "shoulders", "core"] },

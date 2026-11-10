@@ -74,7 +74,7 @@ export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate):
     countBadge('continuing', 'Keep forging', 'Record plan quests on 90 days, including after reaching goals.', activeDays, 90),
   ];
   // Performance rewards compare the same movement across dates, never extra sets on a single day.
-  const exercises = (snapshot.exerciseLogs ?? []).filter(l => l.date <= today && safeNumber(l.reps ?? 0)).sort((a,b) => a.date.localeCompare(b.date));
+  const exercises = (snapshot.exerciseLogs ?? []).filter(l => l.date <= today && l.status !== 'skipped' && safeNumber(l.reps ?? 0)).sort((a,b) => a.date.localeCompare(b.date));
   const improved = exercises.some(l => exercises.some(base => base.movement === l.movement && addDays(base.date, scoring.sustainedDays) <= l.date && l.reps! >= base.reps! * 1.2));
   achievements.push({ id: 'performance', title: 'Growing stronger', detail: 'Improve recorded reps for the same movement by 20% over at least 28 days.', unlocked: improved, progress: improved ? 'Reached' : 'Keep recording your capability', milestone: true });
   if (plan.profile?.ageBand !== 'under_18') for (const goal of plan.goals) {

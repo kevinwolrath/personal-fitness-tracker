@@ -14,7 +14,9 @@ Example: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/gener
 
 **formatVersion 6** (#49, #53) adds the setup profile: `profile.gender`, `ageBand`, `age`, `weightBand`, `weight`, `fitnessGoals`, `daysPerWeek`, `activityLevel`, `equipment`, `physicalLimits`, `dietary` and `considerations` (contracts 07 and 13). The rules: gradual and faster loss exclude each other and maintain; no weight-loss goal with `ageBand: under_18`; an `age` must match its `ageBand`; `weight` and `weightBand` can't both be set. A formatVersion 1–5 plan must not contain them.
 
-**formatVersion 7** (#56) adds `exercise.restDays` (configured rest days, each weekday once; absent means none, never inferred from the schedule) and activity `movement` (the exercise-inventory movement an activity is, e.g. `"vr_boxing"`, so its muscle work counts; contract 09). A formatVersion 1–6 plan must not contain them. Configure with AI and setup write formatVersion 7. Everything else below applies to every version.
+**formatVersion 7** (#56) adds `exercise.restDays` (configured rest days, each weekday once; absent means none, never inferred from the schedule) and activity `movement` (the exercise-inventory movement an activity is, e.g. `"vr_boxing"`, so its muscle work counts; contract 09). A formatVersion 1–6 plan must not contain them. Everything else below applies to every version.
+
+**formatVersion 8** (#122) adds `exercise.customExercises` (the user's own catalogue entries, same shape as a built-in inventory exercise) and `exercise.muscleGrowth` (the Muscle Growth routine: `enabled`, `targets`, `exercises`, optional `days` and `when`; contract 09). A formatVersion 1–7 plan must not contain them. Configure with AI, the Muscle Growth editor and setup write formatVersion 8.
 
 ## Design limits (deliberate)
 

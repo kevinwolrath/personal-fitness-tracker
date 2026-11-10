@@ -23,6 +23,8 @@ export type ChecklistRow = {
   done: boolean;
   /** Marked "avoid" with no substitute: shown, but not required to finish. */
   optional: boolean;
+  /** #122 Muscle Growth: explicitly skipped (distinct from not done yet). Sessions never set it. */
+  skipped?: boolean;
 };
 
 export type SessionProgress = {

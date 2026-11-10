@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { inventoryFor } from '../../exercises/catalogue';
 import { exerciseState, loadExerciseHistory, type ExerciseState } from '../../exercises/state';
 import type { LocalDate } from '../../plan/dates';
 import type { Plan } from '../../plan/schema';
@@ -26,7 +27,7 @@ export function useExerciseState(store: TrackingStore, plan: Plan, today: LocalD
     // Keep showing the previous state while reloading (e.g. after a tick), so nothing blinks; first load only waits.
     setLoading((was) => was || state === null);
     loadExerciseHistory(store, plan, today)
-      .then((history) => live && setState(exerciseState(plan, history, { now: new Date().toISOString(), today, todaySessions: sessions })))
+      .then((history) => live && setState(exerciseState(plan, history, { now: new Date().toISOString(), today, todaySessions: sessions }, inventoryFor(plan))))
       .catch(() => live && setState(null))
       .finally(() => live && setLoading(false));
     return () => {

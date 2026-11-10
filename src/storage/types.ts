@@ -101,6 +101,17 @@ export type ExerciseLog = {
   reps: number | null;
   seconds: number | null;
   intensity: ExerciseIntensity | null;
+  /**
+   * #122: the routine this belongs to. "muscle_growth": a Muscle Growth checklist item (one per date and movement),
+   * kept apart from Resistance Training completion but counted in the same muscle history. Absent: a free log.
+   */
+  routine?: 'muscle_growth' | null;
+  /** #122: "skipped" is an explicit skip: no work, never counted for muscles, XP or progress. Absent = done. */
+  status?: 'done' | 'skipped' | null;
+  /** #122: load used, in kg. */
+  loadKg?: number | null;
+  /** #122: reps in reserve (perceived effort), 0–10. */
+  rir?: number | null;
 };
 
 /** A user report that a muscle group is sore or injured (#56). Overrides automatic readiness until cleared. */

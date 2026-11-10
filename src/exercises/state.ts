@@ -42,7 +42,8 @@ export async function loadExerciseHistory(store: TrackingStore, plan: Plan, toda
   ]);
   const byId = new Map(plan.activities.map((a) => [a.id, a]));
   const recent = activityLogs.filter((l) => l.date >= from && l.date <= today);
-  const entries: ExerciseEntry[] = logs.map(freeLogEntry);
+  // Skipped Muscle Growth items (#122) are not work: they never count for muscles.
+  const entries: ExerciseEntry[] = logs.filter((l) => l.status !== 'skipped').map(freeLogEntry);
 
   for (const date of [...new Set(recent.map((l) => l.date))].sort()) {
     const day: Record<string, ActivityLog> = {};

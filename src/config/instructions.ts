@@ -9,6 +9,7 @@ import {
   strengthSplits,
   trainingLocations,
 } from '../plan/schema';
+import { bundledInventory } from '../exercises/inventory';
 import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 
 const fence = (json: unknown) => '```json\n' + JSON.stringify(json, null, 2) + '\n```';
@@ -153,6 +154,8 @@ ${fieldDocs}
 - purpose (activities and requirements): ${purposes.join(', ')}
 - when (instead of an exact time): ${dayParts.join(', ')}
 - requirements: an activity with "satisfies": "<requirementId>" is one alternative; completing any one satisfies the requirement for the day. Use this instead of scheduling several redundant activities.
+- muscle groups (customExercises primary/secondary, muscleGrowth.targets): ${bundledInventory.muscleGroups.map((m) => m.id).join(', ')}
+- built-in exercises (movement ids for muscleGrowth.exercises; add anything else to customExercises first): ${bundledInventory.exercises.filter((e) => e.kind === 'strength').map((e) => `${e.movement} (${e.primary.join('+')})`).join(', ')}
 - session exercises: movement is a snake_case id; movements marked "avoid" are swapped for the configured substitute automatically
 
 ## Examples

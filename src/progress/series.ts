@@ -12,7 +12,7 @@ import { activitySummary, isHealthActivity } from '../observations/activity';
  */
 export type PointKind = 'measured' | 'calculated' | 'estimate';
 /** `meals`: the sum of that day's logged meals (#97), used only on days with no day total of its own. */
-export type Point = { date: LocalDate; value: number; kind: PointKind; source?: SourceType | 'meals'; app?: string | null };
+export type Point = { date: LocalDate; value: number; kind: PointKind; source?: SourceType | 'meals'; app?: string | null; /** From logged meals where some food doesn't state this nutrient: an under-count. */ incomplete?: boolean };
 
 /** Whole days from `a` to `b` (b − a), on local calendar dates. */
 export function daysBetween(a: LocalDate, b: LocalDate): number {

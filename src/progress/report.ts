@@ -1,3 +1,4 @@
+import { expenditureSeries, type BurnedPoint } from './expenditure';
 import { addDays, toLocalDate, type LocalDate } from '../plan/dates';
 import { planSchema, type Plan } from '../plan/schema';
 import type { Observation } from '../observations/types';
@@ -8,7 +9,7 @@ import { fromCanonical, toCanonical } from '../observations/units';
 import { activitySummary, isHealthActivity, isWalk } from '../observations/activity';
 import { formatDistance } from '../observations/units';
 import type { MealLog } from '../nutrition/contract';
-import { mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
+import { dayIntake, mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
 import { forecast, trendInsight } from './forecast';
 import {
   bmiSeries,
@@ -51,7 +52,7 @@ export const chartTitles: Record<ChartId, string> = {
   'energy-balance': 'Energy balance',
   protein: 'Protein',
 };
-export const progressMetrics = ['weight', 'waist', 'body_fat', 'exercise_session', 'active_minutes', 'steps', 'distance', 'energy_intake', 'total_energy', 'protein_intake'];
+export const progressMetrics = ['weight', 'waist', 'body_fat', 'exercise_session', 'active_minutes', 'steps', 'distance', 'energy_intake', 'total_energy', 'active_energy', 'protein_intake'];
 
 export const ranges = [
   { id: '7d', label: '7 days', days: 7 },
@@ -105,9 +106,13 @@ export type ProgressOptions = {
 export function intakeSeries(observations: Observation[], mealLogs: MealLog[], metric: 'energy_intake' | 'protein_intake'): Point[] {
   const totals = dailySeries(observations, metric);
   const has = new Set(totals.map((p) => p.date));
-  const meals = [...mealSumsByDate(mealLogs, nutrientForMetric(metric)!)]
+  const key = nutrientForMetric(metric)!;
+  const meals = [...mealSumsByDate(mealLogs, key)]
     .filter(([date]) => !has.has(date))
-    .map(([date, value]): Point => ({ date, value, kind: 'measured', source: 'meals' }));
+    .map(([date, value]): Point => {
+      const incomplete = dayIntake(date, mealLogs, []).values[key]?.incomplete ?? false;
+      return { date, value, kind: 'measured', source: 'meals', ...(incomplete ? { incomplete } : {}) };
+    });
   return [...totals, ...meals].sort((a, b) => a.date.localeCompare(b.date));
 }
 
@@ -417,10 +422,18 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   const unit = entryUnit(opts.energy ?? plan.units.energy);
   const toUnit = (p: Point): Point => ({ ...p, value: convertEnergy(p.value, 'kJ', unit) });
   const eaten = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'energy_intake'), from, today).map(toUnit);
-  const burned = inRange(dailySeries(observations, 'total_energy'), from, today).map(toUnit);
+  // Burned: a day's total if one was recorded, else estimated resting energy + Health Connect active energy (never both).
+  const expenditure = expenditureSeries(observations, plan);
+  const burned = inRange(expenditure.points, from, today).map(toUnit) as BurnedPoint[];
+  const burnedTotal = burned.filter((p) => p.basis === 'total');
+  const burnedEstimate = burned.filter((p) => p.basis === 'resting+active');
   const last7 = (ps: Point[]) => meanBetween(ps, addDays(today, -6), today);
   const e7 = last7(eaten);
   const b7 = last7(burned);
+  const restingNote = burnedEstimate.length ? 'Burned on days without a total = estimated resting energy (from your height, age, sex and weight) + active energy from Health Connect.' : '';
+  const missingNote = expenditure.missing?.length && expenditure.activeOnlyDays
+    ? `Active energy is recorded, but energy burned can't be estimated without your ${expenditure.missing.join(' and ')} (menu → Edit setup answers).`
+    : '';
   charts.energy = {
     id: 'energy',
     title: chartTitles.energy,
@@ -430,17 +443,32 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     unit,
     series: [
       { label: 'Eaten (logged or imported)', points: eaten, style: 'dots', tone: 'accent' },
-      { label: 'Burned (from a wearable)', points: burned, style: 'dots', tone: 'warm' },
+      ...(burnedTotal.length ? [{ label: 'Burned (total from a wearable or entry)', points: burnedTotal, style: 'dots' as const, tone: 'warm' as const }] : []),
+      ...(burnedEstimate.length ? [{ label: 'Burned (estimate: resting + active)', points: burnedEstimate, style: 'dots' as const, tone: 'ink' as const }] : []),
     ],
-    empty: eaten.length || burned.length ? null : 'Energy appears here when you log or import what you ate, or a wearable reports energy burned. Ticking a planned meal doesn’t count as eaten.',
-    note: eaten.length || burned.length ? 'Both are estimates: food logs and wearables can be off by a lot.' : null,
+    empty: eaten.length || burned.length
+      ? null
+      : [
+          'Eaten appears when you log what you ate (a meal photo or typed in) or import a day total. Ticking a planned meal doesn’t count as eaten.',
+          missingNote || 'Burned appears when Health Connect or a wearable reports energy.',
+        ].join(' '),
+    note: eaten.length || burned.length
+      ? [
+          'Both are estimates: food logs and wearables can be off by a lot.',
+          restingNote,
+          !eaten.length ? 'Nothing eaten is logged yet: log meals you actually ate; ticked planned meals don’t count.' : '',
+          missingNote,
+        ].filter(Boolean).join(' ')
+      : null,
     summary: eaten.length || burned.length ? `Energy, last 7 days: ${e7 !== null ? thousands(e7) : 'no'} ${unit} eaten and ${b7 !== null ? thousands(b7) : 'no'} ${unit} burned a day.` : 'Energy: no data.',
   };
 
   // Energy balance per week (eaten − burned) against the weight trend.
   // Only days with both values: a day's eaten minus that same day's burned, then the weekly average of those days (#67).
+  // Today is still in progress (more eating, more activity), so it never counts: only finished days with both.
   const burnedOn = new Map(burned.map((p) => [p.date, p.value]));
-  const dailyBalance: Point[] = eaten.filter((p) => burnedOn.has(p.date)).map((p) => ({ date: p.date, value: p.value - burnedOn.get(p.date)!, kind: 'calculated' }));
+  // A day whose logged meals don't all state their energy is an under-count: never a balance.
+  const dailyBalance: Point[] = eaten.filter((p) => p.date < today && !p.incomplete && burnedOn.has(p.date)).map((p) => ({ date: p.date, value: p.value - burnedOn.get(p.date)!, kind: 'calculated' }));
   const balance: Point[] = bucketMeans(dailyBalance, 'week').map((b) => ({ date: b.bucket, value: b.value, kind: 'calculated' }));
   const lastBal = balance[balance.length - 1];
   charts['energy-balance'] = {
@@ -452,7 +480,13 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     unit: `${unit}/day`,
     series: [{ label: 'Weekly balance', points: balance, style: 'bars', tone: 'warm' }],
     reference: { value: 0, label: 'Balanced' },
-    empty: balance.length ? null : 'Needs energy eaten and energy burned recorded on the same days.',
+    empty: balance.length
+      ? null
+      : !eaten.length
+        ? 'Needs what you ate: log meals you actually ate (photo or typed), or import a day total. Ticked planned meals don’t count.'
+        : !burned.length
+          ? missingNote || 'Needs energy burned on the same days: connect Health Connect or enter a total.'
+          : 'Needs energy eaten and energy burned recorded on the same days (finished days only: today is still in progress).',
     note: balance.length ? 'Estimates rarely match the scale exactly. Your weight trend is the better guide.' : null,
     summary: lastBal ? `Latest weekly energy balance ${thousands(lastBal.value)} ${unit} a day, an estimate.` : 'Energy balance: not enough data.',
   };

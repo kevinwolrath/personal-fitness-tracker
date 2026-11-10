@@ -20,6 +20,7 @@ import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 import { SettingsSheet } from '../settings/SettingsSheet';
 import { MuscleGrowthEditor } from '../muscle-growth/MuscleGrowthEditor';
 import { BackupSheet } from '../backup/BackupSheet';
+import { HealthSyncSheet } from '../health-sync/HealthSyncSheet';
 import { takeRestoreNotice } from '../../backup/restored';
 import { inventoryFor } from '../../exercises/catalogue';
 import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
@@ -48,6 +49,7 @@ function Shell({ children }: { children: ReactNode }) {
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [growthOpen, setGrowthOpen] = useState(false);
   const [backupMode, setBackupMode] = useState<'backup' | 'restore' | null>(null);
+  const [syncOpen, setSyncOpen] = useState(false);
   const styles = useStyles();
 
   const { store, energy, plan } = useApp();
@@ -107,6 +109,7 @@ function Shell({ children }: { children: ReactNode }) {
     { key: 'coverage', label: 'Muscle coverage & exercise log', detail: 'Coverage, recovery and eligible exercises', onSelect: () => setCoverageOpen(true) },
     { key: 'backup', label: 'Back up data', detail: 'Everything, with meal photos, in one file', onSelect: () => setBackupMode('backup') },
     { key: 'restore', label: 'Restore data', detail: "Replace this phone's data from a backup", onSelect: () => setBackupMode('restore') },
+    { key: 'health-sync', label: 'Health data sync', detail: 'Private server copy and read-only AI links', onSelect: () => setSyncOpen(true) },
     { key: 'export', label: 'Export all data', detail: 'Readable JSON history (not a full backup)', onSelect: () => setConfirmExport(true) },
   ];
 
@@ -141,6 +144,7 @@ function Shell({ children }: { children: ReactNode }) {
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {backupMode && <BackupSheet store={store} mode={backupMode} onClose={() => setBackupMode(null)} />}
+      {syncOpen && <HealthSyncSheet store={store} onClose={() => setSyncOpen(false)} />}
       {growthOpen && <MuscleGrowthEditor onClose={() => setGrowthOpen(false)} />}
       {coverageOpen && <CoverageSheet date={toLocalDate(now)} editable onClose={() => setCoverageOpen(false)} />}
       <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />

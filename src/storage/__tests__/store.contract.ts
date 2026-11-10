@@ -399,5 +399,25 @@ export function describeTrackingStore(
       expect(day.observations[0].value).toBe(97.9);
       expect(day.quickLogs[0].id).toBe('q');
     });
+
+    describe('app ids (#134)', () => {
+      it('ensureMeta keeps the first value, survives a restart and is in the snapshot', async () => {
+        expect(await store.getMeta('healthSync.userId')).toBeNull();
+        expect(await store.ensureMeta('healthSync.userId', 'a')).toBe('a');
+        expect(await store.ensureMeta('healthSync.userId', 'b')).toBe('a');
+        const again = await reopen();
+        expect(await again.getMeta('healthSync.userId')).toBe('a');
+        expect((await again.snapshot()).appMeta).toEqual({ 'healthSync.userId': 'a' });
+      });
+
+      it('replaceAll takes the backup’s ids; a backup made before #134 keeps this phone’s', async () => {
+        await store.ensureMeta('healthSync.userId', 'phone');
+        const s = await store.snapshot();
+        await store.replaceAll({ ...s, appMeta: undefined });
+        expect(await store.getMeta('healthSync.userId')).toBe('phone');
+        await store.replaceAll({ ...s, appMeta: { 'healthSync.userId': 'backup' } });
+        expect(await store.getMeta('healthSync.userId')).toBe('backup');
+      });
+    });
   });
 }

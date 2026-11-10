@@ -98,6 +98,8 @@ const migrations = [
    ALTER TABLE exercise_log ADD COLUMN status TEXT CHECK (status IS NULL OR status IN ('done', 'skipped'));
    ALTER TABLE exercise_log ADD COLUMN load_kg REAL;
    ALTER TABLE exercise_log ADD COLUMN rir INTEGER;`,
+  // 9 (#134): app-owned identifiers kept with the data (the health-sync user id). Additive only: one new table.
+  `CREATE TABLE app_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -538,6 +540,16 @@ export class SqliteTrackingStore implements TrackingStore {
     return r?.first ?? null;
   }
 
+  async getMeta(key: string): Promise<string | null> {
+    const r = await this.db.getFirstAsync<{ value: string }>('SELECT value FROM app_meta WHERE key = ?', [key]);
+    return r?.value ?? null;
+  }
+
+  async ensureMeta(key: string, value: string): Promise<string> {
+    await this.db.runAsync('INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)', [key, value]);
+    return (await this.getMeta(key)) ?? value;
+  }
+
   async snapshot(): Promise<StoreSnapshot> {
     const [plan, acts, overrides, obs, qs, imports] = await Promise.all([
       this.getActivePlan(),
@@ -558,6 +570,7 @@ export class SqliteTrackingStore implements TrackingStore {
       this.muscleReports(),
       this.mealLogs(),
     ]);
+    const meta = await this.db.getAllAsync<{ key: string; value: string }>('SELECT key, value FROM app_meta ORDER BY key', []);
     return {
       configChanges,
       completionEvents: events.map(toEvent),
@@ -571,6 +584,7 @@ export class SqliteTrackingStore implements TrackingStore {
       exerciseLogs,
       muscleReports,
       mealLogs,
+      appMeta: Object.fromEntries(meta.map((m) => [m.key, m.value])),
     };
   }
 
@@ -580,7 +594,8 @@ export class SqliteTrackingStore implements TrackingStore {
 
   async replaceAll(s: StoreSnapshot): Promise<void> {
     await this.transaction(async () => {
-      for (const t of STORE_TABLES) await this.db.runAsync(`DELETE FROM ${t}`, []);
+      // A snapshot without appMeta (made before #134) keeps this phone's own identifiers.
+      for (const t of STORE_TABLES) if (t !== 'app_meta' || s.appMeta) await this.db.runAsync(`DELETE FROM ${t}`, []);
       await this.insertSnapshot(s);
     });
   }
@@ -598,6 +613,7 @@ export class SqliteTrackingStore implements TrackingStore {
     for (const l of s.exerciseLogs ?? []) await this.addExerciseLog(l);
     for (const r of s.muscleReports ?? []) await this.addMuscleReport(r);
     for (const m of s.mealLogs ?? []) await this.upsertMealLog(m);
+    for (const [key, value] of Object.entries(s.appMeta ?? {})) await this.db.runAsync('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', [key, value]);
   }
 }
 
@@ -605,4 +621,4 @@ export class SqliteTrackingStore implements TrackingStore {
  * Every table that holds user data (#128). A full restore empties exactly these; a test checks the list against the
  * real schema, so a new table can't be left out of backups and restores.
  */
-export const STORE_TABLES = ['plan', 'activity_log', 'observation', 'import_session', 'quick_log', 'day_override', 'config_change', 'completion_event', 'day_snapshot', 'exercise_log', 'muscle_report', 'meal_log'] as const;
+export const STORE_TABLES = ['plan', 'activity_log', 'observation', 'import_session', 'quick_log', 'day_override', 'config_change', 'completion_event', 'day_snapshot', 'exercise_log', 'muscle_report', 'meal_log', 'app_meta'] as const;

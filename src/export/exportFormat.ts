@@ -156,6 +156,8 @@ export const exportSchema = z.object({
       }),
     )
     .default([]),
+  /** #134: app-owned identifiers (never secrets), e.g. the health-sync user id. Absent in older exports. */
+  appMeta: z.record(z.string(), z.string()).optional(),
 });
 
 export type ExportDocument = z.infer<typeof exportSchema>;
@@ -212,6 +214,7 @@ export function buildExport(s: StoreSnapshot, meta: { exportedAt: string; today:
     exerciseLogs: s.exerciseLogs ?? [],
     muscleReports: s.muscleReports ?? [],
     mealLogs: s.mealLogs ?? [],
+    ...(s.appMeta && Object.keys(s.appMeta).length ? { appMeta: s.appMeta } : {}),
   };
 }
 
@@ -245,6 +248,7 @@ export function toSnapshot(input: unknown): { ok: true; snapshot: StoreSnapshot 
       exerciseLogs: e.exerciseLogs,
       muscleReports: e.muscleReports,
       mealLogs: e.mealLogs,
+      ...(e.appMeta ? { appMeta: e.appMeta } : {}),
     },
   };
 }

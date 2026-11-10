@@ -132,10 +132,14 @@ export const BACKUP_PREFERENCE_KEYS = {
     TREND_STATE,
     REMINDERS,
     HC_WANTED,
+    'pft.healthSync.url',
   ],
   excluded: {
     'pft.anthropic.apiKey': 'API key: a secret, never written to a backup. Enter it again after restoring.',
     [HC_SYNC]: 'Health Connect sync state belongs to this phone; the next sync re-reads recent days without duplicating them.',
     [SETUP_DRAFT]: 'An unfinished setup on this phone, not saved data.',
+    'pft.healthSync.credential': 'Health data sync key: a secret, never written to a backup. The data ID travels with the backup; link again on the new phone.',
+    'pft.healthSync.pending': 'An unfinished health data link on this phone (a secret).',
+    'pft.healthSync.status': 'The last health data sync on this phone.',
   } as Record<string, string>,
 } as const;

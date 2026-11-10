@@ -17,6 +17,7 @@
     "export:web": "expo export --platform web",
     "check:native": "expo export --platform ios --platform android --output-dir dist-native",
     "test:e2e:dev": "E2E_DEV=1 playwright test",
+    "replay:gamification": "node scripts/replay-gamification.cjs",
     "check:agent-files": "node scripts/check-agent-files.cjs",
     "build:exercise-assets": "node scripts/build-exercise-assets.cjs"
   },

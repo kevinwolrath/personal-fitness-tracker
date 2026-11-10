@@ -3,28 +3,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { journeyPlan, journeySnapshot, observation, START } from '../fixtures/gamification/journey';
 import { addDays } from '../src/plan/dates';
 import { gameFrom } from '../src/gamification/model';
-import type { StoreSnapshot } from '../src/storage/types';
+import { close, expectXP, gallery, install, settings } from './gamificationHelpers';
 
 const DIR='docs/design/issue-73-gamification';
 test.use({ storageState:{cookies:[],origins:[]}, reducedMotion:'reduce' });
-async function settings(page:Page) { await page.getByRole('button',{name:'Menu',exact:true}).click(); await page.getByTestId('menu-settings').click(); }
-async function close(page:Page) { await page.getByTestId('modal-dismiss').last().click(); }
-async function install(page:Page,s:StoreSnapshot,date:string) {
-  await page.clock.setFixedTime(new Date(`${date}T12:30:00+10:00`));
-  await page.evaluate(({s,p})=>{
-    const activities:Record<string,Record<string,unknown>>={};
-    for(const {planId,date,...l} of s.activityLogs) (activities[`${planId}|${date}`]??={})[l.activityId]=l;
-    localStorage.setItem('pft:tracking:v1',JSON.stringify({version:1,plan:{planId:p.id,revision:p.revision,formatVersion:p.formatVersion,json:JSON.stringify(p),origin:'import',importedAt:new Date().toISOString()},activities,overrides:{},observations:s.observations,quickLogs:s.quickLogs,imports:s.imports,configChanges:s.configChanges,completionEvents:s.completionEvents,daySnapshots:{},exerciseLogs:s.exerciseLogs,muscleReports:s.muscleReports,mealLogs:s.mealLogs}));
-  },{s,p:journeyPlan});
-  await page.goto('/'); await page.reload();
-  await expect(page.getByTestId('day-progress')).toBeVisible();
-}
-async function expectXP(page:Page,s:StoreSnapshot,date:string) {
-  const g=gameFrom(s,journeyPlan,date);
-  await expect(page.getByTestId('game-level')).toHaveText(`Level ${g.level} · ${g.xp} XP`);
-  return g;
-}
-async function gallery(page:Page) { await page.getByTestId('open-achievements').click(); await expect(page.getByTestId('achievement-gallery')).toBeVisible(); }
 async function shot(page:Page,name:string,width:number) {
   if (['first-achievement','quest-complete','level-up','milestone'].includes(name)) await page.getByTestId('game-celebration').first().scrollIntoViewIfNeeded();
   await page.screenshot({path:`${DIR}/${width}-${name}.png`,scale:'css'});

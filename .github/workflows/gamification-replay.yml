@@ -1,0 +1,36 @@
+name: Gamification replay (.45)
+
+# #121: builds the visual fast-forward replay of the fictional gamification journey and keeps it as an artifact.
+# Manual only, on the owner's self-hosted runner (never a GitHub-hosted runner, never on push). Fictional data only.
+on:
+  workflow_dispatch:
+
+jobs:
+  replay:
+    name: Gamification journey replay
+    runs-on: [self-hosted, Windows, X64, personal-fitness-tracker-deploy]
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Chromium for Playwright
+        run: npx playwright install chromium
+      - name: Build the replay (MP4 when ffmpeg is on PATH, replay.html always)
+        run: npm run replay:gamification
+      - name: Upload replay
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gamification-replay
+          path: artifacts/gamification-replay/
+          retention-days: 30

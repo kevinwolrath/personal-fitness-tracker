@@ -14,6 +14,11 @@ type Props = {
   onOpen?: (e: PrescribedExercise) => void;
   /** Small "Next" label above the exercise name (the collapsed card's single row). */
   labelNext?: boolean;
+  /**
+   * #122 Muscle Growth: each row also offers Skip, and a skipped row offers Undo. Skipped is not done: ticking a
+   * skipped row completes it instead. Sessions don't pass this, so their rows are unchanged.
+   */
+  onSkip?: (row: ChecklistRow) => void;
   testID?: string;
 };
 
@@ -21,7 +26,7 @@ type Props = {
  * Exercise-by-exercise checklist (#28). The circle (48 dp) ticks that exercise only; the rest of the row
  * opens its guide. Done exercises stay visible, struck through.
  */
-export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, labelNext, testID }: Props) {
+export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, labelNext, onSkip, testID }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -60,7 +65,8 @@ export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, l
             >
               <View style={styles.name}>
                 {labelNext ? <Text style={styles.nextLabel}>Next</Text> : null}
-                <Text style={[styles.label, row.done && styles.labelDone, e.avoid && styles.avoid, isNext && styles.labelNext]}>{e.label}</Text>
+                <Text style={[styles.label, (row.done || row.skipped) && styles.labelDone, e.avoid && styles.avoid, isNext && styles.labelNext]}>{e.label}</Text>
+                {row.skipped ? <Text style={type.detail}>skipped</Text> : null}
                 {e.substitutedFor ? <Text style={type.detail}>instead of {e.substitutedFor.toLowerCase()}</Text> : null}
                 {e.caution ? <Text style={type.detail}>caution</Text> : null}
                 {row.optional ? <Text style={type.detail}>marked avoid · not required</Text> : null}
@@ -68,6 +74,18 @@ export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, l
               <Text style={styles.dose}>{dose}</Text>
               {onOpen ? <Text style={styles.info}>ⓘ</Text> : null}
             </Pressable>
+            {onSkip && !row.done ? (
+              <Pressable
+                onPress={() => onSkip(row)}
+                disabled={!editable}
+                style={({ pressed }) => [styles.skip, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={row.skipped ? `Undo skip: ${e.label}` : `Skip ${e.label}`}
+                testID={`skip-${row.key}`}
+              >
+                <Text style={styles.skipText}>{row.skipped ? 'Undo' : 'Skip'}</Text>
+              </Pressable>
+            ) : null}
           </View>
         );
       })}
@@ -137,6 +155,8 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   avoid: { textDecorationLine: 'line-through', color: colors.muted },
   dose: { fontSize: 15, color: colors.muted, fontVariant: ['tabular-nums'], flexShrink: 0 },
   info: { fontSize: 16, color: colors.accent, width: 18, textAlign: 'center' },
+  skip: { minHeight: touch, minWidth: touch, paddingHorizontal: space.sm, alignItems: 'center', justifyContent: 'center' },
+  skipText: { fontSize: 14, fontWeight: '700', color: colors.accent },
   segments: { flexDirection: 'row', backgroundColor: colors.line, borderRadius: radius.sm + 2, padding: 3 },
   segmentsInk: { backgroundColor: colors.inkRaised },
   segment: { flex: 1, minHeight: 44, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },

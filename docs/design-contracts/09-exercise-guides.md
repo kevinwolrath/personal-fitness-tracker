@@ -98,3 +98,38 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
 - The eligible exercise picker uses configured equipment and avoid/caution rules. It shows engine-ranked strength choices and separately labelled time-based conditioning. Dose fields are editable drafts: a prescribed dose when available, otherwise one set/rep or a 60-second conditioning draft requiring confirmation. Plank has an inventory-owned one-set/20-second draft. Strength logs can explicitly use repetitions or seconds; conditioning is always seconds per round. Nothing is logged by viewing activation or a guide.
 - Extra exercise logging has one stable submission ID over retries and a synchronous in-flight guard. Store upserts keep it idempotent. It never writes scheduled ticks, and session ticks never write extra logs. Recorded extra exercises can be removed. Scheduled exercises should use their checklist instead of an extra log.
 - Display completed checklist rows after unfinished ones, preserving the day's frozen priority order within each partition and the original per-variant keys. Unticking restores the original position. Full/Short tick semantics stay unchanged.
+
+## Muscle Growth (#122)
+
+A separate, configurable training category for chosen target muscles (for example biceps and upper back). It's a short optional routine, such as a lunch-break session, that sits beside the resistance session. It's **not** a second exercise system: it uses the same catalogue, ids, muscle mappings, guides, checklist row, exercise logs and muscle accounting as everything above.
+
+**Shared catalogue** (`src/exercises/catalogue.ts`, pure):
+- `inventoryFor(plan)` is the bundled inventory plus `plan.exercise.customExercises` (formatVersion 8). Custom exercises have the same shape as inventory entries (`movement`, `name`, `kind`, `equipment`, `primary`, `secondary`, `defaultDose`), plus optional `guidance` cues that the guide shows. They have no illustrations ("No illustration for this exercise yet").
+- Anything that plans, logs or counts exercises for a plan uses `inventoryFor(plan)`: Today's workout, the coverage sheet, logging, coverage and the share text. Custom exercises are therefore eligible extras and loggable everywhere, with the same equipment and avoid/caution rules.
+- On apply, `catalogueErrors` rejects:
+  - a custom exercise that repeats a built-in id or name (no duplicates);
+  - unknown muscle groups;
+  - routine movements that aren't in the catalogue, are marked `avoid`, or don't work a target.
+- **Upper traps are Upper back** (owner decision on #126). There's no separate traps group or body-map region, and no logs are remapped. "traps" in an update is rejected with a pointer to `upper_back`, and the editor says "Upper traps count as Upper back". There are no built-in shrug illustrations: users add their own trap exercise, such as "Dumbbell shrug" with `primary: ["upper_back"]`, as a custom exercise.
+
+**Configuration** (`plan.exercise.muscleGrowth`, contract 07):
+- Fields: `enabled`, `targets` (1–6 muscle groups), `exercises` (`movement`, optional `sets`, `reps` or `seconds`, `loadKg`), optional `days` (absent means every day) and `when` (display only).
+- It's set up in **Muscle Growth** (app menu, or **Edit** on the section) or through Configure with AI. The editor has a **Days** selector. All seven days are saved as no `days` (every day), and existing days are kept unless the user changes them. At least one day is required. Both write the same validated configuration change, with history and Undo.
+- The editor offers only eligible strength exercises whose primary muscles include a target, then those that work one secondarily. It never lists the whole catalogue, and "avoid" movements never appear.
+- Changing targets drops exercises that no longer fit from the routine. Earlier days' logs are never touched.
+- It never changes the schedule, rest days, the resistance session or loads.
+
+**Today:**
+- `muscleGrowthDay(plan, date, logs)` lists the routine's exercises that are eligible and work a target, each with its planned dose.
+- On a date, anything logged for Muscle Growth that's no longer in the routine still shows there. History is what was logged.
+- The section uses `ExerciseChecklist`. The circle completes. **Skip** is an explicit skip (pending and skipped stay distinct), and a skipped row offers **Undo**. Ticking a skipped row completes it.
+- Each item is one `exercise_log` per date and movement (`routine: muscle_growth`, `status` done or skipped, contract 04). Complete, Skip and a details edit replace that record, so a correction never duplicates it. Undo removes it.
+- **Details** on a done row records what was actually done: sets, reps or seconds, load in kg, and reps in reserve. RIR maps to intensity for effective sets: 0–1 hard, 2–3 moderate, 4+ light.
+- Muscle Growth completion is separate from Today's workout. Its logs are never Today's workout extras, and they never change that card's counts.
+
+**Shared accounting:**
+- Completed items are history entries like any free log. Weekly effective sets, recovery windows, suggestions and the coverage sheet count Muscle Growth and Resistance Training together. For example, evening hammer curls and pulldowns add to a lunchtime biceps routine's load, and recovery follows the load, not a fixed number of hours.
+- The section shows each target's weekly effective sets and status from the same coverage ("This week, all training: Biceps 5 sets (recovering)").
+- Skipped items add no muscle load, XP, progress or performance achievements.
+
+**Progression** (`progressionHint`): advice only, never an automatic change. A movement gets a suggestion only after its last two completed sessions both reached the planned sets and reps with at least 2 reps in reserve.

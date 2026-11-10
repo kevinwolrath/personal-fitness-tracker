@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validatePlan } from '../plan/validate';
+import { catalogueErrors } from '../exercises/catalogue';
 import { CURRENT_FORMAT_VERSION, type Plan } from '../plan/schema';
 import { importDiagnostics, prepareUpdate } from './import';
 import { CONFIG_SCHEMA_VERSION, fieldOf, isMerge, mergeById, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
@@ -112,5 +113,9 @@ export function applyConfigUpdate(currentRaw: RawPlan, update: ConfigUpdate): Ap
       errors: result.errors.map((e) => `After this update the configuration would be invalid: ${e}`),
     };
   }
+  // The shared exercise catalogue (#122): custom exercises can't duplicate built-ins, muscles must exist, and a
+  // Muscle Growth routine only uses catalogue exercises that work a target and aren't marked "avoid".
+  const catalogue = catalogueErrors(result.plan);
+  if (catalogue.length) return { ok: false, errors: catalogue };
   return { ok: true, nextRaw: next, plan: result.plan, touched };
 }

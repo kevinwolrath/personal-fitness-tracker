@@ -7,6 +7,8 @@
  * formatVersion 2 adds the optional `profile` and `exercise` sections (contract 07).
  * formatVersion 7 adds `exercise.restDays` and activity `movement` (#56): rest days for muscle coverage, and which
  * exercise-inventory movement an activity is (e.g. VR boxing), so its muscle work counts.
+ * formatVersion 8 adds `exercise.customExercises` and `exercise.muscleGrowth` (#122): the user's own catalogue entries,
+ * and a Muscle Growth routine for chosen target muscles, separate from the resistance session.
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
 import { z } from 'zod';
@@ -228,6 +230,56 @@ const trainingBlock = z.strictObject({
   notes: note.optional(),
 });
 
+/** An inventory muscle-group id (`src/exercises/inventory.json`), e.g. "biceps". Checked against the catalogue on apply. */
+export const muscleGroupId = z.string().max(30).regex(/^[a-z]+(_[a-z]+)*$/, 'use a muscle-group id, e.g. "biceps"');
+
+/**
+ * formatVersion 8 (#122): an exercise the user adds to the shared catalogue. Same shape as a bundled inventory entry
+ * (`src/exercises/inventory.ts`), so it is planned, logged and counted for muscles exactly like one. Its movement id
+ * must not repeat a bundled one (no duplicates).
+ */
+export const customExercise = z.strictObject({
+  movement: movementId,
+  name: label,
+  /** Muscle Growth and strength logging use sets and reps; conditioning stays time-based (contract 09). */
+  kind: z.enum(['strength', 'conditioning']).default('strength'),
+  /** Any one of these is enough; empty = no equipment. */
+  equipment: z.array(z.enum(equipmentTypes)).max(6),
+  primary: z.array(muscleGroupId).min(1).max(4),
+  secondary: z.array(muscleGroupId).max(6).default([]),
+  defaultDose: z
+    .strictObject({ sets: z.number().int().min(1).max(10), reps: z.number().int().min(1).max(100).optional(), seconds: z.number().positive().max(600).optional() })
+    .refine((d) => (d.reps === undefined) !== (d.seconds === undefined), 'give reps or seconds, not both')
+    .optional(),
+  /** Short cues shown in the exercise guide, in the user's words. */
+  guidance: z.array(note).max(8).optional(),
+});
+
+/** One exercise in the Muscle Growth routine: a catalogue movement and its planned dose (never auto-increased). */
+export const muscleGrowthExercise = z.strictObject({
+  movement: movementId,
+  sets: z.number().int().min(1).max(10).optional(),
+  reps: z.number().int().min(1).max(100).optional(),
+  seconds: z.number().positive().max(600).optional(),
+  loadKg: z.number().positive().max(500).optional(),
+});
+
+/**
+ * formatVersion 8 (#122): the Muscle Growth category. A short, optional routine for the user's chosen target muscles,
+ * independent of the resistance session: it never changes the schedule, rest days or other workouts.
+ */
+export const muscleGrowthSection = z.strictObject({
+  enabled: z.boolean(),
+  /** The user's target muscle groups, e.g. ["biceps", "upper_back"] (upper traps count as upper_back). */
+  targets: z.array(muscleGroupId).min(1).max(6),
+  /** The routine, in order. Only exercises that work a target are shown on Today. */
+  exercises: z.array(muscleGrowthExercise).max(12).default([]),
+  /** Days it is offered. Absent: every day. */
+  days: z.array(z.enum(weekdays)).min(1).max(7).optional(),
+  /** When it suits, e.g. "lunch" for a coffee-break session. Display only. */
+  when: z.enum(dayParts).optional(),
+});
+
 export const exerciseSection = z.strictObject({
   goals: z.array(z.enum(exerciseGoals)).max(9).optional(),
   equipment: z.array(equipmentItem).max(30).optional(),
@@ -241,6 +293,9 @@ export const exerciseSection = z.strictObject({
    * and never stop voluntary exercise. Absent = none: rest days are never inferred from the schedule.
    */
   restDays: z.array(z.enum(weekdays)).max(7).optional(),
+  // formatVersion 8 (#122):
+  customExercises: z.array(customExercise).max(30).optional(),
+  muscleGrowth: muscleGrowthSection.optional(),
   constraints: z
     .strictObject({
       location: z.enum(trainingLocations).optional(),
@@ -314,7 +369,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -341,6 +396,21 @@ export const planSchema = z.strictObject({
 }).superRefine((p, ctx) => {
   const rest = p.exercise?.restDays;
   if (rest && new Set(rest).size !== rest.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: 'each day only once' });
+  if (p.formatVersion < 8) {
+    for (const f of ['customExercises', 'muscleGrowth'] as const) {
+      if (p.exercise?.[f] !== undefined) ctx.addIssue({ code: 'custom', path: ['exercise', f], message: `"exercise.${f}" needs formatVersion 8` });
+    }
+  }
+  const custom = p.exercise?.customExercises ?? [];
+  if (new Set(custom.map((c) => c.movement)).size !== custom.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'customExercises'], message: 'each movement only once' });
+  custom.forEach((c, i) => c.primary.some((m) => c.secondary.includes(m)) && ctx.addIssue({ code: 'custom', path: ['exercise', 'customExercises', i], message: 'a muscle is both primary and secondary' }));
+  const mg = p.exercise?.muscleGrowth;
+  if (mg) {
+    if (new Set(mg.targets).size !== mg.targets.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'targets'], message: 'each muscle only once' });
+    if (new Set(mg.exercises.map((e) => e.movement)).size !== mg.exercises.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'exercises'], message: 'each movement only once' });
+    mg.exercises.forEach((e, i) => e.reps !== undefined && e.seconds !== undefined && ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'exercises', i], message: 'give reps or seconds, not both' }));
+    if (mg.days && new Set(mg.days).size !== mg.days.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'days'], message: 'each day only once' });
+  }
   if (p.formatVersion < 7) {
     if (rest !== undefined) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: '"exercise.restDays" needs formatVersion 7' });
     p.activities.forEach((a, i) => a.movement !== undefined && ctx.addIssue({ code: 'custom', path: ['activities', i, 'movement'], message: '"movement" needs formatVersion 7' }));
@@ -401,6 +471,9 @@ export type Measurement = Plan['measurements'][number];
 export type NutritionTarget = Plan['nutrition']['targets'][number];
 export type Weekday = (typeof weekdays)[number];
 export type ExerciseSection = z.infer<typeof exerciseSection>;
+export type CustomExercise = z.infer<typeof customExercise>;
+export type MuscleGrowth = z.infer<typeof muscleGrowthSection>;
+export type MuscleGrowthExercise = z.infer<typeof muscleGrowthExercise>;
 export type ProfileSection = z.infer<typeof profileSection>;
 export type Requirement = z.output<typeof requirementSchema>;
 export type Session = z.infer<typeof sessionSchema>;
@@ -409,6 +482,6 @@ export type Purpose = (typeof purposes)[number];
 export type DayPart = (typeof dayParts)[number];
 /** Building blocks reused by the configuration sections (src/config). */
 /** The plan format this app writes (Configure with AI, setup). */
-export const CURRENT_FORMAT_VERSION = 7;
+export const CURRENT_FORMAT_VERSION = 8;
 
 export const planParts = { activity, measurement, nutritionTarget, appliesTo, time, requirement: requirementSchema };

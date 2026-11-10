@@ -29,7 +29,7 @@ test('the header menu holds import, configure and export, and closes cleanly', a
   await openAt(page, MONDAY);
   await page.getByRole('button', { name: 'Menu' }).click();
   const menu = page.getByTestId('app-menu');
-  await expect(menu.getByRole('button')).toHaveText([/Import from screenshots/, /Health Connect/, /Configure with AI/, /Edit setup answers/, /Reminders/, /Settings/, /Muscle coverage & exercise log/, /Export all data/]);
+  await expect(menu.getByRole('button')).toHaveText([/Import from screenshots/, /Health Connect/, /Configure with AI/, /Edit setup answers/, /Reminders/, /Settings/, /Muscle Growth/, /Muscle coverage & exercise log/, /Export all data/]);
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(menu).toHaveCount(0);
   await expect(page.getByTestId('next-action')).toBeVisible();

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/kevinwolrath/personal-fitness-tracker/docs/design-contracts/plan.schema.json",
   "title": "Personal Fitness Tracker plan package",
-  "description": "formatVersion 1 to 7. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
+  "description": "formatVersion 1 to 8. Authoritative contract: see 03-plan-format.md, 07-ai-configuration.md and 08-daily-prescription.md for semantics and rules that JSON Schema cannot express.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -31,7 +31,8 @@
         4,
         5,
         6,
-        7
+        7,
+        8
       ]
     },
     "id": {
@@ -923,6 +924,187 @@
             "$ref": "#/$defs/weekday"
           }
         },
+        "customExercises": {
+          "description": "formatVersion 8 (#122): exercises the user adds to the shared catalogue, same shape as a built-in inventory entry. A movement id must not repeat a built-in one.",
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "movement",
+              "name",
+              "equipment",
+              "primary"
+            ],
+            "properties": {
+              "movement": {
+                "$ref": "#/$defs/movementId"
+              },
+              "name": {
+                "$ref": "#/$defs/label"
+              },
+              "kind": {
+                "enum": [
+                  "strength",
+                  "conditioning"
+                ]
+              },
+              "equipment": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "$ref": "#/$defs/equipmentType"
+                }
+              },
+              "primary": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 4,
+                "items": {
+                  "$ref": "#/$defs/muscleGroupId"
+                }
+              },
+              "secondary": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "$ref": "#/$defs/muscleGroupId"
+                }
+              },
+              "defaultDose": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sets"
+                ],
+                "properties": {
+                  "sets": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "reps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "seconds": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 600
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "reps"
+                    ],
+                    "not": {
+                      "required": [
+                        "seconds"
+                      ]
+                    }
+                  },
+                  {
+                    "required": [
+                      "seconds"
+                    ],
+                    "not": {
+                      "required": [
+                        "reps"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "guidance": {
+                "type": "array",
+                "maxItems": 8,
+                "items": {
+                  "$ref": "#/$defs/note"
+                }
+              }
+            }
+          }
+        },
+        "muscleGrowth": {
+          "description": "formatVersion 8 (#122): an optional Muscle Growth routine for chosen target muscles, separate from the resistance session. Never changes the schedule or rest days.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "targets"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "targets": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/muscleGroupId"
+              }
+            },
+            "exercises": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "movement"
+                ],
+                "properties": {
+                  "movement": {
+                    "$ref": "#/$defs/movementId"
+                  },
+                  "sets": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "reps": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "seconds": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 600
+                  },
+                  "loadKg": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 500
+                  }
+                },
+                "not": {
+                  "required": [
+                    "reps",
+                    "seconds"
+                  ]
+                }
+              }
+            },
+            "days": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 7,
+              "uniqueItems": true,
+              "items": {
+                "$ref": "#/$defs/weekday"
+              }
+            },
+            "when": {
+              "$ref": "#/$defs/dayPart"
+            }
+          }
+        },
         "constraints": {
           "type": "object",
           "additionalProperties": false,
@@ -1365,6 +1547,12 @@
           }
         }
       }
+    },
+    "muscleGroupId": {
+      "description": "An exercise-inventory muscle-group id (src/exercises/inventory.json), e.g. \"biceps\". Checked against the catalogue on apply.",
+      "type": "string",
+      "maxLength": 30,
+      "pattern": "^[a-z]+(_[a-z]+)*$"
     }
   },
   "allOf": [

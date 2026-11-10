@@ -18,6 +18,8 @@ import { AppMenu, type AppMenuItem } from './AppMenu';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 import { SettingsSheet } from '../settings/SettingsSheet';
+import { MuscleGrowthEditor } from '../muscle-growth/MuscleGrowthEditor';
+import { inventoryFor } from '../../exercises/catalogue';
 import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
 import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
 import { energyDisplayDetail } from '../../energy';
@@ -42,9 +44,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function Shell({ children }: { children: ReactNode }) {
   const [coverageOpen, setCoverageOpen] = useState(false);
+  const [growthOpen, setGrowthOpen] = useState(false);
   const styles = useStyles();
 
-  const { store, energy } = useApp();
+  const { store, energy, plan } = useApp();
   const reminders = useReminders();
   const [remindersOpen, setRemindersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -87,6 +90,12 @@ function Shell({ children }: { children: ReactNode }) {
       onSelect: () => setRemindersOpen(true),
     },
     { key: 'settings', label: 'Settings', detail: energyDisplayDetail(energy), onSelect: () => setSettingsOpen(true) },
+    {
+      key: 'muscle-growth',
+      label: 'Muscle Growth',
+      detail: plan.exercise?.muscleGrowth?.enabled ? `On · ${plan.exercise.muscleGrowth.targets.map((t) => inventoryFor(plan).muscleGroups.find((m) => m.id === t)?.label ?? t).join(', ')}` : 'Targeted routine for chosen muscles',
+      onSelect: () => setGrowthOpen(true),
+    },
     { key: 'coverage', label: 'Muscle coverage & exercise log', detail: 'Coverage, recovery and eligible exercises', onSelect: () => setCoverageOpen(true) },
     { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
   ];
@@ -121,6 +130,7 @@ function Shell({ children }: { children: ReactNode }) {
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {growthOpen && <MuscleGrowthEditor onClose={() => setGrowthOpen(false)} />}
       {coverageOpen && <CoverageSheet date={toLocalDate(now)} editable onClose={() => setCoverageOpen(false)} />}
       <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />
       <ConfirmDialog

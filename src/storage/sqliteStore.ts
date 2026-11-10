@@ -92,6 +92,12 @@ const migrations = [
      uncertainties_json TEXT NOT NULL, source TEXT NOT NULL, schema_version INTEGER, edited INTEGER NOT NULL DEFAULT 0,
      photos_json TEXT NOT NULL, recorded_at TEXT NOT NULL, updated_at TEXT NOT NULL);
    CREATE INDEX meal_log_date ON meal_log (date, at);`,
+  // 8 (#122): Muscle Growth checklist items are exercise logs with a routine, done/skipped status, load and reps in
+  // reserve. Additive only: existing rows read as free logs, done, with no load or RIR.
+  `ALTER TABLE exercise_log ADD COLUMN routine TEXT;
+   ALTER TABLE exercise_log ADD COLUMN status TEXT CHECK (status IS NULL OR status IN ('done', 'skipped'));
+   ALTER TABLE exercise_log ADD COLUMN load_kg REAL;
+   ALTER TABLE exercise_log ADD COLUMN rir INTEGER;`,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {
@@ -177,8 +183,18 @@ const toSnapshotRecord = (r: SnapshotRow): DaySnapshot => ({
 
 type QuickLogRow = { id: string; plan_id: string; quick_log_id: string; date: string; at: string };
 const toQuickLog = (q: QuickLogRow): QuickLogEntry => ({ id: q.id, planId: q.plan_id, quickLogId: q.quick_log_id, date: q.date, at: q.at });
-type ExerciseLogRow = { id: string; movement: string; date: string; at: string; sets: number; reps: number | null; seconds: number | null; intensity: ExerciseLog['intensity'] };
-const toExerciseLog = (r: ExerciseLogRow): ExerciseLog => ({ id: r.id, movement: r.movement, date: r.date, at: r.at, sets: r.sets, reps: r.reps, seconds: r.seconds, intensity: r.intensity });
+type ExerciseLogRow = {
+  id: string; movement: string; date: string; at: string; sets: number; reps: number | null; seconds: number | null; intensity: ExerciseLog['intensity'];
+  routine: ExerciseLog['routine']; status: ExerciseLog['status']; load_kg: number | null; rir: number | null;
+};
+/** Free logs from before #122 have no routine/status/load/RIR: they keep their exact original shape. */
+const toExerciseLog = (r: ExerciseLogRow): ExerciseLog => ({
+  id: r.id, movement: r.movement, date: r.date, at: r.at, sets: r.sets, reps: r.reps, seconds: r.seconds, intensity: r.intensity,
+  ...(r.routine ? { routine: r.routine } : {}),
+  ...(r.status ? { status: r.status } : {}),
+  ...(r.load_kg !== null && r.load_kg !== undefined ? { loadKg: r.load_kg } : {}),
+  ...(r.rir !== null && r.rir !== undefined ? { rir: r.rir } : {}),
+});
 type MuscleReportRow = { id: string; muscle: string; kind: MuscleReport['kind']; at: string; cleared_at: string | null };
 const toMuscleReport = (r: MuscleReportRow): MuscleReport => ({ id: r.id, muscle: r.muscle, kind: r.kind, at: r.at, clearedAt: r.cleared_at });
 
@@ -383,9 +399,10 @@ export class SqliteTrackingStore implements TrackingStore {
   }
 
   async addExerciseLog(l: ExerciseLog): Promise<void> {
-    await this.db.runAsync('INSERT OR REPLACE INTO exercise_log (id, movement, date, at, sets, reps, seconds, intensity) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
-      l.id, l.movement, l.date, l.at, l.sets, l.reps, l.seconds, l.intensity,
-    ]);
+    await this.db.runAsync(
+      'INSERT OR REPLACE INTO exercise_log (id, movement, date, at, sets, reps, seconds, intensity, routine, status, load_kg, rir) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [l.id, l.movement, l.date, l.at, l.sets, l.reps, l.seconds, l.intensity, l.routine ?? null, l.status ?? null, l.loadKg ?? null, l.rir ?? null],
+    );
   }
 
   async removeExerciseLog(id: string): Promise<void> {

@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import { exerciseState, loadExerciseHistory, logExercise, reportMuscle, type ExerciseState } from '../../exercises/state';
-import { eligibleExercises, exerciseInventory, type InventoryExercise } from '../../exercises/inventory';
+import { eligibleExercises, type InventoryExercise } from '../../exercises/inventory';
+import { inventoryFor } from '../../exercises/catalogue';
 import { buildGuide } from '../../exercises/guide';
 import { doseFor } from '../../exercises/todayWorkout';
 import { newId, type ExerciseLog } from '../../storage/types';
@@ -27,6 +28,8 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
   const [logs, setLogs] = useState<ExerciseLog[]>([]);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  // The plan's shared catalogue (#122): built-in plus custom exercises, and optional muscle groups it uses.
+  const catalogue = useMemo(() => inventoryFor(plan), [plan]);
   const [page, setPage] = useState<'map' | 'inventory' | 'exercise'>(initialPage);
   const [mode, setMode] = useState<MapMode>('priority');
   const [selected, setSelected] = useState('chest');
@@ -46,8 +49,9 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
     const sequence = ++request.current;
     const [history, recorded] = await Promise.all([loadExerciseHistory(store, plan, today), store.exerciseLogs({ from: date, to: date })]);
     if (alive.current && sequence === request.current) {
-      setState(exerciseState(plan, history, { now: new Date().toISOString(), today }));
-      setLogs(recorded);
+      setState(exerciseState(plan, history, { now: new Date().toISOString(), today }, inventoryFor(plan)));
+      // Muscle Growth items (#122) have their own checklist on Today: only free extras are listed here.
+      setLogs(recorded.filter((l) => l.routine !== 'muscle_growth'));
     }
   }, [store, plan, today, date]);
   useEffect(() => { load().catch(() => setError('Could not load coverage. Try again.')); }, [load, dataVersion]);
@@ -76,7 +80,7 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
   const timed = exercise?.kind === 'conditioning' || unit === 'seconds';
   const detail = state?.coverage.find(m => m.muscle === selected);
   const suggestions = state?.suggestions ?? [];
-  const eligible = eligibleExercises(plan.exercise).map(e => e.exercise);
+  const eligible = eligibleExercises(plan.exercise, catalogue).map(e => e.exercise);
   // Engine-ranked strength options, followed by eligible time-based conditioning options.
   const inventory = [...suggestions.map(s => s.exercise), ...eligible.filter(e => e.kind === 'conditioning')];
   const doseNumber = Number(dose), setsNumber = Number(sets);
@@ -118,7 +122,7 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
           })} />}
         </View>}
         <Button title="Log exercise" onPress={() => setPage('inventory')} disabled={!editable || busy} />
-        <Text style={type.section}>All 14 muscle groups</Text>
+        <Text style={type.section}>{`All ${state.coverage.length} muscle groups`}</Text>
         {state.coverage.map(m => <Pressable key={m.muscle} style={[styles.row, m.muscle === selected && styles.selected]} accessibilityRole="button" accessibilityLabel={`${m.label}: ${coverageLabel(m)}. Select muscle`} onPress={() => { setSelected(m.muscle); scroll.current?.scrollTo({ y: 0 }); }} testID={`select-muscle-${m.muscle}`}>
           <Text style={type.body}>{m.label}</Text><Text style={type.detail}>{coverageLabel(m)} · {m.volume} / {m.target} effective sets</Text>
         </Pressable>)}
@@ -127,7 +131,7 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
         <Text style={type.body}>Eligible exercises</Text>
         <Text style={type.detail}>Based on your equipment and avoid/caution settings. Recovering or reported muscles lower suggestions; they do not silently remove eligible choices. Logging date: {date}.</Text>
         {logs.length > 0 && <View style={styles.card}><Text style={type.section}>Extra exercises recorded · {date}</Text>{logs.map(log => <View key={log.id}>
-          <Text style={type.body}>{exerciseInventory.exercises.find(e => e.movement === log.movement)?.name ?? log.movement}</Text>
+          <Text style={type.body}>{catalogue.exercises.find(e => e.movement === log.movement)?.name ?? log.movement}</Text>
           <Text style={type.detail}>{log.sets} × {log.seconds ? `${log.seconds} s` : `${log.reps} reps`}</Text>
           <Button title="Remove extra exercise" variant="quiet" disabled={!editable || busy} onPress={() => act(() => store.removeExerciseLog(log.id))} />
         </View>)}</View>}
@@ -136,18 +140,18 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
           return <Pressable key={e.movement} style={styles.row} accessibilityRole="button" accessibilityLabel={`Choose ${e.name}`} onPress={() => choose(e)}>
             <Text style={type.body}>{e.name}</Text>
             <Text style={type.detail}>{e.kind === 'conditioning' ? 'Conditioning · duration based' : 'Strength'}{suggestion?.caution ? ' · Caution' : ''}{suggestion?.doneToday ? ' · Already trained today' : ''}</Text>
-            {!!suggestion?.held.length && <Text style={type.detail}>Lower priority: {suggestion.held.map(h => `${exerciseInventory.muscleGroups.find(m => m.id === h.muscle)?.label}: ${state?.coverage.find(m => m.muscle === h.muscle)?.report ?? h.status}`).join(', ')}</Text>}
+            {!!suggestion?.held.length && <Text style={type.detail}>Lower priority: {suggestion.held.map(h => `${catalogue.muscleGroups.find(m => m.id === h.muscle)?.label}: ${state?.coverage.find(m => m.muscle === h.muscle)?.report ?? h.status}`).join(', ')}</Text>}
           </Pressable>;
         })}
       </>}
       {page === 'exercise' && exercise && <>
         <Text style={type.title}>{exercise.name}</Text>
-        <Text style={type.detail}>Primary: {exercise.primary.map(id => exerciseInventory.muscleGroups.find(m => m.id === id)?.label).join(', ')}</Text>
-        <Text style={type.detail}>Secondary: {exercise.secondary.map(id => exerciseInventory.muscleGroups.find(m => m.id === id)?.label).join(', ') || 'None'}</Text>
+        <Text style={type.detail}>Primary: {exercise.primary.map(id => catalogue.muscleGroups.find(m => m.id === id)?.label).join(', ')}</Text>
+        <Text style={type.detail}>Secondary: {exercise.secondary.map(id => catalogue.muscleGroups.find(m => m.id === id)?.label).join(', ') || 'None'}</Text>
         <MuscleMap gender={plan.profile?.gender} mode="activated" activated={exercise.primary} secondary={exercise.secondary} />
         <Button title="Show exercise guide" variant="secondary" onPress={() => setGuide(true)} />
         {suggestions.find(s => s.exercise.movement === exercise.movement)?.caution && <Text style={type.body}>Caution: review your configured limitations before exercising.</Text>}
-        {!!suggestions.find(s => s.exercise.movement === exercise.movement)?.held.length && <Text style={type.body}>Lower priority: {suggestions.find(s => s.exercise.movement === exercise.movement)!.held.map(h => `${exerciseInventory.muscleGroups.find(m => m.id === h.muscle)?.label}: ${state?.coverage.find(m => m.muscle === h.muscle)?.report ?? h.status}`).join(', ')}. You can return to the inventory to choose other muscles.</Text>}
+        {!!suggestions.find(s => s.exercise.movement === exercise.movement)?.held.length && <Text style={type.body}>Lower priority: {suggestions.find(s => s.exercise.movement === exercise.movement)!.held.map(h => `${catalogue.muscleGroups.find(m => m.id === h.muscle)?.label}: ${state?.coverage.find(m => m.muscle === h.muscle)?.report ?? h.status}`).join(', ')}. You can return to the inventory to choose other muscles.</Text>}
         <Text style={type.detail}>Record an extra exercise outside the scheduled checklist. Tick scheduled exercises in the workout instead to avoid logging them twice.</Text>
         <Text style={type.body}>{exercise.kind === 'conditioning' ? 'Rounds' : 'Sets'}</Text>
         <TextInput accessibilityLabel="Sets or rounds" style={styles.input} value={sets} onChangeText={setSets} keyboardType="number-pad" editable={!busy && editable} />
@@ -158,8 +162,8 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
         <TextInput accessibilityLabel={timed ? 'Seconds per round or set' : 'Reps per set'} style={styles.input} value={dose} onChangeText={setDose} keyboardType="number-pad" editable={!busy && editable} />
         <Text style={type.detail}>Confirm what you actually completed on {date}. Dose fields are editable drafts, not recorded work.</Text>
         <Button title={busy ? 'Saving…' : 'Save exercise log'} disabled={!editable || busy || !valid} onPress={() => act(async () => {
-          if (!eligibleExercises(plan.exercise).some(e => e.exercise.movement === exercise.movement)) throw new Error('This exercise is no longer eligible with your equipment or avoid settings. Choose another exercise.');
-          await logExercise(store, { id: entryId.current, movement: exercise.movement, date, at: new Date().toISOString(), sets: setsNumber, ...(timed ? { seconds: doseNumber } : { reps: doseNumber }) });
+          if (!eligibleExercises(plan.exercise, catalogue).some(e => e.exercise.movement === exercise.movement)) throw new Error('This exercise is no longer eligible with your equipment or avoid settings. Choose another exercise.');
+          await logExercise(store, { id: entryId.current, movement: exercise.movement, date, at: new Date().toISOString(), sets: setsNumber, ...(timed ? { seconds: doseNumber } : { reps: doseNumber }) }, catalogue);
           setPage('inventory');
         })} />
       </>}

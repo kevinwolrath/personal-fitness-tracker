@@ -64,8 +64,10 @@ export function validateInventory(input: unknown): { ok: true; inventory: Invent
 const checked = validateInventory(data);
 if (!checked.ok) throw new Error(`Bundled exercise inventory is invalid:\n${checked.errors.join('\n')}`);
 
-/** The bundled inventory. */
+/** The bundled inventory. Plans see it with their custom exercises through `inventoryFor` (catalogue.ts, #122). */
 export const exerciseInventory: Inventory = checked.inventory;
+/** Alias kept for the catalogue (#122): the same bundled inventory. */
+export const bundledInventory: Inventory = exerciseInventory;
 
 export const findInventoryExercise = (movement: string, inventory: Inventory = exerciseInventory) => inventory.exercises.find((e) => e.movement === movement);
 

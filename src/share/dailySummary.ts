@@ -1,5 +1,6 @@
 import { APP_NAME } from '../brand';
-import { findInventoryExercise } from '../exercises/inventory';
+import { inventoryFor } from '../exercises/catalogue';
+import { findInventoryExercise, type Inventory } from '../exercises/inventory';
 import { formatMeasurement } from '../format';
 import { measurementMetric } from '../observations/planMetrics';
 import { parseLocalDate, type LocalDate } from '../plan/dates';
@@ -38,7 +39,7 @@ export function shareTime(hhmm: string): string {
 }
 
 const isConditioning = (i: PrescriptionItem) => i.kind === 'requirement' || (i.purpose ?? '').startsWith('conditioning');
-const nameOf = (movement: string, label?: string) => findInventoryExercise(movement)?.name ?? label ?? movement;
+const nameIn = (inventory: Inventory) => (movement: string, label?: string) => findInventoryExercise(movement, inventory)?.name ?? label ?? movement;
 
 function freeDose(l: ExerciseLog): string {
   if (l.seconds !== null) return `${l.sets} × ${l.seconds} s`;
@@ -77,6 +78,7 @@ export function dailySummary(input: {
   exerciseLogs: ExerciseLog[];
 }): string {
   const { plan, date, items, records, exerciseLogs } = input;
+  const nameOf = nameIn(inventoryFor(plan)); // custom catalogue exercises by their own names (#122)
   const lines: string[] = [];
   lines.push(`${APP_NAME} — Daily activity — ${shareDate(date)}${input.dayTypeLabel ? ` (${input.dayTypeLabel})` : ''}`);
 
@@ -124,8 +126,16 @@ export function dailySummary(input: {
     if (pending.length) lines.push(`- pending: ${pending.join(', ')}`);
   }
 
-  if (exerciseLogs.length) {
-    const sorted = [...exerciseLogs].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
+  // Muscle Growth (#122) is its own line; skipped items are listed as skipped, never as work.
+  const growth = exerciseLogs.filter((l) => l.routine === 'muscle_growth');
+  if (growth.length) {
+    const done = growth.filter((l) => l.status !== 'skipped').map((l) => `${nameOf(l.movement)} ${freeDose(l)}${l.loadKg ? ` @ ${l.loadKg} kg` : ''}`);
+    const skipped = growth.filter((l) => l.status === 'skipped').map((l) => nameOf(l.movement));
+    lines.push(`Muscle Growth: ${[done.length ? `done ${done.join(', ')}` : '', skipped.length ? `skipped ${skipped.join(', ')}` : ''].filter(Boolean).join('; ')}`);
+  }
+  const extra = exerciseLogs.filter((l) => l.routine !== 'muscle_growth');
+  if (extra.length) {
+    const sorted = [...extra].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
     lines.push(`Extra exercise: ${sorted.map((l) => `${nameOf(l.movement)} ${freeDose(l)}`).join(', ')}`);
   }
 

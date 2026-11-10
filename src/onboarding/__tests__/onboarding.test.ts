@@ -101,7 +101,7 @@ describe('the offline starter plan', () => {
   it('adults get an exercise week and sample meals; valid against both schemas', () => {
     const raw = buildStarterPlan(answered());
     valid(raw);
-    expect(raw).toMatchObject({ id: STARTER_PLAN_ID, formatVersion: 7, goals: [], nutrition: { targets: [] } });
+    expect(raw).toMatchObject({ id: STARTER_PLAN_ID, formatVersion: 8, goals: [], nutrition: { targets: [] } });
     expect(acts(raw).some((a) => a.id === 'strength')).toBe(true);
     expect(acts(raw).filter((a) => a.kind === 'meal').map((a) => a.id)).toEqual(['breakfast', 'lunch', 'dinner', 'snack']);
   });
@@ -245,7 +245,7 @@ describe('finishing setup', () => {
     const store = fresh();
     expect(await loadActivePlan(store)).toBeNull();
     await finishSetup(store, buildStarterPlan(answered()), answered(), TODAY);
-    expect(await store.getActivePlan()).toMatchObject({ planId: STARTER_PLAN_ID, origin: 'onboarding', formatVersion: 7 });
+    expect(await store.getActivePlan()).toMatchObject({ planId: STARTER_PLAN_ID, origin: 'onboarding', formatVersion: 8 });
     expect((await loadActivePlan(store))!.activities.length).toBeGreaterThan(0);
   });
 

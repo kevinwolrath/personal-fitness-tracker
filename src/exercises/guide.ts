@@ -1,5 +1,5 @@
 import { describeItem } from '../config/diff';
-import type { ExerciseSection } from '../plan/schema';
+import type { CustomExercise, ExerciseSection } from '../plan/schema';
 import { exerciseDose, movementLabel, type PrescribedExercise } from '../prescription/session';
 import { exerciseLibrary, findDefinition } from './library';
 import type { ExerciseLibrary } from './schema';
@@ -27,7 +27,9 @@ const humanEquipment = (type: string) => type.replace(/_/g, ' ');
 
 /** Build the guide for one prescribed exercise. Pure. */
 export function buildGuide(exercise: PrescribedExercise, config?: ExerciseSection, library: ExerciseLibrary = exerciseLibrary): ExerciseGuide {
-  const def = findDefinition(exercise.movement, library);
+  // A custom catalogue exercise (#122) has the user's own name, equipment and cues, and no illustrations.
+  const custom: CustomExercise | undefined = config?.customExercises?.find((c) => c.movement === exercise.movement);
+  const def = findDefinition(exercise.movement, library) ?? (custom ? { id: custom.movement, name: custom.name, equipment: custom.equipment, instructions: custom.guidance ?? [], steps: [] } : undefined);
   const configured = def ? (config?.equipment ?? []).filter((item) => def.equipment.includes(item.type)) : [];
   const equipment = configured.length
     ? configured.map((item) => describeItem('exercise.equipment', item))

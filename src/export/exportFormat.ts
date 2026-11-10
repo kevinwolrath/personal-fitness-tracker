@@ -123,6 +123,11 @@ export const exportSchema = z.object({
       z.object({
         id: z.string(), movement: z.string(), date, at: z.string(), sets: z.number(), reps: z.number().nullable(), seconds: z.number().nullable(),
         intensity: z.enum(['light', 'moderate', 'hard']).nullable(),
+        // #122 Muscle Growth, added in-version; absent in older exports.
+        routine: z.enum(['muscle_growth']).nullable().optional(),
+        status: z.enum(['done', 'skipped']).nullable().optional(),
+        loadKg: z.number().nullable().optional(),
+        rir: z.number().nullable().optional(),
       }),
     )
     .default([]),

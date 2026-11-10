@@ -1,9 +1,10 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ChangeLine, SectionPreview } from '../../config/diff';
+import { configLinkEnabled, readConfigLink } from '../../config/handoff';
 import { sections as sectionDefs } from '../../config/sections';
 import { summarizeConfig } from '../../config/summary';
 import { useApp } from '../../providers/AppProvider';
@@ -48,6 +49,30 @@ export function ConfigureScreen() {
   const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
   // A new check result means new details: the copy button starts over.
   useEffect(() => setDiagnosticsCopied(false), [s.check]);
+
+  // #120 PoC: an update handed over in a link is untrusted text. It is checked and previewed like a paste and
+  // applied only on "Apply N changes". Read once per arrival, then cleared from the route (never logged or kept).
+  const params = useLocalSearchParams<{ update?: string; v?: string }>();
+  const [linkNote, setLinkNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const handledLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!s.stored || !configLinkEnabled()) return;
+    const r = readConfigLink(params);
+    if (!r) {
+      handledLink.current = null; // the next link, even an identical one, is read again
+      return;
+    }
+    const key = JSON.stringify([params.update, params.v]);
+    if (handledLink.current === key) return;
+    handledLink.current = key;
+    router.setParams({ update: undefined, v: undefined });
+    if (r.ok) {
+      s.checkLinkText(r.text);
+      setLinkNote({ ok: true, text: 'Opened from a link. Check what changes; nothing is saved until you apply it.' });
+    } else setLinkNote({ ok: false, text: r.error });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.stored, params.update, params.v]);
+
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   if (!s.raw) {
@@ -77,6 +102,12 @@ export function ConfigureScreen() {
             Change your plan by talking it through with ChatGPT or Claude. The app checks every change and shows it to you before
             anything is saved.
           </Text>
+        )}
+
+        {linkNote && (
+          <View style={[styles.panel, !linkNote.ok && styles.errorPanel]} testID="config-link-note" accessibilityLiveRegion="polite">
+            <Text style={type.detail}>{linkNote.text}</Text>
+          </View>
         )}
 
         {/* Step 1 (#119): preview, then share the configuration and instructions (or copy them). */}

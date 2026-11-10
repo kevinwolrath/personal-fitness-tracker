@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import type { ExerciseGuide } from '../../exercises/guide';
-import { heroIllustrations } from '../../exercises/heroIllustrations';
+import { exerciseArtwork, heroIllustrations } from '../../exercises/heroIllustrations';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
@@ -62,18 +62,19 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                     onScrollEndDrag={onScrollEnd}
                     scrollEnabled={steps.length > 1}
                   >
-                    {steps.map((s, i) => (
-                      <View key={s.image} style={{ width: width || undefined }} accessible accessibilityRole="image" accessibilityLabel={`${guide.name}, step ${i + 1}: ${s.caption}`}>
+                    {steps.map((s, i) => {
+                      const art = exerciseArtwork(s.image, gender);
+                      return <View key={`${s.image}-${art.hero}`} style={{ width: width || undefined }} accessible accessibilityRole="image" accessibilityLabel={`${guide.name}, step ${i + 1}: ${s.caption}${art.isPose ? '' : ` (${art.hero} hero portrait; exercise pose unavailable)`}`}>
                         <Image
-                          source={heroIllustrations[s.image]}
+                          source={art.source}
                           resizeMode="contain"
                           style={[styles.heroImage, { height: width * 3 / 4 }]}
                           accessible={false}
                           aria-hidden
                           testID={`guide-image-${i + 1}`}
                         />
-                      </View>
-                    ))}
+                      </View>;
+                    })}
                   </ScrollView>
                 </View>
 
@@ -112,6 +113,9 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                 <Text style={styles.caption} testID="guide-caption">
                   {steps[index]?.caption}
                 </Text>
+                {!exerciseArtwork(steps[index]?.image ?? '', gender).isPose && (
+                  <Text style={type.detail} testID="guide-artwork-note">Hero portrait only. Exercise pose unavailable for this hero; follow the step instructions below.</Text>
+                )}
               </View>
             ) : (
               <Text style={[type.detail, styles.noImage]} testID="guide-no-image">

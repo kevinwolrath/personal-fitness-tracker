@@ -3,7 +3,7 @@ import type { EnergyDisplay } from '../../energy';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useState } from 'react';
 import { previewUpdate, type SectionPreview } from '../../config/diff';
-import { buildAiInstructions } from '../../config/instructions';
+import { buildConfigShare } from '../../config/instructions';
 import type { RawPlan, SectionName } from '../../config/sections';
 import { commitConfigUpdate, undoConfigChange } from '../../config/service';
 import { applyConfigUpdate, parseConfigUpdate } from '../../config/update';
@@ -36,11 +36,8 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
 
   const raw: RawPlan | null = stored ? JSON.parse(stored.json) : null;
 
-  const copyInstructions = useCallback(async () => {
-    if (!raw) return false;
-    await Clipboard.setStringAsync(buildAiInstructions(raw, toLocalDate(new Date())));
-    return true;
-  }, [raw]);
+  /** The exact text Share and Copy hand over (#119); built once per preview so what is shown is what is shared. */
+  const sharePayload = useCallback(() => (raw ? buildConfigShare(raw, toLocalDate(new Date())) : ''), [raw]);
 
   const pasteFromClipboard = useCallback(async () => {
     const t = await Clipboard.getStringAsync();
@@ -106,5 +103,5 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (check.kind === 'invalid') await Clipboard.setStringAsync(check.diagnostics);
   }, [check]);
 
-  return { stored, raw, history, text, check, busy, copyInstructions, pasteFromClipboard, editText, runCheck, apply, undoLatest, copyDiagnostics };
+  return { stored, raw, history, text, check, busy, sharePayload, pasteFromClipboard, editText, runCheck, apply, undoLatest, copyDiagnostics };
 }

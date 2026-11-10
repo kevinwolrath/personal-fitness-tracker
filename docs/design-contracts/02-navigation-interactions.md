@@ -47,7 +47,8 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 **Modal vertical budget.** In each modal screen's main state, its primary action is on screen at 390 × 844 without scrolling. The fixed bottom bar holds it when the content runs long: Import's **Save**, Configure's **Apply**.
 
 **Configure layout (#21, "one page").**
-- Finished steps collapse to one line with a way back in: "Instructions copied · Copy again", "Update checked · Change". After checking, the pasted JSON isn't shown.
+- Finished steps collapse to one line with a way back in: "Shared with your AI · Share again" (or "Instructions copied" after Copy instead, #119), "Update checked · Change".
+- **Share previews (#76, #119)** use one sheet (`src/ui/SharePreviewSheet`): the exact text scrolls, and **Share** (with **Copy instead** where offered) stays fixed below it. After checking, the pasted JSON isn't shown.
 - **What changes** lists only the sections that change, one row each, with the first change and a count; tap a row to see every change in it. The other sections are named in one line ("… stay as they are").
 - **Discard** and **Apply N changes** sit in a fixed bottom bar.
 

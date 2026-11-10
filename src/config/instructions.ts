@@ -163,3 +163,18 @@ ${examples.map((e) => `${e.title}\n\n${bare(e.json)}`).join('\n\n')}
 
 ${opts.ending ?? "Start by asking me what I'd like to change."}`;
 }
+
+/** Version of the shared text's framing (#119). The configuration itself is versioned by CONFIG_SCHEMA_VERSION. */
+export const CONFIG_SHARE_FORMAT = 1;
+
+/**
+ * The one payload Configure with AI shares or copies (#119): a short, versioned header, then the standard
+ * instructions (current configuration, schema version, update format, rules). Self-contained, so a brand new chat
+ * in any assistant has everything it needs; no history, secrets or provider-specific features. Deterministic for a
+ * given plan and date, so the preview the user reads is byte-identical to what is shared.
+ */
+export function buildConfigShare(raw: RawPlan, today: string): string {
+  return buildAiInstructions(raw, today, {
+    intro: `Body Anvil configuration share · format ${CONFIG_SHARE_FORMAT} · configuration schema version ${CONFIG_SCHEMA_VERSION}\n\nI'm sharing my current Body Anvil settings so we can talk about changes. Nothing changes in the app until I paste your update back into it, review the preview and confirm.`,
+  });
+}

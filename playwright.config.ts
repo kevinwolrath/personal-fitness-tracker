@@ -68,8 +68,7 @@ export default defineConfig({
     ? { command: `npx expo start --web --port ${port}`, url: `http://localhost:${port}`, reuseExistingServer: !process.env.CI, timeout: 300_000 }
     : {
         command: 'npx expo export --platform web && node scripts/serve-dist.mjs',
-        // #120: the export includes the test-only configuration-link handler.
-        env: { PORT: String(port), EXPO_PUBLIC_CONFIG_LINK_POC: '1' },
+        env: { PORT: String(port) },
         url: `http://localhost:${port}`,
         reuseExistingServer: !process.env.CI,
         timeout: 300_000,

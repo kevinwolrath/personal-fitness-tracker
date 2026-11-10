@@ -38,12 +38,19 @@ test('coverage reports, clears and logs an eligible exercise exactly once, survi
   await coverage(page);
   await expect(page.locator('[data-testid^="select-muscle-"]')).toHaveCount(14);
   await expect(page.getByTestId('muscle-detail')).toContainText('Not enough history');
+  // #75: the Reports view only shows reports; its legend doesn't name priority outlines.
+  await page.getByRole('radio', { name: /^Reports/ }).click();
+  await expect(page.getByTestId('reports-empty')).toBeVisible();
+  await expect(page.getByTestId('coverage-sheet').getByTestId('muscle-map-art')).not.toContainText('Outline');
   await page.getByRole('button', { name: 'Report sore', exact: true }).click();
   await expect(page.getByTestId('muscle-detail')).toContainText('≋ Sore');
   await expect(page.getByTestId('coverage-sheet').getByTestId('muscle-front-chest')).toHaveAttribute('fill', /sore/);
   await page.getByRole('button', { name: 'Report injured', exact: true }).click();
   await expect(page.getByTestId('muscle-detail')).toContainText('! Injured');
   await expect(page.getByTestId('coverage-sheet').getByTestId('muscle-front-chest')).toHaveAttribute('fill', /injured/);
+  await expect(page.getByTestId('reports-empty')).toHaveCount(0);
+  await page.getByRole('radio', { name: 'Priority', exact: true }).click();
+  await expect(page.getByTestId('coverage-sheet').getByTestId('muscle-map-art')).toContainText('◇ Outline: below this week’s target');
   await page.getByRole('button', { name: 'Clear report', exact: true }).click();
   await expect(page.getByTestId('muscle-detail')).not.toContainText('Injured');
   await page.getByRole('button', { name: 'Log exercise', exact: true }).click();

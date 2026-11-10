@@ -93,11 +93,12 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
       {!!error && <View><Text style={[type.body, { color: colors.injured }]} accessibilityRole="alert">{error}</Text>{!state && <Button title="Retry coverage" onPress={() => load().then(() => setError('')).catch(() => setError('Could not load coverage. Try again.'))} />}</View>}
       {!state && !error && <ActivityIndicator color={colors.accent} accessibilityLabel="Loading coverage" />}
       {page === 'map' && state && <>
-        <Text style={type.detail}>Coverage now · {today}. {state.restDay ? 'Rest day; voluntary exercise is still available.' : ''} Suggestions are advisory. Recovery windows are planning estimates.</Text>
+        <Text style={type.detail}>Coverage now · {today}.{state.restDay ? ' Rest day; voluntary exercise is still available.' : ''} Suggestions are advisory. Recovery windows are planning estimates.</Text>
         <View style={styles.tabs} role="radiogroup" aria-label="Muscle display">
-          {(['priority', 'reports'] as const).map(value => <Pressable key={value} role="radio" aria-label={value === 'priority' ? 'Muscle priority' : 'Soreness and injury'} aria-checked={mode === value} onPress={() => setMode(value)} style={[styles.tab, mode === value && styles.selected]}><Text style={type.body}>{value === 'priority' ? 'Priority' : 'Reports'}</Text></Pressable>)}
+          {(['priority', 'reports'] as const).map(value => <Pressable key={value} role="radio" aria-label={value === 'priority' ? 'Priority' : 'Reports: soreness and injury'} aria-checked={mode === value} onPress={() => setMode(value)} style={[styles.tab, mode === value && styles.selected]}><Text style={type.body}>{value === 'priority' ? 'Priority' : 'Reports'}</Text></Pressable>)}
         </View>
         <MuscleMap gender={plan.profile?.gender} coverage={state.coverage} mode={mode} selected={selected} onSelect={setSelected} />
+        {mode === 'reports' && !state.coverage.some(m => m.report) && <Text style={type.detail} testID="reports-empty">No sore or injured muscles reported. Select a muscle below to report one.</Text>}
         {detail && <View style={styles.card} testID="muscle-detail" accessibilityLiveRegion="polite">
           <Text style={type.body}>{detail.label}</Text>
           <Text style={type.detail}>{coverageLabel(detail)} · {detail.volume} / {detail.target} effective sets</Text>

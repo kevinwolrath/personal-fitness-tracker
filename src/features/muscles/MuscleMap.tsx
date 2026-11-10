@@ -10,6 +10,12 @@ export function coverageLabel(c: MuscleCoverage): string {
   if (c.report) return c.report === 'injured' ? '! Injured' : '≋ Sore';
   return ({ unknown: 'Not enough history', green: 'Coverage on track', amber: 'Approaching target', red: 'Priority for training', recovering: 'Recovering', unavailable: 'Reported unavailable' })[c.status];
 }
+/** What each mode draws (#75): the legend only names marks that mode can show. */
+const legend: Record<MapMode, string> = {
+  priority: '◇ Outline: below this week’s target · ≋ Sore diagonal hatch · ! Injured cross-hatch. Costume orange is not a status.',
+  reports: '≋ Sore diagonal hatch · ! Injured cross-hatch. Costume orange is not a status.',
+  activated: '● Primary · dashed secondary. Activation preview only; not a completion.',
+};
 /** One shared pixel coordinate system for the supplied PNG and every independent region. */
 export function MuscleMap({ gender, coverage = [], mode = 'priority', activated = [], secondary = [], selected, onSelect, compact = false }: {
   gender?: unknown; coverage?: MuscleCoverage[]; mode?: MapMode; activated?: string[]; secondary?: string[];
@@ -44,6 +50,6 @@ export function MuscleMap({ gender, coverage = [], mode = 'priority', activated 
         {!compact && <Text style={[type.detail, { textAlign: 'center' }]}>{view === 'back' ? 'Rear' : 'Front'}</Text>}
       </View>)}
     </View>
-    {!compact && <Text style={[type.detail, { marginTop: 8 }]}>{mode === 'activated' ? '● Primary · dashed secondary. Activation preview only; not a completion.' : '◇ Priority outline · ≋ Sore diagonal hatch · ! Injured cross-hatch. Costume orange is not a status.'}</Text>}
+    {!compact && <Text style={[type.detail, { marginTop: 8 }]}>{legend[mode]}</Text>}
   </View>;
 }

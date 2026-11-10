@@ -115,3 +115,27 @@ export const preferences = {
     await secrets.remove(SETUP_DRAFT);
   },
 };
+
+/**
+ * What a full backup (#128) carries from device storage, by key. Every key the app writes must be listed in exactly
+ * one of these (a test scans the source for `pft.` keys), so a new key can't be silently left out of backups.
+ * - included: user choices and app-owned state, restored as they were;
+ * - excluded: secrets and device-specific state, which must be set up again on the new phone.
+ */
+export const BACKUP_PREFERENCE_KEYS = {
+  included: [
+    'pft.display.theme',
+    ENERGY,
+    'pft.gamification.v1',
+    PROGRESS_CHARTS,
+    TREND_ALERTS,
+    TREND_STATE,
+    REMINDERS,
+    HC_WANTED,
+  ],
+  excluded: {
+    'pft.anthropic.apiKey': 'API key: a secret, never written to a backup. Enter it again after restoring.',
+    [HC_SYNC]: 'Health Connect sync state belongs to this phone; the next sync re-reads recent days without duplicating them.',
+    [SETUP_DRAFT]: 'An unfinished setup on this phone, not saved data.',
+  } as Record<string, string>,
+} as const;

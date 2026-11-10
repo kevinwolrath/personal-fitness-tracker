@@ -78,6 +78,23 @@ App menu (☰) → **Export all data** → confirm **Export JSON**. Native opens
 - **Additive in version 1 (#56):** `exerciseLogs` and `muscleReports` (contract 04), counted in `counts` and included in `range.from`. Exports written before them read as empty lists. **#97** adds `mealLogs` the same way (contract 15); photos are listed by their on-device location only, never image data. Day snapshots' sessions gain structured doses (`sets`, `reps`, `seconds`, `avoid`), the `short` version and `doses: 1`; older snapshots only have the `dose` text.
 - A breaking change to this shape bumps `exportVersion`. Importers must reject versions they don't know.
 
+## Full backup and restore (#128)
+
+**Export all data** is a readable history. **Back up data** is the recoverable copy: one ZIP with a manifest and SHA-256 checksums, the whole store (in this export format), app-owned device preferences and every attachment (original meal photos, retained import screenshots).
+
+**Restore data** (app menu, and first-run setup on a fresh install) validates everything first:
+- the ZIP, safe paths and size limits;
+- the manifest and backup version;
+- every checksum and the store schema;
+- that every attachment a record points to is present;
+- free space.
+
+It then previews the backup and replaces all local data atomically, only after explicit confirmation. Nothing is merged. Any failure rolls back to the previous data and files.
+
+Secrets (API keys), Health Connect permissions and sync state, notification permission and device-only state are never included.
+
+Format, compatibility policy, limits and the manual post-deployment check: `docs/backup-restore.md`. Code: `src/backup/` (pure archive and service) and `src/platform/backupFiles(.web).ts`.
+
 ## Share this day (#76)
 
 The date row's **Share** (contract 02) shares a short text about the **selected date** through the system share sheet.

@@ -228,6 +228,11 @@ export interface TrackingStore {
   snapshot(): Promise<StoreSnapshot>;
   /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */
   restore(snapshot: StoreSnapshot): Promise<void>;
+  /**
+   * Replace EVERYTHING with a snapshot, atomically (#128 full restore): every table/list is emptied and refilled in
+   * one transaction (SQLite) or one document write (web). On failure nothing changes.
+   */
+  replaceAll(snapshot: StoreSnapshot): Promise<void>;
 }
 
 export function newId(): string {

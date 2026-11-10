@@ -10,6 +10,7 @@ import { useTheme } from '@/src/ui/theme';
 import { ScrollIndicators } from '@/src/ui/ScrollIndicators';
 import * as SplashScreen from 'expo-splash-screen';
 import { Platform } from 'react-native';
+import { useRestoreEpoch } from '@/src/backup/restored';
 
 if (Platform.OS !== 'web') SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -36,4 +37,8 @@ function ThemedApp() {
   );
 }
 
-export default function RootLayout() { return <ThemeProvider><ThemedApp /></ThemeProvider>; }
+/** A full restore (#128) remounts the whole app (store, theme and every provider) on the restored data. */
+export default function RootLayout() {
+  const epoch = useRestoreEpoch();
+  return <ThemeProvider key={epoch}><ThemedApp /></ThemeProvider>;
+}

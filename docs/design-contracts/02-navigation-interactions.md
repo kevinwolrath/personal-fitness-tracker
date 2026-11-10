@@ -64,7 +64,9 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Settings** | Opens the Settings sheet: **Appearance** (Hero Forge or Classic light) and **Energy units** (kJ, kcal or both). The detail line states the current energy choice, e.g. "Energy in kJ" (contract 11). |
 | **Muscle Growth** | Opens the Muscle Growth editor (#122, contract 09): on/off, target muscles, days, time of day, the exercises for those targets, and custom catalogue exercises. Its detail line shows "On · Biceps, Upper back" or "Targeted routine for chosen muscles". Saved as an `exercise` configuration change with Undo (contract 07). |
 | **Muscle coverage & exercise log** | Opens the live #56 coverage sheet, including on rest days. It also opens from the expanded workout/checklist flow. No new permanent tab, app-bar control or Today banner (#79). |
-| **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
+| **Back up data** | One ZIP with everything, including original meal photos, saved through the share/save sheet (contract 06, #128). Lists what isn't included. |
+| **Restore data** | Pick a backup file, check it completely, preview it, then **Replace my data** after confirmation (contract 06, #128). Also offered on first-run setup. |
+| **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). A readable history, not a backup. |
 
 The menu closes before its item runs. On iOS, the item runs once the sheet has dismissed, because iOS can't present a picker, an alert or a modal route over a closing sheet. On web it runs inside the tap, so the browser allows the file picker.
 

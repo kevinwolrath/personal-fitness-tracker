@@ -1,5 +1,5 @@
 import { router, useGlobalSearchParams } from 'expo-router';
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { buildExport } from '../../export/exportFormat';
@@ -19,6 +19,8 @@ import { RemindersProvider, useReminders } from '../reminders/RemindersProvider'
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 import { SettingsSheet } from '../settings/SettingsSheet';
 import { MuscleGrowthEditor } from '../muscle-growth/MuscleGrowthEditor';
+import { BackupSheet } from '../backup/BackupSheet';
+import { takeRestoreNotice } from '../../backup/restored';
 import { inventoryFor } from '../../exercises/catalogue';
 import { HealthConnectProvider, useHealthConnect } from '../health-connect/HealthConnectProvider';
 import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
@@ -45,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Shell({ children }: { children: ReactNode }) {
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [growthOpen, setGrowthOpen] = useState(false);
+  const [backupMode, setBackupMode] = useState<'backup' | 'restore' | null>(null);
   const styles = useStyles();
 
   const { store, energy, plan } = useApp();
@@ -60,6 +63,11 @@ function Shell({ children }: { children: ReactNode }) {
   const [confirmExport, setConfirmExport] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const clearToast = useCallback(() => setToast(null), []);
+  // After a full restore the app remounts (#128): say what happened, once.
+  useEffect(() => {
+    const notice = takeRestoreNotice();
+    if (notice) setToast({ key: Date.now(), message: notice });
+  }, []);
 
   const importScreenshots = async () => {
     const shots = await pickScreenshots();
@@ -97,7 +105,9 @@ function Shell({ children }: { children: ReactNode }) {
       onSelect: () => setGrowthOpen(true),
     },
     { key: 'coverage', label: 'Muscle coverage & exercise log', detail: 'Coverage, recovery and eligible exercises', onSelect: () => setCoverageOpen(true) },
-    { key: 'export', label: 'Export all data', detail: 'Your complete history as a JSON file', onSelect: () => setConfirmExport(true) },
+    { key: 'backup', label: 'Back up data', detail: 'Everything, with meal photos, in one file', onSelect: () => setBackupMode('backup') },
+    { key: 'restore', label: 'Restore data', detail: "Replace this phone's data from a backup", onSelect: () => setBackupMode('restore') },
+    { key: 'export', label: 'Export all data', detail: 'Readable JSON history (not a full backup)', onSelect: () => setConfirmExport(true) },
   ];
 
   // #57 option b: a dot on Progress for a new weight-trend finding (and one notification when allowed).
@@ -130,6 +140,7 @@ function Shell({ children }: { children: ReactNode }) {
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       <RemindersSheet visible={remindersOpen} onClose={() => setRemindersOpen(false)} />
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {backupMode && <BackupSheet store={store} mode={backupMode} onClose={() => setBackupMode(null)} />}
       {growthOpen && <MuscleGrowthEditor onClose={() => setGrowthOpen(false)} />}
       {coverageOpen && <CoverageSheet date={toLocalDate(now)} editable onClose={() => setCoverageOpen(false)} />}
       <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />

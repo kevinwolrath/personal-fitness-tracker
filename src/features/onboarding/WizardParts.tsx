@@ -147,4 +147,6 @@ export const useWizardStyles = createThemedStyles(({ colors, type }) => ({
   textLink: { minHeight: touch, justifyContent: 'center', alignSelf: 'flex-start' },
   card: { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: space.lg, gap: space.sm },
   hint: { fontSize: 13, color: colors.muted, lineHeight: 18 },
+  restoreLink: { minHeight: 48, justifyContent: 'center', alignItems: 'center' },
+  restoreLinkText: { fontSize: 15, fontWeight: '600', color: colors.accent, textDecorationLine: 'underline', textAlign: 'center' },
 }));

@@ -1,3 +1,4 @@
+import { BackupSheet } from '../backup/BackupSheet';
 import * as Clipboard from 'expo-clipboard';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -65,6 +66,8 @@ const daysOf = (a: Record<string, any>) => (a.appliesTo?.days as string[] | unde
  * user starts with it (or, editing, confirms the replacement).
  */
 export function SetupWizard({ store, energy, onFinished, edit }: Props) {
+  // A fresh install can start from a backup instead (#128).
+  const [restoreOpen, setRestoreOpen] = useState(false);
   const { colors, type } = useTheme();
   const local = useLocal();
   const ws = useWizardStyles();
@@ -164,6 +167,12 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
         <AgeQuestion draft={draft} update={answer} />
         <WeightQuestion draft={draft} update={update} />
         <HeightQuestion draft={draft} update={update} />
+        {!edit && (
+          <Pressable onPress={() => setRestoreOpen(true)} style={ws.restoreLink} accessibilityRole="button" testID="setup-restore">
+            <Text style={ws.restoreLinkText}>Used Body Anvil before? Restore from a backup</Text>
+          </Pressable>
+        )}
+        {restoreOpen && <BackupSheet store={store} mode="restore" onClose={() => setRestoreOpen(false)} />}
       </WizardFrame>
     );
   }

@@ -575,19 +575,34 @@ export class SqliteTrackingStore implements TrackingStore {
   }
 
   async restore(s: StoreSnapshot): Promise<void> {
+    await this.transaction(() => this.insertSnapshot(s));
+  }
+
+  async replaceAll(s: StoreSnapshot): Promise<void> {
     await this.transaction(async () => {
-      for (const p of s.plans) await this.setActivePlan(p);
-      for (const a of s.activityLogs) await this.upsertActivity(a);
-      for (const o of s.dayOverrides) await this.setDayOverride(o.planId, o.date, o.dayTypeId);
-      for (const i of s.imports) await this.upsertImport(i);
-      for (const o of s.observations) await this.upsertObservation(o);
-      for (const q of s.quickLogs) await this.addQuickLog(q);
-      for (const c of s.configChanges ?? []) await this.insertConfigChange(c);
-      for (const e of s.completionEvents ?? []) await this.insertEvent(e);
-      for (const d of s.daySnapshots ?? []) await this.upsertDaySnapshot(d);
-      for (const l of s.exerciseLogs ?? []) await this.addExerciseLog(l);
-      for (const r of s.muscleReports ?? []) await this.addMuscleReport(r);
-      for (const m of s.mealLogs ?? []) await this.upsertMealLog(m);
+      for (const t of STORE_TABLES) await this.db.runAsync(`DELETE FROM ${t}`, []);
+      await this.insertSnapshot(s);
     });
   }
+
+  private async insertSnapshot(s: StoreSnapshot): Promise<void> {
+    for (const p of s.plans) await this.setActivePlan(p);
+    for (const a of s.activityLogs) await this.upsertActivity(a);
+    for (const o of s.dayOverrides) await this.setDayOverride(o.planId, o.date, o.dayTypeId);
+    for (const i of s.imports) await this.upsertImport(i);
+    for (const o of s.observations) await this.upsertObservation(o);
+    for (const q of s.quickLogs) await this.addQuickLog(q);
+    for (const c of s.configChanges ?? []) await this.insertConfigChange(c);
+    for (const e of s.completionEvents ?? []) await this.insertEvent(e);
+    for (const d of s.daySnapshots ?? []) await this.upsertDaySnapshot(d);
+    for (const l of s.exerciseLogs ?? []) await this.addExerciseLog(l);
+    for (const r of s.muscleReports ?? []) await this.addMuscleReport(r);
+    for (const m of s.mealLogs ?? []) await this.upsertMealLog(m);
+  }
 }
+
+/**
+ * Every table that holds user data (#128). A full restore empties exactly these; a test checks the list against the
+ * real schema, so a new table can't be left out of backups and restores.
+ */
+export const STORE_TABLES = ['plan', 'activity_log', 'observation', 'import_session', 'quick_log', 'day_override', 'config_change', 'completion_event', 'day_snapshot', 'exercise_log', 'muscle_report', 'meal_log'] as const;

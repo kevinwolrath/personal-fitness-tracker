@@ -328,21 +328,29 @@ export class KeyValueTrackingStore implements TrackingStore {
   }
 
   async restore(s: StoreSnapshot) {
-    this.update((d) => {
-      if (s.plans[0]) d.plan = s.plans[0];
-      for (const { planId, date, ...log } of s.activityLogs) (d.activities[dayKey(planId, date)] ??= {})[log.activityId] = log;
-      for (const o of s.dayOverrides) d.overrides[dayKey(o.planId, o.date)] = o.dayTypeId;
-      s.imports.forEach((i) => upsertById(d.imports, i));
-      s.observations.forEach((o) => upsertById(d.observations, o));
-      s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
-      (s.configChanges ?? []).forEach((c) => upsertById(d.configChanges, c));
-      (s.completionEvents ?? []).forEach((e) => upsertById(d.completionEvents, e));
-      for (const snap of s.daySnapshots ?? []) d.daySnapshots[dayKey(snap.planId, snap.date)] = snap;
-      (s.exerciseLogs ?? []).forEach((l) => upsertById(d.exerciseLogs, l));
-      (s.muscleReports ?? []).forEach((r) => upsertById(d.muscleReports, r));
-      (s.mealLogs ?? []).forEach((m) => upsertById(d.mealLogs, m));
-    });
+    this.update((d) => applySnapshot(d, s));
   }
+
+  async replaceAll(s: StoreSnapshot) {
+    const d = empty();
+    applySnapshot(d, s);
+    this.kv.setItem(STORAGE_KEY, JSON.stringify(d)); // one write: atomic by construction
+  }
+}
+
+function applySnapshot(d: Doc, s: StoreSnapshot): void {
+  if (s.plans[0]) d.plan = s.plans[0];
+  for (const { planId, date, ...log } of s.activityLogs) (d.activities[dayKey(planId, date)] ??= {})[log.activityId] = log;
+  for (const o of s.dayOverrides) d.overrides[dayKey(o.planId, o.date)] = o.dayTypeId;
+  s.imports.forEach((i) => upsertById(d.imports, i));
+  s.observations.forEach((o) => upsertById(d.observations, o));
+  s.quickLogs.forEach((q) => upsertById(d.quickLogs, q));
+  (s.configChanges ?? []).forEach((c) => upsertById(d.configChanges, c));
+  (s.completionEvents ?? []).forEach((e) => upsertById(d.completionEvents, e));
+  for (const snap of s.daySnapshots ?? []) d.daySnapshots[dayKey(snap.planId, snap.date)] = snap;
+  (s.exerciseLogs ?? []).forEach((l) => upsertById(d.exerciseLogs, l));
+  (s.muscleReports ?? []).forEach((r) => upsertById(d.muscleReports, r));
+  (s.mealLogs ?? []).forEach((m) => upsertById(d.mealLogs, m));
 }
 
 export class MemoryKeyValue implements KeyValue {

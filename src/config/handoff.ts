@@ -20,11 +20,12 @@ export const CONFIG_LINK_SCHEME = 'personalfitnesstracker';
 export const CONFIG_LINK_MAX_CHARS = 4000;
 
 /**
- * Off in production builds: a test-only handler for the experiment. On in development, and in any build exported
- * with EXPO_PUBLIC_CONFIG_LINK_POC=1 (the Playwright web export and a test APK).
+ * On in every build (owner decision on #120): every store build goes to Google Play internal testing only, where the
+ * link is tried on a real phone. It stays safe there: a link is only ever previewed, never applied without
+ * confirmation. Turn this off (or gate it again) before any production release track.
  */
-export const configLinkEnabled = (): boolean =>
-  (typeof __DEV__ !== 'undefined' && __DEV__) || process.env.EXPO_PUBLIC_CONFIG_LINK_POC === '1';
+export const CONFIG_LINK_ENABLED = true;
+export const configLinkEnabled = (): boolean => CONFIG_LINK_ENABLED;
 
 /** Build a link for an update (tests, `scripts/config-link.cjs`, and what an assistant is asked to produce). */
 export function buildConfigLink(updateJson: string): string {

@@ -7,7 +7,7 @@
 ## What was built (test-only)
 
 - **Link format:** `personalfitnesstracker://configure?v=1&update=<URL-encoded fitnessConfigUpdate JSON>`. The scheme is the one `app.json` already registers, so Android's `VIEW` intent filter exists in every build. No native change was needed.
-- **Handler:** `src/config/handoff.ts` (pure) and the Configure screen. It only runs when `__DEV__` is set or the build was exported with `EXPO_PUBLIC_CONFIG_LINK_POC=1` (the Playwright web export sets it). In a production build the link just opens Configure with AI with nothing filled in.
+- **Handler:** `src/config/handoff.ts` (pure) and the Configure screen. It's on in every build (`CONFIG_LINK_ENABLED` in `src/config/handoff.ts`), so the Google Play internal-testing build has it. Store builds only go to the internal track. Turn it off or gate it before any production release.
 - **Untrusted input:** the link's text goes through the same importer as a paste (contract 07): extract, repair, strict validation, preview, then **Apply N changes**. Nothing is applied, stored or logged when the link arrives. The parameter is cleared from the route once read.
 - **Why URL-encoding, not base64:** assistants produce percent-encoding much more reliably than base64, and a person can read it. A link that was percent-encoded twice, which some apps and browsers do, still reads.
 - **Generating links:** `node scripts/config-link.cjs fixtures/config/lunch.update.json` prints the link, its length and an `adb` command that opens it.
@@ -43,7 +43,7 @@ URL-encoding costs about 1.6× the JSON. Android intents carry far more than thi
 
 These need a physical device or emulator. A cloud session can't run them.
 
-1. Build a test APK with the handler: `EXPO_PUBLIC_CONFIG_LINK_POC=1` set when running `scripts/build-apk.ps1`, and install it.
+1. Install the latest Google Play internal-testing build (or a test APK from `scripts/build-apk.ps1`). Both include the handler.
 2. **Intent check (app installed):** `node scripts/config-link.cjs fixtures/config/lunch.update.json`, then run the printed `adb shell am start …`. Expected: Body Anvil opens on Configure with AI with the "Opened from a link" note and a preview.
 3. **Repeat:** run it again with the app open. Expected: previewed again; after an Apply, "Nothing to apply".
 4. **App not installed:** uninstall and run the same command. Expected: `am start` reports no activity found. From a chat app, the tap does nothing or shows an error. Nothing falls back to the Play Store, because custom schemes have no web fallback.

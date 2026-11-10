@@ -10,6 +10,7 @@ import { activitySummary, isHealthActivity, isWalk } from '../observations/activ
 import { formatDistance } from '../observations/units';
 import type { MealLog } from '../nutrition/contract';
 import { dayIntake, mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
+import { observedChanges } from './changes';
 import { forecast, trendInsight } from './forecast';
 import {
   bmiSeries,
@@ -305,7 +306,10 @@ export function progressReport(observations: Observation[], plan: Plan, today: L
     length,
   };
   // #57: the weight trend's plain status, over the whole history (not the chart range).
-  const trend = trendInsight(weight, today, mass);
+  const insight = trendInsight(weight, today, mass);
+  // #57: for a plateau or slowdown, name what else changed over the same weeks (never as the cause).
+  const changes = insight.kind === 'plateau' || insight.kind === 'slower' ? observedChanges(observations, opts.mealLogs ?? [], today, opts.energy ?? plan.units.energy).map((c) => c.text) : [];
+  const trend = changes.length ? { ...insight, changes } : insight;
   return { charts, summary, trend };
 }
 

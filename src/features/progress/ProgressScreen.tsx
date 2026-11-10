@@ -1,3 +1,4 @@
+import { CHANGES_CAVEAT } from '../../progress/changes';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -132,6 +133,13 @@ function TrendCard({ insight }: { insight: TrendInsight }) {
           </Pressable>
           {open ? (
             <View testID="progress-trend-steps">
+              {insight.changes?.length ? (
+                <View testID="progress-trend-changes" style={styles.trendChanges}>
+                  <Text style={type.body}>What changed over the same weeks</Text>
+                  {insight.changes.map((c) => <Text key={c} style={type.detail}>• {c}</Text>)}
+                  <Text style={[type.detail, styles.trendNote]}>{CHANGES_CAVEAT}</Text>
+                </View>
+              ) : null}
               {insight.steps.map((s) => <Text key={s} style={type.detail}>• {s}</Text>)}
               <Text style={[type.detail, styles.trendNote]}>Nothing changes in your plan unless you change it.</Text>
             </View>
@@ -241,6 +249,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   trendTitle: { fontSize: 20, fontWeight: '800', color: colors.onCard, marginVertical: 2 },
   trendLink: { alignItems: 'flex-start' },
   trendNote: { marginTop: space.xs },
+  trendChanges: { gap: 2, marginBottom: space.sm },
   summaryTitle: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', color: colors.onInkAction },
   summaryRow: { flexDirection: 'row', gap: space.lg },
   stat: { flex: 1, gap: 2 },

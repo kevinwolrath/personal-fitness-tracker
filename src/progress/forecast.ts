@@ -121,6 +121,8 @@ export type TrendInsight = {
    * once. Null when nothing is worth an alert.
    */
   alertKey: string | null;
+  /** What else changed over the same weeks (plateau or slowdown only), with a not-causation caveat. */
+  changes?: string[];
 };
 
 /** One decimal, no "−0.0": weekly rates aren't precise to more. */

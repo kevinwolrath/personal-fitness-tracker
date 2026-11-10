@@ -115,3 +115,9 @@ Distance is optional enrichment, not a daily total or a seventh main status row.
 Today, Progress and the connection sheet share activity overlap projections. Raw records remain available. Missing legacy times produce a conservative duration lower bound, labelled accordingly. Display duration as min/hr and distance as m/km, including detail and review screens.
 
 The new READ_DISTANCE permission requires the corresponding Google Play Health Connect declaration before release. **It is off until that declaration exists** (`HC_DISTANCE` in `src/observations/healthConnect.ts`): the manifest doesn't list it, Connect doesn't ask for it, nothing reads it and the sheet doesn't mention distance access. Google Play rejects a release whose bundle requests an undeclared health permission, and the form only lists permissions from an accepted bundle. To turn it on: set `HC_DISTANCE`, add the permission to `app.json`, upload that bundle by hand to internal testing, declare READ_DISTANCE in the Health apps form, then release. No route, background, history or write permission is added. Physical-device permission/source verification remains an owner merge checkpoint; automated/native emulator checks do not replace it.
+
+## Energy and nutrition coverage (audit)
+
+- **Read:** ActiveCaloriesBurned, stored as `active_energy` (one value per day, in kJ). Progress turns it into estimated energy burned by adding an estimated resting energy (contract 14). It is never shown as a total and never added to one.
+- **Not read:** TotalCaloriesBurned, BasalMetabolicRate and Nutrition. Each needs a new READ permission declared in Google Play's Health apps form, like READ_DISTANCE (#104/#115), so they are a separate decision.
+- **What counts as eaten:** only meals the user logs (photo or typed, including a protein shake logged as a meal) and intake day totals. Ticked planned meals never count.

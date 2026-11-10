@@ -62,7 +62,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 | **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
 | **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
 | **Settings** | Opens the Settings sheet: **Appearance** (Hero Forge or Classic light) and **Energy units** (kJ, kcal or both). The detail line states the current energy choice, e.g. "Energy in kJ" (contract 11). |
-| **Muscle Growth** | Opens the Muscle Growth editor (#122, contract 09): on/off, target muscles, when, the exercises for those targets, and custom catalogue exercises. Its detail line shows "On · Biceps, Traps (upper)" or "Targeted routine for chosen muscles". Saved as an `exercise` configuration change with Undo (contract 07). |
+| **Muscle Growth** | Opens the Muscle Growth editor (#122, contract 09): on/off, target muscles, days, time of day, the exercises for those targets, and custom catalogue exercises. Its detail line shows "On · Biceps, Upper back" or "Targeted routine for chosen muscles". Saved as an `exercise` configuration change with Undo (contract 07). |
 | **Muscle coverage & exercise log** | Opens the live #56 coverage sheet, including on rest days. It also opens from the expanded workout/checklist flow. No new permanent tab, app-bar control or Today banner (#79). |
 | **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). |
 

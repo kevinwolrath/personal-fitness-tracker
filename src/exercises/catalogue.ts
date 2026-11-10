@@ -7,7 +7,8 @@ import { bundledInventory, eligibleExercises, type Inventory, type InventoryExer
 /**
  * The shared exercise catalogue for a plan (#122): the bundled inventory plus the user's custom exercises
  * (`plan.exercise.customExercises`), with the same shape, so planning, logging, guides and muscle accounting treat
- * them alike. Optional muscle groups (e.g. upper traps) only take part when the plan uses them. Pure.
+ * them alike. Muscle groups are only the 14 bundled ones: upper traps are trained and counted as "Upper back"
+ * (owner decision on #126), so there's no separate traps group, map region or remapping of logs. Pure.
  */
 export function inventoryFor(plan: Pick<Plan, 'exercise'>, base: Inventory = bundledInventory): Inventory {
   const custom = plan.exercise?.customExercises ?? [];
@@ -24,12 +25,7 @@ export function inventoryFor(plan: Pick<Plan, 'exercise'>, base: Inventory = bun
       secondary: c.secondary ?? [],
       ...(c.defaultDose ? { defaultDose: c.defaultDose } : c.kind === 'conditioning' ? {} : { defaultDose: { sets: 2, reps: 10 } }),
     }));
-  const used = new Set([...(plan.exercise?.muscleGrowth?.targets ?? []), ...extra.flatMap((e) => [...e.primary, ...e.secondary])]);
-  return {
-    ...base,
-    muscleGroups: base.muscleGroups.filter((m) => !m.optional || used.has(m.id)),
-    exercises: [...base.exercises, ...extra],
-  };
+  return { ...base, exercises: [...base.exercises, ...extra] };
 }
 
 export const isCustomExercise = (plan: Pick<Plan, 'exercise'>, movement: string) => !!plan.exercise?.customExercises?.some((c) => c.movement === movement);
@@ -45,11 +41,11 @@ export function catalogueErrors(plan: Pick<Plan, 'exercise'>, base: Inventory = 
     if (bundled.has(c.movement)) errors.push(`${at}.customExercises[${i}].movement: "${c.movement}" is already a built-in exercise; use it instead of adding a duplicate`);
     const same = bundledNames.get(c.name.toLowerCase());
     if (same && same !== c.movement) errors.push(`${at}.customExercises[${i}].name: "${c.name}" is already a built-in exercise ("${same}")`);
-    [...c.primary, ...(c.secondary ?? [])].forEach((m) => !groups.has(m) && errors.push(`${at}.customExercises[${i}]: unknown muscle group "${m}" (use one of: ${[...groups].join(', ')})`));
+    [...c.primary, ...(c.secondary ?? [])].forEach((m) => !groups.has(m) && errors.push(`${at}.customExercises[${i}]: ${unknownMuscle(m, groups)}`));
   });
   const mg = plan.exercise?.muscleGrowth;
   if (mg) {
-    mg.targets.forEach((m, i) => !groups.has(m) && errors.push(`${at}.muscleGrowth.targets[${i}]: unknown muscle group "${m}" (use one of: ${[...groups].join(', ')})`));
+    mg.targets.forEach((m, i) => !groups.has(m) && errors.push(`${at}.muscleGrowth.targets[${i}]: ${unknownMuscle(m, groups)}`));
     const catalogue = new Map(inventoryFor(plan, base).exercises.map((e) => [e.movement, e]));
     const avoid = new Set((plan.exercise?.limitations ?? []).filter((l) => l.status === 'avoid').map((l) => l.movement));
     mg.exercises.forEach((e, i) => {
@@ -61,6 +57,10 @@ export function catalogueErrors(plan: Pick<Plan, 'exercise'>, base: Inventory = 
   }
   return errors;
 }
+
+/** Upper traps are "Upper back" (#126): say so when someone uses "traps", instead of a bare unknown-muscle error. */
+const unknownMuscle = (m: string, groups: Set<string>) =>
+  m === 'traps' || m === 'upper_traps' || m === 'trapezius' ? `"${m}" is counted as "upper_back" (upper traps are part of Upper back)` : `unknown muscle group "${m}" (use one of: ${[...groups].join(', ')})`;
 
 const worksAny = (e: InventoryExercise, targets: readonly string[]) => [...e.primary, ...e.secondary].some((m) => targets.includes(m));
 

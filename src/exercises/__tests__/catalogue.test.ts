@@ -22,7 +22,7 @@ import { exerciseState, loadExerciseHistory } from '../state';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
 const MON = '2026-11-02';
-const shrug = { movement: 'dumbbell_shrug', name: 'Dumbbell shrug', kind: 'strength' as const, equipment: ['free_weights' as const], primary: ['traps'], secondary: ['forearms'], defaultDose: { sets: 3, reps: 12 }, guidance: ['Shoulders straight up, pause, lower slowly.'] };
+const shrug = { movement: 'dumbbell_shrug', name: 'Dumbbell shrug', kind: 'strength' as const, equipment: ['free_weights' as const], primary: ['upper_back'], secondary: ['forearms'], defaultDose: { sets: 3, reps: 12 }, guidance: ['Shoulders straight up, pause, lower slowly.'] };
 
 function withGrowth(exercise: Record<string, unknown>): Plan {
   const raw = clone(seed) as any;
@@ -36,16 +36,16 @@ const growth = (targets: string[], exercises: { movement: string; sets?: number;
   withGrowth({ customExercises: [shrug], muscleGrowth: { enabled: true, targets, exercises, ...extra } });
 
 describe('the shared catalogue', () => {
-  it('adds custom exercises to the same inventory, with the same shape; optional groups appear only when used', () => {
+  it('adds custom exercises to the same inventory, with the same shape; muscle groups stay the 14 bundled ones', () => {
     const plain = withGrowth({});
-    expect(inventoryFor(plain).muscleGroups.map((m) => m.id)).not.toContain('traps');
     expect(inventoryFor(plain).exercises).toEqual(bundledInventory.exercises);
-    expect(exerciseInventory.muscleGroups).toHaveLength(14); // everyday coverage is unchanged
+    expect(exerciseInventory.muscleGroups).toHaveLength(14);
+    expect(exerciseInventory.muscleGroups.map((m) => m.id)).not.toContain('traps');
 
-    const p = growth(['biceps', 'traps'], []);
+    const p = growth(['biceps', 'upper_back'], []);
     const inv = inventoryFor(p);
-    expect(inv.muscleGroups.map((m) => m.id)).toContain('traps');
-    expect(inv.exercises.find((e) => e.movement === 'dumbbell_shrug')).toEqual({ movement: 'dumbbell_shrug', name: 'Dumbbell shrug', kind: 'strength', equipment: ['free_weights'], primary: ['traps'], secondary: ['forearms'], defaultDose: { sets: 3, reps: 12 } });
+    expect(inv.muscleGroups).toEqual(exerciseInventory.muscleGroups); // upper traps are Upper back: no 15th group
+    expect(inv.exercises.find((e) => e.movement === 'dumbbell_shrug')).toEqual({ movement: 'dumbbell_shrug', name: 'Dumbbell shrug', kind: 'strength', equipment: ['free_weights'], primary: ['upper_back'], secondary: ['forearms'], defaultDose: { sets: 3, reps: 12 } });
     expect(inv.exercises.filter((e) => e.movement === 'hammer_curl')).toHaveLength(1);
   });
 
@@ -53,12 +53,15 @@ describe('the shared catalogue', () => {
     expect(catalogueErrors(withGrowth({ customExercises: [{ ...shrug, movement: 'hammer_curl' }] }))[0]).toMatch(/already a built-in exercise/);
     expect(catalogueErrors(withGrowth({ customExercises: [{ ...shrug, name: 'Lat pulldown' }] }))[0]).toMatch(/already a built-in exercise/);
     expect(catalogueErrors(withGrowth({ customExercises: [{ ...shrug, primary: ['neck'] }] }))[0]).toMatch(/unknown muscle group "neck"/);
+    // Upper traps are Upper back (#126): "traps" is not a group, and the error says where it belongs.
+    expect(catalogueErrors(withGrowth({ customExercises: [{ ...shrug, primary: ['traps'] }] }))[0]).toMatch(/"traps" is counted as "upper_back"/);
+    expect(catalogueErrors(withGrowth({ muscleGrowth: { enabled: true, targets: ['traps'], exercises: [] } }))[0]).toMatch(/muscleGrowth\.targets\[0\]: "traps" is counted as "upper_back"/);
     expect(catalogueErrors(growth(['biceps'], [{ movement: 'nordic_curl' }]))[0]).toMatch(/not in the exercise catalogue/);
     expect(catalogueErrors(growth(['biceps'], [{ movement: 'leg_extension' }]))[0]).toMatch(/doesn't work a target/);
     const avoided = growth(['biceps'], [{ movement: 'hammer_curl' }]);
     avoided.exercise!.limitations = [{ movement: 'hammer_curl', status: 'avoid' }];
     expect(catalogueErrors(avoided)[0]).toMatch(/marked "avoid"/);
-    expect(catalogueErrors(growth(['biceps', 'traps'], [{ movement: 'hammer_curl' }, { movement: 'dumbbell_shrug' }]))).toEqual([]);
+    expect(catalogueErrors(growth(['biceps', 'upper_back'], [{ movement: 'hammer_curl' }, { movement: 'dumbbell_shrug' }]))).toEqual([]);
   });
 
   it('offers only exercises for the targets, with the user equipment; different targets give different lists', () => {
@@ -67,20 +70,20 @@ describe('the shared catalogue', () => {
     expect(biceps[0]).toEqual(['hammer_curl', 'primary']);
     expect(biceps.map(([m]) => m)).toEqual(expect.arrayContaining(['lat_pulldown', 'one_arm_kettlebell_row']));
     expect(biceps.map(([m]) => m)).not.toContain('knuckle_push_up');
-    expect(muscleGrowthOptions(p, ['traps']).map((o) => o.exercise.movement)).toEqual(['dumbbell_shrug']);
+    expect(muscleGrowthOptions(p, ['upper_back']).map((o) => o.exercise.movement)).toEqual(expect.arrayContaining(['one_arm_kettlebell_row', 'dumbbell_shrug']));
     // An avoided movement is never offered.
     const noCurl = growth(['biceps'], []);
     noCurl.exercise!.limitations = [{ movement: 'hammer_curl', status: 'avoid' }];
     expect(muscleGrowthOptions(noCurl, ['biceps']).map((o) => o.exercise.movement)).not.toContain('hammer_curl');
     // Without the equipment, a custom exercise isn't offered either.
-    const noWeights = growth(['traps'], []);
+    const noWeights = growth(['upper_back'], []);
     noWeights.exercise!.equipment = noWeights.exercise!.equipment!.filter((e) => e.type !== 'free_weights');
-    expect(muscleGrowthOptions(noWeights, ['traps'])).toEqual([]);
+    expect(muscleGrowthOptions(noWeights, ['upper_back']).map((o) => o.exercise.movement)).not.toContain('dumbbell_shrug');
   });
 });
 
 describe("today's Muscle Growth checklist", () => {
-  const p = growth(['biceps', 'traps'], [{ movement: 'hammer_curl', sets: 3, reps: 12, loadKg: 10 }, { movement: 'dumbbell_shrug' }], { when: 'lunch' });
+  const p = growth(['biceps', 'upper_back'], [{ movement: 'hammer_curl', sets: 3, reps: 12, loadKg: 10 }, { movement: 'dumbbell_shrug' }], { when: 'lunch' });
 
   it('lists the routine with planned doses; done and skipped are distinct and saved per date', () => {
     const day = muscleGrowthDay(p, MON, [])!;
@@ -130,7 +133,7 @@ describe("today's Muscle Growth checklist", () => {
 });
 
 describe('shared accounting', () => {
-  const p = growth(['biceps', 'traps'], [{ movement: 'hammer_curl', sets: 3, reps: 12 }, { movement: 'dumbbell_shrug', sets: 3, reps: 12 }]);
+  const p = growth(['biceps', 'upper_back'], [{ movement: 'hammer_curl', sets: 3, reps: 12 }, { movement: 'dumbbell_shrug', sets: 3, reps: 12 }]);
   const at = (d: string) => `${d}T12:30:00+11:00`;
 
   it('completed items add muscle load like any exercise (both categories); skipped items add none', async () => {
@@ -144,9 +147,9 @@ describe('shared accounting', () => {
     expect(history.entries.map((e) => e.movement).sort()).toEqual(['hammer_curl', 'hammer_curl']);
     const state = exerciseState(p, history, { now: `${MON}T20:00:00+11:00`, today: MON }, inventoryFor(p));
     const biceps = state.coverage.find((c) => c.muscle === 'biceps')!;
-    const traps = state.coverage.find((c) => c.muscle === 'traps')!;
+    const upperBack = state.coverage.find((c) => c.muscle === 'upper_back')!;
     expect(biceps.volume).toBe(5); // 3 + 2 sets, from both categories
-    expect(traps.volume).toBe(0); // skipped: no work
+    expect(upperBack.volume).toBe(0); // the skipped shrug: no work
     expect(biceps.status).toBe('recovering'); // > 2 effective sets today: a recovery window, not "8 hours later is fine"
   });
 
@@ -174,13 +177,13 @@ describe('shared accounting', () => {
 
 describe('configuration', () => {
   it('Configure with AI can set up Muscle Growth and custom exercises; the result is formatVersion 8', () => {
-    const update = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { customExercises: [shrug], muscleGrowth: { enabled: true, targets: ['biceps', 'traps'], exercises: [{ movement: 'hammer_curl' }, { movement: 'dumbbell_shrug' }], when: 'lunch' } } } });
+    const update = JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { customExercises: [shrug], muscleGrowth: { enabled: true, targets: ['biceps', 'upper_back'], exercises: [{ movement: 'hammer_curl' }, { movement: 'dumbbell_shrug' }], when: 'lunch' } } } });
     const parsed = parseConfigUpdate(update);
     if (!parsed.ok) throw new Error(parsed.errors.join('\n'));
     const applied = applyConfigUpdate(clone(seed), parsed.update);
     if (!applied.ok) throw new Error(applied.errors.join('\n'));
     expect(applied.nextRaw.formatVersion).toBe(8);
-    expect(applied.plan.exercise?.muscleGrowth?.targets).toEqual(['biceps', 'traps']);
+    expect(applied.plan.exercise?.muscleGrowth?.targets).toEqual(['biceps', 'upper_back']);
     // The schedule, rest days and the resistance session are untouched.
     expect(applied.nextRaw.schedule).toEqual((seed as any).schedule);
     expect(applied.nextRaw.activities).toEqual((seed as any).activities);
@@ -199,5 +202,26 @@ describe('configuration', () => {
     const raw = clone(seed) as any;
     raw.exercise.muscleGrowth = { enabled: true, targets: ['biceps'], exercises: [] };
     expect(validatePlan(raw).ok).toBe(false);
+  });
+});
+
+describe('older plans and data (#126: v8 only if old plans migrate safely)', () => {
+  it('a formatVersion 7 plan still loads unchanged and has no Muscle Growth until the user sets it up', () => {
+    const r = validatePlan(clone(seed));
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.plan.formatVersion).toBe(7);
+      expect(muscleGrowthDay(r.plan, MON, [])).toBeNull();
+      expect(inventoryFor(r.plan)).toEqual({ ...bundledInventory, exercises: bundledInventory.exercises });
+    }
+  });
+
+  it('free exercise logs saved before #122 (no routine or status) still count as done work', async () => {
+    const store = new KeyValueTrackingStore(new MemoryKeyValue());
+    await store.addExerciseLog({ id: 'old', movement: 'hammer_curl', date: MON, at: `${MON}T07:00:00+11:00`, sets: 2, reps: 12, seconds: null, intensity: null });
+    const p = validatePlan(clone(seed));
+    if (!p.ok) throw new Error('seed');
+    const history = await loadExerciseHistory(store, p.plan, MON);
+    expect(history.entries.map((e) => e.movement)).toEqual(['hammer_curl']);
   });
 });

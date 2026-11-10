@@ -5,7 +5,7 @@ import { bundledInventory } from '../../exercises/inventory';
 import { CONFIG_SCHEMA_VERSION } from '../../config/sections';
 import { commitConfigUpdate } from '../../config/service';
 import { applyConfigUpdate } from '../../config/update';
-import { dayParts, type CustomExercise, type MuscleGrowth, type MuscleGrowthExercise } from '../../plan/schema';
+import { dayParts, weekdays, type CustomExercise, type MuscleGrowth, type MuscleGrowthExercise } from '../../plan/schema';
 import { useApp } from '../../providers/AppProvider';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
@@ -13,6 +13,7 @@ import { ScrollView } from '../../ui/ScrollView';
 import { Sheet } from '../../ui/Sheet';
 import { createThemedStyles, radius, space, touch, useTheme } from '../../ui/theme';
 
+const dayLabel: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 const partLabel: Record<string, string> = { morning: 'Morning', lunch: 'Lunch break', afternoon: 'Afternoon', evening: 'Evening', anytime: 'Any time' };
 const snake = (name: string) =>
   name
@@ -36,6 +37,9 @@ export function MuscleGrowthEditor({ onClose }: { onClose: () => void }) {
   const [enabled, setEnabled] = useState(current?.enabled ?? true);
   const [targets, setTargets] = useState<string[]>(current?.targets ?? []);
   const [when, setWhen] = useState<MuscleGrowth['when']>(current?.when);
+  // Absent days means every day; existing days are kept exactly unless the user changes them.
+  const [days, setDays] = useState<string[]>(current?.days ?? [...weekdays]);
+  const toggleDay = (d: string) => setDays((xs) => (xs.includes(d) ? xs.filter((x) => x !== d) : weekdays.filter((w) => w === d || xs.includes(w))));
   const [chosen, setChosen] = useState<Record<string, MuscleGrowthExercise>>(Object.fromEntries((current?.exercises ?? []).map((e) => [e.movement, e])));
   const [custom, setCustom] = useState<CustomExercise[]>(plan.exercise?.customExercises ?? []);
   const [adding, setAdding] = useState(false);
@@ -63,6 +67,7 @@ export function MuscleGrowthEditor({ onClose }: { onClose: () => void }) {
   const save = async () => {
     setError('');
     if (!targets.length) return setError('Choose at least one target muscle.');
+    if (!days.length) return setError('Choose at least one day.');
     setBusy(true);
     try {
       const stored = await store.getActivePlan();
@@ -70,7 +75,8 @@ export function MuscleGrowthEditor({ onClose }: { onClose: () => void }) {
       // Only exercises that still work a target stay in the routine; logs from earlier days are never touched.
       const visible = new Set(options.map((o) => o.exercise.movement));
       const routine = options.map((o) => chosen[o.exercise.movement]).filter((e): e is MuscleGrowthExercise => !!e && visible.has(e.movement));
-      const muscleGrowth: MuscleGrowth = { enabled, targets, exercises: routine, ...(current?.days ? { days: current.days } : {}), ...(when ? { when } : {}) };
+      const everyDay = days.length === weekdays.length;
+      const muscleGrowth: MuscleGrowth = { enabled, targets, exercises: routine, ...(everyDay ? {} : { days: days as MuscleGrowth['days'] }), ...(when ? { when } : {}) };
       const exercise: Record<string, unknown> = { muscleGrowth };
       if (JSON.stringify(custom) !== JSON.stringify(plan.exercise?.customExercises ?? [])) exercise.customExercises = custom.length ? custom : null;
       const update = { schemaVersion: CONFIG_SCHEMA_VERSION, sections: { exercise } };
@@ -111,7 +117,19 @@ export function MuscleGrowthEditor({ onClose }: { onClose: () => void }) {
           ))}
         </View>
 
-        <Text style={type.section}>When</Text>
+        <Text style={type.detail}>Upper traps count as Upper back.</Text>
+
+        <Text style={type.section}>Days</Text>
+        <View style={styles.chips} role="group" aria-label="Days">
+          {weekdays.map((d) => (
+            <Chip key={d} label={dayLabel[d]} on={days.includes(d)} onPress={() => toggleDay(d)} testID={`mg-day-${d}`} />
+          ))}
+        </View>
+        <Text style={type.detail} testID="mg-days-summary">
+          {days.length === weekdays.length ? 'Every day' : days.length ? `Only ${days.map((d) => dayLabel[d]).join(', ')}` : 'Choose at least one day'}
+        </Text>
+
+        <Text style={type.section}>Time of day</Text>
         <View style={styles.chips} role="radiogroup" aria-label="When">
           {dayParts.map((p) => (
             <Chip key={p} label={partLabel[p]} on={when === p} radio onPress={() => setWhen(when === p ? undefined : p)} testID={`mg-when-${p}`} />

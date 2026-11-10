@@ -12,19 +12,7 @@ const muscleId = z.string().regex(/^[a-z]+(_[a-z]+)*$/);
 export const inventorySchema = z.strictObject({
   $comment: z.string().optional(),
   inventoryVersion: z.literal(1),
-  muscleGroups: z
-    .array(
-      z.strictObject({
-        id: muscleId,
-        label: z.string().min(1).max(30),
-        /**
-         * #122: a group outside the everyday coverage (no weekly target, no map contour), e.g. upper traps. It only takes
-         * part for a plan that targets it in Muscle Growth or has a custom exercise for it (see `inventoryFor`).
-         */
-        optional: z.boolean().optional(),
-      }),
-    )
-    .min(1),
+  muscleGroups: z.array(z.strictObject({ id: muscleId, label: z.string().min(1).max(30) })).min(1),
   exercises: z.array(
     z.strictObject({
       /** The movement id plans use (`session.exercises[].movement`) and the exercise library's id (contract 09). */
@@ -76,11 +64,10 @@ export function validateInventory(input: unknown): { ok: true; inventory: Invent
 const checked = validateInventory(data);
 if (!checked.ok) throw new Error(`Bundled exercise inventory is invalid:\n${checked.errors.join('\n')}`);
 
-/** Everything bundled, optional muscle groups included (#122). Plans see it through `inventoryFor` (catalogue.ts). */
-export const bundledInventory: Inventory = checked.inventory;
-
-/** The everyday inventory: the bundled one without optional muscle groups. The default wherever no plan is given. */
-export const exerciseInventory: Inventory = { ...checked.inventory, muscleGroups: checked.inventory.muscleGroups.filter((m) => !m.optional) };
+/** The bundled inventory. Plans see it with their custom exercises through `inventoryFor` (catalogue.ts, #122). */
+export const exerciseInventory: Inventory = checked.inventory;
+/** Alias kept for the catalogue (#122): the same bundled inventory. */
+export const bundledInventory: Inventory = exerciseInventory;
 
 export const findInventoryExercise = (movement: string, inventory: Inventory = exerciseInventory) => inventory.exercises.find((e) => e.movement === movement);
 

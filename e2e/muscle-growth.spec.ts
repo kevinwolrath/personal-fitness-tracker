@@ -23,7 +23,7 @@ async function openEditor(page: Page) {
   await expect(page.getByTestId('muscle-growth-editor')).toBeVisible();
 }
 
-async function setUpBicepsAndTraps(page: Page, info: { project: { name: string } }) {
+async function setUpBicepsAndUpperBack(page: Page, info: { project: { name: string } }) {
   await openEditor(page);
   await page.getByTestId('mg-target-biceps').click();
   // Only exercises for the target, from the shared catalogue: hammer curl first, pulls that also work biceps after.
@@ -31,14 +31,14 @@ async function setUpBicepsAndTraps(page: Page, info: { project: { name: string }
   await expect(page.getByTestId('mg-option-hammer_curl')).toBeVisible();
   await expect(page.getByTestId('mg-option-knuckle_push_up')).toHaveCount(0);
   await page.getByTestId('mg-option-hammer_curl').getByRole('checkbox').click();
-  await page.getByTestId('mg-target-traps').click();
+  await page.getByTestId('mg-target-upper_back').click();
   await page.getByTestId('mg-when-lunch').click();
   await shot(page, 'editor-targets', info);
-  // No built-in trap exercise: add one to the catalogue.
+  // Upper traps count as Upper back; no built-in shrug, so add one to the catalogue.
   await page.getByTestId('mg-add-custom').click();
   await page.getByTestId('mg-custom-name').fill('Dumbbell shrug');
-  await page.getByTestId('mg-custom-primary-biceps').click(); // was preselected from the first target: switch to traps
-  await page.getByTestId('mg-custom-primary-traps').click();
+  await page.getByTestId('mg-custom-primary-biceps').click(); // was preselected from the first target: switch to upper back
+  await page.getByTestId('mg-custom-primary-upper_back').click();
   await page.getByTestId('mg-custom-secondary-forearms').click();
   await page.getByTestId('mg-custom-equipment-free_weights').click();
   await page.getByTestId('mg-custom-cue').fill('Shoulders straight up, pause, lower slowly.');
@@ -51,14 +51,14 @@ async function setUpBicepsAndTraps(page: Page, info: { project: { name: string }
   await expect(page.getByTestId('muscle-growth-editor')).toHaveCount(0);
 }
 
-test('set up biceps and traps, complete and skip on Today, persist, amend; separate from Today\'s workout', async ({ page }, info) => {
+test('set up biceps and upper back (traps), complete and skip on Today, persist, amend; separate from Today\'s workout', async ({ page }, info) => {
   await openAt(page, MONDAY);
   await expect(section(page)).toHaveCount(0); // nothing until the user sets it up
   const workoutBefore = await page.getByTestId('today-workout-counts').textContent();
-  await setUpBicepsAndTraps(page, info);
+  await setUpBicepsAndUpperBack(page, info);
 
   await expect(section(page)).toBeVisible();
-  await expect(page.getByTestId('muscle-growth-summary')).toHaveText('Biceps · Traps (upper) · Lunch break');
+  await expect(page.getByTestId('muscle-growth-summary')).toHaveText('Biceps · Upper back · Lunch break');
   await expect(page.getByTestId('muscle-growth-counts')).toHaveText('0 of 2 done · 2 left');
   const list = page.getByTestId('muscle-growth-list');
   await expect(list).toContainText('Hammer curl');
@@ -111,18 +111,18 @@ test('set up biceps and traps, complete and skip on Today, persist, amend; separ
 
 test('history: a past day shows what was logged; changing targets changes the checklist without deleting it', async ({ page }, info) => {
   await openAt(page, MONDAY);
-  await setUpBicepsAndTraps(page, info);
+  await setUpBicepsAndUpperBack(page, info);
   await page.getByTestId('muscle-growth-list').getByRole('checkbox', { name: /Dumbbell shrug/ }).click();
   await expect(page.getByTestId('muscle-growth-counts')).toHaveText('1 of 2 done · 1 left');
 
-  // Next day, a different target selection: traps only.
+  // Next day, a different target selection: upper back only.
   await page.clock.setFixedTime(new Date('2026-11-03T09:00:00+11:00'));
   await page.goto('/');
   await openEditor(page);
   await page.getByTestId('mg-target-biceps').click(); // off
   await expect(page.getByTestId('mg-option-hammer_curl')).toHaveCount(0);
   await page.getByTestId('mg-save').click();
-  await expect(page.getByTestId('muscle-growth-summary')).toHaveText('Traps (upper) · Lunch break');
+  await expect(page.getByTestId('muscle-growth-summary')).toHaveText('Upper back · Lunch break');
   await expect(page.getByTestId('muscle-growth-list')).not.toContainText('Hammer curl');
   await expect(page.getByTestId('muscle-growth-list')).toContainText('Dumbbell shrug');
 
@@ -134,12 +134,45 @@ test('history: a past day shows what was logged; changing targets changes the ch
 
 test('the app menu shows Muscle Growth status; turning it off hides the section', async ({ page }, info) => {
   await openAt(page, MONDAY);
-  await setUpBicepsAndTraps(page, info);
+  await setUpBicepsAndUpperBack(page, info);
   await page.getByRole('button', { name: 'Menu' }).click();
-  await expect(page.getByTestId('menu-muscle-growth')).toContainText('On · Biceps, Traps (upper)');
+  await expect(page.getByTestId('menu-muscle-growth')).toContainText('On · Biceps, Upper back');
   await shot(page, 'menu', info);
   await page.getByTestId('menu-muscle-growth').click();
   await page.getByTestId('muscle-growth-enabled').click();
   await page.getByTestId('mg-save').click();
   await expect(section(page)).toHaveCount(0);
+});
+
+test('weekday selector: only the chosen days offer the routine; existing days are kept on later edits', async ({ page }, info) => {
+  await openAt(page, MONDAY);
+  await setUpBicepsAndUpperBack(page, info);
+  await openEditor(page);
+  await expect(page.getByTestId('mg-days-summary')).toHaveText('Every day');
+  await page.getByTestId('mg-day-sat').click();
+  await page.getByTestId('mg-day-sun').click();
+  await expect(page.getByTestId('mg-days-summary')).toHaveText('Only Mon, Tue, Wed, Thu, Fri');
+  await shot(page, 'editor-days', info);
+  await page.getByTestId('mg-save').click();
+  expect((await stored(page)).plan.json).toContain('"days":["mon","tue","wed","thu","fri"]');
+  await expect(section(page)).toBeVisible(); // Monday
+
+  // Reopen and change something else: the days are kept.
+  await openEditor(page);
+  await expect(page.getByTestId('mg-days-summary')).toHaveText('Only Mon, Tue, Wed, Thu, Fri');
+  await page.getByTestId('mg-when-evening').click();
+  await page.getByTestId('mg-save').click();
+  expect(JSON.parse((await stored(page)).plan.json).exercise.muscleGrowth.days).toEqual(['mon', 'tue', 'wed', 'thu', 'fri']);
+
+  // Saturday: not offered.
+  await page.goto('/?date=2026-11-07');
+  await expect(page.getByTestId('day-progress')).toBeVisible();
+  await expect(section(page)).toHaveCount(0);
+
+  // No days at all is refused.
+  await page.goto('/');
+  await openEditor(page);
+  for (const d of ['mon', 'tue', 'wed', 'thu', 'fri']) await page.getByTestId(`mg-day-${d}`).click();
+  await page.getByTestId('mg-save').click();
+  await expect(page.getByTestId('mg-error')).toHaveText('Choose at least one day.');
 });

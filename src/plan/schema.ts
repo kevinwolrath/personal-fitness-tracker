@@ -270,7 +270,7 @@ export const muscleGrowthExercise = z.strictObject({
  */
 export const muscleGrowthSection = z.strictObject({
   enabled: z.boolean(),
-  /** The user's target muscle groups, e.g. ["biceps", "traps"]. */
+  /** The user's target muscle groups, e.g. ["biceps", "upper_back"] (upper traps count as upper_back). */
   targets: z.array(muscleGroupId).min(1).max(6),
   /** The routine, in order. Only exercises that work a target are shown on Today. */
   exercises: z.array(muscleGrowthExercise).max(12).default([]),

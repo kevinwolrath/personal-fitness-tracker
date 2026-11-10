@@ -101,7 +101,7 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
 
 ## Muscle Growth (#122)
 
-A separate, configurable training category for chosen target muscles (for example biceps and upper traps). It's a short optional routine, such as a lunch-break session, that sits beside the resistance session. It's **not** a second exercise system: it uses the same catalogue, ids, muscle mappings, guides, checklist row, exercise logs and muscle accounting as everything above.
+A separate, configurable training category for chosen target muscles (for example biceps and upper back). It's a short optional routine, such as a lunch-break session, that sits beside the resistance session. It's **not** a second exercise system: it uses the same catalogue, ids, muscle mappings, guides, checklist row, exercise logs and muscle accounting as everything above.
 
 **Shared catalogue** (`src/exercises/catalogue.ts`, pure):
 - `inventoryFor(plan)` is the bundled inventory plus `plan.exercise.customExercises` (formatVersion 8). Custom exercises have the same shape as inventory entries (`movement`, `name`, `kind`, `equipment`, `primary`, `secondary`, `defaultDose`), plus optional `guidance` cues that the guide shows. They have no illustrations ("No illustration for this exercise yet").
@@ -110,11 +110,11 @@ A separate, configurable training category for chosen target muscles (for exampl
   - a custom exercise that repeats a built-in id or name (no duplicates);
   - unknown muscle groups;
   - routine movements that aren't in the catalogue, are marked `avoid`, or don't work a target.
-- **Optional muscle groups.** `traps` ("Traps (upper)") is `optional` in `inventory.json`. It has no everyday weekly target and no body-map contour (its text row is the control). It only takes part for a plan that targets it or has a custom exercise for it. The everyday 14 groups are unchanged. No built-in exercise works traps yet, because a built-in exercise needs approved hero illustrations. Users add their own, for example "Dumbbell shrug".
+- **Upper traps are Upper back** (owner decision on #126). There's no separate traps group or body-map region, and no logs are remapped. "traps" in an update is rejected with a pointer to `upper_back`, and the editor says "Upper traps count as Upper back". There are no built-in shrug illustrations: users add their own trap exercise, such as "Dumbbell shrug" with `primary: ["upper_back"]`, as a custom exercise.
 
 **Configuration** (`plan.exercise.muscleGrowth`, contract 07):
 - Fields: `enabled`, `targets` (1–6 muscle groups), `exercises` (`movement`, optional `sets`, `reps` or `seconds`, `loadKg`), optional `days` (absent means every day) and `when` (display only).
-- It's set up in **Muscle Growth** (app menu, or **Edit** on the section) or through Configure with AI. Both write the same validated configuration change, with history and Undo.
+- It's set up in **Muscle Growth** (app menu, or **Edit** on the section) or through Configure with AI. The editor has a **Days** selector. All seven days are saved as no `days` (every day), and existing days are kept unless the user changes them. At least one day is required. Both write the same validated configuration change, with history and Undo.
 - The editor offers only eligible strength exercises whose primary muscles include a target, then those that work one secondarily. It never lists the whole catalogue, and "avoid" movements never appear.
 - Changing targets drops exercises that no longer fit from the routine. Earlier days' logs are never touched.
 - It never changes the schedule, rest days, the resistance session or loads.

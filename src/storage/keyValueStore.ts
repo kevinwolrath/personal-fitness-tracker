@@ -40,6 +40,8 @@ type Doc = {
   muscleReports: MuscleReport[];
   /** #97. Additive: documents written before it read as an empty list. */
   mealLogs: MealLog[];
+  /** #134. Additive: documents written before it read as empty. */
+  appMeta: Record<string, string>;
 };
 
 export const STORAGE_KEY = 'pft:tracking:v1';
@@ -48,7 +50,7 @@ const splitKey = (k: string) => {
   const i = k.lastIndexOf('|');
   return { planId: k.slice(0, i), date: k.slice(i + 1) };
 };
-const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: {}, exerciseLogs: [], muscleReports: [], mealLogs: [] });
+const empty = (): Doc => ({ version: 1, plan: null, activities: {}, overrides: {}, observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: {}, exerciseLogs: [], muscleReports: [], mealLogs: [], appMeta: {} });
 const byKey = <T>(...keys: (keyof T)[]) => (a: T, b: T) => {
   for (const k of keys) {
     const c = String(a[k]).localeCompare(String(b[k]));
@@ -303,6 +305,18 @@ export class KeyValueTrackingStore implements TrackingStore {
     });
   }
 
+  async getMeta(key: string): Promise<string | null> {
+    return this.read().appMeta[key] ?? null;
+  }
+
+  async ensureMeta(key: string, value: string): Promise<string> {
+    let stored = value;
+    this.update((d) => {
+      stored = d.appMeta[key] ??= value;
+    });
+    return stored;
+  }
+
   async snapshot(): Promise<StoreSnapshot> {
     const d = this.read();
     const activityLogs: ActivityLogRecord[] = Object.entries(d.activities).flatMap(([k, day]) => {
@@ -324,6 +338,7 @@ export class KeyValueTrackingStore implements TrackingStore {
       exerciseLogs: [...d.exerciseLogs].sort(byKey<ExerciseLog>('at', 'id')),
       muscleReports: [...d.muscleReports].sort(byKey<MuscleReport>('at', 'id')),
       mealLogs: [...d.mealLogs].sort(byKey<MealLog>('date', 'at', 'id')),
+      appMeta: { ...d.appMeta },
     };
   }
 
@@ -333,6 +348,7 @@ export class KeyValueTrackingStore implements TrackingStore {
 
   async replaceAll(s: StoreSnapshot) {
     const d = empty();
+    if (!s.appMeta) d.appMeta = { ...this.read().appMeta }; // a snapshot made before #134 keeps this phone's ids
     applySnapshot(d, s);
     this.kv.setItem(STORAGE_KEY, JSON.stringify(d)); // one write: atomic by construction
   }
@@ -351,6 +367,7 @@ function applySnapshot(d: Doc, s: StoreSnapshot): void {
   (s.exerciseLogs ?? []).forEach((l) => upsertById(d.exerciseLogs, l));
   (s.muscleReports ?? []).forEach((r) => upsertById(d.muscleReports, r));
   (s.mealLogs ?? []).forEach((m) => upsertById(d.mealLogs, m));
+  Object.assign(d.appMeta, s.appMeta ?? {});
 }
 
 export class MemoryKeyValue implements KeyValue {

@@ -151,6 +151,11 @@ export type StoreSnapshot = {
   muscleReports?: MuscleReport[];
   /** #97. Absent in snapshots made before it. */
   mealLogs?: MealLog[];
+  /**
+   * #134. App-owned identifiers kept with the data (e.g. the health-sync user id), so a restore on a new phone keeps
+   * them. Never secrets. Absent in snapshots made before it: a restore then keeps this phone's own values.
+   */
+  appMeta?: Record<string, string>;
 };
 
 /** The scheduled meal's completion written with a meal log, atomically (#97): done when replaced, undone on removal. */
@@ -225,6 +230,10 @@ export interface TrackingStore {
   saveMealLog(log: MealLog, completion?: MealCompletion | null): Promise<void>;
   /** Remove a meal log, with the replaced meal's undo. Atomic. Photo files are the caller's to delete. */
   removeMealLog(id: string, completion?: MealCompletion | null): Promise<void>;
+  /** An app-owned identifier stored with the data (#134), or null when not set. */
+  getMeta(key: string): Promise<string | null>;
+  /** Store `value` under `key` unless one is already there, atomically; returns the stored value (existing or new). */
+  ensureMeta(key: string, value: string): Promise<string>;
   snapshot(): Promise<StoreSnapshot>;
   /** Upsert every record of a snapshot (ids are stable), e.g. after reinstall. */
   restore(snapshot: StoreSnapshot): Promise<void>;

@@ -40,6 +40,23 @@ test('a plateau shows on Progress with optional steps, a dot on the tab and one 
   await expect(page.getByTestId('tab-progress-dot')).toHaveCount(0);
 });
 
+test('a plateau names what else changed over the same weeks, without claiming it caused it', async ({ page }) => {
+  // 10,000 steps a day before, 5,000 in the last 3 weeks (today not counted).
+  const steps = Array.from({ length: 42 }, (_, i) => {
+    const date = addDays(TODAY, -42 + i);
+    return { id: `s${i}`, date, metric: 'steps', value: i < 21 ? 10000 : 5000, unit: 'count', kind: 'observed', label: null, note: null, source: src, recordedAt: `${date}T21:00:00Z` };
+  });
+  await seedRecords(page, { observations: [...plateau, ...steps] });
+  await openAt(page, `${TODAY}T09:00:00+11:00`);
+  await progress(page).click();
+  await page.getByTestId('progress-trend-steps-toggle').click();
+  const changes = page.getByTestId('progress-trend-changes');
+  await expect(changes).toContainText('What changed over the same weeks');
+  await expect(changes).toContainText('Steps: about 5,000 a day in the last 3 weeks, down from 10,000 (−50%).');
+  await expect(changes).toContainText('doesn’t mean they caused the change in your weight');
+  await page.screenshot({ path: 'docs/design/issue-57-forecast/trend-observed-changes.png', fullPage: true });
+});
+
 test('a steady loss: no alert; too few weigh-ins: says so', async ({ page }) => {
   await seedRecords(page, { observations: weigh(42, (i) => 95 - i * 0.07) });
   await openAt(page, `${TODAY}T09:00:00+11:00`);

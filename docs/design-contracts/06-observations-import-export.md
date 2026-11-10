@@ -117,3 +117,14 @@ The date row's **Share** (contract 02) shares a short text about the **selected 
 - **What's left out:** anything not recorded. No calories, no planned durations shown as time done.
 - **Empty day:** "No activity logged."
 - **Format:** dates and times use one fixed format ("Mon 2 Nov 2026", "8:30 am"), whatever the device locale.
+
+## Health data sync and AI share links (#134)
+
+Menu → **Health data sync**. The backend (Cloudflare Worker + D1) is Questspire Studio's; the app side follows `docs/health-sync-api.md`. Code: `src/healthSync/` (pure payload, client, service) and `src/features/health-sync/HealthSyncSheet.tsx`.
+
+- **Document:** `body-anvil-health` schemaVersion 1, built from the stored records (never the plan's planned meals as eaten). Each value keeps its date, unit and provenance (source type, app, confidence, edited). Sections: `plan`, `body`, `activity`, `sleep`, `nutrition` (daily totals + logged meals), `training` (check-offs, exercises, muscle reports), with `coverage` dates and `counts`. **Never included:** the display name, meal photos and screenshots or any text read from them (`evidence`), location (none recorded), credentials.
+- **Sync my data:** sends the complete history after a confirmation that shows what's sent and its size. The first sync links the phone (enrollment with the data ID and a random enrollment secret saved before the request, so a retry is idempotent); later syncs replace the latest snapshot. The last success, size and any error are shown. Never automatic.
+- **Owner token:** issued by the server, stored only in secure storage with its data ID; never in the database, a backup, an export, a URL, a log or a shared document. A restored backup brings the data ID but not the token.
+- **View the server copy:** read-only; never written into local data.
+- **Share my details:** choose the period (7/30/90 days or all) and categories, preview exactly the document that will be shared (summary and the JSON), pick expiry (1 h or 24 h), create a read-only link, **Copy AI link** (link + a ready-to-send instruction), revoke. Explains that anyone with the link can read it until expiry or revocation, and that AI chats may keep copies. **Share as text instead** is the fallback for AIs that can't open links.
+

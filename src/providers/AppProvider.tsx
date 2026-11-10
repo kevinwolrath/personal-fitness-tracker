@@ -5,6 +5,8 @@ import { loadActivePlan } from '../plan/bootstrap';
 import { preferences } from '../platform/preferences';
 import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
+import { ensureUserId } from '../healthSync/service';
+import { random } from '../platform/random';
 import type { TrackingStore } from '../storage/types';
 import { space, useTheme, createThemedStyles } from '../ui/theme';
 import { SetupWizard } from '../features/onboarding/SetupWizard';
@@ -57,6 +59,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const store = observableStore(await openStore(), notifyDataChanged);
       const [plan, energy] = await Promise.all([loadActivePlan(store), preferences.energyDisplay().catch(() => null)]);
       if (cancelled) return;
+      // #134: this data's ID, made once when there is data to sync (first-run setup stores nothing until it finishes).
+      // Kept in the database, so a full backup carries it. Never blocks or fails startup.
+      if (plan) Promise.resolve().then(() => ensureUserId(store, random.uuid)).catch(() => undefined);
       setChosenEnergy(energy);
       setState({ store, plan });
     })().catch((e: unknown) => !cancelled && setState({ error: e instanceof Error ? e.message : String(e) }));

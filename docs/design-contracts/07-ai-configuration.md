@@ -95,7 +95,9 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 ## AI session instructions (`src/config/instructions.ts`)
 
-**Copy AI instructions** puts plain text on the clipboard. It contains:
+**Share with AI** (#119) opens a preview of the exact text (`buildConfigShare`), then hands that same string to the system share sheet (Android: `ACTION_SEND`, `text/plain`, the system chooser; no app is hard-coded) or, with **Copy instead**, to the clipboard. On the web, Share uses the Web Share API, else copies. The text starts with one versioned header line, `Body Anvil configuration share · format 1 · configuration schema version 1`, and a sentence saying nothing changes until the user pastes the update back and confirms, then the instructions below. It's built once when the preview opens, so the preview and what is shared are byte-identical. It carries only the configuration sections (profile and health details included, which the preview says), never history, records or secrets. Cancel, a dismissed share sheet or a failed share leave everything as it was; sharing never writes. The return path (paste → check → preview → apply) is unchanged.
+
+The instructions are plain text. They contain:
 - the role;
 - the current configuration (every section) and the schema version;
 - the update format: the **whole reply is the bare JSON object**, with no code block, no Markdown and no words around it;
@@ -113,7 +115,7 @@ The text is provider-neutral, with no tool calls or model-specific features, so 
 
 App menu (☰) → **Configure with AI** (`/configure`, modal; layout in 02, "Configure layout"):
 
-1. Copy instructions.
+1. Share with AI (preview, then Share or Copy instead).
 2. Paste the update (or tap **Paste**), then **Check update**.
 3. Errors appear, or the preview, then **Apply N changes** or **Discard** in the bottom bar.
    - **Repairs (option A, #47):** if the import fixed anything, the preview starts with one quiet line, "Fixed automatically: N formatting problems in what the AI sent.", and **Details** lists exactly what was repaired. A clean update shows nothing extra.

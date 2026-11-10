@@ -44,15 +44,67 @@ test.beforeEach(async ({ context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 });
 
-test('copies AI session instructions with the current config and protocol', async ({ page }) => {
+/** Stand in for the browser's share sheet (the Web Share API) and remember what it was given. */
+async function stubWebShare(page: Page, behaviour: 'share' | 'abort' = 'share') {
+  await page.addInitScript((b) => {
+    (window as any).__shared = [];
+    (navigator as any).share = async (data: ShareData) => {
+      if (b === 'abort') throw Object.assign(new Error('cancelled'), { name: 'AbortError' });
+      (window as any).__shared.push(data.text);
+    };
+  }, behaviour);
+}
+const shared = (page: Page) => page.evaluate(() => (window as any).__shared as string[]);
+
+test('#119 Share with AI: preview the exact payload, then the share sheet gets exactly that text; nothing changes', async ({ page }) => {
+  await stubWebShare(page);
   await openConfigure(page);
-  await page.getByRole('button', { name: 'Copy AI instructions' }).click();
-  await expect(page.getByText('Instructions copied')).toBeVisible(); // step 1 collapses to one line
-  const text = await page.evaluate(() => navigator.clipboard.readText());
+  const before = await storedPlan(page);
+  await page.getByRole('button', { name: 'Share configuration with AI' }).click();
+  await expect(page.getByTestId('share-sheet')).toContainText('including your profile and health details');
+  const text = (await page.getByTestId('share-preview').textContent())!;
+  expect(text.split('\n')[0]).toBe('Body Anvil configuration share · format 1 · configuration schema version 1');
   expect(text).toContain('Configuration schema version: 1');
-  expect(text).toContain('"Fixed lunch"');
+  expect(text).toContain('"Fixed lunch"'); // the actual persisted configuration
   expect(text).toContain('Include ONLY the sections you are changing');
-  expect(text).toContain('"fitnessConfigUpdate"');
+  await page.getByTestId('share-confirm').click();
+  await expect(page.getByTestId('share-sheet')).toHaveCount(0);
+  expect(await shared(page)).toEqual([text]);
+  await expect(page.getByText('Shared with your AI')).toBeVisible(); // step 1 collapses to one line
+  expect(await storedPlan(page)).toEqual(before); // sharing never changes the configuration
+  // The existing import flow is next and unchanged.
+  await expect(page.getByLabel('AI update')).toBeVisible();
+});
+
+test('#119 cancelling the share sheet or the preview shares nothing and keeps the configuration', async ({ page }) => {
+  await stubWebShare(page, 'abort');
+  await openConfigure(page);
+  const before = await storedPlan(page);
+  await page.getByRole('button', { name: 'Share configuration with AI' }).click();
+  await page.getByTestId('share-confirm').click();
+  await expect(page.getByTestId('share-sheet')).toBeVisible(); // dismissed: back on the preview
+  await page.getByRole('button', { name: 'Cancel sharing' }).click();
+  await expect(page.getByTestId('share-sheet')).toHaveCount(0);
+  await expect(page.getByText('Shared with your AI')).toHaveCount(0);
+  expect(await storedPlan(page)).toEqual(before);
+});
+
+test('#119 Copy instead: the same payload goes on the clipboard (also the fallback with no share sheet)', async ({ page }) => {
+  await page.addInitScript(() => delete (navigator as any).share);
+  await openConfigure(page);
+  await page.getByRole('button', { name: 'Share configuration with AI' }).click();
+  const text = (await page.getByTestId('share-preview').textContent())!;
+  await page.getByTestId('share-copy').click();
+  await expect(page.getByText('Instructions copied')).toBeVisible();
+  await expect(page.getByTestId('config-share-notice')).toContainText('Copied.');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
+
+  // No Web Share API: Share itself falls back to the clipboard.
+  await page.evaluate(() => navigator.clipboard.writeText(''));
+  await page.getByRole('button', { name: 'Share configuration again' }).click();
+  await page.getByTestId('share-confirm').click();
+  await expect(page.getByTestId('share-sheet')).toHaveCount(0);
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
 });
 
 test('exercise-only update: preview, explicit confirm, only exercise changes', async ({ page }) => {
@@ -238,6 +290,12 @@ test.describe('visual', () => {
   test('configure-start', async ({ page }) => {
     await openConfigure(page);
     await expect(page).toHaveScreenshot('configure-start.png');
+  });
+  test('configure-share (#119: the payload preview)', async ({ page }) => {
+    await openConfigure(page);
+    await page.getByRole('button', { name: 'Share configuration with AI' }).click();
+    await expect(page.getByTestId('share-preview')).toBeVisible();
+    await expect(page).toHaveScreenshot('configure-share.png');
   });
   test('configure-preview', async ({ page }) => {
     await openConfigure(page);

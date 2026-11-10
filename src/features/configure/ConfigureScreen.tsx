@@ -10,6 +10,9 @@ import { useApp } from '../../providers/AppProvider';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
+import * as Clipboard from 'expo-clipboard';
+import type { ShareResult } from '../../platform/shareText';
+import { SharePreviewSheet } from '../../ui/SharePreviewSheet';
 import { useConfigSession } from './useConfigSession';
 
 const mark: Record<ChangeLine['kind'], string> = { add: '+', remove: '−', change: '~' };
@@ -26,7 +29,22 @@ export function ConfigureScreen() {
 
   const { store, reloadPlan, energy } = useApp();
   const s = useConfigSession(store, reloadPlan, energy);
-  const [copied, setCopied] = useState(false);
+  /** How step 1 finished (#119): shared through the share sheet, or copied. */
+  const [sent, setSent] = useState<'shared' | 'copied' | null>(null);
+  /** The exact payload under review in the share preview; null when it is closed. */
+  const [sharing, setSharing] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const openShare = () => {
+    setNotice(null);
+    setSharing(s.sharePayload());
+  };
+  const onShareResult = (r: ShareResult) => {
+    if (r === 'dismissed') return; // back on the preview, nothing sent
+    if (r === 'unavailable') return setNotice("Sharing isn't available here. Use Copy instead.");
+    setSharing(null);
+    setSent(r === 'copied' ? 'copied' : 'shared');
+    setNotice(r === 'copied' ? 'Copied. Paste it into a new chat in ChatGPT, Claude or another app.' : null);
+  };
   const [diagnosticsCopied, setDiagnosticsCopied] = useState(false);
   // A new check result means new details: the copy button starts over.
   useEffect(() => setDiagnosticsCopied(false), [s.check]);
@@ -42,7 +60,7 @@ export function ConfigureScreen() {
 
   const previewing = s.check.kind === 'preview';
   const hasText = s.text.trim() !== '';
-  const copyDone = copied || hasText;
+  const copyDone = sent !== null || hasText;
   const latest = s.history[0];
   const canUndo = latest && latest.toRevision === s.stored?.revision;
 
@@ -61,20 +79,25 @@ export function ConfigureScreen() {
           </Text>
         )}
 
-        {/* Step 1: copy the instructions. */}
+        {/* Step 1 (#119): preview, then share the configuration and instructions (or copy them). */}
         {copyDone ? (
           <DoneRow
-            label={copied ? 'Instructions copied' : 'AI instructions'}
-            action="Copy again"
-            actionLabel="Copy AI instructions"
-            onPress={async () => setCopied(await s.copyInstructions())}
+            label={sent === 'shared' ? 'Shared with your AI' : sent === 'copied' ? 'Instructions copied' : 'AI instructions'}
+            action="Share again"
+            actionLabel="Share configuration again"
+            onPress={openShare}
           />
         ) : (
           <View style={styles.step}>
-            <Text style={type.section}>1 · Copy instructions</Text>
-            <Text style={type.detail}>Paste them into a new chat. They include your current setup and the exact format the app accepts.</Text>
-            <Button title="Copy AI instructions" onPress={async () => setCopied(await s.copyInstructions())} accessibilityLabel="Copy AI instructions" />
+            <Text style={type.section}>1 · Share with your AI</Text>
+            <Text style={type.detail}>Your current setup and the exact format the app accepts. You'll see everything before it's sent.</Text>
+            <Button title="Share with AI" onPress={openShare} accessibilityLabel="Share configuration with AI" testID="config-share" />
           </View>
+        )}
+        {notice && (
+          <Text style={type.detail} testID="config-share-notice" accessibilityLiveRegion="polite">
+            {notice}
+          </Text>
         )}
 
         {/* Step 2: paste and check the AI's update. */}
@@ -175,6 +198,18 @@ export function ConfigureScreen() {
             />
           </View>
         </View>
+      )}
+
+      {sharing !== null && (
+        <SharePreviewSheet
+          title="Share with AI"
+          text={sharing}
+          intro="This is exactly what will be shared, including your profile and health details. Nothing in the app changes until you paste the AI's update back and confirm it."
+          cancelLabel="Cancel sharing"
+          onClose={() => setSharing(null)}
+          onResult={onShareResult}
+          copy={(t) => Clipboard.setStringAsync(t).then(() => undefined)}
+        />
       )}
     </SafeAreaView>
   );

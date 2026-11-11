@@ -2,6 +2,8 @@
 
 Start a fresh Gemini chat using Body Anvil's **Share with AI** text from a test install with the bundled seed configuration. Use fictional profile details. The share text supplies the current schema version, supported fields and examples. Then send the prompt below. Repeat with ChatGPT or Claude to compare replies.
 
+For regeneration of the supplied 60-scenario capture, attach that file after the shared instructions and ask Gemini to regenerate its payloads using the supplied supported sections, fields and delimiters. Preserve the original scenario ids. Treat each ACCEPT label as a claim to verify with the parser. A scenario requiring unsupported settings should produce a clarification reply. The shared instructions provide the current grammar and JSON compatibility envelope.
+
 > Generate independent Body Anvil parser test replies using the instructions and current configuration above. These are fixtures and will be checked against a disposable plan. Return each reply separately, under its scenario name, with any prose that should be part of that reply. Use one update block per reply unless the scenario calls for two. For the deliberately invalid scenarios, include the specified error so the app can diagnose it.
 >
 > 1. **Full**. Return a complete valid update covering every populated section and every field in the supplied current configuration. Change the display name to “Sam Lee”.

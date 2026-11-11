@@ -19,10 +19,26 @@ $buildArgs = @('build', '--file', 'docker/android.Dockerfile', '--tag', $tag)
 # #136: the health-sync enrollment key, from the environment or .env.local (git-ignored). Passed as a BuildKit
 # secret, so it's inlined into the APK's JS bundle but never stored in the image. Never printed.
 $keyName = 'EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY'
-if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($keyName)) -and (Test-Path '.env.local')) {
+$urlName = 'EXPO_PUBLIC_BODY_ANVIL_API_URL'
+# Values already in the environment win; otherwise read them from .env.local.
+if (Test-Path '.env.local') {
   foreach ($line in Get-Content '.env.local') {
-    if ($line -match "^\s*$keyName\s*=\s*(.*?)\s*$") { [Environment]::SetEnvironmentVariable($keyName, $Matches[1].Trim('"', "'")) }
+    foreach ($name in @($keyName, $urlName)) {
+      if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name)) -and $line -match "^\s*$name\s*=\s*(.*?)\s*$") {
+        [Environment]::SetEnvironmentVariable($name, $Matches[1].Trim('"', "'"))
+      }
+    }
   }
+}
+# #146: the API base URL is not a secret: a plain build arg. A test APK is a release build, so it must be https://.
+$apiUrl = [Environment]::GetEnvironmentVariable($urlName)
+if ([string]::IsNullOrWhiteSpace($apiUrl)) {
+  Write-Warning "$urlName is not set (environment or .env.local): this APK's health data sync will be off."
+} elseif ($apiUrl -notmatch '^https://') {
+  throw "$urlName must be https:// for an APK (release build). For http://10.0.2.2 or a LAN address use a dev build: npx expo run:android."
+} else {
+  $buildArgs += @('--build-arg', "$urlName=$apiUrl")
+  Write-Host "Body Anvil API: $apiUrl"
 }
 $key = [Environment]::GetEnvironmentVariable($keyName)
 if ([string]::IsNullOrWhiteSpace($key)) {

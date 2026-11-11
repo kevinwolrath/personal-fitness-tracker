@@ -9,9 +9,17 @@ No Cloudflare account, domain or credential is in this repository. Nothing here 
 
 ## Base URL
 
-`https://<questspire host>`. The app reads `EXPO_PUBLIC_HEALTH_SYNC_URL` at build time, and the user can set or change
-the address in **Health data sync → Server address**. Only `https://` is accepted (plain `http://` only for
-localhost while developing). No user, password, query or fragment is allowed in the address.
+The API base URL is a **build setting**, `EXPO_PUBLIC_BODY_ANVIL_API_URL` (#146), read only in
+`src/healthSync/config.ts`. It's inlined into the JS bundle when the app is built, and users never enter or see it.
+
+**Rules:**
+- There is no default. Without a valid value, syncing and sharing are off and the sheet says so. The app never falls
+  back to another address.
+- Release builds (Play AAB, test APK, web export) accept `https://` only.
+- Dev builds (`__DEV__`) also accept `http://` to a development host: `localhost`, `10.0.2.2` (the Android emulator's
+  address for your PC), or a private LAN address (`10.x`, `192.168.x`, `172.16–31.x`) for a physical phone on the
+  same Wi-Fi.
+- No user, password, query or fragment is allowed in the address. A trailing slash is ignored.
 
 All paths below are under `/api/body-anvil/v1`. Requests and responses are `application/json`.
 
@@ -40,14 +48,19 @@ bundled into an app can be extracted. No Play Integrity, user codes or extra aut
 
 ### Production (Google Play)
 
-GitHub → Settings → Secrets and variables → Actions → repository secret **`BODY_ANVIL_ENROLLMENT_KEY`**, with the
-same value as the Worker's production secret `BODY_ANVIL_ENROLLMENT_KEY`.
+Set two values under GitHub → Settings → Secrets and variables → Actions:
+- **Variables** → **`BODY_ANVIL_API_URL`**: the Questspire Studio Body Anvil API base URL, `https://…`. It's not a
+  secret.
+- **Secrets** → **`BODY_ANVIL_ENROLLMENT_KEY`**: the same value as the Worker's production secret of that name.
 
-1. `.github/workflows/google-play-internal.yml` refuses to start the build without it.
-2. It passes the value into the build container by name, as `EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY`.
-3. `scripts/google-play-release.sh` refuses to build without it.
-4. After `bundleRelease`, `scripts/check-enrollment-key.py` checks that the AAB's JS bundle contains it. It prints only
-   present or absent, and blocks the upload when absent.
+The build then:
+1. **Workflow** (`.github/workflows/google-play-internal.yml`): refuses to start unless both are set and the URL is an
+   `https://` base URL.
+2. **Container:** both are passed by name, as `EXPO_PUBLIC_BODY_ANVIL_API_URL` and
+   `EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY`.
+3. **`scripts/google-play-release.sh`:** refuses to build without either, or with a non-https URL.
+4. **After `bundleRelease`,** `scripts/check-build-config.py` checks that the AAB's JS bundle contains both. It prints
+   the URL but only present or absent for the key, and blocks the upload when either is missing.
 
 To rotate the key, change both secrets and ship a new build. Older builds then get `401` on enroll; already-linked
 phones are unaffected.
@@ -57,7 +70,7 @@ phones are unaffected.
 **Body Anvil (this repo):** copy `.env.example` to `.env.local` (git-ignored) and set:
 
 ```bash
-EXPO_PUBLIC_HEALTH_SYNC_URL=http://localhost:8787        # Android emulator: http://10.0.2.2:8787
+EXPO_PUBLIC_BODY_ANVIL_API_URL=http://localhost:8787   # see below for emulator and phone addresses
 EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY=<same value as the Worker's .dev.vars>
 ```
 
@@ -69,14 +82,23 @@ BODY_ANVIL_ENROLLMENT_KEY=<a local-only value, not the production key>
 ```
 
 ```bash
-npx wrangler dev        # serves http://localhost:8787
+npx wrangler dev                 # web and emulator: http://localhost:8787
+npx wrangler dev --ip 0.0.0.0    # also reachable from a phone on the same Wi-Fi
 ```
 
 Then:
-- **Web:** `npx expo start --web --clear`.
-- **Android dev build:** `npx expo run:android`. Debug builds allow `http://` to `10.0.2.2`; release builds need https.
-- **Sideloadable test APK:** `./scripts/build-apk.ps1`. It reads the key from the environment or `.env.local` and passes
-  it as a BuildKit secret, so it's in the APK but never in a Docker image layer.
+
+| Target | `EXPO_PUBLIC_BODY_ANVIL_API_URL` | Start |
+|---|---|---|
+| Web | `http://localhost:8787` | `npx expo start --web --clear` |
+| Android emulator (dev build) | `http://10.0.2.2:8787` (on Android, `localhost` is the phone, not your PC) | `npx expo run:android` |
+| Physical phone (dev build) | `http://<your PC's LAN IP>:8787` (Worker with `--ip 0.0.0.0`) | `npx expo run:android` |
+| Sideloadable test APK (release) | an `https://` address only | `./scripts/build-apk.ps1` |
+
+- **Dev builds:** debug builds allow `http://` to these hosts.
+- **Test APK:** this is a release build, so `build-apk.ps1` refuses `http://`. It reads both values from the
+  environment or `.env.local`. The URL goes in as a build arg; the key goes in as a BuildKit secret, so it's in the APK
+  but never in a Docker image layer.
 
 **Always start with `--clear` after changing `.env.local`.** Metro's transform cache keeps inlined `EXPO_PUBLIC_`
 values, so without it an old key can survive. The e2e builds always clear, and use a placeholder key, never a real one.

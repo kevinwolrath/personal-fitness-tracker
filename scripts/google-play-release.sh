@@ -9,6 +9,12 @@ set -euo pipefail
 # #136: the health-sync enrollment key (GitHub secret BODY_ANVIL_ENROLLMENT_KEY), inlined into the JS bundle by
 # the Gradle build. Never printed.
 : "${EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY:?EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY is required (GitHub secret BODY_ANVIL_ENROLLMENT_KEY)}"
+# #146: the Body Anvil API base URL (GitHub variable BODY_ANVIL_API_URL). Release builds accept https only.
+: "${EXPO_PUBLIC_BODY_ANVIL_API_URL:?EXPO_PUBLIC_BODY_ANVIL_API_URL is required (GitHub variable BODY_ANVIL_API_URL)}"
+case "$EXPO_PUBLIC_BODY_ANVIL_API_URL" in
+  https://*) ;;
+  *) echo "EXPO_PUBLIC_BODY_ANVIL_API_URL must start with https:// for a release build" >&2; exit 1 ;;
+esac
 
 KEYSTORE=/run/secrets/personal-fitness-tracker-upload.jks
 [ -f "$KEYSTORE" ] || { echo "Upload keystore is missing" >&2; exit 1; }
@@ -87,9 +93,9 @@ cd ..
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
 
-# #136: the bundle inside the AAB must carry the configured enrollment key (guards against a stale cached bundle
-# or a missing variable). Reports only present/absent: the key itself is never printed.
-AAB="$AAB" python3 /app/scripts/check-enrollment-key.py
+# #136, #146: the bundle inside the AAB must carry the configured enrollment key and API URL (guards against a stale
+# cached bundle or a missing variable). Reports only present/absent: the key itself is never printed.
+AAB="$AAB" python3 /app/scripts/check-build-config.py
 
 # Reuse this exact signing/build pipeline for a later listing+AAB draft operation (#100).
 if [ "${PLAY_BUILD_ONLY:-false}" = "true" ]; then

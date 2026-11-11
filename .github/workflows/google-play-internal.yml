@@ -34,6 +34,8 @@ jobs:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
       # #136: shared enrollment key for the health-sync API, inlined into the JS bundle at build time.
       BODY_ANVIL_ENROLLMENT_KEY: ${{ secrets.BODY_ANVIL_ENROLLMENT_KEY }}
+      # #146: the Body Anvil API base URL (https). A repository variable, not a secret; inlined into the JS bundle.
+      BODY_ANVIL_API_URL: ${{ vars.BODY_ANVIL_API_URL }}
 
     steps:
       - name: Checkout
@@ -105,6 +107,7 @@ jobs:
             'ANDROID_KEY_PASSWORD',
             'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON',
             'BODY_ANVIL_ENROLLMENT_KEY',
+            'BODY_ANVIL_API_URL',
             'ANDROID_VERSION_CODE'
           )
           foreach ($name in $required) {
@@ -127,6 +130,11 @@ jobs:
 
           # Passed by name (--env NAME), so the value never appears on a command line.
           $env:EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY = $env:BODY_ANVIL_ENROLLMENT_KEY
+          $env:EXPO_PUBLIC_BODY_ANVIL_API_URL = $env:BODY_ANVIL_API_URL
+          if ($env:EXPO_PUBLIC_BODY_ANVIL_API_URL -notmatch '^https://[^\s/?#@]+(/[^\s?#]*)?$') {
+            throw "BODY_ANVIL_API_URL must be an https:// base URL (no credentials, query or fragment). See docs/health-sync-api.md."
+          }
+          Write-Host "Body Anvil API: $env:EXPO_PUBLIC_BODY_ANVIL_API_URL"
 
           try {
             [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
@@ -139,6 +147,7 @@ jobs:
               --env ANDROID_VERSION_CODE `
               --env PLAY_BUILD_ONLY `
               --env EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY `
+              --env EXPO_PUBLIC_BODY_ANVIL_API_URL `
               --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
               --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
               --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `

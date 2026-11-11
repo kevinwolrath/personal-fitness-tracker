@@ -5,6 +5,7 @@ import type { Reminder } from '../../reminders/schedule';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
+import { SheetScroll } from '../../ui/SheetScroll';
 import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { useReminders } from './RemindersProvider';
 
@@ -35,6 +36,7 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
   return (
     <Sheet visible={visible} onClose={onClose} label="Reminders">
       <ModalHeader title="Reminders" dismiss={{ label: 'Close', onPress: onClose }} />
+      <SheetScroll testID="reminders-scroll">
       <View style={styles.body} testID="reminders-sheet">
         {r.enabled ? (
           <View style={styles.switchRow}>
@@ -102,6 +104,7 @@ export function RemindersSheet({ visible, onClose }: { visible: boolean; onClose
           </View>
         )}
       </View>
+      </SheetScroll>
     </Sheet>
   );
 }

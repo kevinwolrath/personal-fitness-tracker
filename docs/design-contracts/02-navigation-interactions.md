@@ -33,6 +33,11 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 **Modal routes** (`/import`, `/configure`, `/meal-photo`, contract 15) are tasks rather than places. They cover the shell and use the modal header below. They don't show the app bar.
 
+**Sheet bottom edge and scrolling (#142).**
+- On Android, the sheet panel is padded by the system navigation-bar inset, read from the app's `SafeAreaProvider`. The modal window is edge-to-edge (`statusBarTranslucent` + `navigationBarTranslucent`), so three-button navigation gets the bar's full height, gesture navigation only its handle area, and no bar adds no blank space.
+- A sheet whose content can outgrow the screen (on small screens or with large fonts) puts that content in `SheetScroll` (`src/ui/SheetScroll.tsx`), below its fixed `ModalHeader`. The last row can always be scrolled fully into view and tapped. Sheets with their own scroll area (`fill` sheets) already do this.
+- No sheet adds a hard-coded bottom offset.
+
 **Modal and sheet header (#21).** Every modal screen and every sheet uses one header, `ModalHeader` (`src/ui/ModalHeader.tsx`). There are no hand-built headers.
 
 | Left | Centre | Right |

@@ -8,3 +8,6 @@ artifacts
 .git
 .github
 *.log
+# Local env files can hold keys (#136). Images never contain them; builds pass keys as env or BuildKit secrets.
+.env
+.env.*

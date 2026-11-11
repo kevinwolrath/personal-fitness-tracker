@@ -25,23 +25,69 @@ All paths below are under `/api/body-anvil/v1`. Requests and responses are `appl
 
 ## Enrollment key (#136)
 
-The backend accepts a first link only from a client that knows a **shared enrollment key**. The user types it once in
-**Health data sync → Enrollment key**. The app keeps it only in secure storage (`pft.healthSync.enrollmentKey`).
-It is never stored in SQLite or put in a backup, export, snapshot, share link, log or the APK.
+The Worker accepts a first link (enroll) only with the shared **enrollment key** in `X-Enrollment-Key`. The key is
+**built into the app**; users never type or see it. It deters casual enrollment against the public API, but anything
+bundled into an app can be extracted. No Play Integrity, user codes or extra auth are involved.
 
-- It is sent **only** as the `X-Enrollment-Key` header on `POST /enroll`, over HTTPS. It is never sent with
-  snapshot GET/PUT, the shares endpoints or any other request.
-- With no key saved, the first sync stops before any network call and asks for it.
-- A `401`/`403` from `/enroll` means the key was rejected. The app says so and offers to edit it and retry. The data ID
-  and the saved enrollment secret are kept, so the retry is the same idempotent enroll.
-- After linking, the owner token is enough. The key can be removed from the phone; it is needed again only to link
-  another phone or data ID.
+- **Source:** `EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY`, inlined into the JS bundle at build time
+  (`src/healthSync/config.ts`).
+- **Sent:** only as `X-Enrollment-Key` on `POST /enroll` and its retries, over HTTPS. Never on snapshot GET/PUT, the
+  shares endpoints or anything else, and never in a URL, a body, a snapshot, a share, secure storage or a log.
+- **Missing from a build:** the first link stops before any request, with "This version of the app isn't set up to
+  link to the server yet". Phones that are already linked keep syncing with their owner token.
+- **Rejected (`401`/`403` on enroll):** "The server didn't accept this app's enrollment key". Nothing is linked or
+  changed. The data ID and the saved enrollment secret are kept, so a later retry is the same idempotent enroll.
+
+### Production (Google Play)
+
+GitHub → Settings → Secrets and variables → Actions → repository secret **`BODY_ANVIL_ENROLLMENT_KEY`**, with the
+same value as the Worker's production secret `BODY_ANVIL_ENROLLMENT_KEY`.
+
+1. `.github/workflows/google-play-internal.yml` refuses to start the build without it.
+2. It passes the value into the build container by name, as `EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY`.
+3. `scripts/google-play-release.sh` refuses to build without it.
+4. After `bundleRelease`, `scripts/check-enrollment-key.py` checks that the AAB's JS bundle contains it. It prints only
+   present or absent, and blocks the upload when absent.
+
+To rotate the key, change both secrets and ship a new build. Older builds then get `401` on enroll; already-linked
+phones are unaffected.
+
+### Local development (both repositories)
+
+**Body Anvil (this repo):** copy `.env.example` to `.env.local` (git-ignored) and set:
+
+```bash
+EXPO_PUBLIC_HEALTH_SYNC_URL=http://localhost:8787        # Android emulator: http://10.0.2.2:8787
+EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY=<same value as the Worker's .dev.vars>
+```
+
+**Questspire Studio Worker:** in the Worker's directory, put the same value in `.dev.vars` (git-ignored there) and run
+it locally:
+
+```bash
+BODY_ANVIL_ENROLLMENT_KEY=<a local-only value, not the production key>
+```
+
+```bash
+npx wrangler dev        # serves http://localhost:8787
+```
+
+Then:
+- **Web:** `npx expo start --web --clear`.
+- **Android dev build:** `npx expo run:android`. Debug builds allow `http://` to `10.0.2.2`; release builds need https.
+- **Sideloadable test APK:** `./scripts/build-apk.ps1`. It reads the key from the environment or `.env.local` and passes
+  it as a BuildKit secret, so it's in the APK but never in a Docker image layer.
+
+**Always start with `--clear` after changing `.env.local`.** Metro's transform cache keeps inlined `EXPO_PUBLIC_`
+values, so without it an old key can survive. The e2e builds always clear, and use a placeholder key, never a real one.
+
+`.env`, `.env.local` and `.env.*` are excluded from Docker build contexts (`.dockerignore`); `.env*.local` is git-ignored.
 
 ## Endpoints
 
 | Method and path | Auth | Body | Success |
 |---|---|---|---|
-| `POST /enroll` | `X-Enrollment-Key` | `{ userId, enrollmentSecret, snapshot }` | `201` (new) or `200` (same `userId` **and** same secret again: idempotent retry) `{ userId, ownerToken, snapshot: Receipt }` |
+| `POST /enroll` | `X-Enrollment-Key` (build-time key) | `{ userId, enrollmentSecret, snapshot }` | `201` (new) or `200` (same `userId` **and** same secret again: idempotent retry) `{ userId, ownerToken, snapshot: Receipt }` |
 | `PUT /users/{userId}/snapshot` | owner | the snapshot document | `200 Receipt` (replaces the latest; repeating the same body is harmless) |
 | `GET /users/{userId}/snapshot` | owner | – | `200 { snapshot, etag, uploadedAt, bytes }`; `404` when none |
 | `POST /users/{userId}/shares` | owner | `{ scope: { days: 7\|30\|90\|null, categories: string[] }, expiresInHours: 1\|24, document }` | `201 ShareLink` |

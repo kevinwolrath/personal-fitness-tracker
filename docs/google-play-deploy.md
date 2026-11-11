@@ -18,6 +18,7 @@ These are the names the workflow reads (`.github/workflows/google-play-internal.
 - `ANDROID_UPLOAD_KEY_ALIAS` — `personal-fitness-tracker` (or the alias actually used when the key was generated)
 - `ANDROID_UPLOAD_KEY_PASSWORD` — key password
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` — the Google Play service-account JSON key, as plain JSON text
+- `BODY_ANVIL_ENROLLMENT_KEY` — the health-sync enrollment key (#136), the same value as the Questspire Studio Worker's production secret. It's inlined into the app's JS bundle, and the build checks that the AAB contains it without printing it. See [the health sync API](health-sync-api.md#enrollment-key-136).
 
 PowerShell example for producing the keystore's base64 value locally (do not commit or paste the output into issues/logs):
 
@@ -43,7 +44,7 @@ The job prints the package, fixed `internal` target and versionCode before build
 
 1. generates the Android project (`expo prebuild`) and points the **release** build type at the upload key;
 2. checks, before the Gradle build, that the applicationId, versionCode and release signing are right (a mismatch fails in seconds);
-3. builds the signed AAB;
+3. builds the signed AAB, with `BODY_ANVIL_ENROLLMENT_KEY` inlined, and checks that the bundle carries it (only present or absent is logged);
 4. uploads it with `scripts/upload-play-bundle.js`: a resumable upload in 8 MiB chunks that, when the connection drops, asks Google how much arrived and continues from there (up to 8 attempts with backoff), then releases it to the internal track and commits.
 
 The release then appears under Play Console → Testing → Internal testing. If the app has never been published, Play only accepts draft releases: the script then creates a **draft** internal release, and the log says so; roll it out in Play Console.

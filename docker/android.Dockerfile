@@ -27,7 +27,18 @@ RUN npx expo prebuild --platform android --no-install --non-interactive
 # (debuggableVariants), so a debug APK shows "Unable to load script" without Metro.
 # Expo's generated project signs release with its debug keystore, so this APK still
 # sideloads without Play Store credentials.
+#
+# #136: the health-sync enrollment key comes in as a BuildKit secret (scripts/build-apk.ps1 reads .env.local), so
+# it is inlined into the APK's JS bundle but never stored in an image layer or its history. Optional: without it the
+# test APK runs, but can't link a new phone to the sync server. ENROLLMENT_BUILD_REVISION (a short hash, not the
+# key) only makes Docker rebuild this step when the key changes.
+ARG ENROLLMENT_BUILD_REVISION=none
 RUN --mount=type=cache,target=/gradle-cache \
+    --mount=type=secret,id=body_anvil_enrollment_key,required=false \
+    echo "enrollment build revision: $ENROLLMENT_BUILD_REVISION" && \
+    if [ -s /run/secrets/body_anvil_enrollment_key ]; then \
+      export EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY="$(cat /run/secrets/body_anvil_enrollment_key)"; \
+    fi && \
     cd android && ./gradlew assembleRelease --no-daemon --build-cache -PreactNativeArchitectures=$ANDROID_ABIS
 
 # Refuse to hand out an APK that would need Metro: the JS bundle must be inside it.

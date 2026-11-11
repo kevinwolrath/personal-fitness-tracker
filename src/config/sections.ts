@@ -35,6 +35,8 @@ type Field = {
   title: string;
   /** What this field holds, for the AI instructions. */
   doc: string;
+  /** Fixed unit accepted as a suffix on a numeric text value. */
+  textUnit?: string;
   /**
    * An id-keyed list that also accepts `{ "merge": [items] }`: items replace the ones with the same id,
    * new ids are added, and every other item is left exactly as it was (contract 07, #26).
@@ -116,7 +118,7 @@ export const sections = {
     fields: {
       units: top('units', 'Units', unitsSchema, 'Display units: { mass: "kg"|"lb", energy: "kJ"|"kcal", length: "cm"|"in" }'),
       displayName: nested('profile', 'displayName', 'Name', pr.displayName, 'Name to address the user by'),
-      heightCm: nested('profile', 'heightCm', 'Height', pr.heightCm, 'Height in cm'),
+      heightCm: { ...nested('profile', 'heightCm', 'Height', pr.heightCm, 'Height in cm'), textUnit: 'cm' },
       notes: nested('profile', 'notes', 'Notes', pr.notes, 'Free-text facts about the user (max 10 x 200 chars)'),
       gender: nested('profile', 'gender', 'Gender', pr.gender, 'male | female | other. Stored only: never base numbers or plans on it.'),
       ageBand: nested('profile', 'ageBand', 'Age', pr.ageBand, 'Age band: under_18 | 18_39 | 40_59 | 60_plus. under_18 is tracking only: never suggest weight loss or calorie targets. Never ask for a date of birth.'),

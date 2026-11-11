@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import seed from '../plans/seed.plan.json';
+import { formatConfigText } from '../src/config/text';
 import { MONDAY, expandToFullDay, openAt, row, seedPlan, chooseFromMenu, exportAllData } from './helpers';
 
 /** Issue #7: AI-configurable fitness profile with partial, previewed, confirmed updates. */
@@ -55,6 +56,8 @@ async function stubWebShare(page: Page, behaviour: 'share' | 'abort' = 'share') 
   }, behaviour);
 }
 const shared = (page: Page) => page.evaluate(() => (window as any).__shared as string[]);
+// The Windows clipboard exposes native CRLF line endings.
+const clipboardText = (page: Page) => page.evaluate(async () => (await navigator.clipboard.readText()).replace(/\r\n/g, '\n'));
 
 test('#119 Share with AI: preview the exact payload, then the share sheet gets exactly that text; nothing changes', async ({ page }) => {
   await stubWebShare(page);
@@ -63,7 +66,7 @@ test('#119 Share with AI: preview the exact payload, then the share sheet gets e
   await page.getByRole('button', { name: 'Share configuration with AI' }).click();
   await expect(page.getByTestId('share-sheet')).toContainText('including your profile and health details');
   const text = (await page.getByTestId('share-preview').textContent())!;
-  expect(text.split('\n')[0]).toBe('Body Anvil configuration share · format 1 · configuration schema version 1');
+  expect(text.split('\n')[0]).toBe('Body Anvil configuration share · format 2 · configuration schema version 1');
   expect(text).toContain('Configuration schema version: 1');
   expect(text).toContain('"Fixed lunch"'); // the actual persisted configuration
   expect(text).toContain('Include ONLY the sections you are changing');
@@ -97,14 +100,14 @@ test('#119 Copy instead: the same payload goes on the clipboard (also the fallba
   await page.getByTestId('share-copy').click();
   await expect(page.getByText('Instructions copied')).toBeVisible();
   await expect(page.getByTestId('config-share-notice')).toContainText('Copied.');
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
+  expect(await clipboardText(page)).toBe(text);
 
   // No Web Share API: Share itself falls back to the clipboard.
   await page.evaluate(() => navigator.clipboard.writeText(''));
   await page.getByRole('button', { name: 'Share configuration again' }).click();
   await page.getByTestId('share-confirm').click();
   await expect(page.getByTestId('share-sheet')).toHaveCount(0);
-  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(text);
+  expect(await clipboardText(page)).toBe(text);
 });
 
 test('exercise-only update: preview, explicit confirm, only exercise changes', async ({ page }) => {
@@ -157,18 +160,23 @@ test('nutrition-only update leaves exercise untouched and immediately drives the
   await expect(row(page, 'dinner')).toContainText('≈ 4,300 kJ left');
 });
 
-test('combined update in a fenced block with chat prose around it, pasted from the clipboard', async ({ page }) => {
+test('combined text update from the clipboard previews, applies and can be undone', async ({ page }) => {
   await openConfigure(page);
-  const reply = `Great, here is your update:\n\n\`\`\`json\n${fixture('combined')}\`\`\`\n\nAnything else?`;
+  const before = await storedPlan(page);
+  const reply = `Here is your update:\n\n\`\`\`text\n${formatConfigText(JSON.parse(fixture('combined')).fitnessConfigUpdate)}\n\`\`\`\n\nAnything else?`;
   await page.evaluate((t) => navigator.clipboard.writeText(t), reply);
   await page.getByRole('button', { name: 'Paste', exact: true }).click();
   await page.getByRole('button', { name: 'Check update' }).click();
   await expect(await openSection(page, 'exercise')).toContainText('Added Fortis home multi-gym');
   await expect(await openSection(page, 'nutrition')).toContainText('Energy: ≤ 7,530 kJ → ≤ 7,300 kJ');
   await expect(page.getByTestId('preview-unchanged')).toContainText('schedule');
+  expect(await storedPlan(page)).toEqual(before);
   await applyButton(page).click();
   await expect(page.getByTestId('summary-nutrition')).toContainText('Energy ≤ 7,300 kJ');
   await expect(page.getByTestId('summary-exercise')).toContainText('Hammer curl permitted');
+  await page.getByRole('button', { name: 'Undo last change' }).click();
+  await expect(page.getByTestId('config-history')).toContainText('Undo');
+  expect(sectionsOf(await storedPlan(page))).toEqual(sectionsOf(before));
 });
 
 test('after checking, the update collapses and Apply is on screen without scrolling (vertical budget)', async ({ page }) => {

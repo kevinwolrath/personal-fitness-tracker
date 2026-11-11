@@ -10,11 +10,8 @@ import {
   trainingLocations,
 } from '../plan/schema';
 import { bundledInventory } from '../exercises/inventory';
-import { CONFIG_SCHEMA_VERSION, readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
-
-const fence = (json: unknown) => '```json\n' + JSON.stringify(json, null, 2) + '\n```';
-/** An example reply exactly as the AI should send it: the bare object, one line, no fence (#47). */
-const bare = (json: unknown) => JSON.stringify(json);
+import { CONFIG_SCHEMA_VERSION, fieldOf, readConfig, sectionNames, sections, type RawPlan, type SectionName } from './sections';
+import { CONFIG_ENVELOPE, formatConfigText, UPDATE_END, UPDATE_HEADER } from './text';
 
 /**
  * The text the user pastes into any chat assistant (contract 07; tested with Claude, Gemini and ChatGPT reply
@@ -36,8 +33,11 @@ export function buildAiInstructions(raw: RawPlan, today: string, opts: Instructi
   const config = Object.fromEntries(Object.entries(readConfig(raw)).filter(([k]) => !exclude.has(k as SectionName)));
   const fieldDocs = allowed
     .map((s) => {
-      const fields = Object.entries(sections[s].fields).map(([k, f]) => `  - ${k}${f.clearable ? ' (may be null to clear)' : ''}${'mergeById' in f && f.mergeById ? ' (merge by id)' : ''}: ${f.doc}`);
-      return `- ${s}\n${fields.join('\n')}`;
+      const fields = Object.keys(sections[s].fields).map((k) => {
+        const f = fieldOf(s, k);
+        return `  - ${k}${f.clearable ? ' (CLEAR allowed)' : ''}${f.mergeById ? ' (MERGE allowed)' : ''}${f.textUnit ? ` (optional ${f.textUnit} suffix)` : ''}: ${f.doc}`;
+      });
+      return `- [${s}]\n${fields.join('\n')}`;
     })
     .join('\n');
 
@@ -113,26 +113,24 @@ Today is ${today}. Configuration schema version: ${CONFIG_SCHEMA_VERSION}.
 
 ## My current configuration
 
-${fence({ schemaVersion: CONFIG_SCHEMA_VERSION, ...config })}
+${formatConfigText(config, `BODY ANVIL CURRENT CONFIGURATION v${CONFIG_SCHEMA_VERSION}`, 'END CURRENT CONFIGURATION')}
 
 ## Update format
 
-When I say I'm done, your whole reply is ONE JSON object and nothing else: start with { and end with }. No code block, no Markdown, no words before or after it. Shape:
+When I say I'm done, reply with one plain text update block. Start with ${UPDATE_HEADER} and finish with ${UPDATE_END}, each on its own line. Use [section] headings and one field: value per line. See the complete examples below.
 
-${bare({ fitnessConfigUpdate: { schemaVersion: CONFIG_SCHEMA_VERSION, '<section>': { '<field>': '<new value>' } } })}
-
-Sections you can change: ${allowed.join(', ')}.${exclude.size ? ` Never include ${[...exclude].join(' or ')}: the app sets ${exclude.size > 1 ? 'those' : 'that'} up separately.` : ''} Always include "fitnessConfigUpdate" and "schemaVersion": ${CONFIG_SCHEMA_VERSION}.
+Sections you can change: ${allowed.join(', ')}.${exclude.size ? ` Never include ${[...exclude].join(' or ')}: the app sets ${exclude.size > 1 ? 'those' : 'that'} up separately.` : ''}
 
 The update must contain EVERY change we agreed in this conversation, in the right sections, and nothing else. Before sending, check it against my requests one by one.
 
 Rules (the app rejects updates that break them):
 1. Include ONLY the sections you are changing. A missing section is left exactly as it is. Never repeat unchanged sections.
-2. Inside a section, include ONLY the fields you are changing. Each field you include REPLACES that whole field. Lists marked "merge by id" also accept { "merge": [items] }: each item replaces the existing one with the same id, or is added if the id is new, and every other item stays exactly as it is. Prefer merge when changing or adding one or two items (for example one meal). Otherwise, send the complete new list.
-3. To clear an optional field, set it to null (only where marked "may be null").
-4. Use exactly the field names, enum values and id formats listed here, in the same letter case. Unknown fields or values are errors. Plain JSON: double quotes, no comments, no trailing commas, numbers as numbers (not strings), and each field only once.
+2. Inside a section, include ONLY the fields you are changing. A field value replaces the whole field. For fields marked MERGE allowed, use field: MERGE [items] to add items or replace existing items with the same id. Each item must be complete. To remove one item, send the complete remaining list without MERGE. Use [] for an empty list where allowed.
+3. To remove an optional field, write field: CLEAR only where marked CLEAR allowed. Leave omitted fields untouched.
+4. Use the listed names and enum values in the same letter case. Use [a, b] for lists and {key: value, otherKey: value} for grouped values. Simple words, ids and times can be unquoted. Double-quote text with spaces or punctuation and literal words like "true", "false", "CLEAR" or "null". Escape embedded quotes, backslashes and newlines as in JSON. Use unquoted numbers, true and false for their respective types. Keep each field on one line, use each key once and omit trailing commas and comments.
 5. Keep ids stable. Use lower-case-hyphen ids for plan items (meals, activities, targets, goals, measurements), and snake_case ids for movements and activity types (e.g. "hammer_curl").
-6. Use the units of the current configuration (profile.units). Weights for equipment are always kg (weightsKg).
-7. Times are 24-hour "HH:MM". Weekdays are mon tue wed thu fri sat sun.
+6. Use the numeric units in the field descriptions and current configuration (profile.units). Use bare numbers unless a field explicitly lists an optional suffix. Weights for equipment are always kg (weightsKg). Ask before interpreting an unclear quantity.
+7. Times are 24-hour HH:MM. Weekdays are mon tue wed thu fri sat sun.
 8. Don't change sections I didn't talk about, even if you think they could be improved. Suggest it in the chat instead.
 
 ## Sections and fields
@@ -162,13 +160,18 @@ ${fieldDocs}
 
 Each example is a complete reply.
 
-${examples.map((e) => `${e.title}\n\n${bare(e.json)}`).join('\n\n')}
+${examples.map((e) => {
+    const { schemaVersion, ...changes } = e.json.fitnessConfigUpdate;
+    return `${e.title}\n\n${formatConfigText(changes)}`;
+  }).join('\n\n')}
+
+If I explicitly ask for JSON compatibility, return one JSON object with the shape {"${CONFIG_ENVELOPE}":{"schemaVersion":${CONFIG_SCHEMA_VERSION},"<section>":{"<field>": "<value>"}}}. In JSON, CLEAR is null and MERGE is {"merge":[items]}. Use the same fields, values and omissions.
 
 ${opts.ending ?? "Start by asking me what I'd like to change."}`;
 }
 
 /** Version of the shared text's framing (#119). The configuration itself is versioned by CONFIG_SCHEMA_VERSION. */
-export const CONFIG_SHARE_FORMAT = 1;
+export const CONFIG_SHARE_FORMAT = 2;
 
 /**
  * The one payload Configure with AI shares or copies (#119): a short, versioned header, then the standard

@@ -4,6 +4,7 @@ import { canonicalize } from './canonicalize';
 import { parseJson } from './parse';
 import { extract, repair, type Problem } from './recover';
 import { excerpt, lineCol } from './scan';
+import { CONFIG_ENVELOPE, isConfigText, UPDATE_END, UPDATE_HEADER } from '../text';
 
 /**
  * Fault-tolerant import of an AI's configuration update (#47, contract 07 "Import"). Four pure, deterministic
@@ -103,6 +104,8 @@ export function importDiagnostics(input: string, result: { errors: string[]; not
     const { line, col } = lineCol(result.text!, p.offset!);
     lines.push('', `Near line ${line}, column ${col}:`, excerpt(result.text!, p.offset!));
   }
-  lines.push('', 'Please resend the whole update as one JSON object: {"fitnessConfigUpdate": {"schemaVersion": 1, …}}, with only the sections you change.');
+  lines.push('', !isConfigText(input) && input.includes(CONFIG_ENVELOPE)
+    ? `Please resend the whole update as one JSON object: {"${CONFIG_ENVELOPE}": {"schemaVersion": ${CONFIG_SCHEMA_VERSION}, …}}, with only the sections you change.`
+    : `Please resend one complete block from "${UPDATE_HEADER}" through "${UPDATE_END}", with only the fields you change.`);
   return lines.join('\n');
 }

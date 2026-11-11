@@ -141,7 +141,7 @@ export function ConfigureScreen() {
               value={s.text}
               onChangeText={s.editText}
               multiline
-              placeholder={'{ "fitnessConfigUpdate": { … } }'}
+              placeholder="BODY ANVIL UPDATE…"
               placeholderTextColor={colors.faint}
               autoCapitalize="none"
               autoCorrect={false}

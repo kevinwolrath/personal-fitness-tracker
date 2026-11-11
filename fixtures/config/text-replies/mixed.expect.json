@@ -1,0 +1,10 @@
+{
+  "fitnessConfigUpdate": {
+    "schemaVersion": 1,
+    "exercise": {
+      "restDays": ["fri", "sat"],
+      "constraints": { "location": "home", "gymMembership": false, "maxSessionMinutes": 40 }
+    },
+    "profile": { "heightCm": 181, "displayName": "Sam \"Sunny\" Lee" }
+  }
+}

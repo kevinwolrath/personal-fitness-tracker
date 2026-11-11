@@ -32,6 +32,7 @@ describe('the bundled inventory (approved on #56)', () => {
       'Leg extension': 'Quadriceps | None',
       'Kettlebell Romanian deadlift': 'Hamstrings, Glutes | Lower back, Core/abdominals',
       'Hammer curls': 'Biceps | Forearms',
+      'Supinated cross-body dumbbell curl': 'Biceps | Forearms',
       'Overhead press': 'Shoulders | Triceps, Core/abdominals',
       'Plank': 'Core/abdominals | Shoulders',
       'Straight-leg lying raises': 'Hip flexors | Core/abdominals', // hip flexors: the 14th group (#56 decision 2)

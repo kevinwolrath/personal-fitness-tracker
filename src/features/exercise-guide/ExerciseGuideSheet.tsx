@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ScrollView } from '../../ui/ScrollView';
 import type { ExerciseGuide } from '../../exercises/guide';
-import { exerciseArtwork, heroIllustrations } from '../../exercises/heroIllustrations';
+import { exerciseArtwork } from '../../exercises/heroIllustrations';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
@@ -18,7 +18,7 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
-  const steps = (guide?.steps ?? []).filter((s) => heroIllustrations[s.image]);
+  const steps = (guide?.steps ?? []).filter((s) => exerciseArtwork(s.image, gender).isPose);
   const [index, setIndex] = useState(0);
   const [width, setWidth] = useState(0);
   const pager = useRef<ScrollView>(null);

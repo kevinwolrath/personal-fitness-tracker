@@ -766,5 +766,77 @@
     "file": "battle-ropes-neutral-2.jpg",
     "step": 2,
     "baseImage": "battle-ropes-2"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-male-1",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "male",
+    "file": "supinated-cross-body-dumbbell-curl-male-1.jpg",
+    "step": 1,
+    "baseImage": "supinated-cross-body-dumbbell-curl-1"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-male-2",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "male",
+    "file": "supinated-cross-body-dumbbell-curl-male-2.jpg",
+    "step": 2,
+    "baseImage": "supinated-cross-body-dumbbell-curl-2"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-male-3",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "male",
+    "file": "supinated-cross-body-dumbbell-curl-male-3.jpg",
+    "step": 3,
+    "baseImage": "supinated-cross-body-dumbbell-curl-3"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-female-1",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "female",
+    "file": "supinated-cross-body-dumbbell-curl-female-1.jpg",
+    "step": 1,
+    "baseImage": "supinated-cross-body-dumbbell-curl-1"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-female-2",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "female",
+    "file": "supinated-cross-body-dumbbell-curl-female-2.jpg",
+    "step": 2,
+    "baseImage": "supinated-cross-body-dumbbell-curl-2"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-female-3",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "female",
+    "file": "supinated-cross-body-dumbbell-curl-female-3.jpg",
+    "step": 3,
+    "baseImage": "supinated-cross-body-dumbbell-curl-3"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-neutral-1",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "neutral",
+    "file": "supinated-cross-body-dumbbell-curl-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "supinated-cross-body-dumbbell-curl-1"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-neutral-2",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "neutral",
+    "file": "supinated-cross-body-dumbbell-curl-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "supinated-cross-body-dumbbell-curl-2"
+  },
+  {
+    "id": "supinated-cross-body-dumbbell-curl-neutral-3",
+    "movement": "supinated_cross_body_dumbbell_curl",
+    "hero": "neutral",
+    "file": "supinated-cross-body-dumbbell-curl-neutral-3.jpg",
+    "step": 3,
+    "baseImage": "supinated-cross-body-dumbbell-curl-3"
   }
 ]

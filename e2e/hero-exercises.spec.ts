@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import inventory from '../src/exercises/inventory.json';
 import manifest from '../assets/exercises/heroes/manifest.json';
 import seed from '../plans/seed.plan.json';
+import library from '../src/exercises/library.json';
 import { MONDAY, openAt, seedPlan, chooseFromMenu } from './helpers';
 
 for (const hero of ['male', 'female', 'neutral'] as const) {
@@ -14,9 +15,10 @@ for (const hero of ['male', 'female', 'neutral'] as const) {
     await page.getByTestId('menu-coverage').click();
     await page.getByRole('button', { name: 'Log exercise', exact: true }).click();
     for (const exercise of inventory.exercises) {
+      const stepCount = library.exercises.find(entry => entry.id === exercise.movement)!.steps.length;
       await page.getByRole('button', { name: `Choose ${exercise.name}`, exact: true }).click();
       await page.getByRole('button', { name: 'Show exercise guide', exact: true }).click();
-      await expect(page.getByTestId('guide-position')).toHaveText('1 / 2');
+      await expect(page.getByTestId('guide-position')).toHaveText(`1 / ${stepCount}`);
       const first = page.getByTestId('guide-image-1');
       await expect(first).toBeVisible();
       const bounds = await first.boundingBox();
@@ -29,7 +31,7 @@ for (const hero of ['male', 'female', 'neutral'] as const) {
       expect(firstUrl).toContain(pose.id);
       await expect(page.getByTestId('guide-artwork-note')).toHaveCount(0);
       await page.getByRole('button', { name: 'Next step', exact: true }).click();
-      await expect(page.getByTestId('guide-position')).toHaveText('2 / 2');
+      await expect(page.getByTestId('guide-position')).toHaveText(`2 / ${stepCount}`);
       const second = page.getByTestId('guide-image-2');
       await expect.poll(() => second.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
       expect(await second.locator('img').getAttribute('src')).not.toBe(firstUrl);

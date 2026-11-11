@@ -11,6 +11,15 @@ export function exerciseArtwork(image: string, gender: unknown) {
 
 /** Static requires let Metro bundle every hero step offline, on web/iOS/Android. */
 export const heroIllustrations: Record<string, ImageSourcePropType> = {
+  'supinated-cross-body-dumbbell-curl-male-1': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-male-1.jpg'),
+  'supinated-cross-body-dumbbell-curl-male-2': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-male-2.jpg'),
+  'supinated-cross-body-dumbbell-curl-male-3': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-male-3.jpg'),
+  'supinated-cross-body-dumbbell-curl-female-1': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-female-1.jpg'),
+  'supinated-cross-body-dumbbell-curl-female-2': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-female-2.jpg'),
+  'supinated-cross-body-dumbbell-curl-female-3': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-female-3.jpg'),
+  'supinated-cross-body-dumbbell-curl-neutral-1': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-neutral-1.jpg'),
+  'supinated-cross-body-dumbbell-curl-neutral-2': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-neutral-2.jpg'),
+  'supinated-cross-body-dumbbell-curl-neutral-3': require('../../assets/exercises/heroes/supinated-cross-body-dumbbell-curl-neutral-3.jpg'),
   'kettlebell-squat-1': require('../../assets/exercises/heroes/kettlebell-squat-1.jpg'),
   'kettlebell-squat-2': require('../../assets/exercises/heroes/kettlebell-squat-2.jpg'),
   'chest-press-1': require('../../assets/exercises/heroes/chest-press-1.jpg'),

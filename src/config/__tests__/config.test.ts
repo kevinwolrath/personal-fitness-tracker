@@ -240,7 +240,7 @@ describe('AI session instructions', () => {
     for (const b of blocks) expect(() => apply(b)).not.toThrow();
   });
   it('asks for one text update, names every section, and still offers JSON compatibility', () => {
-    expect(text).toContain('reply with one plain text update block');
+    expect(text).toContain('prefer one plain text update block');
     expect(text).toContain('If I explicitly ask for JSON compatibility');
     expect(text).toMatch(/Sections you can change: profile, goals, nutrition, exercise, schedule, tracking/);
     expect(text).toMatch(/same letter case/);

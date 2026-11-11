@@ -66,7 +66,10 @@ test('#119 Share with AI: preview the exact payload, then the share sheet gets e
   await page.getByRole('button', { name: 'Share configuration with AI' }).click();
   await expect(page.getByTestId('share-sheet')).toContainText('including your profile and health details');
   const text = (await page.getByTestId('share-preview').textContent())!;
-  expect(text.split('\n')[0]).toBe('Body Anvil configuration share · format 2 · configuration schema version 1');
+  expect(text.split('\n')[0]).toBe('Body Anvil configuration share · format 3 · configuration schema version 1');
+  expect(text).toContain('recognises supported plain-language instructions');
+  expect(text).toContain('Keep meal instructions outside configuration blocks');
+  expect(text).toContain('Mass, energy and length are independent unit dimensions');
   expect(text).toContain('Configuration schema version: 1');
   expect(text).toContain('"Fixed lunch"'); // the actual persisted configuration
   expect(text).toContain('Include ONLY the sections you are changing');

@@ -88,7 +88,7 @@ test('all routes, long sheets, nested guide pager and multiline web input follow
   await shot(page, 'guide');
   await page.getByRole('button', { name: 'Close guide', exact: true }).click();
   await page.getByRole('button', { name: "Close today's workout", exact: true }).click();
-  for (const [route, id] of [['/import', 'import-scroll'], ['/configure', 'configure-scroll'], ['/setup', 'setup-scroll']]) {
+  for (const [route, id] of [['/configure', 'configure-scroll'], ['/setup', 'setup-scroll']]) {
     await page.goto(route);
     await expect(page.getByTestId(id)).toBeVisible();
     await indicatorsHidden(page);

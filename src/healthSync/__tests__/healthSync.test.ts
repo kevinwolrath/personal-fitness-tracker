@@ -2,7 +2,7 @@ import { MemoryDevice, richHistory } from '../../backup/__tests__/fixture';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { healthSyncClient, normalizeBaseUrl, SyncError } from '../client';
 import { buildHealthPayload, categories, type Scope } from '../payload';
-import { aiInstruction, forgetLegacyEnrollmentKey, LEGACY_ENROLLMENT_KEY, NO_ENROLLMENT_KEY, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
+import { aiInstruction, forgetLegacySettings, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL, NO_ENROLLMENT_KEY, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
 import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
 import { FakeHealthServer, MemorySecrets } from './fakeServer';
 
@@ -210,10 +210,11 @@ describe('Share my details', () => {
 });
 
 describe('client', () => {
-  it('accepts only https (or http on localhost) without credentials or query in the address', () => {
+  it('accepts only https (http to a dev host only in dev builds), without credentials or query', () => {
     expect(normalizeBaseUrl('https://questspire.example/')).toBe('https://questspire.example');
     expect(normalizeBaseUrl('http://questspire.example')).toBeNull();
-    expect(normalizeBaseUrl('http://localhost:8787')).toBe('http://localhost:8787');
+    expect(normalizeBaseUrl('http://localhost:8787')).toBeNull(); // release build: https only (#146)
+    expect(normalizeBaseUrl('http://localhost:8787', { dev: true })).toBe('http://localhost:8787');
     expect(normalizeBaseUrl('https://u:p@questspire.example')).toBeNull();
     expect(normalizeBaseUrl('https://questspire.example?token=x')).toBeNull();
     expect(normalizeBaseUrl('not a url')).toBeNull();
@@ -305,11 +306,14 @@ describe('enrollment key from the build (#136)', () => {
     expect(JSON.stringify([...secrets.map.values()])).not.toContain(server.enrollmentKey);
   });
 
-  it('a key typed in by the first version of #136 is deleted, and never used', async () => {
+  it('a key or server address typed in by earlier versions is deleted, never used, and not backed up', async () => {
     const { secrets } = await setup();
     await secrets.set(LEGACY_ENROLLMENT_KEY, 'legacy-placeholder');
-    await forgetLegacyEnrollmentKey(secrets);
+    await secrets.set(LEGACY_SERVER_URL, 'https://old.example.test');
+    await forgetLegacySettings(secrets);
     expect(secrets.map.has(LEGACY_ENROLLMENT_KEY)).toBe(false);
+    expect(secrets.map.has(LEGACY_SERVER_URL)).toBe(false);
     expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(LEGACY_ENROLLMENT_KEY);
+    expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(LEGACY_SERVER_URL);
   });
 });

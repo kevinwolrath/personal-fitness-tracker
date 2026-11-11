@@ -50,17 +50,34 @@ const messages: Record<SyncErrorKind, string> = {
   invalid: 'The server rejected the data as invalid.',
   server: 'The server had a problem. Try again later.',
   badResponse: 'The server sent a reply the app doesn’t understand.',
-  config: 'The server address isn’t set or isn’t a secure https:// address.',
+  config: 'This version of the app has no valid sync server configured, so nothing was sent.',
 };
 const kindFor = (status: number): SyncErrorKind =>
   status === 401 || status === 403 ? 'auth' : status === 404 ? 'notFound' : status === 409 ? 'conflict' : status === 413 ? 'tooLarge' : status === 429 ? 'rateLimited' : status === 400 || status === 422 ? 'invalid' : 'server';
 
-/** An https:// origin (http:// only for localhost while developing), without a trailing slash; else null. */
-export function normalizeBaseUrl(input: string): string | null {
+/**
+ * A development machine's address, reachable from a dev build (#146): this computer (`localhost`, 127.0.0.1), the
+ * Android emulator's alias for it (10.0.2.2, inside 10/8), or a private LAN address (a physical phone on the same
+ * Wi-Fi as the dev PC).
+ */
+export function isDevHost(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+  const m = hostname.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (!m) return false;
+  const [a, b] = [Number(m[1]), Number(m[2])];
+  return a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31);
+}
+
+/**
+ * The API base URL as an origin plus optional path, without a trailing slash; null when unusable. `https://` always;
+ * `http://` only for a dev build (`dev: true`) talking to a development host (isDevHost). Never credentials, a query
+ * or a fragment in the address.
+ */
+export function normalizeBaseUrl(input: string, opts: { dev?: boolean } = {}): string | null {
   try {
     const u = new URL(input.trim());
-    const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1' || u.hostname === '10.0.2.2';
-    if (u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) return null;
+    const ok = u.protocol === 'https:' || (u.protocol === 'http:' && !!opts.dev && isDevHost(u.hostname));
+    if (!ok) return null;
     if (u.username || u.password || u.search || u.hash) return null;
     return `${u.origin}${u.pathname.replace(/\/+$/, '')}`;
   } catch {
@@ -70,8 +87,8 @@ export function normalizeBaseUrl(input: string): string | null {
 
 type Fetch = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{ status: number; headers: { get(name: string): string | null }; text(): Promise<string> }>;
 
-export function healthSyncClient(baseUrl: string, fetchImpl: Fetch) {
-  const base = normalizeBaseUrl(baseUrl);
+export function healthSyncClient(baseUrl: string, fetchImpl: Fetch, opts: { dev?: boolean } = {}) {
+  const base = normalizeBaseUrl(baseUrl, opts);
   const call = async <T>(method: string, path: string, parse: z.ZodType<T> | null, opts: { token?: string; body?: unknown; enrollmentKey?: string } = {}): Promise<T> => {
     if (!base) throw new SyncError('config', messages.config);
     const headers: Record<string, string> = { Accept: 'application/json' };

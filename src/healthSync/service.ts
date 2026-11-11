@@ -20,15 +20,17 @@ import { buildHealthPayload, FULL_SCOPE, utf8Bytes, type HealthPayload, type Sco
 
 /** #136 v1 stored a user-typed key here; keys now come from the build. Removed on sight, never read. */
 export const LEGACY_ENROLLMENT_KEY = 'pft.healthSync.enrollmentKey';
-/** Delete a key left by the earlier user-entered design, if any. Never throws. */
-export const forgetLegacyEnrollmentKey = (secrets: SecretStore) => secrets.remove(LEGACY_ENROLLMENT_KEY).catch(() => undefined);
+/** #134 stored a user-typed server address here; the address now comes from the build (#146). Removed, never read. */
+export const LEGACY_SERVER_URL = 'pft.healthSync.url';
+/** Delete settings left by earlier user-entered designs (key, server address), if any. Never throws. */
+export const forgetLegacySettings = (secrets: SecretStore) =>
+  Promise.all([LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL].map((k) => secrets.remove(k).catch(() => undefined))).then(() => undefined);
 
 export const USER_ID_KEY = 'healthSync.userId';
 export const SECRET_KEYS = {
   credential: 'pft.healthSync.credential',
   pending: 'pft.healthSync.pending',
   status: 'pft.healthSync.status',
-  url: 'pft.healthSync.url',
 } as const;
 
 export const NO_ENROLLMENT_KEY = 'This version of the app isn’t set up to link to the server yet, so nothing was sent. Phones that are already linked keep syncing.';
@@ -70,10 +72,6 @@ export async function credentialFor(secrets: SecretStore, userId: string): Promi
 
 export async function syncStatus(secrets: SecretStore): Promise<SyncStatus | null> {
   return readJson<SyncStatus>(secrets, SECRET_KEYS.status);
-}
-
-export async function serverUrl(secrets: SecretStore, fallback: string): Promise<string> {
-  return (await secrets.get(SECRET_KEYS.url).catch(() => null)) || fallback;
 }
 
 /** Everything this phone holds, as the upload document, with its size. Reads only. */

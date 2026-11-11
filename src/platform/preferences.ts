@@ -132,7 +132,6 @@ export const BACKUP_PREFERENCE_KEYS = {
     TREND_STATE,
     REMINDERS,
     HC_WANTED,
-    'pft.healthSync.url',
   ],
   excluded: {
     'pft.anthropic.apiKey': 'API key: a secret, never written to a backup. Enter it again after restoring.',
@@ -141,6 +140,7 @@ export const BACKUP_PREFERENCE_KEYS = {
     'pft.healthSync.credential': 'Health data sync key: a secret, never written to a backup. The data ID travels with the backup; link again on the new phone.',
     'pft.healthSync.pending': 'An unfinished health data link on this phone (a secret).',
     'pft.healthSync.status': 'The last health data sync on this phone.',
+    'pft.healthSync.url': 'Legacy (#134): a typed sync server address. Deleted when Health data sync opens; the address now comes from the build (#146).',
     'pft.healthSync.enrollmentKey': 'Legacy (#136 first version): a typed enrollment key. Deleted when Health data sync opens; keys now come from the build.',
   } as Record<string, string>,
 } as const;

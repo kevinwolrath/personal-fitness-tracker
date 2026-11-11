@@ -13,7 +13,7 @@ No Cloudflare account, domain or credential is in this repository. Nothing here 
 the address in **Health data sync → Server address**. Only `https://` is accepted (plain `http://` only for
 localhost while developing). No user, password, query or fragment is allowed in the address.
 
-All paths below are under `/api/health/v1`. Requests and responses are `application/json`.
+All paths below are under `/api/body-anvil/v1`. Requests and responses are `application/json`.
 
 ## Identity
 
@@ -23,11 +23,25 @@ All paths below are under `/api/health/v1`. Requests and responses are `applicat
   `Authorization: Bearer <token>`. It is never put in a URL, logged or included in a shared document.
 - **Enrollment secret**: random (256 bits, base64url), made and saved by the app *before* it first enrolls.
 
+## Enrollment key (#136)
+
+The backend accepts a first link only from a client that knows a **shared enrollment key**. The user types it once in
+**Health data sync → Enrollment key**. The app keeps it only in secure storage (`pft.healthSync.enrollmentKey`).
+It is never stored in SQLite or put in a backup, export, snapshot, share link, log or the APK.
+
+- It is sent **only** as the `X-Enrollment-Key` header on `POST /enroll`, over HTTPS. It is never sent with
+  snapshot GET/PUT, the shares endpoints or any other request.
+- With no key saved, the first sync stops before any network call and asks for it.
+- A `401`/`403` from `/enroll` means the key was rejected. The app says so and offers to edit it and retry. The data ID
+  and the saved enrollment secret are kept, so the retry is the same idempotent enroll.
+- After linking, the owner token is enough. The key can be removed from the phone; it is needed again only to link
+  another phone or data ID.
+
 ## Endpoints
 
 | Method and path | Auth | Body | Success |
 |---|---|---|---|
-| `POST /enroll` | none | `{ userId, enrollmentSecret, snapshot }` | `201` (new) or `200` (same `userId` **and** same secret again: idempotent retry) `{ userId, ownerToken, snapshot: Receipt }` |
+| `POST /enroll` | `X-Enrollment-Key` | `{ userId, enrollmentSecret, snapshot }` | `201` (new) or `200` (same `userId` **and** same secret again: idempotent retry) `{ userId, ownerToken, snapshot: Receipt }` |
 | `PUT /users/{userId}/snapshot` | owner | the snapshot document | `200 Receipt` (replaces the latest; repeating the same body is harmless) |
 | `GET /users/{userId}/snapshot` | owner | – | `200 { snapshot, etag, uploadedAt, bytes }`; `404` when none |
 | `POST /users/{userId}/shares` | owner | `{ scope: { days: 7\|30\|90\|null, categories: string[] }, expiresInHours: 1\|24, document }` | `201 ShareLink` |
@@ -65,6 +79,9 @@ recorded), credentials.
 
 ## Open questions for the backend
 
+0. (#136) The issue names `POST /api/body-anvil/v1/enroll`, so all paths moved to the `/api/body-anvil/v1` prefix.
+   Is the enroll body's retry field named `retryKey` on the server? The app sends `enrollmentSecret`.
+
 1. **Moving to a new phone:** a restored backup brings the data ID but not the owner token (a secret, never backed up),
    so the new phone's enroll gets `409`. The app explains this and changes nothing. A recovery step is needed, such as
    a one-time recovery code shown at enrollment, or re-linking from the old phone. Its shape is the backend's call;
@@ -75,9 +92,9 @@ recorded), credentials.
 ## curl (placeholders)
 
 ```bash
-curl -sS -X PUT "https://<host>/api/health/v1/users/<userId>/snapshot" \
+curl -sS -X PUT "https://<host>/api/body-anvil/v1/users/<userId>/snapshot" \
   -H "Authorization: Bearer <owner token>" -H "Content-Type: application/json" --data @snapshot.json
-curl -sS "https://<host>/api/health/v1/users/<userId>/snapshot" -H "Authorization: Bearer <owner token>"
+curl -sS "https://<host>/api/body-anvil/v1/users/<userId>/snapshot" -H "Authorization: Bearer <owner token>"
 curl -sS "https://<host>/s/<share token>"
 ```
 

@@ -7,7 +7,7 @@ import type { HealthPayload, Scope } from './payload';
  * only ever sent in the Authorization header: never in a URL, a log line, an error message or a shared document.
  */
 
-export const API_PREFIX = '/api/health/v1';
+export const API_PREFIX = '/api/body-anvil/v1';
 /** Largest document the app sends; the server enforces its own limit (413). */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -31,7 +31,7 @@ export type ShareSummary = z.infer<typeof shareList>['shares'][number];
 const remote = z.object({ snapshot: z.unknown(), etag: z.string(), uploadedAt: z.string(), bytes: z.number().int().nonnegative() });
 export type RemoteSnapshot = z.infer<typeof remote>;
 
-export type SyncErrorKind = 'offline' | 'auth' | 'notFound' | 'conflict' | 'tooLarge' | 'rateLimited' | 'invalid' | 'server' | 'badResponse' | 'config';
+export type SyncErrorKind = 'offline' | 'auth' | 'enrollmentKey' | 'notFound' | 'conflict' | 'tooLarge' | 'rateLimited' | 'invalid' | 'server' | 'badResponse' | 'config';
 export class SyncError extends Error {
   constructor(readonly kind: SyncErrorKind, message: string, readonly status: number | null = null, readonly retryAfterSeconds: number | null = null) {
     super(message);
@@ -42,6 +42,7 @@ export class SyncError extends Error {
 const messages: Record<SyncErrorKind, string> = {
   offline: 'Couldn’t reach the server. Check your connection and try again.',
   auth: 'The server didn’t accept this phone’s key.',
+  enrollmentKey: 'The server didn’t accept the enrollment key. Check it and try again.',
   notFound: 'Nothing is stored on the server yet.',
   conflict: 'The server already has this data ID linked to another phone.',
   tooLarge: 'That’s more data than the server accepts in one upload.',
@@ -71,10 +72,12 @@ type Fetch = (url: string, init: { method: string; headers: Record<string, strin
 
 export function healthSyncClient(baseUrl: string, fetchImpl: Fetch) {
   const base = normalizeBaseUrl(baseUrl);
-  const call = async <T>(method: string, path: string, parse: z.ZodType<T> | null, opts: { token?: string; body?: unknown } = {}): Promise<T> => {
+  const call = async <T>(method: string, path: string, parse: z.ZodType<T> | null, opts: { token?: string; body?: unknown; enrollmentKey?: string } = {}): Promise<T> => {
     if (!base) throw new SyncError('config', messages.config);
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+    // #136: the shared enrollment key goes only on the enroll request, only in this header.
+    if (opts.enrollmentKey) headers['X-Enrollment-Key'] = opts.enrollmentKey;
     let body: string | undefined;
     if (opts.body !== undefined) {
       headers['Content-Type'] = 'application/json';
@@ -87,7 +90,8 @@ export function healthSyncClient(baseUrl: string, fetchImpl: Fetch) {
       throw new SyncError('offline', messages.offline);
     }
     if (res.status < 200 || res.status >= 300) {
-      const kind = kindFor(res.status);
+      // A rejected enroll (401/403) is about the enrollment key: there is no owner token yet.
+      const kind = opts.enrollmentKey && (res.status === 401 || res.status === 403) ? 'enrollmentKey' : kindFor(res.status);
       const retry = Number(res.headers.get('Retry-After'));
       throw new SyncError(kind, messages[kind], res.status, Number.isFinite(retry) && retry > 0 ? retry : null);
     }
@@ -104,8 +108,12 @@ export function healthSyncClient(baseUrl: string, fetchImpl: Fetch) {
   };
   const user = (c: Credential) => `/users/${encodeURIComponent(c.userId)}`;
   return {
-    /** First use: link this data ID. Retrying with the same enrollment secret returns the same link (idempotent). */
-    enroll: (userId: string, enrollmentSecret: string, snapshot: HealthPayload) => call('POST', '/enroll', enrolled, { body: { userId, enrollmentSecret, snapshot } }),
+    /**
+     * First use: link this data ID. Retrying with the same enrollment secret returns the same link (idempotent).
+     * `enrollmentKey` (#136) is the user-entered shared key, sent as `X-Enrollment-Key` on this request only.
+     */
+    enroll: (userId: string, enrollmentSecret: string, snapshot: HealthPayload, enrollmentKey: string) =>
+      call('POST', '/enroll', enrolled, { body: { userId, enrollmentSecret, snapshot }, enrollmentKey }),
     /** Replace the latest snapshot for this data ID. */
     putSnapshot: (c: Credential, snapshot: HealthPayload) => call('PUT', `${user(c)}/snapshot`, receipt, { token: c.ownerToken, body: snapshot }),
     /** The owner's latest snapshot, read-only. */

@@ -14,6 +14,8 @@ export class FakeHealthServer {
   /** Drop the response of the next enroll after storing it (an interrupted request). */
   dropNextEnrollResponse = false;
   now = '2026-11-12T00:00:00.000Z';
+  /** The shared enrollment key the fake accepts (#136). A placeholder, never a real secret. */
+  enrollmentKey = 'test-enrollment-key-placeholder';
   private n = 0;
 
   fetch = async (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => {
@@ -28,7 +30,8 @@ export class FakeHealthServer {
     const path = u.pathname;
     const auth = init.headers.Authorization?.replace(/^Bearer /, '');
     const body = init.body ? JSON.parse(init.body) : undefined;
-    if (init.method === 'POST' && path === '/api/health/v1/enroll') {
+    if (init.method === 'POST' && path === '/api/body-anvil/v1/enroll') {
+      if (init.headers['X-Enrollment-Key'] !== this.enrollmentKey) return res(401, { error: { code: 'invalid_enrollment_key' } });
       const existing = this.users.get(body.userId);
       if (existing && existing.secret !== body.enrollmentSecret) return res(409, { error: { code: 'already_enrolled' } });
       const user = existing ?? { secret: body.enrollmentSecret, token: `owner-${++this.n}-${'x'.repeat(24)}`, snapshot: null };
@@ -40,7 +43,7 @@ export class FakeHealthServer {
       }
       return res(existing ? 200 : 201, { userId: body.userId, ownerToken: user.token, snapshot: receipt(user.snapshot) });
     }
-    const m = path.match(/^\/api\/health\/v1\/users\/([^/]+)\/(snapshot|shares)(?:\/([^/]+))?$/);
+    const m = path.match(/^\/api\/body-anvil\/v1\/users\/([^/]+)\/(snapshot|shares)(?:\/([^/]+))?$/);
     if (m) {
       const user = this.users.get(decodeURIComponent(m[1]));
       if (!auth || !user || user.token !== auth) return res(401, { error: { code: 'unauthorized' } });

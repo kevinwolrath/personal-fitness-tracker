@@ -105,7 +105,7 @@ export function buildAiInstructions(raw: RawPlan, today: string, opts: Instructi
 
   return `${opts.intro ? `${opts.intro}\n\n` : ''}# Fitness tracker: configuration session
 
-You are helping me update the configuration of my personal fitness tracker app. Talk with me normally. Ask questions when something is unclear, and don't guess about health limits, equipment or food. When I say I'm done, reply with ONE update for the app in the exact format below.
+You are helping me update the configuration of my personal fitness tracker app. Talk with me normally. Ask questions when something is unclear, and don't guess about health limits, equipment or food. When I say I'm done, propose the agreed configuration changes using the preferred interchange format below.
 
 The app owns my configuration. You only propose changes. The app validates your update, shows me a preview, and applies it only if I confirm.
 
@@ -117,21 +117,35 @@ ${formatConfigText(config, `BODY ANVIL CURRENT CONFIGURATION v${CONFIG_SCHEMA_VE
 
 ## Update format
 
-When I say I'm done, reply with one plain text update block. Start with ${UPDATE_HEADER} and finish with ${UPDATE_END}, each on its own line. Use [section] headings and one field: value per line. See the complete examples below.
+For configuration changes, prefer one plain text update block. Start with ${UPDATE_HEADER} and finish with ${UPDATE_END}, each on its own line. Use [section] headings and one field: value per line. See the complete examples below. The app also accepts the JSON envelope described below and recognises supported plain-language instructions; perfect structured grammar is not the only way to express intent. Do not invent a different protocol or schema such as START_CONFIG, postpartum_rehab or calories_target.
 
 Sections you can change: ${allowed.join(', ')}.${exclude.size ? ` Never include ${[...exclude].join(' or ')}: the app sets ${exclude.size > 1 ? 'those' : 'that'} up separately.` : ''}
 
-The update must contain EVERY change we agreed in this conversation, in the right sections, and nothing else. Before sending, check it against my requests one by one.
+The configuration update must contain EVERY configuration change we agreed in this conversation, in the right sections, and nothing else. Keep records of completed meals or workouts separate. Before sending, check it against my requests one by one.
 
-Rules (the app rejects updates that break them):
+Rules for reliable configuration proposals (harmless formatting variations may be recovered, but schema and safety validation still apply):
 1. Include ONLY the sections you are changing. A missing section is left exactly as it is. Never repeat unchanged sections.
 2. Inside a section, include ONLY the fields you are changing. A field value replaces the whole field. For fields marked MERGE allowed, use field: MERGE [items] to add items or replace existing items with the same id. Each item must be complete. To remove one item, send the complete remaining list without MERGE. Use [] for an empty list where allowed.
 3. To remove an optional field, write field: CLEAR only where marked CLEAR allowed. Leave omitted fields untouched.
 4. Use the listed names and enum values in the same letter case. Use [a, b] for lists and {key: value, otherKey: value} for grouped values. Simple words, ids and times can be unquoted. Double-quote text with spaces or punctuation and literal words like "true", "false", "CLEAR" or "null". Escape embedded quotes, backslashes and newlines as in JSON. Use unquoted numbers, true and false for their respective types. Keep each field on one line, use each key once and omit trailing commas and comments.
 5. Keep ids stable. Use lower-case-hyphen ids for plan items (meals, activities, targets, goals, measurements), and snake_case ids for movements and activity types (e.g. "hammer_curl").
-6. Use the numeric units in the field descriptions and current configuration (profile.units). Use bare numbers unless a field explicitly lists an optional suffix. Weights for equipment are always kg (weightsKg). Ask before interpreting an unclear quantity.
+6. Mass, energy and length are independent unit dimensions: profile.units uses {mass: kg or lb, energy: kJ or kcal, length: cm or in}, never a single metric/imperial flag. Changing weight units must not silently change energy or length units. In structured updates, use the numeric units in the field descriptions and the resulting profile.units. Convert existing affected values to preserve their physical meaning when changing units; do not just relabel numbers. Equipment weightsKg, exercise loadKg and profile heightCm are always canonical kg, kg and cm respectively. Use bare numbers unless a field explicitly lists an optional suffix. Ask before interpreting an unclear quantity; never invent a quantity or a plate/slab weight.
 7. Times are 24-hour HH:MM. Weekdays are mon tue wed thu fri sat sun.
 8. Don't change sections I didn't talk about, even if you think they could be improved. Suggest it in the chat instead.
+
+## Intent and review workflows
+
+Distinguish changes to future configuration from records of what happened. A food entry is not a daily calorie-target change or a scheduled meal edit. A completed workout is not a change to its future prescription. Never silently substitute one operation for another.
+
+The app classifies supported configuration updates, meal entries and exercise updates separately. Missing critical details or conflicting instructions require clarification. Unrelated text is ignored while valid instructions elsewhere can still be reviewed. Unsafe commands and unsupported operations are non-executable text; they must never become configuration fields or actions. Never claim anything was saved or applied by this conversation.
+
+${!exclude.has('nutrition') ? 'For a meal entry, return a separate, concise food-logging instruction. Plain-language extraction supports the food, a supported quantity when supplied, and explicit energy in kJ or kcal, converted for the existing meal draft. Unknown quantity and energy stay empty; protein, carbohydrate and fat also stay empty for review in the meal workflow. Never estimate missing quantities or nutrients. The user reviews the food through meal logging and confirms its context/date before saving. Keep meal instructions outside configuration blocks; do not encode them as nutrition.targets or nutrition.meals.\n\n' : ''}For a prescribed exercise-load change, identify the configured session, movement and full or short version, and supply a load in kg or lb. Ask for missing or ambiguous details. Slabs or plates need an explicit weight. Completed exercise logging needs its date, sets and repetitions or duration confirmed in the existing workout workflow; a short text instruction alone does not save it.
+
+## Plain-language examples
+
+These illustrate supported intent, not additional configuration fields. Use separate instructions for distinct operations; the same preview and confirmation requirements apply.
+
+${!exclude.has('profile') ? '- `change my weight unit to kg`\n- `use kg for weight and kcal for energy`\n- `set my height to 180 cm`\n' : ''}${!exclude.has('nutrition') ? '- `add 1000kj of rice to your meal`\n- `add 500 kcal of rice`\n- `add rice and swim with sharks` — review rice with unknown quantities/nutrients; ignore the unrelated clause.\n' : ''}- \`increase my chest press to 7 slabs\` — ask for the slab weight and the session/version; do not guess.
 
 ## Sections and fields
 
@@ -171,7 +185,7 @@ ${opts.ending ?? "Start by asking me what I'd like to change."}`;
 }
 
 /** Version of the shared text's framing (#119). The configuration itself is versioned by CONFIG_SCHEMA_VERSION. */
-export const CONFIG_SHARE_FORMAT = 2;
+export const CONFIG_SHARE_FORMAT = 3;
 
 /**
  * The one payload Configure with AI shares or copies (#119): a short, versioned header, then the standard

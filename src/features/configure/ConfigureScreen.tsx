@@ -99,8 +99,7 @@ export function ConfigureScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="configure-scroll">
         {!copyDone && (
           <Text style={type.detail}>
-            Change your plan by talking it through with ChatGPT or Claude. The app checks every change and shows it to you before
-            anything is saved.
+            Describe a plan change or meal to log, or paste an AI reply. Review the result before saving.
           </Text>
         )}
 
@@ -141,7 +140,7 @@ export function ConfigureScreen() {
               value={s.text}
               onChangeText={s.editText}
               multiline
-              placeholder="BODY ANVIL UPDATE…"
+              placeholder="Describe a change or paste an AI reply"
               placeholderTextColor={colors.faint}
               autoCapitalize="none"
               autoCorrect={false}
@@ -187,6 +186,17 @@ export function ConfigureScreen() {
         )}
 
         {s.check.kind === 'preview' && <Preview sections={s.check.sections} notes={s.check.notes} />}
+
+        {s.interpretation && s.interpretation.intents.some((entry) => !entry.update) && s.check.kind !== 'invalid' && (
+          <View style={styles.panel} testID="input-intents" accessibilityLiveRegion="polite">
+            {s.interpretation.intents.filter((entry) => !entry.update).map((entry, index) => (
+              <Text style={type.detail} key={index}>{entry.outcome === 'IGNORE' ? `Ignored “${entry.source.slice(0, 160)}”. ` : ''}{entry.message}</Text>
+            ))}
+            {s.interpretation.intents.some((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT') && (
+              <Button title="Review meal entry" variant="secondary" onPress={() => router.push({ pathname: '/meal-photo', params: { input: s.handoffMeals() } })} />
+            )}
+          </View>
+        )}
 
         {!previewing && latest && (
           <View style={styles.panel} testID="config-history">

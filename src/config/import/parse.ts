@@ -164,8 +164,8 @@ function parseValue(src: string, clause: boolean): Parsed {
       if (!token) throw new Fail('Expected a value.', i);
       const at = i;
       i += token.length;
-      if (token === 'true') return true;
-      if (token === 'false') return false;
+      if (token.toLowerCase() === 'true') return true;
+      if (token.toLowerCase() === 'false') return false;
       if (token === 'null') throw new Fail('Use CLEAR as the whole field value to remove an optional field.', at);
       if (numberText.test(token) && Number.isFinite(Number(token))) return Number(token);
       if (isBareValue(token)) return token;

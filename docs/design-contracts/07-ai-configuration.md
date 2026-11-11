@@ -52,6 +52,18 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 ## Importer (deterministic, `src/config/update.ts`)
 
+### Intent interpretation
+
+Configure with AI first interprets input through src/input/interpret.ts. It accepts the existing JSON and text interchange formats, recovers schema-derived section and field names, enum casing, equals signs and trailing commas, and recognizes bounded natural-language instructions. The strict interchange parser remains available to existing callers.
+
+Natural unit requests use independent mass, energy and length dimensions. Changes convert affected profile weight, measurement goal targets, energy target bounds and meal energy amounts before building the existing update envelope. Existing validation checks the entire resulting plan. The preview includes these conversions and confirmation records the existing history entry for Undo.
+
+Food instructions become meal-entry proposals. Configure offers Review meal entry in the screen content below the checked input. This uses the existing meal review and Save workflow, with optional quantities and nutrients left unknown. It creates an extra meal unless the meal workflow was opened for a specific scheduled meal. No food instruction changes planned meals or configuration.
+
+Exercise load requests match catalogue movements and require an explicit kg or lb load and one unambiguous configured session. They propose a complete activity merge through the existing configuration preview. Slabs require their weight and session to be clarified. Free exercise logging without the required sets or reps also requires clarification.
+
+Unrelated clauses are ignored independently. Conflicting or conditional instructions require clarification. Executable, destructive, external-service and administrative requests are non-executable text. Input is bounded by the existing import character limit and 256 natural-language clauses. The append-only input corpus and preserved Gemini capture run in Jest on every CI run, with the complete expected and actual results uploaded as an artifact.
+
 1. **Read the paste (#139, `src/config/text.ts`).** The primary format is one `BODY ANVIL UPDATE v1` … `END UPDATE` block. Blank lines, surrounding prose and fences are allowed. The version, section names, accepted fields and operations come from `src/config/sections.ts`. Each `[section]` contains one `field: value` per line. A heading may repeat for distinct fields. Repeated fields, object keys, ids in mergeable lists, or blocks are errors.
 
    Values use bare words, numbers, booleans, times, double-quoted text with JSON escapes, lists such as `[fri, sat]`, and groups such as `{location: home, gymMembership: false}`. Units are defined by the field. `heightCm` accepts a bare number or a `cm` suffix. The parser does no unit conversion. Use `CLEAR` to remove a clearable field, `MERGE [items]` for complete items keyed by id where supported, or a replacement list to remove individual items. The text importer builds the same `fitnessConfigUpdate` envelope and reports syntax and field validation errors against source line numbers. It never repairs or evaluates text.
@@ -99,14 +111,15 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 ## AI session instructions (`src/config/instructions.ts`)
 
-**Share with AI** (#119) opens a preview of the exact text (`buildConfigShare`), then hands that same string to the system share sheet (Android: `ACTION_SEND`, `text/plain`, the system chooser; no app is hard-coded) or, with **Copy instead**, to the clipboard. On the web, Share uses the Web Share API, else copies. The text starts with one versioned header line, `Body Anvil configuration share · format 2 · configuration schema version 1`, and a sentence saying nothing changes until the user pastes the update back and confirms, then the instructions below. It's built once when the preview opens, so the preview and what is shared are byte-identical. It carries only the configuration sections (profile and health details included, which the preview says), never history, records or secrets. Cancel, a dismissed share sheet or a failed share leave everything as it was; sharing never writes. The return path is paste → check → preview → apply.
+**Share with AI** (#119) opens a preview of the exact text (`buildConfigShare`), then hands that same string to the system share sheet (Android: `ACTION_SEND`, `text/plain`, the system chooser; no app is hard-coded) or, with **Copy instead**, to the clipboard. On the web, Share uses the Web Share API, else copies. The text starts with one versioned header line, `Body Anvil configuration share · format 3 · configuration schema version 1`, and a sentence saying nothing changes until the user pastes the update back and confirms, then the instructions below. It's built once when the preview opens, so the preview and what is shared are byte-identical. It carries only the configuration sections (profile and health details included, which the preview says), never history, records or secrets. Cancel, a dismissed share sheet or a failed share leave everything as it was; sharing never writes. The return path is paste → check → preview → apply.
 
 The instructions are plain text. They contain:
 - the role;
 - the current configuration in readable text and the schema version;
-- the structured text block format and how to ask the assistant for an advanced JSON reply;
+- the preferred structured text interchange format, JSON compatibility, and supported plain-language examples verified against the intent interpreter;
 - the list of sections and the rule to include every agreed change and nothing else;
-- the rules above, including exact letter case and each field once;
+- reliable structured-output rules, independent mass/energy/length units and explicit conversions; harmless formatting recovery does not relax schema validation;
+- separate configuration, meal-entry and exercise workflows, clarification for ambiguity, ignoring unrelated text, and non-executable unsupported operations;
 - every field with its shape;
 - the allowed values, generated from the schema enums so they can't drift;
 - five complete text examples covering exercise, nutrition, meal merge, mixed sections and schedule merge.

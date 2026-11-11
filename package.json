@@ -19,6 +19,7 @@
     "test:e2e:dev": "E2E_DEV=1 playwright test",
     "replay:gamification": "node scripts/replay-gamification.cjs",
     "check:agent-files": "node scripts/check-agent-files.cjs",
+    "check:sync-server": "node scripts/check-sync-server.cjs",
     "build:exercise-assets": "node scripts/build-exercise-assets.cjs"
   },
   "dependencies": {

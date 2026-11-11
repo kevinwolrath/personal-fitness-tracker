@@ -4,6 +4,7 @@ import { catalogueErrors } from '../exercises/catalogue';
 import { CURRENT_FORMAT_VERSION, type Plan } from '../plan/schema';
 import { importDiagnostics, prepareUpdate } from './import';
 import { CONFIG_SCHEMA_VERSION, fieldOf, isMerge, mergeById, sectionNames, sectionPatchSchema, type RawPlan, type SectionName } from './sections';
+import { CONFIG_ENVELOPE as ENVELOPE, isConfigText, readConfigText } from './text';
 
 /** A validated update: which sections, and within each, which fields (null = clear). */
 export type ConfigUpdate = {
@@ -20,12 +21,11 @@ export type ParseResult =
   | { ok: true; update: ConfigUpdate; json: unknown; notes: string[] }
   | { ok: false; errors: string[]; notes: string[]; recoverable: string[]; diagnostics: string };
 
-const ENVELOPE = 'fitnessConfigUpdate';
-
-function zodErrors(prefix: string, error: z.ZodError): string[] {
+function zodErrors(section: SectionName, error: z.ZodError, lines?: Map<string, number>): string[] {
   return error.issues.map((i) => {
-    const path = i.path.reduce<string>((acc, p) => (typeof p === 'number' ? `${acc}[${p}]` : `${acc}.${String(p)}`), prefix);
-    return `${path}: ${i.message}`;
+    const path = i.path.reduce<string>((acc, p) => (typeof p === 'number' ? `${acc}[${p}]` : `${acc}.${String(p)}`), `${ENVELOPE}.${section}`);
+    const line = lines?.get(`${section}.${String(i.path[0])}`) ?? lines?.get(section);
+    return `${line ? `Line ${line}: ` : ''}${path}: ${i.message}`;
   });
 }
 
@@ -35,6 +35,12 @@ function zodErrors(prefix: string, error: z.ZodError): string[] {
  * validation as always. Never interprets prose, never evaluates anything, never applies a partial update.
  */
 export function parseConfigUpdate(text: string): ParseResult {
+  if (isConfigText(text)) {
+    const block = readConfigText(text);
+    const result = block.ok ? validateEnvelope(block.value, block.lines) : block;
+    if (result.ok) return { ...result, notes: [] };
+    return { ...result, notes: [], recoverable: [], diagnostics: importDiagnostics(text, result) };
+  }
   const prepared = prepareUpdate(text);
   if (!prepared.ok) return { ok: false, errors: prepared.errors, notes: prepared.notes, recoverable: prepared.recoverable, diagnostics: importDiagnostics(text, prepared) };
   const r = validateEnvelope(prepared.value);
@@ -43,7 +49,7 @@ export function parseConfigUpdate(text: string): ParseResult {
 }
 
 /** The strict checks on the parsed object: envelope, schema version, sections, every field. */
-function validateEnvelope(json: unknown): { ok: true; update: ConfigUpdate; json: unknown } | { ok: false; errors: string[] } {
+function validateEnvelope(json: unknown, lines?: Map<string, number>): { ok: true; update: ConfigUpdate; json: unknown } | { ok: false; errors: string[] } {
   if (typeof json !== 'object' || json === null || Array.isArray(json) || !(ENVELOPE in json)) {
     return { ok: false, errors: [`Expected an object with a "${ENVELOPE}" key at the top level.`] };
   }
@@ -75,7 +81,7 @@ function validateEnvelope(json: unknown): { ok: true; update: ConfigUpdate; json
   for (const name of supplied as SectionName[]) {
     const r = sectionPatchSchema(name).safeParse(b[name]);
     if (r.success) sections[name] = b[name] as Record<string, unknown>; // keep the payload's own values (no defaults added)
-    else errors.push(...zodErrors(`${ENVELOPE}.${name}`, r.error));
+    else errors.push(...zodErrors(name, r.error, lines));
   }
   if (errors.length) return { ok: false, errors };
   return { ok: true, update: { schemaVersion: CONFIG_SCHEMA_VERSION, sections }, json };

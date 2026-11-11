@@ -52,7 +52,11 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 ## Importer (deterministic, `src/config/update.ts`)
 
-1. **Read the paste (#47, `src/config/import/`).** People paste a whole chat reply and need to know nothing about JSON. Four pure, deterministic steps, each reporting what it changed. Model output is never evaluated or executed, and input is bounded: 200,000 characters, 40 levels of nesting, 20,000 values.
+1. **Read the paste (#139, `src/config/text.ts`).** The primary format is one `BODY ANVIL UPDATE v1` … `END UPDATE` block. Blank lines, surrounding prose and fences are allowed. The version, section names, accepted fields and operations come from `src/config/sections.ts`. Each `[section]` contains one `field: value` per line. A heading may repeat for distinct fields. Repeated fields, object keys, ids in mergeable lists, or blocks are errors.
+
+   Values use bare words, numbers, booleans, times, double-quoted text with JSON escapes, lists such as `[fri, sat]`, and groups such as `{location: home, gymMembership: false}`. Units are defined by the field. `heightCm` accepts a bare number or a `cm` suffix. The parser does no unit conversion. Use `CLEAR` to remove a clearable field, `MERGE [items]` for complete items keyed by id where supported, or a replacement list to remove individual items. The text importer builds the same `fitnessConfigUpdate` envelope and reports syntax and field validation errors against source line numbers. It never repairs or evaluates text.
+
+   **Advanced JSON compatibility (#47, `src/config/import/`).** The same paste box accepts JSON replies. Four deterministic steps report what they changed. Both formats are bounded to 200,000 characters. The value parser also bounds nesting and clause size.
    1. **Extract:**
       - strip a byte-order mark;
       - take the code block (```, ``` ```json ```, `~~~`, or one left open by a cut-off reply) that contains `fitnessConfigUpdate`, or the bare object, ignoring prose before and after it;
@@ -95,17 +99,17 @@ Movement and activity-type ids are `snake_case` (`biceps_curl`, `hammer_curl`). 
 
 ## AI session instructions (`src/config/instructions.ts`)
 
-**Share with AI** (#119) opens a preview of the exact text (`buildConfigShare`), then hands that same string to the system share sheet (Android: `ACTION_SEND`, `text/plain`, the system chooser; no app is hard-coded) or, with **Copy instead**, to the clipboard. On the web, Share uses the Web Share API, else copies. The text starts with one versioned header line, `Body Anvil configuration share · format 1 · configuration schema version 1`, and a sentence saying nothing changes until the user pastes the update back and confirms, then the instructions below. It's built once when the preview opens, so the preview and what is shared are byte-identical. It carries only the configuration sections (profile and health details included, which the preview says), never history, records or secrets. Cancel, a dismissed share sheet or a failed share leave everything as it was; sharing never writes. The return path (paste → check → preview → apply) is unchanged.
+**Share with AI** (#119) opens a preview of the exact text (`buildConfigShare`), then hands that same string to the system share sheet (Android: `ACTION_SEND`, `text/plain`, the system chooser; no app is hard-coded) or, with **Copy instead**, to the clipboard. On the web, Share uses the Web Share API, else copies. The text starts with one versioned header line, `Body Anvil configuration share · format 2 · configuration schema version 1`, and a sentence saying nothing changes until the user pastes the update back and confirms, then the instructions below. It's built once when the preview opens, so the preview and what is shared are byte-identical. It carries only the configuration sections (profile and health details included, which the preview says), never history, records or secrets. Cancel, a dismissed share sheet or a failed share leave everything as it was; sharing never writes. The return path is paste → check → preview → apply.
 
 The instructions are plain text. They contain:
 - the role;
-- the current configuration (every section) and the schema version;
-- the update format: the **whole reply is the bare JSON object**, with no code block, no Markdown and no words around it;
+- the current configuration in readable text and the schema version;
+- the structured text block format and how to ask the assistant for an advanced JSON reply;
 - the list of sections and the rule to include every agreed change and nothing else;
-- the rules above, including the same letter case, plain JSON and each field once;
+- the rules above, including exact letter case and each field once;
 - every field with its shape;
 - the allowed values, generated from the schema enums so they can't drift;
-- four examples, each a complete one-line reply: exercise-only, nutrition-only, one meal by merge, and combined.
+- five complete text examples covering exercise, nutrition, meal merge, mixed sections and schedule merge.
 
 The importer doesn't depend on the AI following the format (see Importer, step 1).
 

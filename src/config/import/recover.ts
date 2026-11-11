@@ -130,7 +130,7 @@ export function extract(raw: string): Recovered {
   const keyAt = text.search(KEY);
   const braceAt = text.indexOf('{');
   if (keyAt < 0 && braceAt < 0) {
-    return { ok: false, errors: [{ message: 'No update found. Expected a JSON object starting with {"fitnessConfigUpdate": …}. Ask the AI to send the update.' }], notes };
+    return { ok: false, errors: [{ message: 'No update found. Ask the AI to send a complete configuration update.' }], notes };
   }
   let start: number;
   let missingOpen = false;

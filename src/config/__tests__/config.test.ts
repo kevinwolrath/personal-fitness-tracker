@@ -235,13 +235,13 @@ describe('AI session instructions', () => {
   });
   it('every example update in the instructions passes the importer (protocol is self-consistent)', () => {
     // Examples are complete replies: the bare object on one line, exactly as the AI should send it (#47).
-    const blocks = [...text.matchAll(/^\{"fitnessConfigUpdate".*\}$/gm)].map((m) => m[0]).filter((b) => !b.includes('<section>'));
+    const blocks = text.match(/^BODY ANVIL UPDATE v\d+\n[\s\S]*?^END UPDATE$/gm) ?? [];
     expect(blocks).toHaveLength(5);
     for (const b of blocks) expect(() => apply(b)).not.toThrow();
   });
-  it('asks for the bare JSON object only, names every section, and still shows the current config (#47)', () => {
-    expect(text).toMatch(/your whole reply is ONE JSON object and nothing else/);
-    expect(text).toMatch(/No code block, no Markdown/);
+  it('asks for one text update, names every section, and still offers JSON compatibility', () => {
+    expect(text).toContain('reply with one plain text update block');
+    expect(text).toContain('If I explicitly ask for JSON compatibility');
     expect(text).toMatch(/Sections you can change: profile, goals, nutrition, exercise, schedule, tracking/);
     expect(text).toMatch(/same letter case/);
   });

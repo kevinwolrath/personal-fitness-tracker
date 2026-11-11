@@ -1,0 +1,15 @@
+Here are the changes we agreed on.
+
+```text
+BODY ANVIL UPDATE v1
+[exercise]
+restDays: [fri, sat]
+[profile]
+heightCm: 181 cm
+displayName: "Sam \"Sunny\" Lee"
+[exercise]
+constraints: {location: home, gymMembership: false, maxSessionMinutes: 40}
+END UPDATE
+```
+
+Review the proposed changes in Body Anvil before applying them.

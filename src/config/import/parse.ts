@@ -32,7 +32,20 @@ class Fail extends Error {
   }
 }
 
+const bareText = /^[A-Za-z_][A-Za-z0-9_-]*/;
+const numberText = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/;
+export const isBareKey = (text: string) => bareText.exec(text)?.[0] === text;
+export const isBareValue = (text: string) => isBareKey(text) || /^(?:\d+_[A-Za-z0-9_-]+|\d{2}:\d{2})$/.test(text);
+
 export function parseJson(src: string): Parsed {
+  return parseValue(src, false);
+}
+
+export function parseClause(src: string): Parsed {
+  return parseValue(src, true);
+}
+
+function parseValue(src: string, clause: boolean): Parsed {
   let i = 0;
   let values = 0;
   const notes = new Set<string>();
@@ -63,6 +76,8 @@ export function parseJson(src: string): Parsed {
           out += String.fromCharCode(parseInt(src.slice(i + 2, i + 6), 16));
           i += 6;
         } else throw new Fail(`Invalid escape "\\${e ?? ''}" in text at ${where(i)}.`, i);
+      } else if (clause && c.charCodeAt(0) < 32) {
+        throw new Fail('Escape control characters inside quoted text.', i);
       } else if (c === '\n') {
         // A raw line break inside a string: models do this for long text. Keep it as a newline.
         notes.add('Kept line breaks inside text as they were written.');
@@ -90,14 +105,22 @@ export function parseJson(src: string): Parsed {
       }
       for (;;) {
         ws();
-        if (src[i] !== '"') throw new Fail(`Expected a quoted key at ${where(i)}.`, i);
         const keyAt = i;
-        const key = string();
+        let key: string;
+        if (src[i] === '"') key = string();
+        else {
+          const bare = clause ? bareText.exec(src.slice(i))?.[0] : undefined;
+          if (!bare) throw new Fail(`Expected ${clause ? 'a key' : 'a quoted key'} at ${where(i)}.`, i);
+          key = bare;
+          i += key.length;
+        }
+        if (clause && key === '__proto__') throw new Fail('Unexpected key "__proto__".', keyAt);
         ws();
         if (src[i] !== ':') throw new Fail(`Expected ":" after "${key}" at ${where(i)}.`, i);
         i++;
         const v = value(depth + 1);
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          if (clause) throw new Fail(`"${key}" appears twice. Include each key once.`, keyAt);
           if (!deepEqual(obj[key], v)) throw new Fail(`"${key}" appears twice in the same place with different values (${where(keyAt)}). Ask the AI to send it once.`, keyAt);
           notes.add(`"${key}" was sent twice with the same value; kept it once.`);
         } else setKey(obj, key, v);
@@ -136,6 +159,18 @@ export function parseJson(src: string): Parsed {
       }
     }
     if (c === '"') return string();
+    if (clause) {
+      const token = /^[^\s,\[\]{}"]+/.exec(src.slice(i))?.[0];
+      if (!token) throw new Fail('Expected a value.', i);
+      const at = i;
+      i += token.length;
+      if (token === 'true') return true;
+      if (token === 'false') return false;
+      if (token === 'null') throw new Fail('Use CLEAR as the whole field value to remove an optional field.', at);
+      if (numberText.test(token) && Number.isFinite(Number(token))) return Number(token);
+      if (isBareValue(token)) return token;
+      throw new Fail('Expected a number, true, false, or text in double quotes.', at);
+    }
     const m = /^[A-Za-z0-9+\-.]+/.exec(src.slice(i));
     if (!m) throw new Fail(`Unexpected "${c ?? 'end of text'}" at ${where(i)}.`, i);
     const word = m[0];
@@ -146,7 +181,7 @@ export function parseJson(src: string): Parsed {
       if (word !== lower) notes.add(`Read ${word} as ${lower}.`);
       return lower === 'null' ? null : lower === 'true';
     }
-    if (/^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?$/.test(word)) return Number(word);
+    if (numberText.test(word)) return Number(word);
     throw new Fail(`"${word}" at ${where(at)} isn't a number, true, false or null. Text needs double quotes.`, at);
   };
   try {

@@ -5,8 +5,13 @@ import { CONFIG_SCHEMA_VERSION, readConfig, type RawPlan } from '../sections';
 import { parseConfigUpdate } from '../update';
 
 const clone = <T>(x: T): T => JSON.parse(JSON.stringify(x));
-/** The JSON block of "My current configuration". */
-const currentConfig = (text: string) => JSON.parse(text.split('## My current configuration')[1].split('```json\n')[1].split('\n```')[0]);
+/** Read the snapshot with the update grammar, using the update delimiters for the test. */
+function currentConfig(text: string) {
+  const snapshot = text.match(/^BODY ANVIL CURRENT CONFIGURATION v\d+\n[\s\S]*?^END CURRENT CONFIGURATION$/m)?.[0];
+  const parsed = parseConfigUpdate(snapshot!.replaceAll('CURRENT CONFIGURATION', 'UPDATE'));
+  if (!parsed.ok) throw new Error(parsed.errors.join('\n'));
+  return parsed.update.sections;
+}
 
 describe('buildConfigShare', () => {
   it('starts with a versioned header naming the share format and configuration schema version', () => {
@@ -20,8 +25,8 @@ describe('buildConfigShare', () => {
     const raw: RawPlan = clone(seed);
     raw.profile = { ...(raw.profile ?? {}), displayName: 'Test Person', heightCm: 181 };
     const shared = currentConfig(buildConfigShare(raw, '2026-11-02'));
-    expect(shared).toEqual({ schemaVersion: CONFIG_SCHEMA_VERSION, ...JSON.parse(JSON.stringify(readConfig(raw))) });
-    expect(shared.profile.displayName).toBe('Test Person');
+    expect(shared).toEqual(JSON.parse(JSON.stringify(readConfig(raw))));
+    expect(shared.profile?.displayName).toBe('Test Person');
   });
 
   it('missing optional values are left out, never invented', () => {
@@ -29,8 +34,8 @@ describe('buildConfigShare', () => {
     delete raw.exercise;
     delete raw.profile;
     const shared = currentConfig(buildConfigShare(raw, '2026-11-02'));
-    expect(shared.exercise).toEqual({});
-    expect(shared.profile.heightCm).toBeUndefined();
+    expect(shared.exercise).toBeUndefined();
+    expect(shared.profile?.heightCm).toBeUndefined();
     expect(JSON.stringify(shared)).not.toContain('null');
   });
 
@@ -50,9 +55,9 @@ describe('buildConfigShare', () => {
     for (const s of ['configChanges', 'observations', 'apiKey', 'api_key', 'sk-ant', 'chatgpt.com', 'claude.ai', 'intent://']) expect(text).not.toContain(s);
   });
 
-  it('its examples still pass the existing importer (the return path is unchanged)', () => {
+  it('its text examples pass the same importer', () => {
     const text = buildConfigShare(clone(seed), '2026-11-02');
-    const examples = text.split('\n').filter((l) => l.startsWith('{"fitnessConfigUpdate"') && !l.includes('<section>'));
+    const examples = text.match(/^BODY ANVIL UPDATE v\d+\n[\s\S]*?^END UPDATE$/gm) ?? [];
     expect(examples.length).toBeGreaterThan(3);
     for (const e of examples) expect(parseConfigUpdate(e).ok).toBe(true);
   });

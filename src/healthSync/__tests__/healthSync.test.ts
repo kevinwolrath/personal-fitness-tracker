@@ -2,7 +2,7 @@ import { MemoryDevice, richHistory } from '../../backup/__tests__/fixture';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { healthSyncClient, normalizeBaseUrl, SyncError } from '../client';
 import { buildHealthPayload, categories, type Scope } from '../payload';
-import { aiInstruction, enrollmentKey, removeEnrollmentKey, saveEnrollmentKey, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
+import { aiInstruction, forgetLegacyEnrollmentKey, LEGACY_ENROLLMENT_KEY, NO_ENROLLMENT_KEY, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
 import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
 import { FakeHealthServer, MemorySecrets } from './fakeServer';
 
@@ -20,7 +20,6 @@ async function setup() {
   await store.replaceAll(history);
   const server = new FakeHealthServer();
   const secrets = new MemorySecrets();
-  await secrets.set(SECRET_KEYS.enrollmentKey, server.enrollmentKey); // #136: entered by the user once
   const deps: SyncDeps = {
     store,
     client: healthSyncClient(BASE, server.fetch),
@@ -30,6 +29,7 @@ async function setup() {
     appVersion: '0.1.0',
     uuid: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
     randomSecret: () => `secret-${ids}-${'z'.repeat(40)}`,
+    enrollmentKey: server.enrollmentKey, // #136: built into the app (a placeholder here)
   };
   return { store, server, secrets, deps, history };
 }
@@ -228,19 +228,27 @@ describe('client', () => {
   });
 });
 
-describe('enrollment key (#136)', () => {
+describe('enrollment key from the build (#136)', () => {
   const enrolls = (server: FakeHealthServer) => server.requests.filter((q) => q.url.endsWith('/api/body-anvil/v1/enroll'));
+  const sees = (server: FakeHealthServer, text: string) =>
+    server.requests.some((q) => q.url.includes(text) || (q.body ?? '').includes(text) || Object.entries(q.headers).some(([k, v]) => k !== 'X-Enrollment-Key' && v.includes(text)));
 
-  it('missing: the first sync asks for it and sends nothing', async () => {
+  it('missing from the build: the first link stops with a clear message and sends nothing; the user is never asked', async () => {
     const { deps, server, secrets } = await setup();
-    await removeEnrollmentKey(secrets);
-    const r = await syncNow(deps);
-    expect(r).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('Enter the enrollment key') } });
+    const r = await syncNow({ ...deps, enrollmentKey: '  ' });
+    expect(r).toMatchObject({ ok: false, error: { kind: 'config', message: NO_ENROLLMENT_KEY } });
     expect(server.requests).toHaveLength(0);
     expect(secrets.map.has(SECRET_KEYS.pending)).toBe(false);
   });
 
-  it('sent only as X-Enrollment-Key on enroll; never on PUT, GET or share requests, nor in any body', async () => {
+  it('missing from the build does not affect a phone that is already linked', async () => {
+    const { deps, server } = await setup();
+    await syncNow(deps);
+    expect(await syncNow({ ...deps, enrollmentKey: '' })).toMatchObject({ ok: true, linked: false });
+    expect(enrolls(server)).toHaveLength(1);
+  });
+
+  it('sent only as X-Enrollment-Key on enroll; never on PUT, GET or share requests, URLs or bodies', async () => {
     const { deps, server, history } = await setup();
     await syncNow(deps);
     await syncNow(deps);
@@ -251,56 +259,57 @@ describe('enrollment key (#136)', () => {
     await revokeShareLink(deps, link.shareId);
     expect(enrolls(server)).toHaveLength(1);
     expect(enrolls(server)[0].headers['X-Enrollment-Key']).toBe(server.enrollmentKey);
-    expect(enrolls(server)[0].url.startsWith('https://')).toBe(true);
-    for (const q of server.requests) {
-      if (q !== enrolls(server)[0]) expect(q.headers['X-Enrollment-Key']).toBeUndefined();
-      expect(q.url).not.toContain(server.enrollmentKey);
-      expect(q.body ?? '').not.toContain(server.enrollmentKey);
-    }
+    for (const q of server.requests) if (q !== enrolls(server)[0]) expect(q.headers['X-Enrollment-Key']).toBeUndefined();
+    expect(sees(server, server.enrollmentKey)).toBe(false);
     expect(JSON.stringify(server.shares)).not.toContain(server.enrollmentKey);
     expect(link.url).not.toContain(server.enrollmentKey);
   });
 
-  it('wrong key (401): explained, data ID and retry secret kept, local data untouched; fixing it retries the same link', async () => {
+  it('wrong key (401): explained, nothing saved or changed; a corrected build retries the same enrollment', async () => {
     const { deps, server, secrets, store } = await setup();
-    await saveEnrollmentKey(secrets, 'wrong-placeholder');
-    await ensureUserId(store, deps.uuid); // the data ID exists before the first sync (made at startup)
+    await ensureUserId(store, deps.uuid);
     const before = JSON.stringify(await store.snapshot());
-    const r = await syncNow(deps);
-    expect(r).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('didn’t accept the enrollment key') } });
-    const id = await store.getMeta(USER_ID_KEY);
-    const pending = secrets.map.get(SECRET_KEYS.pending);
-    expect(pending).toBeDefined();
+    const wrong = await syncNow({ ...deps, enrollmentKey: 'wrong-placeholder' });
+    expect(wrong).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('didn’t accept this app’s enrollment key') } });
+    expect(wrong.ok ? '' : wrong.error.message).not.toContain('wrong-placeholder');
+    const pending = JSON.parse(secrets.map.get(SECRET_KEYS.pending)!);
     expect(JSON.stringify(await store.snapshot())).toBe(before);
-    await saveEnrollmentKey(secrets, `  ${server.enrollmentKey}  `); // trimmed
+    expect(await credentialFor(secrets, (await store.getMeta(USER_ID_KEY))!)).toBeNull();
     expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
-    expect(await store.getMeta(USER_ID_KEY)).toBe(id);
-    const secretsSent = enrolls(server).map((q) => JSON.parse(q.body!).enrollmentSecret);
-    expect(new Set(secretsSent).size).toBe(1);
-    expect(JSON.parse(pending!).secret).toBe(secretsSent[0]);
+    const sent = enrolls(server).map((q) => JSON.parse(q.body!).enrollmentSecret);
+    expect(sent).toEqual([pending.secret, pending.secret]); // same retry secret, X-Enrollment-Key on both
+    expect(enrolls(server).every((q) => typeof q.headers['X-Enrollment-Key'] === 'string')).toBe(true);
+    expect(server.users.size).toBe(1);
   });
 
-  it('a linked phone syncs and shares with no key; removing it after linking changes nothing', async () => {
-    const { deps, server, secrets, history } = await setup();
-    await syncNow(deps);
-    await removeEnrollmentKey(secrets);
-    expect(await enrollmentKey(secrets)).toBeNull();
-    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: false });
-    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, { days: 7, categories: ['body'] });
-    await expect(createShareLink(deps, { days: 7, categories: ['body'] }, 24, doc)).resolves.toMatchObject({ url: expect.any(String) });
-    expect(enrolls(server)).toHaveLength(1);
+  it('an interrupted enroll is retried with the key and the same secret', async () => {
+    const { deps, server } = await setup();
+    server.dropNextEnrollResponse = true;
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'offline' } });
+    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
+    expect(enrolls(server)).toHaveLength(2);
+    expect(enrolls(server).map((q) => q.headers['X-Enrollment-Key'])).toEqual([server.enrollmentKey, server.enrollmentKey]);
   });
 
-  it('is never written to the database, a snapshot or a backup preference list', async () => {
-    const { deps, server, store } = await setup();
-    await syncNow(deps);
+  it('never in the database, snapshots, the status record, secure storage or console output', async () => {
+    const { deps, server, store, secrets } = await setup();
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => jest.spyOn(console, m).mockImplementation(() => undefined));
+    try {
+      await syncNow({ ...deps, enrollmentKey: 'wrong-placeholder' });
+      await syncNow(deps);
+      for (const spy of spies) for (const call of spy.mock.calls) expect(JSON.stringify(call)).not.toMatch(/wrong-placeholder|test-enrollment-key/);
+    } finally {
+      spies.forEach((spy) => spy.mockRestore());
+    }
     expect(JSON.stringify(await store.snapshot())).not.toContain(server.enrollmentKey);
-    expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(SECRET_KEYS.enrollmentKey);
-    expect(Object.keys(BACKUP_PREFERENCE_KEYS.excluded)).toContain(SECRET_KEYS.enrollmentKey);
+    expect(JSON.stringify([...secrets.map.values()])).not.toContain(server.enrollmentKey);
   });
 
-  it('an empty key is refused', async () => {
+  it('a key typed in by the first version of #136 is deleted, and never used', async () => {
     const { secrets } = await setup();
-    await expect(saveEnrollmentKey(secrets, '   ')).rejects.toMatchObject({ kind: 'enrollmentKey' });
+    await secrets.set(LEGACY_ENROLLMENT_KEY, 'legacy-placeholder');
+    await forgetLegacyEnrollmentKey(secrets);
+    expect(secrets.map.has(LEGACY_ENROLLMENT_KEY)).toBe(false);
+    expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(LEGACY_ENROLLMENT_KEY);
   });
 });

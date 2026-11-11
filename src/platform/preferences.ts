@@ -141,6 +141,6 @@ export const BACKUP_PREFERENCE_KEYS = {
     'pft.healthSync.credential': 'Health data sync key: a secret, never written to a backup. The data ID travels with the backup; link again on the new phone.',
     'pft.healthSync.pending': 'An unfinished health data link on this phone (a secret).',
     'pft.healthSync.status': 'The last health data sync on this phone.',
-    'pft.healthSync.enrollmentKey': 'Health data enrollment key: a secret, never written to a backup. Enter it again to link a new phone.',
+    'pft.healthSync.enrollmentKey': 'Legacy (#136 first version): a typed enrollment key. Deleted when Health data sync opens; keys now come from the build.',
   } as Record<string, string>,
 } as const;

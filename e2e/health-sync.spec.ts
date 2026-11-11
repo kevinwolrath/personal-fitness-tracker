@@ -12,7 +12,7 @@ async function route(page: Page, server: FakeHealthServer) {
   await page.route(`${BASE}/**`, async (r) => {
     const req = r.request();
     try {
-      const res = await server.fetch(req.url(), { method: req.method(), headers: await req.allHeaders().then((h) => ({ ...h, Authorization: h.authorization ?? '' })), body: req.postData() ?? undefined });
+      const res = await server.fetch(req.url(), { method: req.method(), headers: await req.allHeaders().then((h) => ({ ...h, Authorization: h.authorization ?? '', ...(h['x-enrollment-key'] ? { 'X-Enrollment-Key': h['x-enrollment-key'] } : {}) })), body: req.postData() ?? undefined });
       await r.fulfill({ status: res.status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: await res.text() });
     } catch {
       await r.abort('failed');
@@ -41,6 +41,13 @@ test('sync my data: set the address, confirm what is sent, link, then upload aga
   await page.getByTestId('health-sync-url').fill(`${BASE}/`);
   await page.getByTestId('health-sync-url-save').click();
   await expect(page.getByTestId('health-sync-notice')).toHaveText('Server address saved');
+  // #136: the enrollment key is typed once, masked, and never shown again.
+  await expect(page.getByTestId('enrollment-key-input')).toHaveAttribute('type', 'password');
+  await page.getByTestId('enrollment-key-input').fill(server.enrollmentKey);
+  await page.getByTestId('enrollment-key-save').click();
+  await expect(page.getByTestId('enrollment-key')).toContainText('Saved on this phone.');
+  await expect(page.getByTestId('enrollment-key-input')).toHaveCount(0);
+  expect(await page.getByTestId('health-sync-sheet').innerText()).not.toContain(server.enrollmentKey);
 
   await page.getByTestId('health-sync-prepare').click();
   await expect(page.getByTestId('health-sync-contents')).toContainText('2026-10-30 to 2026-11-01');
@@ -71,7 +78,7 @@ test('share my details: choose scope, preview exactly what is shared, create, co
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const server = new FakeHealthServer();
   await route(page, server);
-  await page.addInitScript((b) => localStorage.setItem('pft.healthSync.url', b), BASE);
+  await page.addInitScript(([b, k]) => { localStorage.setItem('pft.healthSync.url', b); localStorage.setItem('pft.healthSync.enrollmentKey', k); }, [BASE, server.enrollmentKey]);
   await seedRecords(page, { observations: [weigh('2026-08-01', 95), weigh('2026-10-30', 92.4), weigh('2026-11-01', 92.1)] });
   await openAt(page, MONDAY);
   await open(page);
@@ -109,7 +116,7 @@ test('share my details: choose scope, preview exactly what is shared, create, co
 test('offline: the error is shown and nothing is marked as synced', async ({ page }) => {
   const server = new FakeHealthServer();
   await route(page, server);
-  await page.addInitScript((b) => localStorage.setItem('pft.healthSync.url', b), BASE);
+  await page.addInitScript(([b, k]) => { localStorage.setItem('pft.healthSync.url', b); localStorage.setItem('pft.healthSync.enrollmentKey', k); }, [BASE, server.enrollmentKey]);
   await openAt(page, MONDAY);
   await open(page);
   server.offline = true;
@@ -118,4 +125,48 @@ test('offline: the error is shown and nothing is marked as synced', async ({ pag
   await expect(page.getByTestId('health-sync-error')).toContainText('Couldn’t reach the server');
   await expect(page.getByTestId('health-sync-status')).toContainText('Not synced yet');
   await page.screenshot({ path: 'docs/design/issue-134/sync-error.png', fullPage: true });
+});
+
+test('#136 enrollment key: asked for before the first sync; a wrong key is explained and fixed without losing anything', async ({ page }) => {
+  const server = new FakeHealthServer();
+  await route(page, server);
+  await page.addInitScript((b) => localStorage.setItem('pft.healthSync.url', b), BASE);
+  await seedRecords(page, { observations: [weigh('2026-11-01', 92.1)] });
+  await openAt(page, MONDAY);
+  await open(page);
+  await page.getByTestId('health-sync-prepare').click();
+  await expect(page.getByTestId('health-sync-error')).toContainText('Enter the enrollment key before your first sync');
+  expect(server.requests).toHaveLength(0);
+
+  await page.getByTestId('enrollment-key-input').fill('wrong-placeholder');
+  await page.getByTestId('enrollment-key-save').click();
+  await page.getByTestId('health-sync-prepare').click();
+  await page.getByTestId('health-sync-upload').click();
+  await expect(page.getByTestId('health-sync-error')).toContainText('didn’t accept the enrollment key');
+  await expect(page.getByTestId('enrollment-key-input')).toBeVisible(); // offered to edit
+  const pending = await page.evaluate(() => localStorage.getItem('pft.healthSync.pending'));
+  expect(pending).toBeTruthy();
+  await page.screenshot({ path: 'docs/design/issue-136/wrong-key.png', fullPage: true });
+
+  await page.getByTestId('enrollment-key-input').fill(server.enrollmentKey);
+  await page.getByTestId('enrollment-key-save').click();
+  await page.getByTestId('health-sync-prepare').click();
+  await page.getByTestId('health-sync-upload').click();
+  await expect(page.getByTestId('health-sync-notice')).toHaveText('Linked and uploaded');
+  const enrolls = server.requests.filter((q) => q.url.endsWith('/enroll'));
+  expect(new Set(enrolls.map((q) => JSON.parse(q.body!).enrollmentSecret)).size).toBe(1); // same retry secret
+  expect(server.users.size).toBe(1);
+
+  // Linked: the key can be removed; syncing still works without it, and it was only ever sent on enroll.
+  await expect(page.getByTestId('enrollment-key')).toContainText('This phone is linked');
+  await page.screenshot({ path: 'docs/design/issue-136/linked-remove-key.png', fullPage: true });
+  await page.getByTestId('enrollment-key-remove').click();
+  await expect(page.getByTestId('health-sync-notice')).toHaveText('Enrollment key removed from this phone');
+  expect(await page.evaluate(() => localStorage.getItem('pft.healthSync.enrollmentKey'))).toBeNull();
+  await page.getByTestId('health-sync-prepare').click();
+  await page.getByTestId('health-sync-upload').click();
+  await expect(page.getByTestId('health-sync-notice')).toHaveText('Uploaded');
+  for (const q of server.requests.filter((q) => !q.url.endsWith('/enroll'))) expect(q.headers['X-Enrollment-Key']).toBeUndefined();
+  const tracking = await page.evaluate(() => localStorage.getItem('pft:tracking:v1'));
+  expect(tracking).not.toContain(server.enrollmentKey);
 });

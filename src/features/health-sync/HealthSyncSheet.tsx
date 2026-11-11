@@ -16,6 +16,9 @@ import {
   serverUrl,
   syncNow,
   syncStatus,
+  enrollmentKey,
+  removeEnrollmentKey,
+  saveEnrollmentKey,
   type SyncDeps,
   type SyncStatus,
 } from '../../healthSync/service';
@@ -80,6 +83,10 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const [url, setUrl] = useState('');
   const [urlDraft, setUrlDraft] = useState('');
   const [linked, setLinked] = useState(false);
+  // #136: only whether a key is saved; the key itself is never read back into the UI.
+  const [hasKey, setHasKey] = useState(false);
+  const [keyDraft, setKeyDraft] = useState('');
+  const [editingKey, setEditingKey] = useState(false);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -109,8 +116,9 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const refresh = useCallback(async () => {
     const base = await serverUrl(secrets, DEFAULT_URL);
     const id = await ensureUserId(store, random.uuid);
-    const [cred, st] = await Promise.all([credentialFor(secrets, id), syncStatus(secrets)]);
+    const [cred, st, key] = await Promise.all([credentialFor(secrets, id), syncStatus(secrets), enrollmentKey(secrets)]);
     if (!alive.current) return;
+    setHasKey(!!key);
     setUrl(base);
     setUrlDraft(base);
     setLinked(!!cred);
@@ -146,9 +154,30 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       setNotice('Server address saved');
     });
 
+  const saveKey = () =>
+    run('Saving…', async () => {
+      await saveEnrollmentKey(secrets, keyDraft);
+      setKeyDraft('');
+      setHasKey(true);
+      setEditingKey(false);
+      setNotice('Enrollment key saved');
+    });
+  const removeKey = () =>
+    run('Removing…', async () => {
+      await removeEnrollmentKey(secrets);
+      setKeyDraft('');
+      setHasKey(false);
+      setEditingKey(false);
+      setNotice('Enrollment key removed from this phone');
+    });
+
   const prepareSync = () =>
     run('Preparing…', async () => {
       setRemote(null);
+      if (!linked && !hasKey) {
+        setEditingKey(true);
+        throw new Error('Enter the enrollment key before your first sync. You only need it once, to link this phone.');
+      }
       setConfirmSync(await fullPayload(deps(url)));
     });
   const doSync = () =>
@@ -156,7 +185,10 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       const r = await syncNow(deps(url));
       setConfirmSync(null);
       await refresh();
-      if (!r.ok) throw r.error;
+      if (!r.ok) {
+        if (r.error.kind === 'enrollmentKey') setEditingKey(true); // offer to fix the key; nothing else is erased
+        throw r.error;
+      }
       setNotice(r.linked ? 'Linked and uploaded' : 'Uploaded');
     });
   const viewRemote = () =>
@@ -267,6 +299,49 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
                   return p?.coverage ? <Text style={type.detail}>{p.coverage.from ?? '—'} to {p.coverage.to ?? '—'} · {p.counts?.values ?? 0} values, {p.counts?.meals ?? 0} meals</Text> : null;
                 })()}
                 <Text style={type.detail}>For viewing only. It isn’t copied into this phone; to move data between phones use Back up data and Restore data.</Text>
+              </View>
+            )}
+
+            {(!linked || hasKey) && (
+              <View style={styles.panel} testID="enrollment-key">
+                <Text style={type.section}>Enrollment key</Text>
+                {linked ? (
+                  <>
+                    <Text style={type.detail}>This phone is linked, so syncing and sharing don’t need the key. You can remove it; you’ll need it again to link another phone or after restoring a backup.</Text>
+                    <Button title="Remove key" variant="quiet" disabled={!!busy} onPress={removeKey} testID="enrollment-key-remove" />
+                  </>
+                ) : hasKey && !editingKey ? (
+                  <>
+                    <Text style={type.body}>Saved on this phone.</Text>
+                    <Text style={type.detail}>It’s sent only when this phone first links to the server.</Text>
+                    <View style={styles.row}>
+                      <Button title="Replace key" variant="secondary" disabled={!!busy} onPress={() => setEditingKey(true)} testID="enrollment-key-replace" />
+                      <Button title="Remove key" variant="quiet" disabled={!!busy} onPress={removeKey} testID="enrollment-key-remove" />
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={type.detail}>Needed once, to link this phone. It’s kept in secure storage and never shown again, backed up or shared.</Text>
+                    <TextInput
+                      value={keyDraft}
+                      onChangeText={setKeyDraft}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      autoComplete="off"
+                      importantForAutofill="no"
+                      placeholder="Enrollment key"
+                      accessibilityLabel="Enrollment key"
+                      style={styles.input}
+                      placeholderTextColor={colors.muted}
+                      testID="enrollment-key-input"
+                    />
+                    <View style={styles.row}>
+                      <Button title="Save key" disabled={!!busy || !keyDraft.trim()} onPress={saveKey} testID="enrollment-key-save" />
+                      {hasKey && <Button title="Cancel" variant="quiet" disabled={!!busy} onPress={() => { setKeyDraft(''); setEditingKey(false); }} />}
+                    </View>
+                  </>
+                )}
               </View>
             )}
 

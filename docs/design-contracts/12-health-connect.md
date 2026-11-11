@@ -25,7 +25,7 @@ Imports what the phone already records: steps, active energy, workouts, weight a
   - **Permission check fails** (reading the granted permissions errors on open): the last known connection and imported values stay, the sheet says the check failed, and nothing is shown as "not connected".
   - **Partial access:** only allowed types are read, and only types read successfully are replaced. If one type is revoked between syncs (for example sleep, while steps stays allowed), the next sync refreshes the others and keeps that type's last imported values; the sheet shows it as "Not allowed" and the app doesn't ask again (#43).
   - **Errors:** a type that fails to read is skipped, and its stored values stay. A failed sync is recorded and shown in the sheet and the menu row. It never blocks the app or the Daily Log.
-- **Never overwrites the user:** manual entries and screenshot imports are separate records and are never changed by a sync.
+- **Never overwrites the user:** manual entries and historical screenshot imports are separate records and are never changed by a sync.
   - **Precedence:** on the same day, the Weight tile shows a value the user entered or confirmed before an imported one (`latestObservation`). Recorded rows list them first.
   - **Read-only here:** an imported value opens read-only, with "Change or delete it there".
 - **Disconnecting** happens in Health Connect (**Manage in Health Connect**). It stops future syncs. Nothing already imported is deleted, and manual data is never touched.
@@ -56,7 +56,7 @@ Labels read **"Health Connect · Fitbit + this phone"**.
 
 ## UI (option A, app shell layer)
 
-- **Menu → Health Connect**, under Import from screenshots. The detail line is one of: "Off · steps, energy, workouts, weight and sleep", "Connected · synced 7:42 am", "Syncing…", "Last sync didn't finish", "Not installed", "Not available on this device".
+- **Menu → Health Connect**, first in the menu. The detail line is one of: "Off · steps, energy, workouts, weight and sleep", "Connected · synced 7:42 am", "Syncing…", "Last sync didn't finish", "Not installed", "Not available on this device".
 - **Sheet, not connected:** the six types as a ticked list ("What to bring in"), **Connect Health Connect** (the one primary action; disabled with nothing ticked), and "The last 30 days come in first". After a refusal: "Nothing was allowed…" and **Open Health Connect**.
 - **The sheet scrolls** when its content is taller than the screen (#46), so every action stays reachable.
 - **Sheet, connected: the setup checklist (#116, option A):**
@@ -90,7 +90,7 @@ Before a release that includes this reaches testers, Play Console needs:
 
 1. **App content → Health apps declaration:** declare the seven read permissions above, each with its use (the table). No write access.
 2. **Privacy policy URL** (App content → Privacy policy). Supply an owner-reviewed, public policy covering the actual health-data use, storage, optional sharing/export and external processing. Verify the Health Connect permission-rationale entry point displays or links the same policy. A native intent filter alone does not provide a policy URL.
-3. **Data safety:** the owner must classify the shipped app's actual data flows using Google's definitions. On-device processing alone must not be automatically labelled off-device collection. Optional screenshot extraction sends images and request context directly to Anthropic; user-directed export/sharing and AI configuration must also be reviewed. Do not use a blanket "nothing collected/shared" assertion for the whole app or invent provider retention/security guarantees. See the [Play validation/declaration checklist](../google-play-validation.md).
+3. **Data safety:** the owner must classify the shipped app's actual data flows using Google's definitions. On-device processing alone must not be automatically labelled off-device collection. (The screenshot extraction that sent images to Anthropic was removed in #138.) User-directed export/sharing, health data sync and AI configuration must be reviewed. Do not use a blanket "nothing collected/shared" assertion for the whole app or invent provider retention/security guarantees. See the [Play validation/declaration checklist](../google-play-validation.md).
 
 Internal testing may accept an upload before these are approved, but Play can block wider release, or the permissions, until they are.
 

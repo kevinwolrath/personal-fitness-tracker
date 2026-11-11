@@ -1,4 +1,4 @@
-import { router, useGlobalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,6 @@ import { useApp } from '../../providers/AppProvider';
 import { ConfirmDialog } from '../../ui/ConfirmDialog';
 import { Toast, type ToastState } from '../../ui/Toast';
 import { space, touch, createThemedStyles } from '../../ui/theme';
-import { handOffScreenshots, pickScreenshots } from '../import/useImportSession';
 import { TabBar } from './TabBar';
 import { useTrendAlert } from '../progress/useTrendAlert';
 import { useClock } from '../daily-log/useDay';
@@ -29,7 +28,6 @@ import { energyDisplayDetail } from '../../energy';
 import { APP_NAME } from '../../brand';
 import { CoverageSheet } from '../muscles/CoverageSheet';
 
-const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
 
 /**
  * App shell (contract 02 "Layout layers"): the persistent app bar and the app menu.
@@ -59,8 +57,6 @@ function Shell({ children }: { children: ReactNode }) {
   const healthConnect = useHealthConnect();
   const [healthConnectOpen, setHealthConnectOpen] = useState(false);
   const now = new Date();
-  // The open Daily Log day, so an import defaults to it (contract 06).
-  const params = useGlobalSearchParams<{ date?: string }>();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmExport, setConfirmExport] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
@@ -71,13 +67,6 @@ function Shell({ children }: { children: ReactNode }) {
     if (notice) setToast({ key: Date.now(), message: notice });
   }, []);
 
-  const importScreenshots = async () => {
-    const shots = await pickScreenshots();
-    if (!shots) return; // cancelled: nothing happens
-    handOffScreenshots(shots);
-    const date = isDate(params.date) ? params.date : toLocalDate(new Date());
-    router.push({ pathname: '/import', params: { date } });
-  };
   const exportAll = async () => {
     const today = toLocalDate(new Date());
     try {
@@ -89,7 +78,6 @@ function Shell({ children }: { children: ReactNode }) {
     }
   };
   const items: AppMenuItem[] = [
-    { key: 'import', label: 'Import from screenshots', detail: 'Read values from fitness-app screenshots', onSelect: importScreenshots },
     { key: 'health-connect', label: 'Health Connect', detail: healthConnectStatus(healthConnect), onSelect: () => setHealthConnectOpen(true) },
     { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
     { key: 'setup', label: 'Edit setup answers', detail: 'Rebuild your starter plan from new answers', onSelect: () => router.push('/setup') },

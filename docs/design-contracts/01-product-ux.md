@@ -28,6 +28,6 @@
 
 ## Out of scope for V1
 
-Accounts, login, a backend, sync, social features, food database or barcode logging, wearables or health-platform API integrations (screenshot import is in scope; see 06), notifications or reminders, in-app plan editor, charts beyond a simple trend, multiple concurrent plans, tablet or desktop layouts, landscape.
+Accounts, login, a backend, sync, social features, food database or barcode logging, wearables or health-platform API integrations (Health Connect import and Body Anvil sync came later: contracts 12 and 06; the early screenshot import was removed in #138), notifications or reminders, in-app plan editor, charts beyond a simple trend, multiple concurrent plans, tablet or desktop layouts, landscape.
 
 Anything here needs a contract change before it's built.

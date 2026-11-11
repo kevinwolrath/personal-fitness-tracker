@@ -25,7 +25,7 @@ jest.mock('../../../storage/openStore', () => ({
 }));
 
 jest.mock('expo-image-picker', () => ({ launchImageLibraryAsync: jest.fn() }));
-jest.mock('../../../platform/files', () => ({ shareJson: jest.fn(async () => {}), retainAsset: jest.fn(async () => null) }));
+jest.mock('../../../platform/files', () => ({ shareJson: jest.fn(async () => {}) }));
 const { shareJson } = jest.requireMock('../../../platform/files') as { shareJson: jest.Mock };
 const pickImages = ImagePicker.launchImageLibraryAsync as jest.Mock;
 
@@ -48,7 +48,6 @@ async function launch() {
         </AppShell>
       ),
       '(main)/index': DayLogScreen,
-      import: () => <Text testID="import-route">import</Text>,
       configure: () => <Text testID="configure-route">configure</Text>,
     },
     { initialUrl: '/' },
@@ -207,7 +206,7 @@ it("has no I'm hungry button or quick-log history, and app operations are in the
 
   fireEvent.press(screen.getByLabelText('Menu'));
   expect(await screen.findByTestId('app-menu')).toBeTruthy();
-  for (const label of ['Import from screenshots', 'Configure with AI', 'Export all data']) expect(screen.getByLabelText(label)).toBeTruthy();
+  for (const label of ['Health Connect', 'Configure with AI', 'Export all data']) expect(screen.getByLabelText(label)).toBeTruthy();
 });
 
 it('export asks first with the system alert; only Export JSON exports', async () => {
@@ -232,21 +231,14 @@ it('export asks first with the system alert; only Export JSON exports', async ()
   alert.mockRestore();
 });
 
-it('import opens the photo picker straight away: cancel stays put, a selection opens the import flow', async () => {
+it('#138: screenshot import is gone: no menu item, no picker, no import route', async () => {
   await launch();
-  pickImages.mockResolvedValueOnce({ canceled: true, assets: null });
-  await chooseFromMenu('Import from screenshots');
-  expect(pickImages).toHaveBeenCalledWith(expect.objectContaining({ mediaTypes: ['images'], allowsMultipleSelection: true }));
-  await act(async () => {});
+  fireEvent.press(screen.getByLabelText('Menu'));
+  expect(await screen.findByTestId('app-menu')).toBeTruthy();
+  expect(screen.queryByLabelText('Import from screenshots')).toBeNull();
+  expect(screen.queryByText(/screenshot/i)).toBeNull();
+  expect(pickImages).not.toHaveBeenCalled();
   expect(screen.queryByTestId('import-route')).toBeNull();
-  expect(screen.getByTestId('day-progress')).toBeTruthy();
-
-  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-  pickImages.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///a.png', base64: png }, { uri: 'file:///b.png', base64: png }] });
-  await chooseFromMenu('Import from screenshots');
-  expect(await screen.findByTestId('import-route')).toBeTruthy();
-  const { takeHandedOffScreenshots } = jest.requireActual('../../import/useImportSession');
-  expect(takeHandedOffScreenshots()).toHaveLength(2);
 });
 
 it('configure opens the existing configuration flow', async () => {

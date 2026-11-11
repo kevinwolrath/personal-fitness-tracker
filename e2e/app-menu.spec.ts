@@ -1,8 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { presetApiKey, stubClaude } from './claudeStub';
 import { MONDAY, chooseFromMenu, exportAllData, openAt, seedRecords } from './helpers';
 
-/** Issue #15: the Daily Log is about the day; import, configuration and export are one level down in the menu. */
+/** Issue #15: the Daily Log is about the day; configuration and export are one level down in the menu (#138: no import). */
 
 const store = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!));
 const countDownloads = (page: Page) => {
@@ -18,60 +17,21 @@ test("the Daily Log has no I'm hungry action or history, and no app-level links"
   await expect(page.getByRole('button', { name: "I'm hungry" })).toHaveCount(0);
   await expect(page.getByText(/hungry/i)).toHaveCount(0);
   await expect(page.getByTestId('quick-log-summary')).toHaveCount(0);
-  for (const name of ['Import from screenshots', 'Configure with AI', 'Export all data']) {
+  for (const name of ['Import from screenshots', 'Configure with AI', 'Export all data']) { // import: gone everywhere (#138)
     await expect(page.getByRole('button', { name })).toHaveCount(0);
   }
   const doc = await exportAllData(page);
   expect(doc.quickLogs).toHaveLength(1);
 });
 
-test('the header menu holds import, configure and export, and closes cleanly', async ({ page }) => {
+test('the header menu holds configure and export, and closes cleanly', async ({ page }) => {
   await openAt(page, MONDAY);
   await page.getByRole('button', { name: 'Menu' }).click();
   const menu = page.getByTestId('app-menu');
-  await expect(menu.getByRole('button')).toHaveText([/Import from screenshots/, /Health Connect/, /Configure with AI/, /Edit setup answers/, /Reminders/, /Settings/, /Muscle Growth/, /Muscle coverage & exercise log/, /Back up data/, /Restore data/, /Health data sync/, /Export all data/]);
+  await expect(menu.getByRole('button')).toHaveText([/Health Connect/, /Configure with AI/, /Edit setup answers/, /Reminders/, /Settings/, /Muscle Growth/, /Muscle coverage & exercise log/, /Back up data/, /Restore data/, /Health data sync/, /Export all data/]);
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(menu).toHaveCount(0);
   await expect(page.getByTestId('next-action')).toBeVisible();
-});
-
-test('import opens the image picker directly (images, multi-select); cancel changes nothing', async ({ page }) => {
-  await openAt(page, MONDAY);
-  const before = await store(page);
-  const chooser = page.waitForEvent('filechooser');
-  await chooseFromMenu(page, 'Import from screenshots');
-  const fc = await chooser; // straight from the menu tap: no in-app "select screenshots" step
-  expect(fc.isMultiple()).toBe(true);
-  const accept = (await fc.element().getAttribute('accept'))!.split(',').filter(Boolean);
-  expect(accept.length).toBeGreaterThan(0);
-  expect(accept.every((t) => t.startsWith('image/'))).toBe(true); // images only
-
-  await fc.element().dispatchEvent('cancel');
-  await page.waitForTimeout(300);
-  await expect(page.getByRole('heading', { name: 'Import screenshots' })).toHaveCount(0);
-  await expect(page.getByTestId('app-menu')).toHaveCount(0);
-  await expect(page).toHaveURL(/\/$|\/\?/);
-  expect(await store(page)).toEqual(before);
-});
-
-test('selected screenshots go straight to review, dated from the open day', async ({ page }) => {
-  await presetApiKey(page);
-  await stubClaude(page);
-  await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Previous day' }).click(); // Sun 1 Nov
-
-  const chooser = page.waitForEvent('filechooser');
-  await chooseFromMenu(page, 'Import from screenshots');
-  await (await chooser).setFiles(['e2e/fixtures/fitbit-today.png', 'e2e/fixtures/scale.png']);
-  await expect(page.getByRole('heading', { name: 'Import screenshots' })).toBeVisible();
-  await page.getByRole('button', { name: 'Read 2 screenshots' }).click(); // both selections arrived
-  await expect(page.getByTestId('review-scale.png')).toBeVisible();
-  await page.getByRole('button', { name: /^Save \d+ values$/ }).click();
-
-  await expect(page.getByTestId('day-title')).toHaveText('Yesterday');
-  const scale = (await store(page)).observations.filter((o: any) => o.source.app === 'renpho');
-  expect(scale.length).toBeGreaterThan(0);
-  expect(scale.every((o: any) => o.date === '2026-11-01')).toBe(true);
 });
 
 test('configure opens the existing configuration flow', async ({ page }) => {

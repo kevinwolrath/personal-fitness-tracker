@@ -10,9 +10,9 @@ PROGRESS FROM YOUR RECORDS
 View weight, waist, workouts and other available measurements over time. Charts use recorded information and distinguish calculated values and estimates from observations.
 
 BRING YOUR INFORMATION TOGETHER
-Review and import supported fitness screenshots. On compatible Android devices, optionally connect Health Connect to read supported health and fitness records. Permissions and available data determine what appears.
+On compatible Android devices, optionally connect Health Connect to read supported health and fitness records. Permissions and available data determine what appears. Optionally keep a private copy of your records on the Body Anvil server and create expiring read-only links to share them.
 
 MAKE IT YOURS
-Choose Hero Forge or Classic appearance, choose energy display units and configure your plan through setup answers and the supported AI-assisted configuration workflow. Import and AI-assisted configuration can require an external AI service and your own configuration; they are not automatic coaching services.
+Choose Hero Forge or Classic appearance, choose energy display units and configure your plan through setup answers and the supported AI-assisted configuration workflow. AI-assisted configuration uses an external AI service of your choice; it is not an automatic coaching service.
 
 Body Anvil is a personal planning and tracking tool. Exercise guides and muscle coverage are informational and do not provide medical advice, diagnosis or treatment.

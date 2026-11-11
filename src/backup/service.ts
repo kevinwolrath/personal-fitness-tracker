@@ -21,7 +21,6 @@ export type BackupIO = {
 };
 
 export const EXCLUDED_FROM_BACKUP = [
-  'API keys (for reading screenshots): enter them again after restoring.',
   'Health Connect permissions and sync state: connect again; the next sync re-reads recent days without duplicating them.',
   'Notification permission: allow it again if you use reminders.',
   'Anything belonging only to this phone (an unfinished setup, app version, device identifiers).',

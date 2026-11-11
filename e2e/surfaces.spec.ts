@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { presetApiKey, stubClaude } from './claudeStub';
-import { HISTORY_DAY, MONDAY, chooseFromMenu, historyObservations, importScreenshots, openAt, openSessionOptions, row, seedRecords } from './helpers';
+import { HISTORY_DAY, MONDAY, chooseFromMenu, historyObservations, openAt, openSessionOptions, row, seedRecords } from './helpers';
 
 /**
  * Issue #21: every modal screen and sheet uses the one header pattern (contract 02), and every surface
@@ -76,20 +75,10 @@ test('a recorded observation: Cancel/Save on an editable day', async ({ page }) 
   await expectOnePrimary(topSurface(page), 'observation');
 });
 
-test('modal screens: Import and Configure share the pattern and keep one primary action per state', async ({ page, context }) => {
-  await presetApiKey(page);
-  await stubClaude(page);
+test('modal screens: Configure shares the pattern and keeps one primary action per state', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openAt(page, MONDAY);
-
-  await importScreenshots(page, ['e2e/fixtures/scale.png']);
   const screen = page.locator('body');
-  await expectHeaderPattern(screen, 'Cancel');
-  await expectOnePrimary(screen, 'import, before reading');
-  await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
-  await expect(page.getByTestId('review-scale.png')).toBeVisible();
-  await expectOnePrimary(screen, 'import, reviewing');
-  await page.getByRole('button', { name: 'Cancel' }).click();
 
   await chooseFromMenu(page, 'Configure with AI');
   await expectHeaderPattern(screen, 'Close');

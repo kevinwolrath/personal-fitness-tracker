@@ -62,6 +62,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // #134: this data's ID, made once when there is data to sync (first-run setup stores nothing until it finishes).
       // Kept in the database, so a full backup carries it. Never blocks or fails startup.
       if (plan) Promise.resolve().then(() => ensureUserId(store, random.uuid)).catch(() => undefined);
+      // #138: screenshot import is gone; don't keep its API key (a secret) on the phone.
+      Promise.resolve().then(() => preferences.forgetScreenshotImportKey()).catch(() => undefined);
       setChosenEnergy(energy);
       setState({ store, plan });
     })().catch((e: unknown) => !cancelled && setState({ error: e instanceof Error ? e.message : String(e) }));

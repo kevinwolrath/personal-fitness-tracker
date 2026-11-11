@@ -326,8 +326,8 @@ describe('merge by id (#26): change one list item without resending the list', (
   });
   it('the AI instructions explain merge and mark the lists that take it', () => {
     const text = buildAiInstructions(baseRaw(), '2026-11-02');
-    expect(text).toContain('{ "merge": [items] }');
-    expect(text).toMatch(/- meals \(merge by id\):/);
+    expect(text).toContain('field: MERGE [items]');
+    expect(text).toMatch(/- meals \(MERGE allowed\):/);
   });
 });
 

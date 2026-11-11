@@ -1,11 +1,23 @@
 import { readFileSync } from 'node:fs';
 import seed from '../../../plans/seed.plan.json';
+import gemini from '../../../fixtures/config/text-replies/gemini-2026-11-11.json';
 import { readConfig } from '../sections';
 import { formatConfigText, UPDATE_END, UPDATE_HEADER } from '../text';
 import { applyConfigUpdate, parseConfigUpdate } from '../update';
 
 const block = (...rows: string[]) => [UPDATE_HEADER, ...rows, UPDATE_END].join('\n');
 const fixture = (name: string) => readFileSync(`fixtures/config/text-replies/${name}`, 'utf8');
+
+// Captured provider output is data. Its ACCEPT labels describe Gemini's expectations.
+it.each(gemini.map((sample) => [sample.id, sample.structured_text_payload]))(
+  'rejects the unsupported protocol in captured Gemini reply %s',
+  (_id, payload) => {
+    const parsed = parseConfigUpdate(payload);
+    expect(parsed.ok).toBe(false);
+    if (parsed.ok) throw new Error('Unsupported provider protocol was accepted');
+    expect(parsed.errors.length).toBeGreaterThan(0);
+  },
+);
 
 it('round-trips every section of the bundled configuration through validation and apply', () => {
   const config = readConfig(seed);

@@ -12,7 +12,7 @@ const squat = buildGuide({ movement: 'kettlebell_squat', label: 'Kettlebell squa
 const layout = { nativeEvent: { layout: { x: 0, y: 0, width: 342, height: 256 } } };
 
 it.each(['male', 'female', 'other'])('#151 pages all three manifest-resolved curl phases for %s', gender => {
-  const curl = buildGuide({ movement: 'supinated_cross_body_dumbbell_curl', sets: 3, reps: 10, loadKg: 7 });
+  const curl = buildGuide({ movement: 'supinated_cross_body_dumbbell_curl', label: 'Supinated cross-body dumbbell curl', sets: 3, reps: 10, loadKg: 7 });
   render(<ExerciseGuideSheet guide={curl} gender={gender} onClose={() => {}} />);
   fireEvent(screen.getByTestId('guide-pager'), 'layout', layout);
   for (let step = 1; step <= 3; step++) {

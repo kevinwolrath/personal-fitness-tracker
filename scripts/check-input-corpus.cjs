@@ -3,13 +3,13 @@ const { readFileSync } = require('node:fs');
 
 const path = 'fixtures/input/corpus.jsonl';
 const base = process.env.CORPUS_BASE_SHA;
-const current = readFileSync(path, 'utf8');
+const current = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
 const cases = current.trim().split('\n').map((line) => JSON.parse(line));
 if (new Set(cases.map((entry) => entry.id)).size !== cases.length) throw new Error('Corpus ids must be unique.');
 if (base) {
   const files = execFileSync('git', ['ls-tree', '--name-only', base, '--', path], { encoding: 'utf8' });
   if (files.trim()) {
-    const previous = execFileSync('git', ['show', `${base}:${path}`], { encoding: 'utf8' });
+    const previous = execFileSync('git', ['show', `${base}:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
     if (!current.startsWith(previous)) throw new Error('The rolling corpus is append-only. Preserve existing inputs and expectations, and document corrections separately.');
   }
   const captured = 'fixtures/config/text-replies/gemini-2026-11-11.json';

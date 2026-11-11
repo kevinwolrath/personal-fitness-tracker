@@ -1,9 +1,9 @@
-# 06 · Observations, screenshot import and full-history export
+# 06 · Observations and full-history export
 
 ## Canonical model
 
 ```
-screenshots / manual entry / future APIs ──▶ Observation (canonical) ──▶ TrackingStore ──▶ JSON export
+manual entry / integrations (historical: screenshots) ──▶ Observation (canonical) ──▶ TrackingStore ──▶ JSON export
 ```
 
 - The app's **own** metric catalog (`src/observations/metrics.ts`) is the model. Fitbit, Health Connect, Google Health, scale apps and the like are only **sources**: they map into catalog ids and never shape the schema.
@@ -33,21 +33,18 @@ Energy observations are stored in kJ. How they're *shown* (kJ, kcal or both) is 
 
 An **import session** (`{ id, createdAt, extractor, assets[] }`) records what was imported and by which extractor (for example `anthropic:claude-opus-5-5`). Each asset keeps its file name, MIME type, capture time and source app. On native it also keeps a durable copy of the screenshot (`storedUri`, in the app's document directory). Web keeps only the file name.
 
-## Screenshot import
+## Screenshot import (removed, #138)
 
-Flow: app menu (☰) → **Import from screenshots** → the platform picker opens straight away → pick one or more images → **Read** → review → **Save**. Import is an ingestion path, not a destination: each saved observation appears in the Daily Log on its own date (the date shown on screen, or the Daily Log day the menu was opened from; a future day falls back to today), in that day's measurement tiles or **Recorded** section.
+The screenshot import, which read values from fitness-app screenshots with Claude, was removed once direct sync (Health Connect, contract 12) covered the same data.
+- There's no menu item, no `/import` route, no extractor, no Anthropic API key and no network call for it.
+- Any stored API key (`pft.anthropic.apiKey`) is deleted at startup.
 
-- **Extraction** is behind `ScreenshotExtractor`. The V1 implementation sends **one screenshot per request** to Claude (`claude-opus-5-5`, vision plus structured output, server-side refusal fallback), so each value traces to exactly one image. Up to 3 requests run in parallel.
-  - The extractor returns provider-neutral output (`extractionSchema`).
-  - `mapExtraction` (pure) converts it to canonical units, resolves dates, drops anything that can't be stored faithfully (wrong unit for the metric, negative, not a number) and gives a reason for each drop.
-- **Network exception (amends 01 and 04):** this is the app's only network call. It runs only when the user taps **Read**, and sends only the screenshots they picked to Anthropic's API, using **the user's own API key**. The key is stored with the device keychain/keystore (`expo-secure-store`); on web, the dev surface, it lives in `localStorage`. There's no backend of ours.
-- **Review rules:**
-  - Observed values are included by default. Inferred values are shown separately, excluded by default, and saved as `inferred` if included.
-  - Every value can be edited or unchecked. Values are shown the way the Daily Log shows them: "13,765" steps, "7h 45m" for durations. Editing accepts that form or plain numbers ("7h 50m", "7:50", "470"; "13765"; "97,25").
-  - Values under 0.8 confidence are flagged "check this".
-  - Each screenshot's date can be moved, but never into the future. The default date is the date shown on screen, otherwise the day open on Today.
-- **Save** is the screen's one primary action. It appears in a fixed bottom bar once there are values to save; until then **Read** is the primary. **Forget key** sits at the end of the content, away from Save.
-- **Save** writes the session and its observations atomically (`saveImport`). Several apps can contribute to the same day. Nothing is merged or overwritten across sources.
+**Historical data is kept as it was, with no migration and nothing deleted:**
+- observations with `source.type: "screenshot"` and their provenance, shown as "<App> screenshot";
+- import sessions (`import_session`);
+- retained screenshot files.
+
+All of them are still exported, backed up and restored. Only restore (backups, exports) writes import sessions now; there's no `saveImport`.
 
 ## Full-history export (`pft-export`, exportVersion 1)
 

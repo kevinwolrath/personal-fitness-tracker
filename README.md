@@ -9,7 +9,7 @@ Design contracts (authoritative): [`docs/design-contracts/`](docs/design-contrac
 ## How it fits together
 
 ```
-screenshots / manual entry / future APIs ──▶ canonical observations + activity records ──▶ TrackingStore ──┬─▶ Daily Log (any date)
+manual entry / Health Connect ──▶ canonical observations + activity records ──▶ TrackingStore ──┬─▶ Daily Log (any date)
                                                                               SQLite (native)   └─▶ JSON export (full history)
                                                                               localStorage (web)
 plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ resolveDay(plan, date, override) ──▶ Daily Log
@@ -23,8 +23,7 @@ plans/seed.plan.json ──▶ validatePlan ──▶ active plan ──▶ reso
 | `src/storage/` | `TrackingStore` interface: `sqliteStore` (native), `keyValueStore` (web), `openStore[.web].ts` selects one. |
 | `src/features/shell/` | App shell (contract 02 "Layout layers"): the persistent app bar and the app menu (import, configure, export). |
 | `src/features/daily-log/` | The Daily Log day view (`DayLogScreen`) used for every date, its sheets, and pure helpers (`dayLabels`, `dayContent`). |
-| `src/observations/` | Canonical observation model and metric catalog, unit conversion, screenshot extraction (Claude) and review mapping. |
-| `src/features/import/` | Screenshot import flow. |
+| `src/observations/` | Canonical observation model and metric catalog, unit conversion, Health Connect mapping. |
 | `src/exercises/` | Exercise library (contract 09): reusable definitions, bundled illustrations, `buildGuide`. Pure, no UI. |
 | `src/prescription/` | Daily prescription engine (contract 08): `prescribeDay`, `nextAction`, completion log entries, session substitutions, time windows. Pure, no UI. |
 | `src/config/` | AI configuration: sections over the plan, update parser/applier, preview diff, AI instructions, history/undo (contract 07). |
@@ -71,7 +70,7 @@ npm run test:e2e:dev
 - `npm test` runs unit tests, plus the Daily Log rendered under the iOS and Android presets.
 - `npm run test:e2e` runs Playwright on the web export at 360, 390 and 430 px, plus a responsive sweep from 320 to 1280 px. Run `npx playwright test --update-snapshots` after an intended visual change.
 - `npm run check:native` bundles iOS and Android and compiles Hermes bytecode.
-- `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a screenshot import works.
+- `npm run test:e2e:dev` boots the Metro dev server (what `npm start` runs) and checks it loads without errors and a measurement can be logged.
 
 ## Build an Android APK (on your PC)
 
@@ -85,13 +84,9 @@ This builds a **release** APK inside Docker (`docker/android.Dockerfile`) and wr
 
 It's signed with Expo's debug keystore, which is fine for sideloading but not for the Play Store. A debug APK (`assembleDebug`) is never used here: React Native leaves the JS out of debug builds and loads it from Metro, which is what causes "Unable to load script".
 
-## Screenshot import
+## Screenshot import (removed)
 
-**Import from screenshots** (in the ☰ menu) opens your photo library, so you can pick several screenshots at once. It reads values from fitness-app screenshots with Claude. Paste your own Anthropic API key the first time; it's kept in the device keychain. Only the screenshots you pick are sent, and only when you tap **Read**. You review and edit everything before it's saved, and each value lands in the Daily Log on its own date. See [contract 06](docs/design-contracts/06-observations-import-export.md).
-
-**Reminders** (☰ menu) are off until you turn them on. Your plan decides what and when: by default a nudge before lunch, the snack and dinner. Done or skipped items stay quiet, and changing the plan reschedules them. The app asks for notification permission only when you tap **Turn on reminders**. See [contract 10](docs/design-contracts/10-reminders.md).
-
-**Export all data** (also in the ☰ menu) asks first, then saves your complete history as one JSON file: the share sheet on a phone, a download on the web.
+The screenshot import was removed in #138; Health Connect and Body Anvil sync replace it. Values imported from screenshots before then are kept, shown, exported and backed up as before.
 
 ## Today: do this next
 

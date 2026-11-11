@@ -63,14 +63,14 @@ export async function expandToFullDay(page: Page) {
 }
 
 /** Seed tracking records (keeping the plan already stored: the bundled seed, see playwright.config) before the app boots. */
-export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[]; exerciseLogs?: unknown[] }) {
+export async function seedRecords(page: Page, records: { observations?: unknown[]; activities?: Record<string, unknown>; quickLogs?: unknown[]; exerciseLogs?: unknown[]; imports?: unknown[] }) {
   await page.addInitScript((json) => {
     const key = 'pft:tracking:v1';
     if (sessionStorage.getItem('pft:e2e:records')) return;
     sessionStorage.setItem('pft:e2e:records', '1');
     const r = JSON.parse(json);
     const plan = JSON.parse(localStorage.getItem(key) ?? 'null')?.plan ?? null;
-    localStorage.setItem(key, JSON.stringify({ version: 1, plan, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: [], exerciseLogs: r.exerciseLogs ?? [] }));
+    localStorage.setItem(key, JSON.stringify({ version: 1, plan, activities: r.activities ?? {}, overrides: {}, observations: r.observations ?? [], quickLogs: r.quickLogs ?? [], imports: r.imports ?? [], exerciseLogs: r.exerciseLogs ?? [] }));
   }, JSON.stringify(records));
 }
 
@@ -93,19 +93,9 @@ export const historyObservations = [
 export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');
 
 /** App-level operations live in the header menu (#15). */
-export async function chooseFromMenu(page: Page, label: 'Import from screenshots' | 'Configure with AI' | 'Export all data' | 'Edit setup answers') {
+export async function chooseFromMenu(page: Page, label: 'Configure with AI' | 'Export all data' | 'Edit setup answers') {
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
-}
-
-/** Menu → Import from screenshots: the platform picker opens straight away; choose these files. */
-export async function importScreenshots(page: Page, files: string[]) {
-  const chooser = page.waitForEvent('filechooser');
-  await chooseFromMenu(page, 'Import from screenshots');
-  const fc = await chooser;
-  expect(fc.isMultiple()).toBe(true);
-  await fc.setFiles(files);
-  await expect(page.getByRole('heading', { name: 'Import screenshots' })).toBeVisible();
 }
 
 /** Menu → Export all data → confirm "Export JSON". Resolves with the downloaded document. */

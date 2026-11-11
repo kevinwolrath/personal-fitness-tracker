@@ -108,13 +108,27 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       await commitConfigUpdate(store, stored, check.nextRaw, check.touched, check.payload);
       await reloadPlan();
       await refresh();
-      setText('');
-      setCheck({ kind: 'idle' });
-      setInterpretation(null);
+      const pending = interpretation?.intents.filter((entry) => !entry.update && entry.outcome !== 'IGNORE') ?? [];
+      setText(pending.map((entry) => entry.source).join('; '));
+      setCheck({ kind: pending.length ? 'interpreted' : 'idle' });
+      setInterpretation(pending.length ? { intents: pending, recovered: [] } : null);
     } finally {
       setBusy(false);
     }
-  }, [stored, check, store, reloadPlan, refresh]);
+  }, [stored, check, store, reloadPlan, refresh, interpretation]);
+
+  /** Move accepted foods into the existing meal draft while retaining any pending configuration preview. */
+  const handoffMeals = useCallback(() => {
+    const meals = interpretation?.intents.filter((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT') ?? [];
+    const pending = interpretation?.intents.filter((entry) => !(entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT') && entry.outcome !== 'IGNORE') ?? [];
+    setInterpretation(pending.length ? { intents: pending, recovered: [] } : null);
+    if (check.kind === 'preview') setText(JSON.stringify(check.payload, null, 2));
+    else {
+      setText(pending.map((entry) => entry.source).join('; '));
+      setCheck({ kind: pending.length ? 'interpreted' : 'idle' });
+    }
+    return meals.map((entry) => entry.source).join('; ');
+  }, [interpretation, check]);
 
   const undoLatest = useCallback(async () => {
     if (!stored || !history[0]) return;
@@ -133,5 +147,5 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (check.kind === 'invalid') await Clipboard.setStringAsync(check.diagnostics);
   }, [check]);
 
-  return { stored, raw, history, text, check, busy, interpretation, sharePayload, pasteFromClipboard, editText, runCheck, checkLinkText, apply, undoLatest, copyDiagnostics };
+  return { stored, raw, history, text, check, busy, interpretation, handoffMeals, sharePayload, pasteFromClipboard, editText, runCheck, checkLinkText, apply, undoLatest, copyDiagnostics };
 }

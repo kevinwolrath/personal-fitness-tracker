@@ -193,7 +193,7 @@ export function ConfigureScreen() {
               <Text style={type.detail} key={index}>{entry.outcome === 'IGNORE' ? `Ignored “${entry.source.slice(0, 160)}”. ` : ''}{entry.message}</Text>
             ))}
             {s.interpretation.intents.some((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT') && (
-              <Button title="Review meal entry" variant="secondary" onPress={() => router.push({ pathname: '/meal-photo', params: { input: s.interpretation!.intents.filter((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT').map((entry) => entry.source).join('; ') } })} />
+              <Button title="Review meal entry" variant="secondary" onPress={() => router.push({ pathname: '/meal-photo', params: { input: s.handoffMeals() } })} />
             )}
           </View>
         )}

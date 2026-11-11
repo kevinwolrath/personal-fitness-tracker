@@ -58,8 +58,50 @@ test('junk is ignored and slabs require clarification without a mutation', async
   expect(await data(page)).toEqual(before);
 });
 
+test('applying a configuration leaves a mixed food proposal available, and meal handoff consumes it', async ({ page }) => {
+  await check(page, 'use kcal for energy and add rice');
+  await expect(page.getByRole('button', { name: 'Review meal entry' })).toBeVisible();
+  await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
+  await expect(page.getByRole('button', { name: 'Review meal entry' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Apply/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Review meal entry' }).click();
+  await expect(page.getByTestId('meal-review')).toBeVisible();
+  await page.getByTestId('meal-save').click();
+  await expect(page.getByRole('heading', { name: 'Configure with AI' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review meal entry' })).toHaveCount(0);
+  expect((await data(page)).mealLogs).toHaveLength(1);
+  expect(JSON.parse((await data(page)).plan.json).units.energy).toBe('kcal');
+});
+
 test('imperfect section casing, field title, equals sign and trailing commas recover into a preview', async ({ page }) => {
   await check(page, 'BODY ANVIL UPDATE v1\n[EXERCISE]\nRest Days = [FRI, SAT,],\nEND UPDATE');
   await expect(page.getByTestId('config-preview')).toContainText('Exercise');
   await expect(page.getByTestId('config-preview')).toContainText('formatting');
+});
+
+test('meal review first retains the pending configuration preview', async ({ page }) => {
+  await check(page, 'use kcal for energy and add rice');
+  await page.getByRole('button', { name: 'Review meal entry' }).click();
+  await expect(page.getByTestId('meal-review')).toBeVisible();
+  await page.getByTestId('meal-save').click();
+  await expect(page.getByTestId('config-preview')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review meal entry' })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
+  await expect(page.getByTestId('config-history')).toBeVisible();
+  const saved = await data(page);
+  expect(saved.mealLogs).toHaveLength(1);
+  expect(saved.configChanges).toHaveLength(1);
+});
+
+test('a new handoff preserves an existing unsaved meal draft', async ({ page }) => {
+  await check(page, 'add rice');
+  await page.getByRole('button', { name: 'Review meal entry' }).click();
+  await expect(page.getByTestId('meal-review')).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('pft:meal-draft') ?? 'null')?.items[0]?.name)).toBe('rice');
+  await page.goto('/configure');
+  await check(page, 'add 1000 kJ of chicken');
+  await page.getByRole('button', { name: 'Review meal entry' }).click();
+  await expect(page.getByTestId('meal-other-draft')).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pft:meal-draft')!).items[0].name)).toBe('rice');
+  expect((await data(page)).mealLogs ?? []).toHaveLength(0);
 });

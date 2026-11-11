@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /**
- * #136: the health-sync enrollment key reaches release builds from the GitHub secret, local builds from .env.local,
- * and never lives in Git, an image layer or a log. These checks keep that wiring from silently breaking.
+ * #136, #146: the health-sync enrollment key (GitHub secret) and API base URL (GitHub variable) reach release builds
+ * through the existing self-hosted Docker build; local builds read .env.local. The key never lives in Git, an image
+ * layer or a log; the URL is https-only in releases. These checks keep that wiring from silently breaking.
  */
 const root = join(__dirname, '..', '..', '..');
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
@@ -24,8 +25,8 @@ describe('enrollment key build wiring (#136)', () => {
   it('the release script refuses to build without it and checks the AAB carries it', () => {
     const sh = read('scripts/google-play-release.sh');
     expect(sh).toContain(': "${EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY:?');
-    expect(sh).toContain('python3 /app/scripts/check-enrollment-key.py');
-    expect(sh.indexOf('check-enrollment-key.py')).toBeLessThan(sh.indexOf('upload-play-bundle.js'));
+    expect(sh).toContain('python3 /app/scripts/check-build-config.py');
+    expect(sh.indexOf('check-build-config.py')).toBeLessThan(sh.indexOf('upload-play-bundle.js'));
     expect(sh).not.toMatch(/echo[^\n]*\$\{?EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY/);
   });
 
@@ -44,6 +45,23 @@ describe('enrollment key build wiring (#136)', () => {
 
   it('the app reads it with the literal member access Expo inlines', () => {
     expect(read('src/healthSync/config.ts')).toContain('process.env.EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY');
+  });
+
+  it('#146: the API URL comes from the repository variable, is required, https-only, and passed by name', () => {
+    const wf = read('.github/workflows/google-play-internal.yml');
+    expect(wf).toContain('BODY_ANVIL_API_URL: ${{ vars.BODY_ANVIL_API_URL }}');
+    expect(wf).not.toContain('secrets.BODY_ANVIL_API_URL');
+    expect(wf).toMatch(/\$required = @\([^)]*'BODY_ANVIL_API_URL'/);
+    expect(wf).toContain('$env:EXPO_PUBLIC_BODY_ANVIL_API_URL = $env:BODY_ANVIL_API_URL');
+    expect(wf).toMatch(/-notmatch '\^https:\/\//);
+    expect(wf).toMatch(/--env EXPO_PUBLIC_BODY_ANVIL_API_URL `/);
+    const sh = read('scripts/google-play-release.sh');
+    expect(sh).toContain(': "${EXPO_PUBLIC_BODY_ANVIL_API_URL:?');
+    expect(sh).toMatch(/case "\$EXPO_PUBLIC_BODY_ANVIL_API_URL" in\s+https:\/\/\*\) ;;/);
+    expect(read('docker/android.Dockerfile')).toContain('ARG EXPO_PUBLIC_BODY_ANVIL_API_URL=');
+    expect(read('scripts/build-apk.ps1')).toContain('$urlName = \'EXPO_PUBLIC_BODY_ANVIL_API_URL\'');
+    expect(read('.env.example')).toMatch(/^EXPO_PUBLIC_BODY_ANVIL_API_URL=$/m);
+    expect(read('playwright.config.ts')).toMatch(/E2E_API_URL = 'https:\/\/health\.example\.test'/);
   });
 
   const python = (() => {
@@ -66,20 +84,25 @@ describe('enrollment key build wiring (#136)', () => {
         return p;
       };
       const key = 'placeholder-key-123';
+      const url = 'https://api.example.test';
       const run = (aab: string) => {
         try {
-          return { code: 0, out: execFileSync('python3', [join(root, 'scripts/check-enrollment-key.py')], { env: { ...process.env, AAB: aab, EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY: key }, stdio: 'pipe' }).toString() };
+          return { code: 0, out: execFileSync('python3', [join(root, 'scripts/check-build-config.py')], { env: { ...process.env, AAB: aab, EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY: key, EXPO_PUBLIC_BODY_ANVIL_API_URL: `${url}/` }, stdio: 'pipe' }).toString() };
         } catch (e) {
           const err = e as { status: number; stdout: Buffer; stderr: Buffer };
           return { code: err.status, out: `${err.stdout}${err.stderr}` };
         }
       };
-      const ok = run(make('ok.aab', Buffer.from(`var a="${key}";`)));
+      const ok = run(make('ok.aab', Buffer.from(`var a="${key}",b="${url}";`)));
       expect(ok.code).toBe(0);
-      expect(run(make('u16.aab', Buffer.from(`x${key}y`, 'utf16le'))).code).toBe(0);
+      expect(ok.out).toContain(url); // the URL isn't secret: it's reported
+      expect(run(make('u16.aab', Buffer.from(`x${key}y${url}`, 'utf16le'))).code).toBe(0);
       const missing = run(make('no.aab', Buffer.from('var a="other";')));
       expect(missing.code).toBe(1);
-      for (const r of [ok, missing]) expect(r.out).not.toContain(key);
+      const noUrl = run(make('nourl.aab', Buffer.from(`var a="${key}";`)));
+      expect(noUrl.code).toBe(1);
+      expect(noUrl.out).toContain('API URL');
+      for (const r of [ok, missing, noUrl]) expect(r.out).not.toContain(key);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

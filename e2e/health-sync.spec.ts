@@ -25,7 +25,7 @@ async function open(page: Page) {
   await expect(page.getByTestId('health-sync-sheet')).toBeVisible();
 }
 
-test('sync my data: set the address, confirm what is sent, link, then upload again; nothing local changes', async ({ page }) => {
+test('sync my data: confirm what is sent, link, then upload again; nothing local changes', async ({ page }) => {
   const server = new FakeHealthServer();
   await route(page, server);
   await seedRecords(page, { observations: [weigh('2026-10-30', 92.4), weigh('2026-11-01', 92.1)] });
@@ -34,13 +34,9 @@ test('sync my data: set the address, confirm what is sent, link, then upload aga
   await expect.poll(() => page.evaluate(() => localStorage.getItem('pft:tracking:v1') ?? '')).toContain('healthSync.userId');
   const before = await page.evaluate(() => localStorage.getItem('pft:tracking:v1'));
   await open(page);
-  await expect(page.getByTestId('health-sync-prepare')).toBeDisabled();
-  await page.getByTestId('health-sync-url').fill('http://not-secure.example');
-  await page.getByTestId('health-sync-url-save').click();
-  await expect(page.getByTestId('health-sync-error')).toContainText('https://');
-  await page.getByTestId('health-sync-url').fill(`${BASE}/`);
-  await page.getByTestId('health-sync-url-save').click();
-  await expect(page.getByTestId('health-sync-notice')).toHaveText('Server address saved');
+  // #146: the server address comes from the build (E2E_API_URL); there is no address field.
+  await expect(page.getByTestId('health-sync-url')).toHaveCount(0);
+  await expect(page.getByLabel('Server address')).toHaveCount(0);
   // #136: no key entry anywhere; the key comes from the build.
   await expect(page.getByTestId('enrollment-key-input')).toHaveCount(0);
   await expect(page.getByTestId('health-sync-link-state')).toHaveText('Your first sync links this phone to the server.');
@@ -74,7 +70,6 @@ test('share my details: choose scope, preview exactly what is shared, create, co
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const server = new FakeHealthServer();
   await route(page, server);
-  await page.addInitScript((b) => localStorage.setItem('pft.healthSync.url', b), BASE);
   await seedRecords(page, { observations: [weigh('2026-08-01', 95), weigh('2026-10-30', 92.4), weigh('2026-11-01', 92.1)] });
   await openAt(page, MONDAY);
   await open(page);
@@ -112,7 +107,6 @@ test('share my details: choose scope, preview exactly what is shared, create, co
 test('offline: the error is shown and nothing is marked as synced', async ({ page }) => {
   const server = new FakeHealthServer();
   await route(page, server);
-  await page.addInitScript((b) => localStorage.setItem('pft.healthSync.url', b), BASE);
   await openAt(page, MONDAY);
   await open(page);
   server.offline = true;
@@ -126,15 +120,16 @@ test('offline: the error is shown and nothing is marked as synced', async ({ pag
 test('#136 build enrollment key: sent on enroll and its retries only; a rejected key is explained; never stored or shown', async ({ page }) => {
   const server = new FakeHealthServer();
   await route(page, server);
-  await page.addInitScript((b) => {
-    localStorage.setItem('pft.healthSync.url', b);
+  await page.addInitScript(() => {
+    localStorage.setItem('pft.healthSync.url', 'https://legacy-typed.example.test'); // left by #134's address field
     localStorage.setItem('pft.healthSync.enrollmentKey', 'legacy-typed-placeholder'); // left by the first #136 version
-  }, BASE);
+  });
   await seedRecords(page, { observations: [weigh('2026-11-01', 92.1)] });
   await openAt(page, MONDAY);
   await open(page);
-  // The legacy typed key is deleted and never used.
+  // The legacy typed key and address are deleted and never used: requests go to the build's address only.
   await expect.poll(() => page.evaluate(() => localStorage.getItem('pft.healthSync.enrollmentKey'))).toBeNull();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('pft.healthSync.url'))).toBeNull();
 
   // The server rejects the build's key: explained, nothing linked, nothing local changed.
   const accepted = server.enrollmentKey;
@@ -166,6 +161,7 @@ test('#136 build enrollment key: sent on enroll and its retries only; a rejected
     expect(q.headers['X-Enrollment-Key']).toBeUndefined();
     expect(q.body ?? '').not.toContain(accepted);
   }
+  expect(server.requests.every((q) => q.url.startsWith(`${BASE}/api/body-anvil/v1/`))).toBe(true);
   const stored = await page.evaluate(() => JSON.stringify({ ...localStorage }));
   expect(stored).not.toContain(accepted);
   expect(await page.getByTestId('health-sync-sheet').innerText()).not.toContain(accepted);

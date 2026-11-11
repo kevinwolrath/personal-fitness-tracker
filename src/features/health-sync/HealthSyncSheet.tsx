@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { healthSyncClient, normalizeBaseUrl, type RemoteSnapshot, type ShareLink, type ShareSummary } from '../../healthSync/client';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { healthSyncClient, type RemoteSnapshot, type ShareLink, type ShareSummary } from '../../healthSync/client';
 import { buildHealthPayload, categories, categoryLabels, OMITTED, utf8Bytes, type Category, type HealthPayload, type ShareDays } from '../../healthSync/payload';
 import {
   aiInstruction,
@@ -12,16 +12,14 @@ import {
   inspectRemote,
   listShareLinks,
   revokeShareLink,
-  SECRET_KEYS,
-  serverUrl,
   syncNow,
   syncStatus,
-  forgetLegacyEnrollmentKey,
+  forgetLegacySettings,
   type SyncDeps,
   type SyncStatus,
   NO_ENROLLMENT_KEY,
 } from '../../healthSync/service';
-import { BUILD_ENROLLMENT_KEY, BUILD_HEALTH_SYNC_URL } from '../../healthSync/config';
+import { BUILD_API, BUILD_ENROLLMENT_KEY, DEV_BUILD } from '../../healthSync/config';
 import { toLocalDate } from '../../plan/dates';
 import { random } from '../../platform/random';
 import { secrets } from '../../platform/secrets';
@@ -34,8 +32,6 @@ import { Sheet } from '../../ui/Sheet';
 import { createThemedStyles, radius, space, touch, useTheme } from '../../ui/theme';
 
 const APP_VERSION = '0.1.0';
-/** The Questspire Studio API address for this build, if set; the user can change it in the sheet. */
-const DEFAULT_URL = BUILD_HEALTH_SYNC_URL;
 /** #136: whether this build carries an enrollment key (never shown; only needed to link a phone). */
 const CAN_LINK = BUILD_ENROLLMENT_KEY.length > 0;
 const size = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`);
@@ -82,8 +78,6 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const { type, colors } = useTheme();
   const styles = useStyles();
   const [page, setPage] = useState<'home' | 'share'>('home');
-  const [url, setUrl] = useState('');
-  const [urlDraft, setUrlDraft] = useState('');
   const [linked, setLinked] = useState(false);
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -104,20 +98,19 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   useEffect(() => () => void (alive.current = false), []);
 
   const deps = useCallback(
-    (base: string): SyncDeps => {
+    (): SyncDeps => {
       const now = new Date();
-      return { store, client: healthSyncClient(base, (u, init) => fetch(u, init)), secrets, now: () => new Date().toISOString(), today: toLocalDate(now), appVersion: APP_VERSION, uuid: random.uuid, randomSecret: random.secret, enrollmentKey: BUILD_ENROLLMENT_KEY };
+      // #146: the build's API URL only (config.ts); there is no other source and no default.
+      const base = BUILD_API.ok ? BUILD_API.url : '';
+      return { store, client: healthSyncClient(base, (u, init) => fetch(u, init), { dev: DEV_BUILD }), secrets, now: () => new Date().toISOString(), today: toLocalDate(now), appVersion: APP_VERSION, uuid: random.uuid, randomSecret: random.secret, enrollmentKey: BUILD_ENROLLMENT_KEY };
     },
     [store],
   );
 
   const refresh = useCallback(async () => {
-    const base = await serverUrl(secrets, DEFAULT_URL);
     const id = await ensureUserId(store, random.uuid);
-    const [cred, st] = await Promise.all([credentialFor(secrets, id), syncStatus(secrets), forgetLegacyEnrollmentKey(secrets)]);
+    const [cred, st] = await Promise.all([credentialFor(secrets, id), syncStatus(secrets), forgetLegacySettings(secrets)]);
     if (!alive.current) return;
-    setUrl(base);
-    setUrlDraft(base);
     setLinked(!!cred);
     setStatus(st);
   }, [store]);
@@ -141,25 +134,15 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
     }
   };
 
-  const saveUrl = () =>
-    run('Saving…', async () => {
-      const n = normalizeBaseUrl(urlDraft);
-      if (!n) throw new Error('Enter the server’s https:// address.');
-      await secrets.set(SECRET_KEYS.url, n);
-      setUrl(n);
-      setUrlDraft(n);
-      setNotice('Server address saved');
-    });
-
   const prepareSync = () =>
     run('Preparing…', async () => {
       setRemote(null);
       if (!linked && !CAN_LINK) throw new Error(NO_ENROLLMENT_KEY);
-      setConfirmSync(await fullPayload(deps(url)));
+      setConfirmSync(await fullPayload(deps()));
     });
   const doSync = () =>
     run(linked ? 'Uploading…' : 'Linking this phone and uploading…', async () => {
-      const r = await syncNow(deps(url));
+      const r = await syncNow(deps());
       setConfirmSync(null);
       await refresh();
       if (!r.ok) throw r.error;
@@ -167,14 +150,14 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
     });
   const viewRemote = () =>
     run('Downloading…', async () => {
-      setRemote(await inspectRemote(deps(url)));
+      setRemote(await inspectRemote(deps()));
     });
 
   const sharePayload = useMemo(() => preview?.payload ?? null, [preview]);
   const makePreview = () =>
     run('Preparing preview…', async () => {
       setLink(null);
-      const d = deps(url);
+      const d = deps();
       const payload = buildHealthPayload(await store.snapshot(), { generatedAt: d.now(), today: d.today, appVersion: APP_VERSION }, { days, categories: categories.filter((c) => chosen.includes(c)) });
       setPreview({ payload, bytes: utf8Bytes(JSON.stringify(payload)) });
       setShowJson(false);
@@ -182,19 +165,19 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const createLink = () =>
     run('Creating link…', async () => {
       if (!sharePayload) return;
-      const l = await createShareLink(deps(url), { days, categories: sharePayload.scope.categories }, hours, sharePayload);
+      const l = await createShareLink(deps(), { days, categories: sharePayload.scope.categories }, hours, sharePayload);
       setLink(l);
-      setLinks(await listShareLinks(deps(url)).catch(() => []));
+      setLinks(await listShareLinks(deps()).catch(() => []));
     });
   const loadLinks = () =>
     run('Loading links…', async () => {
-      setLinks(await listShareLinks(deps(url)));
+      setLinks(await listShareLinks(deps()));
     });
   const revoke = (id: string) =>
     run('Revoking…', async () => {
-      await revokeShareLink(deps(url), id);
+      await revokeShareLink(deps(), id);
       if (link?.shareId === id) setLink(null);
-      setLinks(await listShareLinks(deps(url)).catch(() => []));
+      setLinks(await listShareLinks(deps()).catch(() => []));
       setNotice('Link revoked');
     });
   const copyAiLink = () =>
@@ -216,7 +199,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
     setLink(null);
     setChosen((xs) => (xs.includes(c) ? xs.filter((x) => x !== c) : [...xs, c]));
   };
-  const configured = !!normalizeBaseUrl(url);
+  const configured = BUILD_API.ok;
 
   return (
     <Sheet visible onClose={() => !busy && onClose()} label="Health data sync" fill>
@@ -250,7 +233,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
               <Text style={type.body}>{status?.lastSuccessAt ? `${when(status.lastSuccessAt)} · ${size(status.bytes)}` : 'Not synced yet'}</Text>
               {status && !status.ok && <Text style={[type.detail, { color: colors.injured }]}>Last try {when(status.at)}: {status.message}</Text>}
               <Text style={type.detail} testID="health-sync-link-state">
-                {linked ? 'This phone is linked.' : CAN_LINK ? 'Your first sync links this phone to the server.' : NO_ENROLLMENT_KEY}
+                {!BUILD_API.ok ? BUILD_API.message : linked ? 'This phone is linked.' : CAN_LINK ? 'Your first sync links this phone to the server.' : NO_ENROLLMENT_KEY}
               </Text>
             </View>
 
@@ -278,23 +261,6 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
               </View>
             )}
 
-            <View style={styles.panel}>
-              <Text style={type.section}>Server address</Text>
-              <TextInput
-                value={urlDraft}
-                onChangeText={setUrlDraft}
-                placeholder="https://…"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                accessibilityLabel="Server address"
-                style={styles.input}
-                placeholderTextColor={colors.muted}
-                testID="health-sync-url"
-              />
-              {urlDraft !== url && <Button title="Save address" variant="secondary" disabled={!!busy} onPress={saveUrl} testID="health-sync-url-save" />}
-              {!configured && <Text style={type.detail}>Enter your server’s https:// address to start.</Text>}
-            </View>
           </>
         )}
 

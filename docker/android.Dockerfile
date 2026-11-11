@@ -33,9 +33,12 @@ RUN npx expo prebuild --platform android --no-install --non-interactive
 # test APK runs, but can't link a new phone to the sync server. ENROLLMENT_BUILD_REVISION (a short hash, not the
 # key) only makes Docker rebuild this step when the key changes.
 ARG ENROLLMENT_BUILD_REVISION=none
+# #146: the Body Anvil API base URL (not a secret), from .env.local or the environment via scripts/build-apk.ps1.
+ARG EXPO_PUBLIC_BODY_ANVIL_API_URL=
 RUN --mount=type=cache,target=/gradle-cache \
     --mount=type=secret,id=body_anvil_enrollment_key,required=false \
     echo "enrollment build revision: $ENROLLMENT_BUILD_REVISION" && \
+    export EXPO_PUBLIC_BODY_ANVIL_API_URL="$EXPO_PUBLIC_BODY_ANVIL_API_URL" && \
     if [ -s /run/secrets/body_anvil_enrollment_key ]; then \
       export EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY="$(cat /run/secrets/body_anvil_enrollment_key)"; \
     fi && \

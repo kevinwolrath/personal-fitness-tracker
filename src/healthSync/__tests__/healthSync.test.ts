@@ -2,7 +2,8 @@ import { MemoryDevice, richHistory } from '../../backup/__tests__/fixture';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { healthSyncClient, normalizeBaseUrl, SyncError } from '../client';
 import { buildHealthPayload, categories, type Scope } from '../payload';
-import { aiInstruction, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
+import { aiInstruction, enrollmentKey, removeEnrollmentKey, saveEnrollmentKey, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
+import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
 import { FakeHealthServer, MemorySecrets } from './fakeServer';
 
 /** #134: the app side of health data sync, against a fake of the documented backend contract. Fictional data only. */
@@ -19,6 +20,7 @@ async function setup() {
   await store.replaceAll(history);
   const server = new FakeHealthServer();
   const secrets = new MemorySecrets();
+  await secrets.set(SECRET_KEYS.enrollmentKey, server.enrollmentKey); // #136: entered by the user once
   const deps: SyncDeps = {
     store,
     client: healthSyncClient(BASE, server.fetch),
@@ -223,5 +225,82 @@ describe('client', () => {
     expect(r).toMatchObject({ ok: false, error: { kind: 'config' } });
     const bad = healthSyncClient(BASE, async () => ({ status: 200, headers: { get: () => null }, text: async () => '<html>' }));
     await expect(bad.getSnapshot({ userId: 'u', ownerToken: 't' })).rejects.toBeInstanceOf(SyncError);
+  });
+});
+
+describe('enrollment key (#136)', () => {
+  const enrolls = (server: FakeHealthServer) => server.requests.filter((q) => q.url.endsWith('/api/body-anvil/v1/enroll'));
+
+  it('missing: the first sync asks for it and sends nothing', async () => {
+    const { deps, server, secrets } = await setup();
+    await removeEnrollmentKey(secrets);
+    const r = await syncNow(deps);
+    expect(r).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('Enter the enrollment key') } });
+    expect(server.requests).toHaveLength(0);
+    expect(secrets.map.has(SECRET_KEYS.pending)).toBe(false);
+  });
+
+  it('sent only as X-Enrollment-Key on enroll; never on PUT, GET or share requests, nor in any body', async () => {
+    const { deps, server, history } = await setup();
+    await syncNow(deps);
+    await syncNow(deps);
+    await inspectRemote(deps);
+    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, { days: 7, categories: ['body'] });
+    const link = await createShareLink(deps, { days: 7, categories: ['body'] }, 1, doc);
+    await listShareLinks(deps);
+    await revokeShareLink(deps, link.shareId);
+    expect(enrolls(server)).toHaveLength(1);
+    expect(enrolls(server)[0].headers['X-Enrollment-Key']).toBe(server.enrollmentKey);
+    expect(enrolls(server)[0].url.startsWith('https://')).toBe(true);
+    for (const q of server.requests) {
+      if (q !== enrolls(server)[0]) expect(q.headers['X-Enrollment-Key']).toBeUndefined();
+      expect(q.url).not.toContain(server.enrollmentKey);
+      expect(q.body ?? '').not.toContain(server.enrollmentKey);
+    }
+    expect(JSON.stringify(server.shares)).not.toContain(server.enrollmentKey);
+    expect(link.url).not.toContain(server.enrollmentKey);
+  });
+
+  it('wrong key (401): explained, data ID and retry secret kept, local data untouched; fixing it retries the same link', async () => {
+    const { deps, server, secrets, store } = await setup();
+    await saveEnrollmentKey(secrets, 'wrong-placeholder');
+    await ensureUserId(store, deps.uuid); // the data ID exists before the first sync (made at startup)
+    const before = JSON.stringify(await store.snapshot());
+    const r = await syncNow(deps);
+    expect(r).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('didn’t accept the enrollment key') } });
+    const id = await store.getMeta(USER_ID_KEY);
+    const pending = secrets.map.get(SECRET_KEYS.pending);
+    expect(pending).toBeDefined();
+    expect(JSON.stringify(await store.snapshot())).toBe(before);
+    await saveEnrollmentKey(secrets, `  ${server.enrollmentKey}  `); // trimmed
+    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
+    expect(await store.getMeta(USER_ID_KEY)).toBe(id);
+    const secretsSent = enrolls(server).map((q) => JSON.parse(q.body!).enrollmentSecret);
+    expect(new Set(secretsSent).size).toBe(1);
+    expect(JSON.parse(pending!).secret).toBe(secretsSent[0]);
+  });
+
+  it('a linked phone syncs and shares with no key; removing it after linking changes nothing', async () => {
+    const { deps, server, secrets, history } = await setup();
+    await syncNow(deps);
+    await removeEnrollmentKey(secrets);
+    expect(await enrollmentKey(secrets)).toBeNull();
+    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: false });
+    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, { days: 7, categories: ['body'] });
+    await expect(createShareLink(deps, { days: 7, categories: ['body'] }, 24, doc)).resolves.toMatchObject({ url: expect.any(String) });
+    expect(enrolls(server)).toHaveLength(1);
+  });
+
+  it('is never written to the database, a snapshot or a backup preference list', async () => {
+    const { deps, server, store } = await setup();
+    await syncNow(deps);
+    expect(JSON.stringify(await store.snapshot())).not.toContain(server.enrollmentKey);
+    expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(SECRET_KEYS.enrollmentKey);
+    expect(Object.keys(BACKUP_PREFERENCE_KEYS.excluded)).toContain(SECRET_KEYS.enrollmentKey);
+  });
+
+  it('an empty key is refused', async () => {
+    const { secrets } = await setup();
+    await expect(saveEnrollmentKey(secrets, '   ')).rejects.toMatchObject({ kind: 'enrollmentKey' });
   });
 });

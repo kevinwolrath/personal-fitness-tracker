@@ -36,6 +36,34 @@ const growth = (targets: string[], exercises: { movement: string; sets?: number;
   withGrowth({ customExercises: [shrug], muscleGrowth: { enabled: true, targets, exercises, ...extra } });
 
 describe('the shared catalogue', () => {
+  it('#151 offers the supinated curl only when eligible, without changing the seed routine', async () => {
+    const movement = 'supinated_cross_body_dumbbell_curl';
+    const parsed = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { muscleGrowth: { enabled: true, targets: ['biceps'], exercises: [{ movement, sets: 3, reps: 10, loadKg: 7 }] } } } }));
+    if (!parsed.ok) throw new Error(parsed.errors.join('\n'));
+    const result = applyConfigUpdate(clone(seed), parsed.update);
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    expect(result.nextRaw.activities).toEqual(seed.activities);
+    expect(result.nextRaw.schedule).toEqual(seed.schedule);
+    expect(JSON.stringify(seed)).not.toContain(movement);
+    const plan = result.plan;
+    expect(muscleGrowthOptions(plan, ['biceps']).find(o => o.exercise.movement === movement)?.match).toBe('primary');
+    expect(muscleGrowthOptions(plan, ['forearms']).find(o => o.exercise.movement === movement)?.match).toBe('secondary');
+    const noGear = clone(plan);
+    noGear.exercise!.equipment = [];
+    expect(muscleGrowthOptions(noGear, ['biceps']).some(o => o.exercise.movement === movement)).toBe(false);
+    noGear.exercise!.equipment = [{ type: 'dumbbells' }];
+    expect(muscleGrowthOptions(noGear, ['biceps']).some(o => o.exercise.movement === movement)).toBe(true);
+    noGear.exercise!.limitations = [{ movement, status: 'avoid' }];
+    expect(muscleGrowthOptions(noGear, ['biceps']).some(o => o.exercise.movement === movement)).toBe(false);
+    const row = muscleGrowthDay(plan, MON, [])!.rows[0];
+    expect(row.planned).toEqual({ sets: 3, reps: 10, loadKg: 7 });
+    const store = new KeyValueTrackingStore(new MemoryKeyValue());
+    await store.addExerciseLog(muscleGrowthLog(row, MON, `${MON}T12:00:00+11:00`, 'done'));
+    const history = await loadExerciseHistory(store, plan, MON);
+    const state = exerciseState(plan, history, { now: `${MON}T20:00:00+11:00`, today: MON }, inventoryFor(plan));
+    expect(state.coverage.find(c => c.muscle === 'biceps')!.volume).toBe(3);
+    expect(state.coverage.find(c => c.muscle === 'forearms')!.volume).toBe(1.5);
+  });
   it('adds custom exercises to the same inventory, with the same shape; muscle groups stay the 14 bundled ones', () => {
     const plain = withGrowth({});
     expect(inventoryFor(plain).exercises).toEqual(bundledInventory.exercises);

@@ -11,6 +11,17 @@ import { exerciseArtwork } from '../../../exercises/heroIllustrations';
 const squat = buildGuide({ movement: 'kettlebell_squat', label: 'Kettlebell squat', sets: 3, reps: 10 });
 const layout = { nativeEvent: { layout: { x: 0, y: 0, width: 342, height: 256 } } };
 
+it.each(['male', 'female', 'other'])('#151 pages all three manifest-resolved curl phases for %s', gender => {
+  const curl = buildGuide({ movement: 'supinated_cross_body_dumbbell_curl', sets: 3, reps: 10, loadKg: 7 });
+  render(<ExerciseGuideSheet guide={curl} gender={gender} onClose={() => {}} />);
+  fireEvent(screen.getByTestId('guide-pager'), 'layout', layout);
+  for (let step = 1; step <= 3; step++) {
+    expect(screen.getByTestId('guide-position')).toHaveTextContent(`${step} / 3`);
+    expect(screen.getByTestId(`guide-image-${step}`, { includeHiddenElements: true }).props.source).toEqual(exerciseArtwork(curl.steps[step - 1].image, gender).source);
+    if (step < 3) fireEvent.press(screen.getByLabelText('Next step'));
+  }
+});
+
 it('updates mounted guide artwork when the profile changes, including clearing gender', () => {
   const { rerender } = render(<ExerciseGuideSheet guide={squat} gender="male" onClose={() => {}} />);
   for (const gender of ['male', 'female', 'other', undefined, 'male']) {

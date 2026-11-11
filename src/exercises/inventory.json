@@ -26,6 +26,7 @@
     { "movement": "leg_extension", "name": "Leg extension", "kind": "strength", "equipment": ["home_gym"], "defaultDose": { "sets": 3, "reps": 12 }, "primary": ["quadriceps"], "secondary": [] },
     { "movement": "kettlebell_romanian_deadlift", "name": "Kettlebell Romanian deadlift", "kind": "strength", "equipment": ["kettlebell"], "defaultDose": { "sets": 3, "reps": 10 }, "primary": ["hamstrings", "glutes"], "secondary": ["lower_back", "core"] },
     { "movement": "hammer_curl", "name": "Hammer curls", "kind": "strength", "equipment": ["dumbbells", "free_weights"], "defaultDose": { "sets": 2, "reps": 12 }, "primary": ["biceps"], "secondary": ["forearms"] },
+    { "movement": "supinated_cross_body_dumbbell_curl", "name": "Supinated cross-body dumbbell curl", "kind": "strength", "equipment": ["dumbbells", "free_weights"], "defaultDose": { "sets": 2, "reps": 12 }, "primary": ["biceps"], "secondary": ["forearms"] },
     { "movement": "overhead_press", "name": "Overhead press", "kind": "strength", "equipment": ["dumbbells", "free_weights", "kettlebell"], "defaultDose": { "sets": 3, "reps": 8 }, "primary": ["shoulders"], "secondary": ["triceps", "core"] },
     { "movement": "plank", "name": "Plank", "kind": "strength", "equipment": [], "defaultDose": { "sets": 1, "seconds": 20 }, "primary": ["core"], "secondary": ["shoulders"] },
     { "movement": "straight_leg_raise", "name": "Straight-leg lying raises", "kind": "strength", "equipment": [], "defaultDose": { "sets": 2, "reps": 10 }, "primary": ["hip_flexors"], "secondary": ["core"] },

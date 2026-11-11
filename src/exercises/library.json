@@ -119,6 +119,23 @@
       ]
     },
     {
+      "id": "supinated_cross_body_dumbbell_curl",
+      "name": "Supinated cross-body dumbbell curl",
+      "equipment": ["dumbbells", "free_weights"],
+      "instructions": [
+        "Stand tall with a dumbbell at each side, arms nearly straight and palms facing forward (supinated).",
+        "Keep the upper arms and elbows close to the ribs, shoulders level and wrists straight.",
+        "Curl the right dumbbell diagonally across the front of the torso toward the opposite shoulder, keeping the palm turned up.",
+        "Lower the right dumbbell under control to the palms-forward start, then repeat with the left arm toward the right shoulder.",
+        "Alternate arms without swinging or rotating the torso. Count the prescribed repetitions for each arm."
+      ],
+      "steps": [
+        { "image": "supinated-cross-body-dumbbell-curl-1", "caption": "Start with both palms facing forward and elbows beside the ribs." },
+        { "image": "supinated-cross-body-dumbbell-curl-2", "caption": "Right arm: curl diagonally toward the left shoulder with a palm-up grip, then lower slowly." },
+        { "image": "supinated-cross-body-dumbbell-curl-3", "caption": "Left arm: curl toward the right shoulder. Return under control and continue alternating." }
+      ]
+    },
+    {
       "id": "knuckle_push_up",
       "name": "Knuckle push-up",
       "equipment": [],

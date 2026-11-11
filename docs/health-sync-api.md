@@ -2,8 +2,8 @@
 
 Body Anvil's health-data client talks to a **Cloudflare Worker + D1 backend hosted in Questspire Studio** (Questspire
 Studio #4, owned by Codex). This document is the contract the app implements. The backend should match it, or the
-two should be reconciled on #134 before release. Until the backend exists, the app is tested against an in-memory fake
-of this contract (`src/healthSync/__tests__/fakeServer.ts`).
+two should be reconciled on #134 before release. Automated tests use an in-memory fake of this contract
+(`src/healthSync/__tests__/fakeServer.ts`); the deployed Worker is checked with `npm run check:sync-server` (below).
 
 No Cloudflare account, domain or credential is in this repository. Nothing here was deployed.
 
@@ -20,8 +20,45 @@ The API base URL is a **build setting**, `EXPO_PUBLIC_BODY_ANVIL_API_URL` (#146)
   address for your PC), or a private LAN address (`10.x`, `192.168.x`, `172.16–31.x`) for a physical phone on the
   same Wi-Fi.
 - No user, password, query or fragment is allowed in the address. A trailing slash is ignored.
+- **The value is the site only.** Production is `https://questspirestudios.com`. The app adds `/api/body-anvil/v1`
+  itself (#155). A value that already ends in it is tolerated by the app (the duplicate is dropped), but release builds
+  (Play workflow, `google-play-release.sh`, `build-apk.ps1`) refuse it, so the setting stays correct.
 
 All paths below are under `/api/body-anvil/v1`. Requests and responses are `application/json`.
+
+## CORS (web build) (#155)
+
+Browsers only let the web app read the API's replies if the Worker allows the page's origin. Android isn't affected.
+The app sends `Content-Type: application/json`, `Authorization` and `X-Enrollment-Key`, so the browser sends a
+preflight (`OPTIONS`) before every request. The Worker must:
+
+1. Answer `OPTIONS` on every `/api/body-anvil/v1/*` path before routing, auth, the enrollment-key check or rate
+   limiting, with `204` and, for an allowed origin:
+   - `Access-Control-Allow-Origin: <the request's Origin>`
+   - `Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS`
+   - `Access-Control-Allow-Headers: Content-Type, Authorization, X-Enrollment-Key`
+   - `Access-Control-Max-Age: 86400`
+   - `Vary: Origin`
+2. Add `Access-Control-Allow-Origin` (allowed origins), `Vary: Origin` and `Access-Control-Expose-Headers: Retry-After`
+   to **every** response, errors included. Without them the browser hides the error and the app can only say it
+   couldn't reach the server.
+3. Take the allowed origins from a Worker setting. Include `http://localhost:8081` (`npx expo start --web`) and wherever
+   the web build is hosted.
+4. Not send `Access-Control-Allow-Credentials`: the app uses bearer tokens, not cookies.
+
+## Checking the real server
+
+```bash
+npm run check:sync-server -- https://questspirestudios.com
+```
+
+`scripts/check-sync-server.cjs` checks the live API against this contract: it's reachable, unauthenticated and keyless
+requests get JSON `401`s, unknown routes a JSON `404`, and CORS works for the web origin (`--origin`, default
+`http://localhost:8081`), on error responses too. It sends no enrollment key or owner token, so nothing is created. With
+no argument it reads `EXPO_PUBLIC_BODY_ANVIL_API_URL` from the environment or `.env.local`. Behind an HTTPS proxy, run
+it with `NODE_USE_ENV_PROXY=1`. Run it after any Worker deploy and before a release that changes sync. The e2e tests
+can't catch server problems: they use the in-memory fake, and Playwright answers CORS preflights itself for
+intercepted requests.
 
 ## Identity
 
@@ -49,8 +86,8 @@ bundled into an app can be extracted. No Play Integrity, user codes or extra aut
 ### Production (Google Play)
 
 Set two values under GitHub → Settings → Secrets and variables → Actions:
-- **Variables** → **`BODY_ANVIL_API_URL`**: the Questspire Studio Body Anvil API base URL, `https://…`. It's not a
-  secret.
+- **Variables** → **`BODY_ANVIL_API_URL`**: the site the Body Anvil API runs on, `https://questspirestudios.com`
+  (without `/api/body-anvil/v1`). It's not a secret.
 - **Secrets** → **`BODY_ANVIL_ENROLLMENT_KEY`**: the same value as the Worker's production secret of that name.
 
 The build then:

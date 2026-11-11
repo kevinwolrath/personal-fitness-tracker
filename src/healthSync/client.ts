@@ -42,7 +42,7 @@ export class SyncError extends Error {
 const messages: Record<SyncErrorKind, string> = {
   offline: 'Couldn’t reach the server. Check your connection and try again.',
   auth: 'The server didn’t accept this phone’s key.',
-  enrollmentKey: 'The server didn’t accept the enrollment key. Check it and try again.',
+  enrollmentKey: 'The server didn’t accept this app’s enrollment key, so this phone isn’t linked yet. Nothing was changed; try again after updating the app.',
   notFound: 'Nothing is stored on the server yet.',
   conflict: 'The server already has this data ID linked to another phone.',
   tooLarge: 'That’s more data than the server accepts in one upload.',
@@ -110,7 +110,7 @@ export function healthSyncClient(baseUrl: string, fetchImpl: Fetch) {
   return {
     /**
      * First use: link this data ID. Retrying with the same enrollment secret returns the same link (idempotent).
-     * `enrollmentKey` (#136) is the user-entered shared key, sent as `X-Enrollment-Key` on this request only.
+     * `enrollmentKey` (#136) is the build's shared key, sent as `X-Enrollment-Key` on this request (and its retries) only.
      */
     enroll: (userId: string, enrollmentSecret: string, snapshot: HealthPayload, enrollmentKey: string) =>
       call('POST', '/enroll', enrolled, { body: { userId, enrollmentSecret, snapshot }, enrollmentKey }),

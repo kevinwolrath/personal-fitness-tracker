@@ -6,6 +6,9 @@ set -euo pipefail
 : "${ANDROID_KEY_PASSWORD:?ANDROID_KEY_PASSWORD is required}"
 : "${ANDROID_VERSION_CODE:?ANDROID_VERSION_CODE is required}"
 : "${GOOGLE_PLAY_SERVICE_ACCOUNT_FILE:?GOOGLE_PLAY_SERVICE_ACCOUNT_FILE is required}"
+# #136: the health-sync enrollment key (GitHub secret BODY_ANVIL_ENROLLMENT_KEY), inlined into the JS bundle by
+# the Gradle build. Never printed.
+: "${EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY:?EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY is required (GitHub secret BODY_ANVIL_ENROLLMENT_KEY)}"
 
 KEYSTORE=/run/secrets/personal-fitness-tracker-upload.jks
 [ -f "$KEYSTORE" ] || { echo "Upload keystore is missing" >&2; exit 1; }
@@ -83,6 +86,10 @@ cd ..
 
 AAB=/app/android/app/build/outputs/bundle/release/app-release.aab
 [ -f "$AAB" ] || { echo "Release AAB not found at $AAB" >&2; exit 1; }
+
+# #136: the bundle inside the AAB must carry the configured enrollment key (guards against a stale cached bundle
+# or a missing variable). Reports only present/absent: the key itself is never printed.
+AAB="$AAB" python3 /app/scripts/check-enrollment-key.py
 
 # Reuse this exact signing/build pipeline for a later listing+AAB draft operation (#100).
 if [ "${PLAY_BUILD_ONLY:-false}" = "true" ]; then

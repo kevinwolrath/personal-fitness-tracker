@@ -13,22 +13,15 @@ import { buildHealthPayload, FULL_SCOPE, utf8Bytes, type HealthPayload, type Sco
  *   different ID (e.g. after restoring someone else's backup) is never used.
  * - **Enrollment secret**: random, saved *before* the first link request, so an interrupted link can be retried and the
  *   server returns the same link instead of a second one.
- * - **Enrollment key** (#136): a shared key the user types in once, kept in secure storage and sent only as
- *   `X-Enrollment-Key` on the first link. Never in the database, a backup, a snapshot, a share or a log. Once linked it
- *   isn't needed and can be removed.
+ * - **Enrollment key** (#136): a shared key built into the app (`EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY`, see config.ts),
+ *   passed in as `SyncDeps.enrollmentKey` and sent only as `X-Enrollment-Key` on the first link and its retries. Never
+ *   asked of the user, stored, logged, or put in a snapshot or share. Linked phones don't need it.
  */
 
-/** The saved enrollment key, or null. Only the enroll request reads it. */
-export async function enrollmentKey(secrets: SecretStore): Promise<string | null> {
-  const k = await secrets.get(SECRET_KEYS.enrollmentKey).catch(() => null);
-  return k && k.trim() ? k : null;
-}
-export async function saveEnrollmentKey(secrets: SecretStore, key: string): Promise<void> {
-  const k = key.trim();
-  if (!k) throw new SyncError('enrollmentKey', 'Enter the enrollment key.');
-  await secrets.set(SECRET_KEYS.enrollmentKey, k);
-}
-export const removeEnrollmentKey = (secrets: SecretStore) => secrets.remove(SECRET_KEYS.enrollmentKey);
+/** #136 v1 stored a user-typed key here; keys now come from the build. Removed on sight, never read. */
+export const LEGACY_ENROLLMENT_KEY = 'pft.healthSync.enrollmentKey';
+/** Delete a key left by the earlier user-entered design, if any. Never throws. */
+export const forgetLegacyEnrollmentKey = (secrets: SecretStore) => secrets.remove(LEGACY_ENROLLMENT_KEY).catch(() => undefined);
 
 export const USER_ID_KEY = 'healthSync.userId';
 export const SECRET_KEYS = {
@@ -36,9 +29,9 @@ export const SECRET_KEYS = {
   pending: 'pft.healthSync.pending',
   status: 'pft.healthSync.status',
   url: 'pft.healthSync.url',
-  /** #136: the shared enrollment key the user typed in. Secure storage only; sent only with the enroll request. */
-  enrollmentKey: 'pft.healthSync.enrollmentKey',
 } as const;
+
+export const NO_ENROLLMENT_KEY = 'This version of the app isn’t set up to link to the server yet, so nothing was sent. Phones that are already linked keep syncing.';
 
 export type SecretStore = { get(key: string): Promise<string | null>; set(key: string, value: string): Promise<void>; remove(key: string): Promise<void> };
 export type SyncStatus = { at: string; ok: boolean; bytes: number; message: string; lastSuccessAt: string | null; uploadedAt: string | null };
@@ -53,6 +46,8 @@ export type SyncDeps = {
   uuid: () => string;
   /** A random, unguessable secret (at least 128 bits), as text. */
   randomSecret: () => string;
+  /** #136: the build's enrollment key (config.ts), '' when this build has none. Sent only on enroll. */
+  enrollmentKey: string;
 };
 
 const readJson = async <T>(secrets: SecretStore, key: string): Promise<T | null> => {
@@ -108,9 +103,9 @@ export async function syncNow(d: SyncDeps): Promise<SyncResult> {
       await record(true, 'Uploaded', receipt.uploadedAt);
       return { ok: true, linked: false, receipt, bytes };
     }
-    // First link: needs the enrollment key (#136). Ask before sending anything.
-    const key = await enrollmentKey(d.secrets);
-    if (!key) throw new SyncError('enrollmentKey', 'Enter the enrollment key before your first sync. You only need it once, to link this phone.');
+    // First link: needs the build's enrollment key (#136). Without one, stop before sending anything.
+    const key = d.enrollmentKey.trim();
+    if (!key) throw new SyncError('config', NO_ENROLLMENT_KEY);
     // Reuse a saved enrollment secret for this ID so a retry after an interruption is the same request.
     const saved = await readJson<{ userId: string; secret: string }>(d.secrets, SECRET_KEYS.pending);
     const pending = saved?.userId === userId ? saved : { userId, secret: d.randomSecret() };

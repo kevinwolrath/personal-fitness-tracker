@@ -12,6 +12,8 @@ const phone = (width: number, height: number) => ({
 });
 
 /** E2E_DEV=1: run the dev-server smoke test against `expo start --web` instead of the production export. */
+/** Placeholder only, never a real key; must match FakeHealthServer.enrollmentKey. */
+export const E2E_ENROLLMENT_KEY = 'test-enrollment-key-placeholder';
 const dev = process.env.E2E_DEV === '1';
 const port = Number(process.env.PFT_E2E_PORT ?? (dev ? 8091 : 8081));
 
@@ -64,11 +66,14 @@ export default defineConfig({
         { name: 'phone', use: phone(390, 844) },
         { name: 'phone-large', use: phone(430, 932) },
       ],
+  // #136: e2e builds carry a placeholder enrollment key (the fake backend in e2e/health-sync.spec.ts expects it).
+  // Set here, it wins over any real key in a developer's .env.local. --clear: Metro's transform cache keeps inlined
+  // EXPO_PUBLIC_ values, so without it a build could reuse a key from an earlier, differently configured build.
   webServer: dev
-    ? { command: `npx expo start --web --port ${port}`, url: `http://localhost:${port}`, reuseExistingServer: !process.env.CI, timeout: 300_000 }
+    ? { command: `npx expo start --web --clear --port ${port}`, env: { EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY: E2E_ENROLLMENT_KEY }, url: `http://localhost:${port}`, reuseExistingServer: !process.env.CI, timeout: 300_000 }
     : {
-        command: 'npx expo export --platform web && node scripts/serve-dist.mjs',
-        env: { PORT: String(port) },
+        command: 'npx expo export --platform web --clear && node scripts/serve-dist.mjs',
+        env: { PORT: String(port), EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY: E2E_ENROLLMENT_KEY },
         url: `http://localhost:${port}`,
         reuseExistingServer: !process.env.CI,
         timeout: 300_000,

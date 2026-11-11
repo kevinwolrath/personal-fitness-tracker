@@ -32,6 +32,8 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      # #136: shared enrollment key for the health-sync API, inlined into the JS bundle at build time.
+      BODY_ANVIL_ENROLLMENT_KEY: ${{ secrets.BODY_ANVIL_ENROLLMENT_KEY }}
 
     steps:
       - name: Checkout
@@ -102,6 +104,7 @@ jobs:
             'ANDROID_KEY_ALIAS',
             'ANDROID_KEY_PASSWORD',
             'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON',
+            'BODY_ANVIL_ENROLLMENT_KEY',
             'ANDROID_VERSION_CODE'
           )
           foreach ($name in $required) {
@@ -122,6 +125,9 @@ jobs:
           $bundleDir = Join-Path $env:RUNNER_TEMP "body-anvil-aab\${{ github.sha }}-$env:ANDROID_VERSION_CODE"
           New-Item -ItemType Directory -Path $bundleDir -Force | Out-Null
 
+          # Passed by name (--env NAME), so the value never appears on a command line.
+          $env:EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY = $env:BODY_ANVIL_ENROLLMENT_KEY
+
           try {
             [IO.File]::WriteAllBytes($keyFile, [Convert]::FromBase64String($env:ANDROID_KEYSTORE_BASE64))
             [IO.File]::WriteAllText($serviceFile, $env:GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, [Text.UTF8Encoding]::new($false))
@@ -132,6 +138,7 @@ jobs:
               --env ANDROID_KEY_PASSWORD `
               --env ANDROID_VERSION_CODE `
               --env PLAY_BUILD_ONLY `
+              --env EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY `
               --env GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json `
               --mount "type=bind,source=$keyFile,target=/run/secrets/personal-fitness-tracker-upload.jks,readonly" `
               --mount "type=bind,source=$serviceFile,target=/run/secrets/google-play-service-account.json,readonly" `

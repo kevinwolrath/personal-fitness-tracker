@@ -36,6 +36,9 @@ if ([string]::IsNullOrWhiteSpace($apiUrl)) {
   Write-Warning "$urlName is not set (environment or .env.local): this APK's health data sync will be off."
 } elseif ($apiUrl -notmatch '^https://') {
   throw "$urlName must be https:// for an APK (release build). For http://10.0.2.2 or a LAN address use a dev build: npx expo run:android."
+} elseif ($apiUrl -match '/api/body-anvil(/|$)') {
+  # #155: the app adds /api/body-anvil/v1 itself.
+  throw "$urlName must be the site only (e.g. https://questspirestudios.com): the app adds /api/body-anvil/v1 itself."
 } else {
   $buildArgs += @('--build-arg', "$urlName=$apiUrl")
   Write-Host "Body Anvil API: $apiUrl"

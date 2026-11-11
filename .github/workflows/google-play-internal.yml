@@ -134,6 +134,9 @@ jobs:
           if ($env:EXPO_PUBLIC_BODY_ANVIL_API_URL -notmatch '^https://[^\s/?#@]+(/[^\s?#]*)?$') {
             throw "BODY_ANVIL_API_URL must be an https:// base URL (no credentials, query or fragment). See docs/health-sync-api.md."
           }
+          if ($env:EXPO_PUBLIC_BODY_ANVIL_API_URL -match '/api/body-anvil(/|$)') {
+            throw "BODY_ANVIL_API_URL must be the site only (e.g. https://questspirestudios.com): the app adds /api/body-anvil/v1 itself. See docs/health-sync-api.md."
+          }
           Write-Host "Body Anvil API: $env:EXPO_PUBLIC_BODY_ANVIL_API_URL"
 
           try {

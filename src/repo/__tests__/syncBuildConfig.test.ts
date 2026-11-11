@@ -61,7 +61,29 @@ describe('enrollment key build wiring (#136)', () => {
     expect(read('docker/android.Dockerfile')).toContain('ARG EXPO_PUBLIC_BODY_ANVIL_API_URL=');
     expect(read('scripts/build-apk.ps1')).toContain('$urlName = \'EXPO_PUBLIC_BODY_ANVIL_API_URL\'');
     expect(read('.env.example')).toMatch(/^EXPO_PUBLIC_BODY_ANVIL_API_URL=$/m);
+    expect(read('.env.example')).toContain('https://questspirestudios.com');
     expect(read('playwright.config.ts')).toMatch(/E2E_API_URL = 'https:\/\/health\.example\.test'/);
+  });
+
+  it('#155: release builds refuse a URL that includes the API path (the app adds it); the release script really does', () => {
+    expect(read('.github/workflows/google-play-internal.yml')).toContain("-match '/api/body-anvil(/|$)'");
+    expect(read('scripts/build-apk.ps1')).toContain("-match '/api/body-anvil(/|$)'");
+    // Run just the release script's URL checks (everything up to the keystore) with each value.
+    const sh = read('scripts/google-play-release.sh');
+    const checks = sh.slice(sh.indexOf('case "$EXPO_PUBLIC_BODY_ANVIL_API_URL"'), sh.indexOf('KEYSTORE='));
+    const ok = (url: string) => {
+      try {
+        execFileSync('bash', ['-c', checks], { env: { ...process.env, EXPO_PUBLIC_BODY_ANVIL_API_URL: url }, stdio: 'pipe' });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    expect(ok('https://questspirestudios.com')).toBe(true);
+    expect(ok('https://questspirestudios.com/api/body-anvil/v1')).toBe(false);
+    expect(ok('https://questspirestudios.com/api/body-anvil/v1/')).toBe(false);
+    expect(ok('https://questspirestudios.com/api/body-anvil')).toBe(false);
+    expect(ok('http://questspirestudios.com')).toBe(false);
   });
 
   const python = (() => {

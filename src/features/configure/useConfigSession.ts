@@ -9,9 +9,12 @@ import { commitConfigUpdate, undoConfigChange } from '../../config/service';
 import { applyConfigUpdate, parseConfigUpdate } from '../../config/update';
 import { toLocalDate } from '../../plan/dates';
 import type { ConfigChange, StoredPlan, TrackingStore } from '../../storage/types';
+import { interpretInput, type Interpretation } from '../../input/interpret';
+import { combineUpdates } from '../../input/combine';
 
 export type CheckState =
   | { kind: 'idle' }
+  | { kind: 'interpreted' }
   /** recoverable: sections complete before a cut (never applied); diagnostics: copyable text for the AI (#47). */
   | { kind: 'invalid'; errors: string[]; recoverable: string[]; diagnostics: string }
   /** notes: what the import fixed automatically (#47), shown behind "Details". */
@@ -24,6 +27,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
   const [text, setText] = useState('');
   const [check, setCheck] = useState<CheckState>({ kind: 'idle' });
   const [busy, setBusy] = useState(false);
+  const [interpretation, setInterpretation] = useState<Interpretation | null>(null);
 
   const refresh = useCallback(async () => {
     const [p, h] = await Promise.all([store.getActivePlan(), store.configHistory()]);
@@ -44,10 +48,12 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (t) {
       setText(t);
       setCheck({ kind: 'idle' });
+      setInterpretation(null);
     }
   }, []);
 
   const editText = useCallback((t: string) => {
+    setInterpretation(null);
     setText(t);
     setCheck({ kind: 'idle' });
   }, []);
@@ -56,7 +62,23 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
   const checkText = useCallback((t: string) => {
     if (!raw) return;
     const text = t;
-    const parsed = parseConfigUpdate(text);
+    const interpreted = interpretInput(text, raw);
+    setInterpretation(interpreted);
+    const updates = interpreted.intents.filter((entry) => entry.outcome === 'ACCEPT' && entry.update).map((entry) => entry.update!);
+    if (!updates.length) {
+      const rejected = interpreted.intents.filter((entry) => entry.kind === 'configuration_update' && entry.outcome === 'REJECT');
+      if (rejected.length) {
+        const original = parseConfigUpdate(text);
+        if (!original.ok) return setCheck({ kind: 'invalid', errors: original.errors, recoverable: original.recoverable, diagnostics: original.diagnostics });
+      }
+      return setCheck({ kind: 'interpreted' });
+    }
+    const combined = combineUpdates(updates);
+    if (!combined) {
+      setInterpretation({ ...interpreted, intents: interpreted.intents.filter((entry) => !entry.update).concat({ kind: 'configuration_update', outcome: 'CLARIFY', source: text, fields: {}, message: 'These instructions assign conflicting values. Review one plan change at a time.' }) });
+      return setCheck({ kind: 'interpreted' });
+    }
+    const parsed = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: combined.schemaVersion, ...combined.sections } }));
     if (!parsed.ok) return setCheck({ kind: 'invalid', errors: parsed.errors, recoverable: parsed.recoverable, diagnostics: parsed.diagnostics });
     const applied = applyConfigUpdate(raw, parsed.update);
     if (!applied.ok) {
@@ -70,7 +92,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       touched: applied.touched,
       payload: parsed.json,
       changeCount: sections.reduce((n, s) => n + s.lines.length, 0),
-      notes: parsed.notes,
+      notes: [...parsed.notes, ...interpreted.recovered],
     });
   }, [raw, energy]);
   const runCheck = useCallback(() => checkText(text), [checkText, text]);
@@ -88,6 +110,7 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
       await refresh();
       setText('');
       setCheck({ kind: 'idle' });
+      setInterpretation(null);
     } finally {
       setBusy(false);
     }
@@ -110,5 +133,5 @@ export function useConfigSession(store: TrackingStore, reloadPlan: () => Promise
     if (check.kind === 'invalid') await Clipboard.setStringAsync(check.diagnostics);
   }, [check]);
 
-  return { stored, raw, history, text, check, busy, sharePayload, pasteFromClipboard, editText, runCheck, checkLinkText, apply, undoLatest, copyDiagnostics };
+  return { stored, raw, history, text, check, busy, interpretation, sharePayload, pasteFromClipboard, editText, runCheck, checkLinkText, apply, undoLatest, copyDiagnostics };
 }

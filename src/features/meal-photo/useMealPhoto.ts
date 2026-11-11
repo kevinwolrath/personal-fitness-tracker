@@ -9,6 +9,7 @@ import { replacementCompletion } from '../../nutrition/replace';
 import type { Plan } from '../../plan/schema';
 import * as files from '../../platform/mealPhotos';
 import { newId, type TrackingStore } from '../../storage/types';
+import { interpretInput } from '../../input/interpret';
 
 export const MAX_PHOTOS = 6;
 
@@ -56,7 +57,7 @@ type Status =
  * leaving for the AI app, the app being killed or a restart all come back to the same step with the same photos
  * and paste. Saving is idempotent (the meal id is fixed when the draft starts) and guarded against double taps.
  */
-export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: Target; pickers?: Pickers; now?: () => string }) {
+export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: Target; pickers?: Pickers; now?: () => string; initialInput?: string }) {
   const { store, plan, target } = opts;
   const pickers = opts.pickers ?? systemPickers;
   const now = opts.now ?? (() => localIsoTimestamp());
@@ -90,7 +91,8 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
       return log ? draftFromLog(log, now()) : null;
     }
     const activity = target.activityId ? plan.activities.find((a) => a.id === target.activityId && a.kind === 'meal') : undefined;
-    return newDraft({ id: newId(), date: target.date, planId: activity ? plan.id : null, activityId: activity?.id ?? null, replacedLabel: activity?.label ?? null, now: now() });
+    const draft = newDraft({ id: newId(), date: target.date, planId: activity ? plan.id : null, activityId: activity?.id ?? null, replacedLabel: activity?.label ?? null, now: now() });
+    return opts.initialInput ? applyReply({ ...draft, step: 'paste' }, opts.initialInput, now()) : draft;
   }, [store, plan, target.date, target.activityId, target.editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resume the saved draft for this meal, or start one. Another meal's unsaved draft is offered, never dropped.
@@ -99,7 +101,7 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
     (async () => {
       const saved = restoreDraft(await files.loadDraft());
       if (!live) return;
-      if (saved && draftMatches(saved, target)) {
+      if (saved && draftMatches(saved, target) && (!opts.initialInput || saved.reply === opts.initialInput)) {
         setDraft(saved);
         setStatus({ kind: 'ready' });
         checkPhotos(saved);
@@ -235,7 +237,8 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
     update((d) => ({ ...d, reply: t, replyError: null }));
   }, [update]);
   const checkReply = useCallback(() => {
-    setNotice(null);
+    const result = current.current ? interpretInput(current.current.reply) : null;
+    setNotice(result?.intents.some((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT') ? [...result.recovered, ...result.intents.filter((entry) => entry.kind !== 'meal_entry').map((entry) => entry.message)].join(' ') || null : null);
     update((d) => applyReply(d, d.reply, now()));
   }, [update]); // eslint-disable-line react-hooks/exhaustive-deps
   const enterManually = useCallback(() => {

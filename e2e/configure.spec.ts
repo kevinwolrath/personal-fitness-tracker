@@ -206,7 +206,8 @@ test('invalid payloads show actionable errors and change nothing', async ({ page
   await expect(errors).toContainText('fitnessConfigUpdate.exercise.equipment[0].type');
 
   await checkUpdate(page, 'Sure, I updated your nutrition!');
-  await expect(errors).toContainText('No update found'); // prose is never read as configuration (#47)
+  await expect(page.getByTestId('input-intents')).toContainText('No supported instruction');
+  await expect(errors).toHaveCount(0);
 
   expect(JSON.stringify(await storedPlan(page))).toBe(before);
 });

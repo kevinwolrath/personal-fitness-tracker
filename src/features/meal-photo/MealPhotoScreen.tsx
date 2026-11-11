@@ -30,12 +30,12 @@ export function MealPhotoScreen({ pickers }: { pickers?: Pickers } = {}) {
   const { store, plan, notifyDataChanged } = useApp();
   const styles = useStyles();
   const { colors, type } = useTheme();
-  const params = useLocalSearchParams<{ date?: string; activity?: string; edit?: string }>();
+  const params = useLocalSearchParams<{ date?: string; activity?: string; edit?: string; input?: string }>();
   const today = toLocalDate(new Date());
   // Today and past days only (contract 04 editable window): a future date falls back to today.
   const date = isDate(params.date) && params.date <= today ? params.date : today;
   const target = useMemo(() => ({ date, activityId: params.activity ?? null, editId: params.edit ?? null }), [date, params.activity, params.edit]);
-  const m = useMealPhoto({ store, plan, target, pickers });
+  const m = useMealPhoto({ store, plan, target, pickers, initialInput: typeof params.input === 'string' ? params.input : undefined });
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [viewing, setViewing] = useState<MealPhoto | null>(null);
 

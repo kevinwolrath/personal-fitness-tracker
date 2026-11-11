@@ -1,6 +1,7 @@
 import { limits, nutrientKeys, nutrientLabels, type Confidence, type MealItem, type MealLog, type MealPhoto, type NutrientKey, type Nutrients } from './contract';
 import { extractReply } from './parse';
 import { validateReply, type Issue } from './validate';
+import { interpretInput } from '../input/interpret';
 
 /**
  * The "Log different meal" wizard's state (#97), pure and serialisable, so it survives leaving the app for the AI
@@ -125,7 +126,14 @@ const signature = (items: MealItem[]) => JSON.stringify(items.map((i) => [i.name
 export function applyReply(d: MealDraft, reply: string, now: string): MealDraft {
   const base = { ...d, reply, updatedAt: now };
   const ex = extractReply(reply);
-  if (!ex.ok) return { ...base, replyError: ex.message };
+  if (!ex.ok) {
+    const interpretation = interpretInput(reply);
+    const meals = interpretation.intents.filter((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT');
+    if (!meals.length) return { ...base, replyError: interpretation.intents.find((entry) => entry.outcome === 'CLARIFY')?.message ?? ex.message };
+    const items = meals.flatMap((entry) => entry.items ?? []);
+    if (items.length > limits.items) return { ...base, replyError: `A meal supports at most ${limits.items} foods.` };
+    return { ...base, source: 'manual', parsed: null, replyError: null, name: items.map((item) => item.name).join(', '), items: items.map(toDraftItem), step: 'review' };
+  }
   const v = validateReply(ex.value);
   if (!v.ok) return { ...base, replyError: v.message };
   const r = v.reply;

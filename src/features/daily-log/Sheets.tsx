@@ -8,6 +8,7 @@ import type { ActivityLog } from '../../storage/types';
 import { Button } from '../../ui/Button';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { Sheet } from '../../ui/Sheet';
+import { SheetScroll } from '../../ui/SheetScroll';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 export function TextButton({ title, onPress, disabled, strong }: { title: string; onPress: () => void; disabled?: boolean; strong?: boolean }) {
@@ -106,8 +107,9 @@ export function DayTypeSheet(p: {
 
   return (
     <Sheet visible={p.visible} onClose={p.onClose} label="Day type">
+      <ModalHeader title="Day type" dismiss={{ label: 'Close', onPress: p.onClose }} />
+      <SheetScroll>
       <View style={styles.body}>
-        <ModalHeader title="Day type" dismiss={{ label: 'Close', onPress: p.onClose }} />
         {p.plan.dayTypes.map((d) => {
           const selected = d.id === p.currentId;
           return (
@@ -131,6 +133,7 @@ export function DayTypeSheet(p: {
           );
         })}
       </View>
+      </SheetScroll>
     </Sheet>
   );
 }

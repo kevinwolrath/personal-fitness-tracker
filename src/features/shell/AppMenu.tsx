@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Sheet } from '../../ui/Sheet';
 import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { ModalHeader } from '../../ui/ModalHeader';
+import { SheetScroll } from '../../ui/SheetScroll';
 
 export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void };
 
@@ -32,7 +33,8 @@ export function AppMenu({ visible, onClose, items }: Props) {
   return (
     <Sheet visible={visible} onClose={onClose} label="Menu" onDismiss={onDismiss}>
       <ModalHeader title="Menu" dismiss={{ label: 'Close', onPress: onClose }} />
-      <View style={styles.list} testID="app-menu">
+      <SheetScroll testID="app-menu-scroll">
+        <View style={styles.list} testID="app-menu">
         {items.map((item) => (
           <Pressable
             key={item.key}
@@ -47,7 +49,8 @@ export function AppMenu({ visible, onClose, items }: Props) {
             <Text style={type.detail}>{item.detail}</Text>
           </Pressable>
         ))}
-      </View>
+        </View>
+      </SheetScroll>
     </Sheet>
   );
 }

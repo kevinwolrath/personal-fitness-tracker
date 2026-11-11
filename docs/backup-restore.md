@@ -11,7 +11,7 @@ This is different from **Export all data** (#5, contract 06). That is a readable
 | Plan, every earlier plan version (configuration history with the exact previous plan), profile, goals, schedule, custom exercises, Muscle Growth set-up | SQLite `plan`, `config_change` |
 | Completions and skips, exercise ticks, completion history, day snapshots, day-type overrides, quick logs | `activity_log`, `completion_event`, `day_snapshot`, `day_override`, `quick_log` |
 | Exercise logs (sets, reps, load, RIR, Muscle Growth done/skipped), sore/injured reports | `exercise_log`, `muscle_report` |
-| Measurements (weight, waist, …), manual and imported values with provenance, screenshot import sessions | `observation`, `import_session` |
+| Measurements (weight, waist, …), manual and imported values with provenance, screenshot import sessions (historical; the import itself was removed in #138) | `observation`, `import_session` |
 | Meals actually eaten and their **original photo files** | `meal_log`, `meal-photos/` |
 | Retained import screenshots | `imports/` |
 | Gamification (on/off, celebrated achievements), theme, energy display, Progress chart layout, trend alerts, reminders on/off, chosen Health Connect types | keystore (`BACKUP_PREFERENCE_KEYS.included`) |

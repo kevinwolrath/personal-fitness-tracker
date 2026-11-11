@@ -7,7 +7,7 @@
 - **Route:** `/` is the Daily Log. The selected date is the `date` search parameter (`/?date=2026-03-11`); no parameter means today. Reloads, links and back/forward keep the date.
 - **Today opens on "Do this next"** (contract 08): what to reasonably do now, ready to tick off, when there is something (otherwise no card, #41), then the day grouped Morning / Midday / Afternoon / Evening / Anytime today. Requirements show as one row with their alternatives.
 - **What a day shows** (for any date where data exists): measurements against goals, targets, the plan's activities and meals for that date's day type, and a **Recorded** section with every other observation on that date (imported steps, sleep, readiness, workouts, calculated values, and `other` metrics). It also shows activity history that the current plan no longer schedules that day, taken from `labelSnapshot`.
-- **Ingestion is not a destination.** Manual entry, screenshot import and future integrations write canonical observations (contract 06). Each appears on its own effective date in the log.
+- **Ingestion is not a destination.** Manual entry and integrations (Health Connect) write canonical observations (contract 06). Each appears on its own effective date in the log.
 - **Editing:** today and every past date are fully correctable, including imported values (edit or remove from the observation sheet; provenance records the edit). Future dates are view-only planned days (contract 04).
 
 Target structure: three tabs (native bottom tabs), plus sheets. No drawers, no nested settings, no screen deeper than **tab → one sheet**. Two tabs now: **Today** (the Daily Log) and **Progress** (#52, contract 14). The tab bar arrived with the second tab. Sheets are rendered through the `Sheet` platform adapter (`src/ui/Sheet*.tsx`): an iOS page sheet, an Android bottom panel, and an in-frame panel on web. Screenshot import is a route (`/import`), presented modally.
@@ -44,7 +44,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 |---|---|---|
 | **Dismiss**, always | Title, one line | **Confirm** (e.g. Save), only if the surface has one |
 
-- **Dismiss wording:** **Cancel** when closing loses something (an unsaved value, a pasted update, picked screenshots); **Close** when nothing is lost (read-only, or already saved).
+- **Dismiss wording:** **Cancel** when closing loses something (an unsaved value, a pasted update); **Close** when nothing is lost (read-only, or already saved).
 - **Layout:** both sides have the same width, so the title stays centred with or without a confirm.
 - **Primary actions** for the content (Read, Apply) are buttons in the content or a fixed bottom bar, never in the header.
 - **Test:** `e2e/surfaces.spec.ts` checks the order, the centring and the wording on every surface.
@@ -61,7 +61,6 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 | Item | Does |
 |---|---|
-| **Import from screenshots** | Opens the platform image picker straight away: images only, several at once, with no in-app step first. Cancel returns to the screen with nothing changed. A selection opens `/import` (review, contract 06), dated from the open Daily Log day (`?date=`, otherwise today). |
 | **Health Connect** | Opens the Health Connect sheet: tick what to import, connect (read-only; the only permission requests), and a setup checklist: per type, whether it's allowed and arriving, with a **Fix** for each problem, **Check again** to confirm, and **Manage in Health Connect** (contract 12, #116). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
 | **Configure with AI** | Opens `/configure` (contract 07). |
 | **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
@@ -84,7 +83,6 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Activity sheet | Sheet | Activity details and secondary actions: done/not done, skip, restore. For a meal it shows **What to prepare** (ingredient, target amount and the plan's everyday measure), **How to make it**, and the meal's energy/protein (#26). Content scrolls inside the sheet (max 92 % of the screen) so the actions stay reachable. It's never required for the happy path |
 | Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
-| `/import` | Modal | Screenshot import (contract 06) |
 | `/setup` | Full-screen modal | Edit setup answers (contract 13) |
 
 The log shows **one day at a time**. Its screen header (see Layout layers): `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).

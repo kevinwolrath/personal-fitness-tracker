@@ -1,6 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { presetApiKey, stubClaude } from './claudeStub';
-import { HISTORY_DAY, MONDAY, expandToFullDay, exportAllData, historyObservations, importScreenshots, openAt, row, seedRecords, vrBoxing } from './helpers';
+import { HISTORY_DAY, MONDAY, expandToFullDay, exportAllData, historyObservations, openAt, row, seedRecords, vrBoxing } from './helpers';
 
 /** Issue #6: one continuous Daily Log; Today is just the current date. */
 
@@ -99,16 +98,17 @@ test('future days are view-only', async ({ page }) => {
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeDisabled();
 });
 
-test('imported observations land on their effective date and can be corrected there', async ({ page }) => {
-  await presetApiKey(page);
-  await stubClaude(page);
+test('historical screenshot imports (#138: the feature is gone) stay on their date and can be corrected there', async ({ page }) => {
+  const shot = { type: 'screenshot', app: 'fitbit', capturedAt: '2026-11-02T08:00:00+11:00', confidence: 0.95, importId: 'imp', assetId: 'a', edited: false };
+  const at = '2026-11-02T08:05:00+11:00';
+  await seedRecords(page, {
+    observations: [
+      { id: 's', date: '2026-10-27', metric: 'steps', value: 9120, unit: 'count', kind: 'observed', label: null, note: null, recordedAt: at, source: { ...shot, evidence: '9,120' } },
+      { id: 'r', date: '2026-10-27', metric: 'readiness_score', value: 78, unit: 'score', kind: 'observed', label: null, note: null, recordedAt: at, source: { ...shot, evidence: '78' } },
+      { id: 'x', date: '2026-10-27', metric: 'exercise_session', value: 35, unit: 'min', kind: 'observed', label: 'Weights', note: null, recordedAt: at, source: { ...shot, evidence: 'Weights 35 min' } },
+    ],
+  });
   await openAt(page, MONDAY);
-
-  // Imported from Today, but the screen is for Tue 27 Oct.
-  await importScreenshots(page, ['e2e/fixtures/fitbit-last-week.png']);
-  await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
-  await page.getByRole('button', { name: 'Save 3 values' }).click();
-
   await expect(title(page)).toHaveText('Today');
   await expect(page.getByTestId('recorded')).toHaveCount(0); // nothing for today
 

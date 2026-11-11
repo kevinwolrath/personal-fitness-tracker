@@ -26,7 +26,6 @@ function ThemedApp() {
         <AppProvider>
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
             <Stack.Screen name="(main)" />
-            <Stack.Screen name="import" options={{ presentation: 'modal' }} />
             <Stack.Screen name="configure" options={{ presentation: 'modal' }} />
             <Stack.Screen name="meal-photo" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="setup" options={{ presentation: 'fullScreenModal' }} />

@@ -22,7 +22,6 @@
     "build:exercise-assets": "node scripts/build-exercise-assets.cjs"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.3.0",
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-community/datetimepicker": "8.4.4",
     "expo": "~54.0.0",

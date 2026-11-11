@@ -1,27 +1,23 @@
 import { expect, test } from '@playwright/test';
-import { presetApiKey, stubClaude } from './claudeStub';
-import { MONDAY, importScreenshots, openAt } from './helpers';
+import { MONDAY, openAt } from './helpers';
 
 /**
  * Runs against the Metro *development* server (npm run test:e2e:dev), which loads modules differently
- * from the production export (React Refresh, no tree-shaking). It catches dev-only crashes such as the
- * SDK import-cycle error that every production-build test missed.
+ * from the production export (React Refresh, no tree-shaking). It catches dev-only crashes that every
+ * production-build test would miss.
  */
-test('dev server: app boots without errors and screenshot import works end to end', async ({ page }) => {
+test('dev server: app boots without errors, and a measurement can be logged end to end', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
-  await presetApiKey(page);
-  const requests = await stubClaude(page);
   await openAt(page, MONDAY);
-
-  await importScreenshots(page, ['e2e/fixtures/scale.png']);
-  await page.getByRole('button', { name: 'Read 1 screenshot' }).click();
-  await expect(page.getByTestId('review-scale.png')).toBeVisible();
-  expect(requests).toHaveLength(1);
-  await page.getByRole('button', { name: 'Save 2 values' }).click();
+  await page.getByTestId('measurement-weight').click();
+  await page.getByTestId('measure-input').fill('97.3');
+  await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByTestId('measurement-weight')).toContainText('97.3 kg');
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByTestId('app-menu')).toBeVisible();
 
   expect(errors).toEqual([]);
 });

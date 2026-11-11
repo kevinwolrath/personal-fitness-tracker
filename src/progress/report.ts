@@ -397,7 +397,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     tag: null,
     unit: 'min',
     series: [{ label: 'Minutes per week', points: minWeeks.map((w) => ({ date: w.week, value: w.total, kind: 'measured' })), style: 'bars', tone: 'accent' }],
-    empty: minWeeks.length ? null : 'No active minutes or workouts recorded. They can come from Health Connect or a screenshot import.',
+    empty: minWeeks.length ? null : 'No active minutes or workouts recorded. They can come from Health Connect or be logged on Today.',
     note: healthSessions.length ? `Overlapping Health Connect time counts once.${healthSummary.uncertainTime?' Incomplete timings make duration a lower bound.':''}${walks.metres!==null?` Walking distance: ${formatDistance(walks.metres)} recorded${walks.partialDistance?' (partial)':''}.`:''}` : null,
     summary: minWeeks.length ? `Active minutes this week: ${thousands(minThis ?? 0)}.` : 'Active minutes: none recorded.',
   };
@@ -417,7 +417,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
       { label: 'Days', points: steps, style: 'dots', tone: 'accent' },
       { label: '7-day average', points: stepsAvg, style: 'line', tone: 'ink' },
     ],
-    empty: steps.length ? null : 'No steps recorded. Connect Health Connect or import a screenshot.',
+    empty: steps.length ? null : 'No steps recorded. Connect Health Connect to bring them in.',
     note: null,
     summary: steps.length ? `Steps: ${steps.length} days; 7-day average ${stepsAvg.length ? thousands(stepsAvg[stepsAvg.length - 1].value) : 'not yet'}.` : 'Steps: none recorded.',
   };

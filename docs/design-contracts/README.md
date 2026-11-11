@@ -11,7 +11,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 03 | [Plan format](03-plan-format.md) + [`plan.schema.json`](plan.schema.json) | The versioned JSON plan package the app renders (formatVersion 1–6; v3 adds meal ingredients and preparation, v4 activity reminders, v5 due times, v6 the setup profile) |
 | 04 | [Persistence & data ownership](04-persistence.md) | What is stored, where, who owns it, export |
 | 05 | [Web & phone-viewport testing](05-web-viewport-testing.md) | Web as a test surface, viewports, Playwright, responsive sweep |
-| 06 | [Observations, import & export](06-observations-import-export.md) | Canonical observation model, provenance, screenshot import, full-history export |
+| 06 | [Observations, import & export](06-observations-import-export.md) | Canonical observation model, provenance, full-history export, backup, health data sync (screenshot import removed, #138) |
 | 07 | [AI configuration](07-ai-configuration.md) | Sectioned configuration over the plan, partial-update protocol, importer, preview, history/undo, AI instructions |
 | 08 | [Daily prescription](08-daily-prescription.md) | Prescription from plan + config, requirements with alternatives, windows, next action, completion log |
 | 09 | [Exercise guides](09-exercise-guides.md) | Reusable exercise definitions, bundled illustrations, the read-only guide sheet |

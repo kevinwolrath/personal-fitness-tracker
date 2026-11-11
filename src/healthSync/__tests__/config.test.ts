@@ -70,3 +70,32 @@ describe('no hardcoded API address in app code (#146)', () => {
     expect(readers).toEqual(['healthSync/config.ts']);
   });
 });
+
+describe('errors never reveal the endpoint (#143)', () => {
+  const BASE = 'https://private-api.example.test';
+  const cred = { userId: 'u', ownerToken: 't'.repeat(20) };
+  const reply = (status: number, text = '{}') => async () => ({ status, headers: { get: () => null }, text: async () => text });
+  it.each([
+    ['offline', async () => { throw new TypeError(`fetch failed for ${BASE}/api/body-anvil/v1/users/u/snapshot`); }],
+    ['401', reply(401)],
+    ['404', reply(404)],
+    ['409', reply(409)],
+    ['413', reply(413)],
+    ['429', reply(429)],
+    ['500', reply(500, `upstream ${BASE} failed`)],
+    ['bad JSON', reply(200, `<html>${BASE}</html>`)],
+  ])('%s', async (_name, fetchImpl) => {
+    const client = healthSyncClient(BASE, fetchImpl as never);
+    const err = await client.getSnapshot(cred).catch((e) => e);
+    expect(err).toBeInstanceOf(SyncError);
+    expect(err.message).not.toMatch(/private-api|example\.test|https?:\/\//);
+  });
+
+  it('a missing or invalid configuration message names no address', () => {
+    for (const raw of [undefined, 'http://private-api.example.test', 'nonsense']) {
+      const r = resolveApiUrl(raw, { dev: false });
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.message).not.toMatch(/private-api|https?:\/\/[a-z]/);
+    }
+  });
+});

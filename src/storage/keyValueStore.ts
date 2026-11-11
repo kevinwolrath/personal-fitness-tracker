@@ -177,14 +177,6 @@ export class KeyValueTrackingStore implements TrackingStore {
     return { activityLogs: activityLogs.sort(byKey<ActivityLogRecord>('date', 'activityId')), dayOverrides: dayOverrides.sort(byKey('date')) };
   }
 
-  async saveImport(session: ImportSession, observations: Observation[]) {
-    // One document write: atomic by construction.
-    this.update((d) => {
-      upsertById(d.imports, session);
-      observations.forEach((o) => upsertById(d.observations, o));
-    });
-  }
-
   async addQuickLog(entry: QuickLogEntry) {
     this.update((d) => upsertById(d.quickLogs, entry));
   }

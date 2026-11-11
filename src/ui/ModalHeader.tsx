@@ -6,7 +6,7 @@ type Action = { label: string; onPress: () => void; disabled?: boolean };
 type Props = {
   title: string;
   /**
-   * Always on the left. "Cancel" when closing loses something (an unsaved value, picked screenshots),
+   * Always on the left. "Cancel" when closing loses something (an unsaved value, a pasted update),
    * "Close" when the surface is read-only or already saved (contract 02 "Modal and sheet header").
    */
   dismiss: { label: 'Cancel' | 'Close'; onPress: () => void; /** Fuller screen-reader label, e.g. "Close guide". */ a11yLabel?: string };

@@ -14,6 +14,8 @@ const SETUP_DRAFT = 'pft.setup.draft';
 const PROGRESS_CHARTS = 'pft.progress.charts';
 const TREND_ALERTS = 'pft.trend.alerts';
 const TREND_STATE = 'pft.trend.state';
+/** #138: the screenshot import (and its API key) is gone. Any stored key is deleted at startup, never read. */
+export const LEGACY_API_KEY = 'pft.anthropic.apiKey';
 
 /** The last weight-trend alert on this phone and the last one seen on Progress (#57). */
 export type TrendAlertState = { lastKey: string | null; lastAt: string | null; seenKey: string | null };
@@ -111,6 +113,10 @@ export const preferences = {
   async setTrendAlertState(s: TrendAlertState): Promise<void> {
     await secrets.set(TREND_STATE, JSON.stringify(s));
   },
+  /** Delete the API key the removed screenshot import used (#138). Never throws. */
+  async forgetScreenshotImportKey(): Promise<void> {
+    await secrets.remove(LEGACY_API_KEY).catch(() => undefined);
+  },
   async clearSetupDraft(): Promise<void> {
     await secrets.remove(SETUP_DRAFT);
   },
@@ -134,7 +140,7 @@ export const BACKUP_PREFERENCE_KEYS = {
     HC_WANTED,
   ],
   excluded: {
-    'pft.anthropic.apiKey': 'API key: a secret, never written to a backup. Enter it again after restoring.',
+    [LEGACY_API_KEY]: 'Legacy (#138): the API key for the removed screenshot import. A secret, never backed up; deleted at startup.',
     [HC_SYNC]: 'Health Connect sync state belongs to this phone; the next sync re-reads recent days without duplicating them.',
     [SETUP_DRAFT]: 'An unfinished setup on this phone, not saved data.',
     'pft.healthSync.credential': 'Health data sync key: a secret, never written to a backup. The data ID travels with the backup; link again on the new phone.',

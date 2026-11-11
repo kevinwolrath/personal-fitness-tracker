@@ -1,4 +1,5 @@
 import { readFileSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import manifest from '../../../assets/exercises/heroes/manifest.json';
 import { exerciseArtwork, heroIllustrations } from '../heroIllustrations';
 import { exerciseLibrary } from '../library';
@@ -15,19 +16,20 @@ it.each(['male', 'female', 'other', undefined, null, 'non-binary'])('selects onl
   }
 });
 
-it('bundles two distinct real image steps for every tracked movement and all three existing heroes', () => {
+it('bundles distinct real image steps for every tracked movement and all three existing heroes', () => {
   expect(new Set(manifest.map(e => e.hero))).toEqual(new Set(['male', 'female', 'neutral']));
   expect(new Set(manifest.map(e => e.id)).size).toBe(manifest.length);
-  expect(manifest).toHaveLength(exerciseLibrary.exercises.length * 3 * 2);
+  expect(manifest).toHaveLength(exerciseLibrary.exercises.reduce((total, entry) => total + entry.steps.length * 3, 0));
   expect(Object.keys(heroIllustrations).sort()).toEqual(manifest.map(e => e.id).sort());
   for (const { id: movement } of exerciseLibrary.exercises) {
     const definition = exerciseLibrary.exercises.find(e => e.id === movement)!;
     expect(definition).toBeDefined();
-    expect(definition.steps).toHaveLength(2);
+    expect(definition.steps.length).toBeGreaterThanOrEqual(2);
     for (const hero of ['male', 'female', 'neutral']) {
       const steps = manifest.filter(e => e.movement === movement && e.hero === hero);
-      expect(steps.map(e => e.step)).toEqual([1, 2]);
-      expect(readFileSync(`assets/exercises/heroes/${steps[0].file}`).equals(readFileSync(`assets/exercises/heroes/${steps[1].file}`))).toBe(false);
+      expect(steps.map(e => e.step)).toEqual(definition.steps.map((_entry, index) => index + 1));
+      const hashes = steps.map(entry => createHash('sha256').update(readFileSync(`assets/exercises/heroes/${entry.file}`)).digest('hex'));
+      expect(new Set(hashes).size).toBe(steps.length);
     }
   }
   for (const { file } of manifest) {

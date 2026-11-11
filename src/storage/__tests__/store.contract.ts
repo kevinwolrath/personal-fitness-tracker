@@ -1,5 +1,5 @@
 import { manualSource, type Observation } from '../../observations/types';
-import type { ActivityLog, ExerciseLog, MealCompletion, TrackingStore } from '../types';
+import type { ActivityLog, ExerciseLog, MealCompletion, StoreSnapshot, TrackingStore } from '../types';
 import type { MealLog } from '../../nutrition/contract';
 
 const obs = (id: string, metric: string, date: string, value: number, recordedAt: string, over: Partial<Observation> = {}): Observation => ({
@@ -14,6 +14,11 @@ const obs = (id: string, metric: string, date: string, value: number, recordedAt
   source: manualSource(),
   recordedAt,
   ...over,
+});
+
+/** A snapshot holding only these records (#138: import sessions now arrive only through restore). */
+const withRecords = (r: Partial<StoreSnapshot>): StoreSnapshot => ({
+  plans: [], activityLogs: [], dayOverrides: [], observations: [], quickLogs: [], imports: [], configChanges: [], completionEvents: [], daySnapshots: [], ...r,
 });
 
 const log = (activityId: string, over: Partial<ActivityLog> = {}): ActivityLog => ({
@@ -126,7 +131,7 @@ export function describeTrackingStore(
       expect(day.observations.find((o) => o.id === 'calc')?.kind).toBe('inferred');
     });
 
-    it('saves an import session with its observations and full provenance', async () => {
+    it('historical screenshot imports (#138: the feature is gone) keep their session and full provenance through restore', async () => {
       const session = {
         id: 'imp1',
         createdAt: '2026-11-01T16:45:00+11:00',
@@ -143,7 +148,8 @@ export function describeTrackingStore(
       const fromScale = obs('o2', 'weight', '2026-11-01', 97.3, '2026-11-01T16:45:00+11:00', {
         source: { type: 'screenshot', app: 'renpho', capturedAt: null, confidence: 0.9, importId: 'imp1', assetId: 'a2', evidence: '97.25 kg', edited: true },
       });
-      await store.saveImport(session, [fromFitbit, fromScale]);
+      // Only restore (backups, exports) writes import sessions now.
+      await store.restore(withRecords({ imports: [session], observations: [fromFitbit, fromScale] }));
 
       const again = await reopen();
       const day = await again.getDay('p', '2026-11-01');
@@ -195,7 +201,7 @@ export function describeTrackingStore(
       await store.setDayOverride('p', '2026-11-02', 'office');
       await store.addObservations([obs('w', 'weight', '2026-11-02', 97.9, 't1', { note: 'after run', label: null })]);
       await store.addQuickLog({ id: 'q', planId: 'p', quickLogId: 'hunger', date: '2026-11-02', at: '2026-11-02T10:00:00+11:00' });
-      await store.saveImport({ id: 'i', createdAt: 't2', extractor: 'x', assets: [] }, []);
+      await store.restore(withRecords({ imports: [{ id: 'i', createdAt: 't2', extractor: 'x', assets: [] }] }));
 
       const snap = await store.snapshot();
       expect(snap.activityLogs.map((a) => a.date)).toEqual(['2025-12-31', '2026-11-02']); // no lookback limit

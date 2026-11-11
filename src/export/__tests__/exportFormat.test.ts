@@ -12,15 +12,16 @@ async function populatedStore() {
   await store.addObservations([
     { id: 'm1', date: '2025-06-01', metric: 'weight', value: 104.2, unit: 'kg', kind: 'observed', label: null, note: 'start', source: manualSource(), recordedAt: 't' },
   ]);
-  await store.saveImport(
-    { id: 'imp', createdAt: '2026-11-01T16:45:00+11:00', extractor: 'anthropic:claude-opus-5-5', assets: [{ id: 'a', fileName: 'f.png', mimeType: 'image/png', capturedAt: '2026-11-01T16:39:00+11:00', storedUri: null, sourceApp: 'fitbit' }] },
-    [
+  // A historical screenshot import (#138: only restore writes these now).
+  await store.restore({ plans: [], activityLogs: [], dayOverrides: [], quickLogs: [], configChanges: [], completionEvents: [], daySnapshots: [],
+    imports: [{ id: 'imp', createdAt: '2026-11-01T16:45:00+11:00', extractor: 'anthropic:claude-opus-5-5', assets: [{ id: 'a', fileName: 'f.png', mimeType: 'image/png', capturedAt: '2026-11-01T16:39:00+11:00', storedUri: null, sourceApp: 'fitbit' }] }],
+    observations: [
       { id: 's1', date: '2026-11-01', metric: 'steps', value: 13765, unit: 'count', kind: 'observed', label: null, note: null, recordedAt: 't2',
         source: { type: 'screenshot', app: 'fitbit', capturedAt: '2026-11-01T16:39:00+11:00', confidence: 0.98, importId: 'imp', assetId: 'a', evidence: '13,765', edited: false } },
       { id: 'i1', date: '2026-11-01', metric: 'weight', value: 99.8, unit: 'kg', kind: 'inferred', label: null, note: null, recordedAt: 't2',
         source: { type: 'screenshot', app: 'renpho', capturedAt: null, confidence: 0.7, importId: 'imp', assetId: 'a', evidence: '97.25 + 2.55', edited: false } },
     ],
-  );
+  });
   await store.addQuickLog({ id: 'q', planId: seed.id, quickLogId: 'hunger', date: '2026-10-30', at: '2026-10-30T15:00:00+11:00' });
   await store.setDayOverride(seed.id, '2026-10-29', 'home');
   return store;

@@ -1,6 +1,6 @@
 import type { TrackingStore } from './types';
 
-const writes = new Set(['setActivePlan','setActivity','setDayOverride','addObservations','removeObservation','replaceIntegrationObservations','saveImport','addQuickLog','removeQuickLog','applyConfigChange','logCompletion','addExerciseLog','removeExerciseLog','addMuscleReport','clearMuscleReport','saveMealLog','removeMealLog','restore','replaceAll']);
+const writes = new Set(['setActivePlan','setActivity','setDayOverride','addObservations','removeObservation','replaceIntegrationObservations','addQuickLog','removeQuickLog','applyConfigChange','logCompletion','addExerciseLog','removeExerciseLog','addMuscleReport','clearMuscleReport','saveMealLog','removeMealLog','restore','replaceAll']);
 /** Notify only after a successful committed mutation, including edits, imports and undo. Reads retain their receiver. */
 export function observableStore(store: TrackingStore, changed: () => void): TrackingStore {
   return new Proxy(store, { get(target, key) {

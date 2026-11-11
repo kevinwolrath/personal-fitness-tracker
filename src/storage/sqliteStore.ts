@@ -371,13 +371,6 @@ export class SqliteTrackingStore implements TrackingStore {
     );
   }
 
-  async saveImport(session: ImportSession, observations: Observation[]): Promise<void> {
-    await this.transaction(async () => {
-      await this.upsertImport(session);
-      for (const o of observations) await this.upsertObservation(o);
-    });
-  }
-
   async addQuickLog(q: QuickLogEntry): Promise<void> {
     await this.db.runAsync('INSERT OR REPLACE INTO quick_log (id, plan_id, quick_log_id, date, at) VALUES (?, ?, ?, ?, ?)', [
       q.id,

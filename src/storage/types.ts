@@ -192,8 +192,6 @@ export interface TrackingStore {
    * screenshot imports, other days and metrics that weren't read are never touched.
    */
   replaceIntegrationObservations(importId: string, dates: LocalDate[], metrics: string[], observations: Observation[]): Promise<void>;
-  /** Save an import session and its confirmed observations together (all or nothing). */
-  saveImport(session: ImportSession, observations: Observation[]): Promise<void>;
 
   addQuickLog(entry: QuickLogEntry): Promise<void>;
   removeQuickLog(id: string): Promise<void>;

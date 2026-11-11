@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, SafeAreaView } from 'react-native-safe-area-context';
 import { radius, space, createThemedStyles } from './theme';
 
 type Props = {
@@ -29,6 +29,10 @@ type Props = {
  */
 export function Sheet({ visible, onClose, children, label, fill, onDismiss }: Props) {
   const styles = useStyles();
+  // #142: the app's own insets (root SafeAreaProvider). A SafeAreaView inside an Android Modal doesn't reliably get
+  // the navigation-bar inset, so content (the last menu row) ended up under three-button navigation.
+  // Read without throwing: a sheet rendered outside the provider (tests) just gets no extra inset.
+  const bottomInset = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
 
   if (Platform.OS === 'ios') {
     return (
@@ -41,13 +45,16 @@ export function Sheet({ visible, onClose, children, label, fill, onDismiss }: Pr
     );
   }
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+    // Edge-to-edge modal window (status and navigation bars translucent), so it matches the app window and the
+    // bottom padding below is exactly the system bar's height: three-button navigation gets its full bar, gesture
+    // navigation its small handle area, and no bar means no extra blank space.
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <KeyboardAvoidingView style={styles.fill} behavior="height">
         <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="Close" />
-        <SafeAreaView style={[styles.panel, fill && styles.panelFill]} edges={['bottom']} accessibilityLabel={label}>
+        <View style={[styles.panel, { paddingBottom: space.lg + bottomInset }, fill && styles.panelFill]} accessibilityLabel={label} testID="sheet-panel">
           <View style={styles.handle} />
           {children}
-        </SafeAreaView>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -62,7 +69,7 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     paddingHorizontal: space.xl,
-    paddingBottom: space.lg,
+    // paddingBottom: space.lg + the navigation-bar inset, set inline (#142).
     maxHeight: '92%', // tall content scrolls inside the sheet rather than pushing it off screen
   },
   panelFill: { height: '92%' },

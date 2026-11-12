@@ -373,3 +373,24 @@ test('My Gym groups, search and image details fit every supported width (#158)',
     await page.getByRole('button', { name: 'Back to My Gym', exact: true }).click();
   }
 });
+
+test('Recommended Resistance Training (#157) collapsed and expanded rows fit every supported width', async ({ page }) => {
+  await seedPlan(page, { ...seed, exercise: { ...seed.exercise, equipment: [{ type: 'dumbbells' }, { type: 'resistance_bands' }] } });
+  await seedRecords(page, { exerciseLogs: [
+    { id: 'old', movement: 'hammer_curl', date: '2026-10-20', at: '2026-10-20T09:00:00+11:00', sets: 2, reps: 10, seconds: null, intensity: null },
+    { id: 'recent', movement: 'standing_calf_raise', date: '2026-10-29', at: '2026-10-29T09:00:00+11:00', sets: 2, reps: 15, seconds: null, intensity: null },
+  ] });
+  await openAt(page, THURSDAY);
+  const card = page.getByTestId('recommended-resistance');
+  await expect(card.getByTestId('recommended-muscle')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 844 });
+    await card.scrollIntoViewIfNeeded();
+    expect(await layoutProblems(page), `recommendation collapsed at ${width}`).toEqual([]);
+    await card.getByTestId('recommendation-expand').click();
+    await expect(card.getByTestId('recommended-exercises')).toBeVisible();
+    expect(await layoutProblems(page), `recommendation expanded at ${width}`).toEqual([]);
+    await card.locator('[data-testid^="recommendation-row-"]').last().getByRole('button', { name: /^Log optional/ }).scrollIntoViewIfNeeded();
+    await card.getByTestId('recommendation-expand').click();
+  }
+});

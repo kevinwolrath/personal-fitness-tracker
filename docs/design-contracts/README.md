@@ -24,6 +24,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 16 | [Optional quests & achievements](16-gamification.md) | Opt-in, capped reversible XP, levels, recovery, milestones, gallery, artwork and deterministic journey |
 | 17 | [Approved branding & icons](17-branding.md) | Immutable masters, launcher/adaptive/notification/splash/store assets, startup and verification scope |
 | 18 | [My Gym](18-my-gym.md) | Grouped equipment access, independent stations, one availability resolver, migration 9, offline images and history preservation |
+| 19 | [Recommended Resistance Training](19-recommended-resistance.md) | Optional history-based muscle recommendation, shared recovery/availability, planned workload and canonical logging |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 

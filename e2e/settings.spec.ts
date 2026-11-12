@@ -88,7 +88,10 @@ test('correcting an energy value in kcal stores it back in kJ; saving unchanged 
   expect(unchanged.value).toBe(1338.9);
 
   await page.getByTestId('recorded-active_energy').click();
+  // Wait for the controlled field's opening effect before fill selects/replaces its contents.
+  await expect(page.getByTestId('observation-input')).toHaveValue('320');
   await page.getByTestId('observation-input').fill('350');
+  await expect(page.getByTestId('observation-input')).toHaveValue('350');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByTestId('recorded-active_energy')).toContainText('350 kcal');
   const saved = JSON.parse((await store(page))!).observations.find((o: any) => o.id === 'ae1');

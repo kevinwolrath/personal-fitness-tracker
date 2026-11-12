@@ -57,6 +57,9 @@ import { MUSCLE_GROWTH, inventoryFor, muscleGrowthDay, muscleGrowthLog, muscleGr
 import { MuscleGrowthEditor } from '../muscle-growth/MuscleGrowthEditor';
 import { MuscleGrowthLogSheet } from './MuscleGrowthLogSheet';
 import { MuscleGrowthSection } from './MuscleGrowthSection';
+import { RecommendedResistance } from './RecommendedResistance';
+import { recommendedResistance } from '../../exercises/recommendedResistance';
+import { oneTapLogId } from '../../exercises/todayWorkout';
 
 const isLocalDate = (d: unknown): d is LocalDate =>
   typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(new Date(`${d}T12:00:00`).getTime());
@@ -87,7 +90,7 @@ export function DayLogScreen() {
   const next = date === today ? nextAt(nowMinutes) : null;
   // #56 option C: today's scheduled sessions keep their exercises, shown in muscle-priority order (plan order until
   // there's enough history). Display order only: exercise keys and ticks never change.
-  const { state: exerciseState, loading: exerciseLoading } = useExerciseState(store, plan, today, prescription, date === today, dataVersion);
+  const { state: exerciseState, loading: exerciseLoading } = useExerciseState(store, plan, today, prescription, date === today, dataVersion, nowMinutes, JSON.stringify(records.activities));
   const orderOf = (key: string) => (date === today ? exerciseState?.sessionOrders[key] : undefined);
 
   // Today's workout (#56, layout A): every eligible strength exercise plus the day's plan, on every date.
@@ -119,6 +122,7 @@ export function DayLogScreen() {
 
   // Muscle Growth (#122): the day's checklist, and progression hints from earlier completed sessions (advice only).
   const growth = useMemo(() => muscleGrowthDay(plan, date, dayLogs, catalogue), [plan, date, dayLogs, catalogue]);
+  const recommendation = useMemo(() => recommendedResistance({ plan, date, state: exerciseState, workout, growth, inventory: catalogue, logs: records.activities }), [plan, date, exerciseState, workout, growth, catalogue, records.activities]);
   const [growthHistory, setGrowthHistory] = useState<ExerciseLog[]>([]);
   const growthOn = !!plan.exercise?.muscleGrowth;
   useEffect(() => {
@@ -283,6 +287,18 @@ export function DayLogScreen() {
   };
   // A planned exercise opens its guide as prescribed (substitution, caution, today's dose); others with their dose.
   const workoutGuide = (row: WorkoutRow) => setGuideFor(row.prescribed ?? { movement: row.movement, label: row.name, sets: row.dose.sets, reps: row.dose.reps, seconds: row.dose.seconds });
+  const optionalWrite = useRef(false);
+  const logRecommended = async (row: WorkoutRow) => {
+    if (date !== today || optionalWrite.current || row.done || row.plan) return;
+    optionalWrite.current = true;
+    const id = oneTapLogId(date, row.movement);
+    try {
+      await logExercise(store, { id, movement: row.movement, date, at: new Date().toISOString(), ...row.dose }, catalogue);
+      notifyDataChanged();
+      setToast({ key: Date.now(), message: `${row.name} logged`, onUndo: () => { store.removeExerciseLog(id).then(notifyDataChanged, () => setToast({ key: Date.now(), message: "Couldn't undo. Try again." })); } });
+    } catch { setToast({ key: Date.now(), message: "Couldn't save. Try again." }); }
+    finally { optionalWrite.current = false; }
+  };
   const chooseVariant = (item: PrescriptionItem, variant: Variant) => {
     if (!editable || !item.activity || !item.session) return;
     if (switchNeedsConfirm(item.session, records.activities[item.key])) setPendingSwitch({ item, variant });
@@ -399,6 +415,8 @@ export function DayLogScreen() {
             />
           </View>
         )}
+
+        {date === today && <View style={styles.block}><RecommendedResistance recommendation={recommendation} loading={exerciseLoading} gender={plan.profile?.gender} onLog={logRecommended} onGuide={workoutGuide} /></View>}
 
         {/* With no card above, the measurements take its place right under the header (vertical budget, contract 02). */}
         <View style={noCardToday ? styles.firstBlock : styles.block}>

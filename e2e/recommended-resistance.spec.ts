@@ -28,7 +28,7 @@ test('#157 A: history reason, compatible illustrated choices, guide, canonical o
     await page.screenshot({ path: 'docs/design/issue-157/screenshots/collapsed.png' });
     await expect(page).toHaveScreenshot('recommended-resistance-collapsed.png');
   }
-  await card.getByRole('button', { name: 'Recommended Resistance Training', exact: true }).click();
+  await card.getByRole('button', { name: /^Recommended Resistance Training\. Chest\. Optional\./ }).click();
   await expect(card.getByTestId('recommended-exercises')).toBeVisible();
   await expect(card.getByTestId('recommendation-row-hammer_curl')).toHaveCount(0);
   await expect(card.getByTestId('recommendation-row-chest_press')).toHaveCount(0); // unconfirmed station

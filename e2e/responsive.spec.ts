@@ -387,10 +387,10 @@ test('Recommended Resistance Training (#157) collapsed and expanded rows fit eve
     await page.setViewportSize({ width, height: 844 });
     await card.scrollIntoViewIfNeeded();
     expect(await layoutProblems(page), `recommendation collapsed at ${width}`).toEqual([]);
-    await card.getByRole('button', { name: 'Recommended Resistance Training', exact: true }).click();
+    await card.getByTestId('recommendation-expand').click();
     await expect(card.getByTestId('recommended-exercises')).toBeVisible();
     expect(await layoutProblems(page), `recommendation expanded at ${width}`).toEqual([]);
     await card.locator('[data-testid^="recommendation-row-"]').last().getByRole('button', { name: /^Log optional/ }).scrollIntoViewIfNeeded();
-    await card.getByRole('button', { name: 'Recommended Resistance Training', exact: true }).click();
+    await card.getByTestId('recommendation-expand').click();
   }
 });

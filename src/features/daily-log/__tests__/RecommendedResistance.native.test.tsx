@@ -10,7 +10,7 @@ it('A shows the reason, expands into illustrated logging/guide controls, and cre
   render(<RecommendedResistance recommendation={recommendation} loading={false} onLog={onLog} onGuide={onGuide} />);
   expect(screen.getByText(/recorded effective set/)).toBeTruthy();
   expect(screen.queryByTestId('recommended-exercises')).toBeNull();
-  fireEvent.press(screen.getByLabelText('Recommended Resistance Training'));
+  fireEvent.press(screen.getByLabelText('Recommended Resistance Training. Core. Optional. 1 recorded effective set across 1 training day.'));
   fireEvent.press(screen.getByLabelText('Log optional Plank'));
   expect(onLog).toHaveBeenCalledWith(row);
   fireEvent.press(screen.getByLabelText('Plank. Show how'));

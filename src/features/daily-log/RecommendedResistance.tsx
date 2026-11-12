@@ -13,8 +13,9 @@ export function RecommendedResistance({ recommendation, loading, gender, onLog, 
   const [expanded, setExpanded] = useState(false);
   const styles = useStyles();
   const { type } = useTheme();
+  const description = loading ? 'Checking recorded training' : recommendation.kind === 'ready' ? `${recommendation.label}. Optional. ${recommendation.reason}` : recommendation.reason;
   return <View style={styles.card} testID="recommended-resistance">
-    <Pressable accessibilityRole="button" accessibilityLabel="Recommended Resistance Training" accessibilityState={{ expanded, disabled: loading || recommendation.kind !== 'ready' }} disabled={loading || recommendation.kind !== 'ready'} onPress={() => setExpanded(!expanded)} style={styles.header} testID="recommendation-expand">
+    <Pressable accessibilityRole="button" accessibilityLabel={`Recommended Resistance Training. ${description}`} accessibilityState={{ expanded, disabled: loading || recommendation.kind !== 'ready' }} disabled={loading || recommendation.kind !== 'ready'} onPress={() => setExpanded(!expanded)} style={styles.header} testID="recommendation-expand">
       <View style={styles.body}><Text style={styles.title}>Recommended Resistance Training</Text>
         {loading ? <Text style={type.detail}>Checking recorded training…</Text> : recommendation.kind === 'ready' ? <><Text style={styles.group} testID="recommended-muscle">{recommendation.label} <Text style={type.detail}>· Optional</Text></Text><Text style={type.detail} testID="recommendation-reason">{recommendation.reason}</Text><Text style={styles.action}>{expanded ? 'Hide exercises' : 'See matching exercises'}</Text></> : <Text style={type.detail}>{recommendation.reason}</Text>}
       </View>{!loading && recommendation.kind === 'ready' && <Text style={styles.action}>{expanded ? '⌃' : '⌄'}</Text>}

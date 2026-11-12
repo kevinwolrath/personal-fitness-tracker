@@ -7,9 +7,32 @@ import { StyleSheet } from 'react-native';
 import { buildGuide, type ExerciseGuide } from '../../../exercises/guide';
 import { ExerciseGuideSheet } from '../ExerciseGuideSheet';
 import { exerciseArtwork } from '../../../exercises/heroIllustrations';
+import { characterFor } from '../../muscles/artwork';
 
 const squat = buildGuide({ movement: 'kettlebell_squat', label: 'Kettlebell squat', sets: 3, reps: 10 });
 const layout = { nativeEvent: { layout: { x: 0, y: 0, width: 342, height: 256 } } };
+
+it.each(['male', 'female', 'other', undefined, 'unknown'])('#98 always shows matching activation for %s with no toggle or inactive leg highlight', gender => {
+  const guide = buildGuide({ movement: 'knuckle_push_up', label: 'Push-up' });
+  render(<ExerciseGuideSheet guide={guide} gender={gender} onClose={jest.fn()} />);
+  const hero = characterFor(gender);
+  expect(screen.getByLabelText(`${hero}, front activated muscle map. Muscle names are listed in text.`)).toBeTruthy();
+  expect(screen.getByLabelText(`${hero}, back activated muscle map. Muscle names are listed in text.`)).toBeTruthy();
+  expect(screen.queryByText(/Show activated|Hide activated/)).toBeNull();
+  expect(screen.getByTestId('muscle-front-chest').props.fillOpacity).toBe(0.55);
+  expect(screen.getByTestId('muscle-front-core').props.strokeDasharray).toEqual(['12', '8']);
+  expect(screen.getByTestId('muscle-front-quadriceps').props.fillOpacity).toBe(0);
+  expect(screen.getByTestId('guide-image-1', { includeHiddenElements: true }).props.source).toEqual(exerciseArtwork(guide.steps[0].image, gender).source);
+});
+
+it('#98 shows custom activation without inventing a movement pose, and never substitutes a mismatched pose', () => {
+  const guide = buildGuide({ movement: 'custom_hold', label: 'Custom hold' }, { customExercises: [{ movement: 'custom_hold', name: 'Custom hold', kind: 'strength', equipment: [], primary: ['core'], secondary: [] }] });
+  render(<ExerciseGuideSheet guide={guide} gender="female" onClose={jest.fn()} />);
+  expect(screen.getByTestId('guide-no-image')).toBeTruthy();
+  expect(screen.getByTestId('guide-primary-muscles')).toHaveTextContent('Primary: Core/abdominals');
+  expect(screen.getByLabelText('female, front activated muscle map. Muscle names are listed in text.')).toBeTruthy();
+  expect(screen.queryByTestId('guide-image-1')).toBeNull();
+});
 
 it.each(['male', 'female', 'other'])('#151 pages all three manifest-resolved curl phases for %s', gender => {
   const curl = buildGuide({ movement: 'supinated_cross_body_dumbbell_curl', label: 'Supinated cross-body dumbbell curl', sets: 3, reps: 10, loadKg: 7 });

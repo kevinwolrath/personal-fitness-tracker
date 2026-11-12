@@ -124,6 +124,8 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
               </Text>
             )}
 
+            <ExerciseMuscles muscles={guide.muscles} gender={gender} />
+
             {guide.equipment.length > 0 && (
               <View style={styles.block}>
                 <Text style={type.section}>Equipment</Text>
@@ -143,7 +145,6 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
                 ))}
               </View>
             )}
-            <ExerciseMuscles key={guide.movement} movement={guide.movement} gender={gender} />
           </ScrollView>
         </View>
       )}

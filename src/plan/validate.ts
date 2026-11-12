@@ -1,3 +1,4 @@
+import { equipmentConfigErrors } from '../equipment/catalogue';
 import { planSchema, type Plan } from './schema';
 
 export type PlanValidation = { ok: true; plan: Plan } | { ok: false; errors: string[] };
@@ -12,7 +13,7 @@ export function validatePlan(input: unknown): PlanValidation {
     };
   }
   const plan = parsed.data;
-  const errors: string[] = [];
+  const errors: string[] = equipmentConfigErrors(plan.exercise);
 
   const unique = (what: string, items: { id: string }[]) => {
     const seen = new Set<string>();

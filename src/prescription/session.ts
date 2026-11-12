@@ -1,3 +1,4 @@
+import { movementSupported } from '../exercises/availability';
 import type { ExerciseSection, Session, SessionExercise } from '../plan/schema';
 
 export type PrescribedExercise = SessionExercise & {
@@ -27,7 +28,7 @@ export function prescribeExercise(ex: SessionExercise, config?: ExerciseSection)
   const lim = config?.limitations?.find((l) => l.movement === ex.movement);
   if (lim?.status === 'avoid') {
     const avoided = (m: string) => config?.limitations?.some((l) => l.movement === m && l.status === 'avoid');
-    const sub = config?.substitutions?.find((s) => s.instead === ex.movement)?.use.find((m) => !avoided(m));
+    const sub = config?.substitutions?.find((s) => s.instead === ex.movement)?.use.find((m) => !avoided(m) && movementSupported(m, config));
     if (sub) return { ...ex, movement: sub, label: movementLabel(sub), substitutedFor: label };
     return { ...ex, label, avoid: true };
   }

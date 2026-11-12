@@ -42,7 +42,7 @@ test('with history: the exercise for the muscles most in need comes first; well-
   expect(names.indexOf('Chest press machine')).toBeGreaterThan(names.indexOf('Lat pulldown'));
   await page.getByTestId('today-workout-extras').click();
   const extras = await page.getByTestId('today-workout-extras-list').getByRole('checkbox').evaluateAll((els) => els.map((e) => (e.getAttribute('aria-label') ?? '').split(',')[0]));
-  expect(extras).toHaveLength(8); // #151 adds an eligible curl without changing the five planned exercises.
+  expect(extras).toHaveLength(16); // #158 adds illustrated extras without changing the five planned exercises.
   expect(extras.at(-1)).toBe('Leg extension'); // quads at target: nothing left to gain
   await expect(workoutSheet(page).getByTestId('workout-status-standing_calf_raise')).toHaveText('! Due');
   await expect(workoutSheet(page).getByTestId('workout-status-leg_extension')).toHaveText('✓ Trained');

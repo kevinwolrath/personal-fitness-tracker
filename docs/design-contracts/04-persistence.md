@@ -66,3 +66,7 @@ Rules:
 ## Optional activity facts (#104)
 
 SQLite migration 6 adds nullable `observation.activity_json` without rewriting older observations. Store optional activity facts in both backends, snapshots and v1 exports; old records without these facts remain valid. Migration tests cover upgrading version 5 with existing observations and reopening after saving activity facts.
+
+## My Gym plan migration 9 (#158)
+
+Equipment changes use the existing atomic plan-revision/config-history transaction. `migrateEquipmentV9` adds known item IDs on first equipment edit, preserving brand, labels, kg values and notes. Unknown multi-gym stations are never selected automatically. Unavailable equipment stays in the canonical array with available=false so re-selection restores its metadata. No table or user-log schema changes; historical logs and scheduled doses are untouched. Undo/export/import/backup use existing mechanisms. See [contract 18](18-my-gym.md).

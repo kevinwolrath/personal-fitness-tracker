@@ -1,3 +1,4 @@
+import { movementSupported } from './availability';
 import type { LocalDate } from '../plan/dates';
 import { weekdayOf } from '../plan/dates';
 import type { MuscleGrowthExercise, Plan } from '../plan/schema';
@@ -13,6 +14,7 @@ import { bundledInventory, eligibleExercises, type Inventory, type InventoryExer
 export function inventoryFor(plan: Pick<Plan, 'exercise'>, base: Inventory = bundledInventory): Inventory {
   const custom = plan.exercise?.customExercises ?? [];
   const known = new Set(base.exercises.map((e) => e.movement));
+  const overrides = new Map(custom.filter(c => base.exercises.some(e => e.movement === c.movement && e.allowCustomOverride)).map(c => [c.movement, c]));
   const groups = new Set(base.muscleGroups.map((m) => m.id));
   const extra: InventoryExercise[] = custom
     .filter((c) => !known.has(c.movement) && [...c.primary, ...(c.secondary ?? [])].every((m) => groups.has(m)))
@@ -21,11 +23,12 @@ export function inventoryFor(plan: Pick<Plan, 'exercise'>, base: Inventory = bun
       name: c.name,
       kind: c.kind ?? 'strength',
       equipment: c.equipment,
+      ...(c.requirements ? { requirements: c.requirements } : {}),
       primary: c.primary,
       secondary: c.secondary ?? [],
       ...(c.defaultDose ? { defaultDose: c.defaultDose } : c.kind === 'conditioning' ? {} : { defaultDose: { sets: 2, reps: 10 } }),
     }));
-  return { ...base, exercises: [...base.exercises, ...extra] };
+  return { ...base, exercises: [...base.exercises.map(e => overrides.has(e.movement) ? { ...e, ...overrides.get(e.movement)! } : e), ...extra] };
 }
 
 export const isCustomExercise = (plan: Pick<Plan, 'exercise'>, movement: string) => !!plan.exercise?.customExercises?.some((c) => c.movement === movement);
@@ -38,9 +41,9 @@ export function catalogueErrors(plan: Pick<Plan, 'exercise'>, base: Inventory = 
   const bundled = new Map(base.exercises.map((e) => [e.movement, e]));
   const bundledNames = new Map(base.exercises.map((e) => [e.name.toLowerCase(), e.movement]));
   (plan.exercise?.customExercises ?? []).forEach((c, i) => {
-    if (bundled.has(c.movement)) errors.push(`${at}.customExercises[${i}].movement: "${c.movement}" is already a built-in exercise; use it instead of adding a duplicate`);
+    if (bundled.has(c.movement) && !bundled.get(c.movement)!.allowCustomOverride) errors.push(`${at}.customExercises[${i}].movement: "${c.movement}" is already a built-in exercise; use it instead of adding a duplicate`);
     const same = bundledNames.get(c.name.toLowerCase());
-    if (same && same !== c.movement) errors.push(`${at}.customExercises[${i}].name: "${c.name}" is already a built-in exercise ("${same}")`);
+    if (same && same !== c.movement && !bundled.get(same)!.allowCustomOverride) errors.push(`${at}.customExercises[${i}].name: "${c.name}" is already a built-in exercise ("${same}")`);
     [...c.primary, ...(c.secondary ?? [])].forEach((m) => !groups.has(m) && errors.push(`${at}.customExercises[${i}]: ${unknownMuscle(m, groups)}`));
   });
   const mg = plan.exercise?.muscleGrowth;
@@ -98,6 +101,7 @@ export type MuscleGrowthRow = {
 export type MuscleGrowthDay = {
   /** Enabled and offered on this date (days filter). Logged items still show on a date that isn't offered. */
   offered: boolean;
+  equipmentReview?: string[];
   targets: string[];
   rows: MuscleGrowthRow[];
   done: number;
@@ -138,7 +142,8 @@ export function muscleGrowthDay(plan: Plan, date: LocalDate, logs: readonly Exer
   for (const l of mine) if (!rows.some((r) => r.movement === l.movement)) rows.push(row(l.movement, { sets: l.sets || 1, ...(l.reps ? { reps: l.reps } : {}), ...(l.seconds ? { seconds: l.seconds } : {}) }, false));
   const done = rows.filter((r) => r.status === 'done').length;
   const skipped = rows.filter((r) => r.status === 'skipped').length;
-  return { offered, targets, rows, done, skipped, remaining: rows.length - done - skipped };
+  const equipmentReview = offered ? (mg?.exercises ?? []).filter(entry => !movementSupported(entry.movement, plan.exercise, inventory)).map(entry => byMovement.get(entry.movement)?.name ?? entry.movement) : [];
+  return { offered, targets, rows, done, skipped, remaining: rows.length - done - skipped, ...(equipmentReview.length ? { equipmentReview } : {}) };
 }
 
 function plannedDose(e: MuscleGrowthExercise, inv: InventoryExercise | undefined): MuscleGrowthRow['planned'] {

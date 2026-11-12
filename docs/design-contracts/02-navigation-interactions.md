@@ -141,3 +141,7 @@ Additional content is signalled by the natural partial next item. Do not add ins
 ## Recorded content (#104)
 
 Within the existing content layer, Health Connect steps, active energy and sleep use a compact grid. Walking is collapsed into one expandable summary with explicit min/hr duration and available m/km distance. Expanded records show source, time, duration, available distance and the existing read-only detail sheet. No new header or shell controls; the Today header budget is unchanged. Targets remain at least 48dp and essential values wrap. See contract 12 for overlap and optional Distance rules.
+
+## My Gym (#158)
+
+The app menu gains My Gym in content. Its shared sheet uses expandable equipment groups with compact illustrated rows, per-group Select all / Deselect all, search and Selected only. Details and exercise guides reuse existing nested Sheet behavior. All controls belong to sheet content/header, adding no app-shell or Daily Log header row. Equipment access, immediate persistence/undo and review of incompatible scheduled training follow [contract 18](18-my-gym.md).

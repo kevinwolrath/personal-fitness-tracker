@@ -40,7 +40,7 @@ async function setUpBicepsAndUpperBack(page: Page, info: { project: { name: stri
   await page.getByTestId('mg-custom-primary-biceps').click(); // was preselected from the first target: switch to upper back
   await page.getByTestId('mg-custom-primary-upper_back').click();
   await page.getByTestId('mg-custom-secondary-forearms').click();
-  await page.getByTestId('mg-custom-equipment-free_weights').click();
+  await page.getByTestId('mg-custom-equipment-dumbbells_fixed').click();
   await page.getByTestId('mg-custom-cue').fill('Shoulders straight up, pause, lower slowly.');
   await shot(page, 'editor-custom', info);
   await page.getByTestId('mg-custom-add').click();

@@ -1,3 +1,4 @@
+import { movementSupported } from './availability';
 import type { LocalDate } from '../plan/dates';
 import type { Plan } from '../plan/schema';
 import { sessionProgress } from '../prescription/exercises';
@@ -40,6 +41,8 @@ export type WorkoutRow = {
   muscles: string[];
   status: RowStatus | null;
   caution: boolean;
+  /** Scheduled prescription retained, but not offered as a compatible new exercise. */
+  equipmentUnavailable?: boolean;
   done: boolean;
   doneBy: 'session' | 'free' | null;
   /** Today's free logs for this movement (removed when unticked). */
@@ -166,6 +169,7 @@ export function todayWorkout(input: {
       muscles: (inv?.primary ?? []).map((m) => label.get(m) ?? m),
       status: state && inv ? statusOf(inv.primary, state.coverage, restDay) : null,
       caution: caution.get(movement) ?? !!p?.exercise.caution,
+      ...(p && !movementSupported(movement, plan.exercise, inventory) ? { equipmentUnavailable: true } : {}),
       done: doneBy !== null,
       doneBy,
       freeLogIds,
@@ -199,7 +203,7 @@ export function todayWorkout(input: {
     total: sorted.length,
     done,
     remaining: sorted.length - done,
-    next: sorted.find((r) => !r.done) ?? null,
+    next: sorted.find((r) => !r.done && !r.equipmentUnavailable) ?? null,
     restDay,
     sessions,
   };

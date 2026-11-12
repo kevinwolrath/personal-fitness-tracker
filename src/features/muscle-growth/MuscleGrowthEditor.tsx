@@ -1,3 +1,5 @@
+import { selectedEquipment, equipmentItemFor } from '../../equipment/catalogue';
+import { EquipmentImage } from '../../equipment/EquipmentImage';
 import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { inventoryFor, muscleGrowthOptions } from '../../exercises/catalogue';
@@ -181,7 +183,7 @@ export function MuscleGrowthEditor({ onClose }: { onClose: () => void }) {
           <CustomExerciseForm
             targets={targets}
             existing={catalogue.exercises.map((e) => ({ movement: e.movement, name: e.name }))}
-            ownedEquipment={[...new Set((plan.exercise?.equipment ?? []).map((q) => q.type))]}
+            ownedEquipment={[...selectedEquipment(plan.exercise)].filter(id => equipmentItemFor(id)?.capabilities.length)}
             onCancel={() => setAdding(false)}
             onAdd={(c) => {
               setCustom((xs) => [...xs, c]);
@@ -231,7 +233,8 @@ function CustomExerciseForm({ targets, existing, ownedEquipment, onCancel, onAdd
       movement,
       name: name.trim().slice(0, 40),
       kind: 'strength',
-      equipment: equipment as CustomExercise['equipment'],
+      equipment: [...new Set(equipment.map(id => equipmentItemFor(id)!.type))] as CustomExercise['equipment'],
+      ...(equipment.length ? { requirements: [equipment] } : {}),
       primary,
       secondary: secondary.filter((m) => !primary.includes(m)),
       defaultDose: { sets: 2, reps: 10 },
@@ -256,10 +259,10 @@ function CustomExerciseForm({ targets, existing, ownedEquipment, onCancel, onAdd
             <Chip key={m.id} label={m.label} on={secondary.includes(m.id)} onPress={() => setSecondary(toggle(secondary, m.id))} testID={`mg-custom-secondary-${m.id}`} />
           ))}
       </View>
-      <Text style={type.detail}>Equipment it needs (none selected = bodyweight). Only equipment in your setup is offered.</Text>
+      <Text style={type.detail}>Select every item this exercise needs (none = bodyweight). Only equipment selected in My Gym is offered.</Text>
       <View style={styles.chips}>
         {ownedEquipment.length ? (
-          ownedEquipment.map((q) => <Chip key={q} label={q.replace(/_/g, ' ')} on={equipment.includes(q)} onPress={() => setEquipment(toggle(equipment, q))} testID={`mg-custom-equipment-${q}`} />)
+          ownedEquipment.map((q) => <View key={q} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><EquipmentImage item={equipmentItemFor(q)!} size={32} /><Chip label={equipmentItemFor(q)!.name} on={equipment.includes(q)} onPress={() => setEquipment(toggle(equipment, q))} testID={`mg-custom-equipment-${q}`} /></View>)
         ) : (
           <Text style={type.detail}>No equipment configured: bodyweight only.</Text>
         )}

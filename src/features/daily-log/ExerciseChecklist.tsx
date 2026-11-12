@@ -2,10 +2,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ChecklistRow, SessionProgress, Variant } from '../../prescription/exercises';
 import type { PrescribedExercise } from '../../prescription/session';
 import { exerciseDose } from '../../prescription/session';
+import type { ExerciseSection } from '../../plan/schema';
+import { movementSupported } from '../../exercises/availability';
 import { radius, space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 
 type Props = {
   rows: ChecklistRow[];
+  equipmentConfig?: ExerciseSection;
   /** Highlight this row as the next one to do. */
   nextKey?: string | null;
   editable: boolean;
@@ -26,7 +29,7 @@ type Props = {
  * Exercise-by-exercise checklist (#28). The circle (48 dp) ticks that exercise only; the rest of the row
  * opens its guide. Done exercises stay visible, struck through.
  */
-export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, labelNext, onSkip, testID }: Props) {
+export function ExerciseChecklist({ equipmentConfig, rows, nextKey, editable, onToggle, onOpen, labelNext, onSkip, testID }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -68,6 +71,7 @@ export function ExerciseChecklist({ rows, nextKey, editable, onToggle, onOpen, l
                 <Text style={[styles.label, (row.done || row.skipped) && styles.labelDone, e.avoid && styles.avoid, isNext && styles.labelNext]}>{e.label}</Text>
                 {row.skipped ? <Text style={type.detail}>skipped</Text> : null}
                 {e.substitutedFor ? <Text style={type.detail}>instead of {e.substitutedFor.toLowerCase()}</Text> : null}
+                {equipmentConfig && !movementSupported(e.movement, equipmentConfig) ? <Text style={type.detail}>Equipment unavailable · review My Gym</Text> : null}
                 {e.caution ? <Text style={type.detail}>caution</Text> : null}
                 {row.optional ? <Text style={type.detail}>marked avoid · not required</Text> : null}
               </View>

@@ -48,6 +48,7 @@ export function ExerciseGuideSheet({ guide, gender, onClose }: Props) {
               {[guide.prescription ? `Today: ${guide.prescription}` : null, guide.workoutLabel].filter(Boolean).join(' · ')}
             </Text>
             {guide.substitutedFor && <Text style={styles.note}>Instead of {guide.substitutedFor.toLowerCase()}, as set in your exercise configuration</Text>}
+            {guide.equipmentUnavailable && <Text style={styles.note} testID="guide-equipment-review">Equipment unavailable in My Gym. This guide is kept for reference.</Text>}
             {guide.caution && <Text style={styles.note}>{guide.caution}</Text>}
 
             {steps.length > 0 ? (

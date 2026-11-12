@@ -1,3 +1,4 @@
+import { movementSupported } from '../../exercises/availability';
 import type { EnergyDisplay } from '../../energy';
 import { useEffect, useState } from 'react';
 import { CoverageSheet } from '../muscles/CoverageSheet';
@@ -66,6 +67,7 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
   const meal = a ? mealView(plan, a, energy) : null;
   const session = item?.session;
   const progress = item && session ? sessionProgress(session, logs[item.key], sessionOrder) : null;
+  const equipmentUnavailable = item?.equipmentUnavailable || (!!a?.movement && !movementSupported(a.movement, exerciseConfig));
   const when = item ? (item.window.time ? formatClock(item.window.time) : partLabels[item.window.part]) : '';
   return (
     <Sheet visible={!!item} onClose={() => {
@@ -74,6 +76,7 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
     }} label={item ? `${item.label} details` : 'Details'}>
       {item && (
         <View style={styles.body}>
+          {equipmentUnavailable && <Text style={type.detail}>Equipment unavailable. Review My Gym; this scheduled activity is kept for review and historical corrections.</Text>}
           <ModalHeader title={item.label} dismiss={{ label: 'Close', onPress: onClose }} />
           <Text style={[type.detail, styles.center]}>
             {[when, a ? formatDuration(a.duration) : null, item.required ? null : 'Optional', item.detail].filter(Boolean).join(' · ')}
@@ -117,6 +120,7 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
                   />
                 )}
                 <ExerciseChecklist
+                  equipmentConfig={plan.exercise}
                   rows={progress.rows}
                   nextKey={progress.next?.key}
                   editable={editable && item.state !== 'skipped'}
@@ -160,7 +164,7 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
                 </>
               ) : (
                 <>
-                  {item.options.map((o) => {
+                  {item.options.filter(o => !o.movement || movementSupported(o.movement, plan.exercise) || !!logs[o.id]?.status).map((o) => {
                     const isDone = logs[o.id]?.status === 'done';
                     return (
                       <Button

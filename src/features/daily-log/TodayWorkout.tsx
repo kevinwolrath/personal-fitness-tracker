@@ -52,6 +52,7 @@ function Row({ row, editable, onToggle, onGuide, onCard }: { row: WorkoutRow; ed
         </View>
         <View style={styles.nameLine}>
           {row.status && !row.done ? <Text style={[styles.chip, ink]} testID={`workout-status-${row.movement}`}>{statusText[row.status]}</Text> : null}
+          {row.equipmentUnavailable ? <Text style={[styles.chip, ink]} testID={`workout-equipment-${row.movement}`}>Equipment unavailable · review My Gym</Text> : null}
           {row.caution ? <Text style={[styles.chip, ink]}>Caution</Text> : null}
           {row.prescribed?.substitutedFor ? <Text style={[styles.muscles, muted]}>instead of {row.prescribed.substitutedFor.toLowerCase()}</Text> : null}
           <Text style={[styles.muscles, muted, row.done && styles.struck]} numberOfLines={1}>{row.muscles.join(' · ')}</Text>
@@ -97,7 +98,7 @@ export function TodayWorkoutCard({ workout, promoted, editable, onToggle, onGuid
   const w = workout;
   const counts = workoutCounts(w);
   // The card's exercise: the next planned one; with nothing planned, the top extra.
-  const next = w.plan.total ? w.rows.find((r) => r.plan && !r.done) ?? null : w.next;
+  const next = w.plan.total ? w.rows.find((r) => r.plan && !r.done && !r.equipmentUnavailable) ?? null : w.next;
   const showAll = w.plan.total ? `Show all ${w.plan.total} ⌄` : `${w.extras.available} extras you can do ⌄`;
   return (
     <View style={styles.card} testID="today-workout" accessibilityLiveRegion="polite">

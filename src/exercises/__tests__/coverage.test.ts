@@ -89,7 +89,7 @@ describe('muscle status', () => {
     const e = entry('chest_press', day(-3), '08:00');
     expect(coverage([longAgo, e, { ...e }]).chest.volume).toBe(3);
     expect(coverage([longAgo, entry('chest_press', MON, '20:00')]).chest.volume).toBe(0); // after now (18:00)
-    expect(coverage([longAgo, entry('cable_row', day(-3), '08:00')]).upper_back.volume).toBe(0); // not in the inventory
+    expect(coverage([longAgo, entry('unregistered_row', day(-3), '08:00')]).upper_back.volume).toBe(0); // not in the inventory
   });
 });
 
@@ -138,7 +138,7 @@ describe('user reports override automatic readiness', () => {
 });
 
 describe('suggestions: priority, recovery, equipment and limitations', () => {
-  const all = eligibleExercises({ equipment: [{ type: 'home_gym' }, { type: 'kettlebell' }, { type: 'free_weights' }, { type: 'heavy_bag' }, { type: 'vr_headset' }, { type: 'battle_ropes' }] });
+  const all = eligibleExercises({ equipment: [{ type: 'home_gym', catalogueId: 'multi_gym_chest_press' }, { type: 'home_gym', catalogueId: 'multi_gym_lat_pulldown' }, { type: 'home_gym', catalogueId: 'multi_gym_leg_extension' }, { type: 'kettlebell' }, { type: 'free_weights' }, { type: 'heavy_bag' }, { type: 'vr_headset' }, { type: 'battle_ropes' }] });
   const names = (s: ReturnType<typeof suggestExercises>) => s.map((x) => x.exercise.movement);
 
   it('exercises for the muscles most in need come first; every exercise stays available', () => {
@@ -157,7 +157,10 @@ describe('suggestions: priority, recovery, equipment and limitations', () => {
     const s = suggestExercises(all, c);
     const squat = s.find((x) => x.exercise.movement === 'kettlebell_squat')!;
     expect(squat.held).toEqual([{ muscle: 'quadriceps', status: 'recovering' }]);
-    expect(names(s).slice(-2)).toEqual(['kettlebell_squat', 'leg_extension']);
+    for (const movement of ['kettlebell_squat', 'leg_extension']) {
+      expect(s.find(entry => entry.exercise.movement === movement)!.held.length).toBeGreaterThan(0);
+      expect(names(s).indexOf(movement)).toBeGreaterThan(Math.max(...s.map((entry, index) => !entry.held.length ? index : -1)));
+    }
   });
 
   it('an unavailable muscle holds back exercises that use it at all, even as a secondary', () => {
@@ -183,13 +186,13 @@ describe('suggestions: priority, recovery, equipment and limitations', () => {
   it('only the user’s equipment is suggested, and "caution" is carried through', () => {
     const none = eligibleExercises({ limitations: [{ movement: 'plank', status: 'caution' }] });
     const s = suggestExercises(none, muscleCoverage({ inventory: exerciseInventory, entries: [], now: t(MON, '18:00'), today: MON }));
-    expect(names(s).sort()).toEqual(['knuckle_push_up', 'plank', 'standing_calf_raise', 'straight_leg_raise']);
+    expect(names(s).sort()).toEqual(['bodyweight_squat', 'dead_bug', 'glute_bridge', 'knuckle_push_up', 'plank', 'reverse_lunge', 'standing_calf_raise', 'straight_leg_raise']);
     expect(s.find((x) => x.exercise.movement === 'plank')!.caution).toBe(true);
   });
 });
 
 describe('option C: a scheduled session keeps its exercises, ordered by priority', () => {
-  const session = ['kettlebell_squat', 'chest_press', 'lat_pulldown', 'cable_row', 'hammer_curl'].map((movement) => ({ movement }));
+  const session = ['kettlebell_squat', 'chest_press', 'lat_pulldown', 'unregistered_row', 'hammer_curl'].map((movement) => ({ movement }));
   const cov = (entries: ExerciseEntry[]) => muscleCoverage({ inventory: exerciseInventory, entries, now: t(MON, '06:00'), today: MON });
   const moves = (order: number[]) => order.map((i) => session[i].movement);
 

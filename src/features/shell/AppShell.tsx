@@ -14,6 +14,7 @@ import { TabBar } from './TabBar';
 import { useTrendAlert } from '../progress/useTrendAlert';
 import { useClock } from '../daily-log/useDay';
 import { AppMenu, type AppMenuItem } from './AppMenu';
+import { MyGymSheet } from '../my-gym/MyGymSheet';
 import { RemindersProvider, useReminders } from '../reminders/RemindersProvider';
 import { RemindersSheet, remindersStatus } from '../reminders/RemindersSheet';
 import { SettingsSheet } from '../settings/SettingsSheet';
@@ -46,6 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function Shell({ children }: { children: ReactNode }) {
   const [coverageOpen, setCoverageOpen] = useState(false);
   const [growthOpen, setGrowthOpen] = useState(false);
+  const [gymOpen, setGymOpen] = useState(false);
   const [backupMode, setBackupMode] = useState<'backup' | 'restore' | null>(null);
   const [syncOpen, setSyncOpen] = useState(false);
   const styles = useStyles();
@@ -80,6 +82,7 @@ function Shell({ children }: { children: ReactNode }) {
   const items: AppMenuItem[] = [
     { key: 'health-connect', label: 'Health Connect', detail: healthConnectStatus(healthConnect), onSelect: () => setHealthConnectOpen(true) },
     { key: 'configure', label: 'Configure with AI', detail: 'Change your plan, equipment and goals', onSelect: () => router.push('/configure') },
+    { key: 'my-gym', label: 'My Gym', detail: 'Equipment access for all your training', onSelect: () => setGymOpen(true) },
     { key: 'setup', label: 'Edit setup answers', detail: 'Rebuild your starter plan from new answers', onSelect: () => router.push('/setup') },
     {
       key: 'reminders',
@@ -133,6 +136,7 @@ function Shell({ children }: { children: ReactNode }) {
       <SettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {backupMode && <BackupSheet store={store} mode={backupMode} onClose={() => setBackupMode(null)} />}
       {syncOpen && <HealthSyncSheet store={store} onClose={() => setSyncOpen(false)} />}
+      {gymOpen && <MyGymSheet onClose={() => setGymOpen(false)} />}
       {growthOpen && <MuscleGrowthEditor onClose={() => setGrowthOpen(false)} />}
       {coverageOpen && <CoverageSheet date={toLocalDate(now)} editable onClose={() => setCoverageOpen(false)} />}
       <HealthConnectSheet visible={healthConnectOpen} onClose={() => setHealthConnectOpen(false)} />

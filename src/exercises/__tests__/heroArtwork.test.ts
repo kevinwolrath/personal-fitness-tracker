@@ -5,7 +5,8 @@ import { exerciseArtwork, heroIllustrations } from '../heroIllustrations';
 import { exerciseLibrary } from '../library';
 import { exerciseInventory } from '../inventory';
 import presets from '../../../presets/exercise-routines.json';
-import exceptions from '../illustrationExceptions.json';
+import exceptionData from '../illustrationExceptions.json';
+const exceptions: { movement: string; issue: string; reason: string }[] = exceptionData;
 
 it.each(['male', 'female', 'other', undefined, null, 'non-binary'])('selects only the profile hero for every demonstration: %s', gender => {
   const hero = gender === 'male' || gender === 'female' ? gender : 'neutral';

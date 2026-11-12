@@ -44,5 +44,5 @@ it('never replaces a plan created by setup, even with a newer seed', async () =>
 it('refuses an invalid seed', async () => {
   const store = fresh();
   await installSeedPlan(store);
-  await expect(loadActivePlan(store, { ...seed, formatVersion: 9 })).rejects.toThrow(/seed plan is invalid/);
+  await expect(loadActivePlan(store, { ...seed, formatVersion: 10 })).rejects.toThrow(/seed plan is invalid/);
 });

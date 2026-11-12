@@ -1,3 +1,4 @@
+import { setEquipmentSelection } from '../../equipment/catalogue';
 import Ajv2020 from 'ajv/dist/2020';
 import contract from '../../../docs/design-contracts/plan.schema.json';
 import data from '../../../presets/exercise-routines.json';
@@ -60,7 +61,8 @@ describe('every combination is a valid plan within the days available', () => {
 describe('choices', () => {
   it('the best routine for the equipment; bodyweight is always an option to swap to', () => {
     expect(routineOptions([]).map((r) => r.id)).toEqual(['none']);
-    expect(routineOptions(['bands', 'gym']).map((r) => r.id)).toEqual(['gym', 'bands', 'none']);
+    expect(routineOptions(['bands', 'gym'], { equipment: setEquipmentSelection([], ['long_band', 'leg_press_machine'], true) }).map(r => r.id)).toEqual(['gym', 'bands', 'none']);
+    expect(routineOptions(['bands', 'gym']).map((r) => r.id)).toEqual(['bands', 'none']);
     expect(exerciseStarter({ goals: ['gain_muscle'], equipment: ['weights'], limitations: [] }).routine.id).toBe('weights');
     expect(exerciseStarter({ goals: ['gain_muscle'], equipment: ['weights'], limitations: [], routineId: 'none' }).routine.id).toBe('none');
     expect(exerciseStarter({ goals: ['gain_muscle'], equipment: [], limitations: [], routineId: 'gym' }).routine.id).toBe('none'); // can't swap to unavailable kit

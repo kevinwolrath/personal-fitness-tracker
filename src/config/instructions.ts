@@ -1,3 +1,4 @@
+import { equipmentCatalogue } from '../equipment/catalogue';
 import {
   activityKinds,
   dayParts,
@@ -154,6 +155,8 @@ ${fieldDocs}
 ## Allowed values
 
 - exercise.equipment[].type: ${equipmentTypes.join(', ')}
+- exercise.equipment[].catalogueId (formatVersion 9, optional for legacy entries): ${equipmentCatalogue.items.map(item => item.id).join(', ')}
+- My Gym configures equipment access only. Each multi-gym station is independent; never infer all stations from a brand or frame. Keep labels, real weightsKg and notes; never convert slabs to kg without the actual value. Equipment changes must not rewrite workout doses or history.
 - exercise.limitations[].status: ${limitationStatuses.join(', ')} ("avoid" = don't program it; "caution" = only with care; "allowed" = explicitly fine)
 - exercise.activityTypes[].kind: ${activityKinds.join(', ')}
 - intensity: ${intensities.join(', ')}

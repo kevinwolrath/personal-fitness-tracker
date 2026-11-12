@@ -1,3 +1,4 @@
+import { equipmentCatalogue, setEquipmentSelection } from '../../equipment/catalogue';
 import seed from '../../../plans/seed.plan.json';
 import { validatePlan } from '../../plan/validate';
 import { eligibleExercises, exerciseInventory, validateInventory } from '../inventory';
@@ -40,6 +41,21 @@ describe('the bundled inventory (approved on #56)', () => {
       'Heavy bag boxing': 'Shoulders | Chest, Triceps, Core/abdominals',
       'VR boxing': 'Shoulders | Chest, Triceps, Core/abdominals',
       'Battle ropes': 'Shoulders | Upper back, Core/abdominals, Forearms',
+      'Bodyweight squat': 'Quadriceps, Glutes | Core/abdominals',
+      'Incline push-up': 'Chest | Triceps, Shoulders, Core/abdominals',
+      'Glute bridge': 'Glutes | Hamstrings, Core/abdominals',
+      'Reverse lunge': 'Quadriceps, Glutes | Hamstrings, Core/abdominals',
+      'Dead bug': 'Core/abdominals | None',
+      'Resistance band row': 'Upper back, Lats | Biceps',
+      'Resistance band chest press': 'Chest | Triceps, Shoulders',
+      'Band pull-apart': 'Upper back, Shoulders | None',
+      'One-arm dumbbell row': 'Upper back, Lats | Biceps, Core/abdominals',
+      'Dumbbell floor press': 'Chest | Triceps, Shoulders',
+      'Dumbbell Romanian deadlift': 'Hamstrings, Glutes | Lower back, Core/abdominals',
+      'Dumbbell farmer carry': 'Forearms, Upper back | Core/abdominals',
+      'Leg press': 'Quadriceps, Glutes | Hamstrings',
+      'Seated cable row': 'Upper back, Lats | Biceps',
+      'Kettlebell shrug': 'Upper back | Forearms',
     });
   });
 
@@ -74,12 +90,15 @@ describe('validation', () => {
 });
 
 describe('eligibility: the user’s own equipment and limitations', () => {
-  it('the seed plan (Fortis, kettlebells, small free weights, bag, ropes, VR) gets the whole inventory', () => {
-    expect(ids(eligibleExercises(plan.exercise))).toEqual(exerciseInventory.exercises.map((e) => e.movement));
+  it('legacy equipment never grants unknown machine stations; explicit access can cover the whole inventory', () => {
+    const legacy = ids(eligibleExercises(plan.exercise));
+    expect(legacy).toEqual(expect.arrayContaining(['kettlebell_squat', 'hammer_curl', 'bodyweight_squat']));
+    for (const movement of ['chest_press', 'lat_pulldown', 'leg_extension', 'leg_press']) expect(legacy).not.toContain(movement);
+    expect(ids(eligibleExercises({ equipment: setEquipmentSelection([], equipmentCatalogue.items.map(item => item.id), true) }))).toEqual(exerciseInventory.exercises.map(e => e.movement));
   });
 
   it('with no equipment configured, only the no-equipment exercises: nobody is assumed to own a gym', () => {
-    expect(ids(eligibleExercises(undefined))).toEqual(['knuckle_push_up', 'plank', 'straight_leg_raise', 'standing_calf_raise']);
+    expect(ids(eligibleExercises(undefined))).toEqual(['knuckle_push_up', 'plank', 'straight_leg_raise', 'standing_calf_raise', 'bodyweight_squat', 'glute_bridge', 'reverse_lunge', 'dead_bug']);
     expect(ids(eligibleExercises({ equipment: [{ type: 'dumbbells' }] }))).toEqual(
       expect.arrayContaining(['hammer_curl', 'overhead_press']),
     );

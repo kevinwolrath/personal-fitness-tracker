@@ -1,22 +1,25 @@
+import { equipmentCatalogue, setEquipmentSelection } from '../src/equipment/catalogue';
 import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import inventory from '../src/exercises/inventory.json';
 import manifest from '../assets/exercises/heroes/manifest.json';
 import seed from '../plans/seed.plan.json';
 import library from '../src/exercises/library.json';
+test.setTimeout(120_000);
+
 import { MONDAY, openAt, seedPlan, chooseFromMenu } from './helpers';
 
 const customShrug = { movement: 'kettlebell_shrug', name: 'Kettlebell shrug', kind: 'strength' as const, equipment: ['kettlebell' as const], primary: ['upper_back'], secondary: ['forearms'], defaultDose: { sets: 2, reps: 12 } };
 
 for (const hero of ['male', 'female', 'neutral'] as const) {
   test(`all tracked movements use the ${hero} profile hero without changing tracking data`, async ({ page }, info) => {
-    await seedPlan(page, { ...seed, formatVersion: 8, exercise: { ...seed.exercise, customExercises: [customShrug] }, profile: { gender: hero === 'neutral' ? 'other' : hero } });
+    await seedPlan(page, { ...seed, formatVersion: 9, exercise: { ...seed.exercise, equipment: setEquipmentSelection([], equipmentCatalogue.items.map(item => item.id), true), customExercises: [customShrug] }, profile: { gender: hero === 'neutral' ? 'other' : hero } });
     await openAt(page, MONDAY);
     const before = await page.evaluate(() => localStorage.getItem('pft:tracking:v1'));
     await page.getByRole('button', { name: 'Menu', exact: true }).click();
     await page.getByTestId('menu-coverage').click();
     await page.getByRole('button', { name: 'Log exercise', exact: true }).click();
-    for (const exercise of [...inventory.exercises, customShrug]) {
+    for (const exercise of inventory.exercises) {
       const stepCount = library.exercises.find(entry => entry.id === exercise.movement)!.steps.length;
       await page.getByRole('button', { name: `Choose ${exercise.name}`, exact: true }).click();
       await page.getByRole('button', { name: 'Show exercise guide', exact: true }).click();

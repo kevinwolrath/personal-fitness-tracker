@@ -1,3 +1,5 @@
+import { incompatibleScheduled } from '../exercises/availability';
+import type { Plan } from '../plan/schema';
 import { formatEnergy, formatEnergyBound, type EnergyDisplay, type EnergyUnit } from '../energy';
 import { fieldOf, sectionNames, sections, type RawPlan, type SectionName } from './sections';
 import type { ConfigUpdate } from './update';
@@ -9,6 +11,7 @@ export type SectionPreview = {
   /** supplied: the update includes this section; otherwise it is guaranteed untouched. */
   supplied: boolean;
   lines: ChangeLine[];
+  warnings?: string[];
 };
 
 const words = (s: string) => s.replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
@@ -43,6 +46,8 @@ const fieldLabels: Record<string, string> = {
   sessionMinutes: 'session length',
   maxSessionMinutes: 'longest session',
   modalities: 'activities',
+  catalogueId: 'equipment item',
+  available: 'equipment access',
   weightsKg: 'weights',
   notifications: 'reminders',
   nutrition: '', // a meal's amounts read on their own: "energy 2,100 kJ, protein 55 g"
@@ -124,7 +129,7 @@ const targetRange = (i: Item) =>
 /** Item wording for list fields, so the preview reads like the issue's example. */
 const describers: Record<string, Describer> = {
   'exercise.equipment': {
-    key: (i) => `${i.type}|${i.brand ?? ''}|${i.label ?? ''}`,
+    key: (i) => i.catalogueId ?? `${i.type}|${i.brand ?? ''}|${i.label ?? ''}`,
     name: (i) => {
       const base = i.label ?? (i.brand ? `${i.brand} ${words(i.type)}` : words(i.type));
       if (i.weightsKg?.length) return `${list(i.weightsKg.map((w: number) => `${w} kg`))} ${words(i.type)}${i.weightsKg.length > 1 ? 's' : ''}`;
@@ -216,7 +221,13 @@ function diffValue(path: string, title: string, before: unknown, after: unknown)
 
 /** Human-readable preview for every section: supplied ones with their changes, others marked untouched. */
 export function previewUpdate(currentRaw: RawPlan, nextRaw: RawPlan, update: ConfigUpdate, display: EnergyDisplay): SectionPreview[] {
-  return withFormat(nextRaw, display, () => previewSections(currentRaw, nextRaw, update));
+  const result = withFormat(nextRaw, display, () => previewSections(currentRaw, nextRaw, update));
+  if (update.sections.exercise && 'equipment' in update.sections.exercise) {
+    const review = incompatibleScheduled(nextRaw as Plan);
+    const section = result.find(entry => entry.section === 'exercise');
+    if (review.length && section?.lines.length) section.warnings = [`Equipment review needed: ${review.map(item => item.label).join(', ')}. Scheduled prescriptions and history are preserved.`];
+  }
+  return result;
 }
 
 /** Run `fn` with amounts formatted for `plan` (its energy unit, target units and activity names) in the energy display. */

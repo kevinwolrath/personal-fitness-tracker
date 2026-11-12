@@ -20,7 +20,8 @@
     "replay:gamification": "node scripts/replay-gamification.cjs",
     "check:agent-files": "node scripts/check-agent-files.cjs",
     "check:sync-server": "node scripts/check-sync-server.cjs",
-    "build:exercise-assets": "node scripts/build-exercise-assets.cjs"
+    "build:exercise-assets": "node scripts/build-exercise-assets.cjs",
+    "build:gym-assets": "node scripts/build-gym-art.cjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

@@ -334,6 +334,7 @@ function Preview({ sections, notes }: { sections: SectionPreview[]; notes: strin
                   </View>
                   <Text style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
                 </Pressable>
+                {sec.warnings?.map((warning, j) => <Text key={`equipment-warning-${j}`} style={styles.line} accessibilityRole="alert">{warning}</Text>)}
                 {expanded &&
                   sec.lines.map((l, j) => (
                     <Text key={j} style={[styles.line, l.kind === 'remove' && styles.lineRemove]}>

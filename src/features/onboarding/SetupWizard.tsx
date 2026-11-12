@@ -108,8 +108,9 @@ export function SetupWizard({ store, energy, onFinished, edit }: Props) {
     update(fn);
   };
 
-  const starter = useMemo(() => (draft ? buildStarterPlan(draft) : null), [draft]);
-  const everything = useMemo(() => (draft ? buildStarterPlan({ ...draft, removed: [] }) : null), [draft]);
+  const gymAccess = useMemo(() => edit ? JSON.parse(edit.current.json).exercise : undefined, [edit?.current.json]);
+  const starter = useMemo(() => (draft ? buildStarterPlan(draft, undefined, gymAccess) : null), [draft, gymAccess]);
+  const everything = useMemo(() => (draft ? buildStarterPlan({ ...draft, removed: [] }, undefined, gymAccess) : null), [draft, gymAccess]);
 
   if (!draft || !starter || !everything) {
     return (

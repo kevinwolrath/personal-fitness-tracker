@@ -1,3 +1,4 @@
+import { setEquipmentSelection } from '../../equipment/catalogue';
 import example from '../../../fixtures/plans/prescription-example.plan.json';
 import seed from '../../../plans/seed.plan.json';
 import type { Plan } from '../../plan/schema';
@@ -17,7 +18,8 @@ const load = (raw: unknown): Plan => {
   if (!r.ok) throw new Error(r.errors.join('\n'));
   return r.plan;
 };
-const plan = load(seed);
+const confirmedSeed = { ...seed, formatVersion: 9, exercise: { ...seed.exercise, equipment: setEquipmentSelection(seed.exercise.equipment as any, ['multi_gym_chest_press', 'multi_gym_lat_pulldown', 'multi_gym_leg_extension'], true) } };
+const plan = load(confirmedSeed);
 const MON = '2026-11-02'; // strength (resistance) day
 const TUE = '2026-11-03'; // no strength in the plan
 const FRI = '2026-11-06'; // configured rest day
@@ -36,14 +38,14 @@ const ctx = (current?: ActivityLog) => ({ planId: plan.id, date: MON, now: `${MO
 describe('what is listed', () => {
   it('every eligible strength exercise, plus today’s planned ones; never conditioning', () => {
     const w = workout(MON);
-    expect(w.total).toBe(13); // the seed owns every piece of equipment: all 13 strength exercises
+    expect(w.total).toBe(21); // the seed owns every piece of equipment: all 13 strength exercises
     expect(w.rows.map((r) => r.movement)).not.toEqual(expect.arrayContaining(['vr_boxing']));
     expect(w.rows.filter((r) => r.plan).map((r) => r.movement)).toEqual(['kettlebell_squat', 'chest_press', 'lat_pulldown', 'one_arm_kettlebell_row', 'hammer_curl']);
   });
 
   it('days without strength in the plan still list the whole inventory, none of it planned', () => {
     const w = workout(TUE);
-    expect(w.total).toBe(13);
+    expect(w.total).toBe(21);
     expect(w.rows.some((r) => r.plan)).toBe(false);
     expect(w.sessions).toEqual([]);
   });
@@ -51,7 +53,7 @@ describe('what is listed', () => {
   it('no equipment configured: bodyweight only; an avoided movement is never offered; plan exercises are always listed', () => {
     const bare = load({ ...seed, exercise: { ...seed.exercise, equipment: [], limitations: [{ movement: 'plank', status: 'avoid' }] } });
     const w = workout(TUE, { p: bare });
-    expect(w.rows.map((r) => r.movement).sort()).toEqual(['knuckle_push_up', 'standing_calf_raise', 'straight_leg_raise']);
+    expect(w.rows.map((r) => r.movement).sort()).toEqual(['bodyweight_squat', 'dead_bug', 'glute_bridge', 'knuckle_push_up', 'reverse_lunge', 'standing_calf_raise', 'straight_leg_raise']);
     expect(workout(MON, { p: bare }).rows.filter((r) => r.plan)).toHaveLength(5); // the plan still prescribes its session
   });
 
@@ -97,7 +99,7 @@ describe('doses', () => {
     expect(w.rows.filter((r) => r.plan).map((r) => [r.movement, r.doseLabel])).toEqual([
       ['kettlebell_squat', '2 × 10'], ['chest_press', '2 × 10'], ['one_arm_kettlebell_row', '2 × 10'],
     ]);
-    expect(w.total).toBe(13); // the inventory stays complete whichever version is chosen
+    expect(w.total).toBe(21); // the inventory stays complete whichever version is chosen
   });
 });
 
@@ -105,7 +107,7 @@ describe('done, counts and order', () => {
   it('counts follow session ticks and free logs; done rows go to the bottom in the same order', () => {
     const t = tickExercise(ctx(), strength, sessionItem().session!, 'full:1:chest_press', true);
     const w = workout(MON, { logs: { resistance: t.log! }, freeLogs: [free('plank')] });
-    expect([w.total, w.done, w.remaining]).toEqual([13, 2, 11]);
+    expect([w.total, w.done, w.remaining]).toEqual([21, 2, 19]);
     expect(w.rows.slice(-2).map((r) => [r.movement, r.doneBy])).toEqual([['chest_press', 'session'], ['plank', 'free']]);
     expect(w.next!.movement).toBe('kettlebell_squat');
   });
@@ -149,7 +151,7 @@ describe('statuses', () => {
     const w = workout(FRI, { state });
     expect(w.restDay).toBe(true);
     expect(w.rows.find((r) => r.movement === 'standing_calf_raise')!.status).toBeNull();
-    expect(w.total).toBe(13);
+    expect(w.total).toBe(21);
     expect(workoutToggle(w.rows[0], FRI).kind).toBe('log');
   });
 });
@@ -192,16 +194,16 @@ describe('engine order for the day', () => {
     const store = new KeyValueTrackingStore(new MemoryKeyValue());
     const s = exerciseState(plan, await loadExerciseHistory(store, plan, MON), { now: `${MON}T08:00:00+11:00`, today: MON });
     expect(s.priorityOrder).toBe(false);
-    expect(s.dayOrder).toHaveLength(13);
+    expect(s.dayOrder).toHaveLength(21);
     expect(s.dayOrder).not.toContain('vr_boxing');
   });
 });
 
 describe('#90: counts are today’s prescription; extras are separate', () => {
-  it('Monday counts the 5 prescribed exercises, not the 13-exercise catalogue', () => {
+  it('Monday counts the 5 prescribed exercises, not the 21-exercise catalogue', () => {
     const w = workout(MON);
     expect(w.plan).toEqual({ total: 5, done: 0, remaining: 5 });
-    expect(w.extras).toEqual({ available: 8, done: 0 });
+    expect(w.extras).toEqual({ available: 16, done: 0 });
   });
 
   it('ticks move the plan count; a free-logged extra never changes "of 5"', () => {
@@ -209,7 +211,7 @@ describe('#90: counts are today’s prescription; extras are separate', () => {
     for (const key of ['full:0:kettlebell_squat', 'full:1:chest_press']) log = tickExercise(ctx(log), strength, sessionItem().session!, key, true).log ?? undefined;
     const w = workout(MON, { logs: { resistance: log! }, freeLogs: [free('kettlebell_romanian_deadlift')] });
     expect(w.plan).toEqual({ total: 5, done: 2, remaining: 3 });
-    expect(w.extras).toEqual({ available: 8, done: 1 });
+    expect(w.extras).toEqual({ available: 16, done: 1 });
   });
 
   it('all done: 5 of 5; the short version counts its own exercises', () => {
@@ -221,7 +223,7 @@ describe('#90: counts are today’s prescription; extras are separate', () => {
 
   it('a day with no strength session prescribes nothing: 0 planned, the whole catalogue as extras', () => {
     expect(workout(TUE).plan).toEqual({ total: 0, done: 0, remaining: 0 });
-    expect(workout(TUE).extras.available).toBe(13);
+    expect(workout(TUE).extras.available).toBe(21);
   });
 
   it('a skipped session prescribes nothing that day', () => {

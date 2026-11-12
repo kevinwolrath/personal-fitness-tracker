@@ -119,8 +119,8 @@ describe('buildGuide', () => {
   });
 
   it('an exercise without a definition degrades to its workout label, with no steps or instructions', () => {
-    expect(buildGuide(prescribeExercise({ movement: 'farmer_carry', seconds: 40, label: 'Farmer carry' }))).toEqual({
-      movement: 'farmer_carry', name: 'Farmer carry', hasDefinition: false, prescription: '40 s', workoutLabel: null,
+    expect(buildGuide(prescribeExercise({ movement: 'unregistered_carry', seconds: 40, label: 'Farmer carry' }))).toEqual({
+      movement: 'unregistered_carry', name: 'Farmer carry', hasDefinition: false, prescription: '40 s', workoutLabel: null,
       substitutedFor: null, caution: null, equipment: [], instructions: [], steps: [],
     });
   });

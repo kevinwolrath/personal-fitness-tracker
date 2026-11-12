@@ -59,6 +59,7 @@
     { "id": "stretch", "kind": "habit", "label": "Stretch", "required": false, "purpose": "mobility" }
   ],
   "exercise": {
+    "equipment": [{ "type": "free_weights" }],
     "limitations": [
       { "movement": "biceps_curl", "status": "avoid", "reason": "elbow" },
       { "movement": "hammer_curl", "status": "allowed" },

@@ -1,5 +1,5 @@
 /**
- * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1, 2 and 3).
+ * Runtime mirror of docs/design-contracts/plan.schema.json (formatVersion 1 through 9).
  * formatVersion 3 adds meal `ingredients` and `preparation` (contract 03, #26).
  * formatVersion 4 adds activity `notifications`: plan-defined local reminders (contract 10, #30).
  * formatVersion 6 adds the setup profile (#49): `profile` gender, age band, weight, fitness goals and practical context.
@@ -9,9 +9,11 @@
  * exercise-inventory movement an activity is (e.g. VR boxing), so its muscle work counts.
  * formatVersion 8 adds `exercise.customExercises` and `exercise.muscleGrowth` (#122): the user's own catalogue entries,
  * and a Muscle Growth routine for chosen target muscles, separate from the resistance session.
+ * formatVersion 9 adds exact My Gym equipment/station identities, retained availability and custom equipment alternatives.
  * The JSON Schema is the contract; tests assert both accept/reject the same plans.
  */
 import { z } from 'zod';
+import gymCatalogue from '../equipment/catalogue.json';
 
 export const id = z.string().max(40).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/);
 export const label = z.string().min(1).max(40);
@@ -190,6 +192,10 @@ export const trainingLocations = ['home', 'gym', 'outdoors', 'mixed'] as const;
 
 export const equipmentItem = z.strictObject({
   type: z.enum(equipmentTypes),
+  /** formatVersion 9: exact My Gym item/station; equipment remains the only persisted selection list. */
+  catalogueId: z.enum(gymCatalogue.items.map(item => item.id) as [string, ...string[]]).optional(),
+  /** Access switch only: an unavailable item retains its labels, weights and notes. */
+  available: z.boolean().optional(),
   label: label.optional(),
   brand: z.string().min(1).max(40).optional(),
   /** Loads available, in kg (e.g. kettlebells [16, 24]). */
@@ -251,6 +257,8 @@ export const customExercise = z.strictObject({
     .strictObject({ sets: z.number().int().min(1).max(10), reps: z.number().int().min(1).max(100).optional(), seconds: z.number().positive().max(600).optional() })
     .refine((d) => (d.reps === undefined) !== (d.seconds === undefined), 'give reps or seconds, not both')
     .optional(),
+  /** formatVersion 9: complete equipment alternatives, using exact My Gym catalogue IDs. */
+  requirements: z.array(z.array(z.enum(gymCatalogue.items.map(item => item.id) as [string, ...string[]])).min(1).max(8)).min(1).max(8).optional(),
   /** Short cues shown in the exercise guide, in the user's words. */
   guidance: z.array(note).max(8).optional(),
 });
@@ -282,7 +290,7 @@ export const muscleGrowthSection = z.strictObject({
 
 export const exerciseSection = z.strictObject({
   goals: z.array(z.enum(exerciseGoals)).max(9).optional(),
-  equipment: z.array(equipmentItem).max(30).optional(),
+  equipment: z.array(equipmentItem).max(256).optional(),
   limitations: z.array(limitation).max(30).optional(),
   substitutions: z.array(substitution).max(30).optional(),
   activityTypes: z.array(activityType).max(30).optional(),
@@ -369,7 +377,7 @@ export const weekScheduleSchema = z.strictObject(
 export const planSchema = z.strictObject({
   $schema: z.string().optional(),
   format: z.literal('pft-plan'),
-  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8)]),
+  formatVersion: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8), z.literal(9)]),
   id,
   revision: z.number().int().min(1),
   title: label,
@@ -394,6 +402,10 @@ export const planSchema = z.strictObject({
   // formatVersion 5 (#51):
   timing: timingSchema.optional(),
 }).superRefine((p, ctx) => {
+  (p.exercise?.equipment ?? []).forEach((item, i) => {
+    const definition = gymCatalogue.items.find(entry => entry.id === item.catalogueId);
+    if (definition && definition.type !== item.type && !definition.capabilities.includes(item.type)) ctx.addIssue({ code: 'custom', path: ['exercise', 'equipment', i, 'type'], message: `${definition.id} requires ${definition.type}` });
+  });
   const rest = p.exercise?.restDays;
   if (rest && new Set(rest).size !== rest.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: 'each day only once' });
   if (p.formatVersion < 8) {
@@ -410,6 +422,10 @@ export const planSchema = z.strictObject({
     if (new Set(mg.exercises.map((e) => e.movement)).size !== mg.exercises.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'exercises'], message: 'each movement only once' });
     mg.exercises.forEach((e, i) => e.reps !== undefined && e.seconds !== undefined && ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'exercises', i], message: 'give reps or seconds, not both' }));
     if (mg.days && new Set(mg.days).size !== mg.days.length) ctx.addIssue({ code: 'custom', path: ['exercise', 'muscleGrowth', 'days'], message: 'each day only once' });
+  }
+  if (p.formatVersion < 9) {
+    (p.exercise?.customExercises ?? []).forEach((item, i) => item.requirements !== undefined && ctx.addIssue({ code: 'custom', path: ['exercise', 'customExercises', i, 'requirements'], message: 'requirements needs formatVersion 9' }));
+    (p.exercise?.equipment ?? []).forEach((item, i) => (item.catalogueId !== undefined || item.available !== undefined) && ctx.addIssue({ code: 'custom', path: ['exercise', 'equipment', i, 'catalogueId'], message: 'catalogueId/available needs formatVersion 9' }));
   }
   if (p.formatVersion < 7) {
     if (rest !== undefined) ctx.addIssue({ code: 'custom', path: ['exercise', 'restDays'], message: '"exercise.restDays" needs formatVersion 7' });
@@ -482,6 +498,6 @@ export type Purpose = (typeof purposes)[number];
 export type DayPart = (typeof dayParts)[number];
 /** Building blocks reused by the configuration sections (src/config). */
 /** The plan format this app writes (Configure with AI, setup). */
-export const CURRENT_FORMAT_VERSION = 8;
+export const CURRENT_FORMAT_VERSION = 9;
 
 export const planParts = { activity, measurement, nutritionTarget, appliesTo, time, requirement: requirementSchema };

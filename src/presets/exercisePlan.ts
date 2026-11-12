@@ -1,3 +1,8 @@
+import { prescribeExercise } from '../prescription/session';
+import type { Session, SessionExercise } from '../plan/schema';
+import { movementSupported } from '../exercises/availability';
+import { setEquipmentSelection } from '../equipment/catalogue';
+import type { ExerciseSection } from '../plan/schema';
 import data from '../../presets/exercise-routines.json';
 import { equipmentKinds, physicalLimits, type activityLevels, type fitnessGoals, type Weekday } from '../plan/schema';
 
@@ -25,6 +30,8 @@ export type ExerciseInputs = {
   activityLevel?: Activity;
   /** What the user has; none = bodyweight only. */
   equipment: Equipment[];
+  /** Existing My Gym access wins over broad setup answers when rebuilding. */
+  access?: ExerciseSection;
   limitations: Limitation[];
   /** Most training days per week the user wants. */
   daysPerWeek?: number;
@@ -37,9 +44,23 @@ type Routine = (typeof data.strength)[number];
 export const routines: Routine[] = data.strength;
 
 /** Strength routines that fit the equipment, best first (gym, weights, bands, none). None always fits. */
-export function routineOptions(equipment: Equipment[]): Routine[] {
+export function starterEquipment(equipment: Equipment[]): NonNullable<ExerciseSection['equipment']> {
+  return setEquipmentSelection([], [
+    ...(equipment.includes('weights') ? ['dumbbells_fixed'] : []),
+    ...(equipment.includes('bands') ? ['long_band'] : []),
+    ...(equipment.includes('gym') ? ['multi_gym_frame'] : []),
+  ], true);
+}
+
+export function routineOptions(equipment: Equipment[], access?: ExerciseSection): Routine[] {
+  const config = access ?? { equipment: starterEquipment(equipment) };
   const rank: Equipment[] = ['gym', 'weights', 'bands', 'none'];
-  return rank.filter((e) => e === 'none' || equipment.includes(e)).map((e) => routines.find((r) => r.id === e)!);
+  return rank.filter(e => access || e === 'none' || equipment.includes(e)).map(id => {
+    const routine = routines.find(r => r.id === id)!;
+    const exercises = routine.session.exercises.filter(exercise => movementSupported(exercise.movement, config));
+    const short = routine.session.short ? { ...routine.session.short, exercises: routine.session.short.exercises.filter(exercise => movementSupported(exercise.movement, config)).length ? routine.session.short.exercises.filter(exercise => movementSupported(exercise.movement, config)) : exercises.slice(0, 2) } : undefined;
+    return { ...routine, session: { ...routine.session, exercises, ...(short ? { short } : {}) } } as Routine;
+  }).filter(routine => routine.session.exercises.length > 0);
 }
 
 const STRENGTH_DAYS: Record<number, Weekday[]> = { 1: ['wed'], 2: ['mon', 'thu'], 3: ['mon', 'wed', 'fri'] };
@@ -56,7 +77,7 @@ export type ExerciseStarter = {
 export function exerciseStarter(inputs: ExerciseInputs): ExerciseStarter {
   const g = new Set(inputs.goals);
   const level = inputs.activityLevel ?? 'some_walking';
-  const options = routineOptions(inputs.equipment);
+  const options = routineOptions(inputs.equipment, inputs.access);
   const routine = options.find((r) => r.id === inputs.routineId) ?? options[0];
 
   // How much of each: gentle for people starting from little activity.
@@ -135,6 +156,7 @@ export function exerciseStarter(inputs: ExerciseInputs): ExerciseStarter {
     ...(g.has('maintain') ? ['health'] : []),
   ];
   const exercise: Record<string, unknown> = {
+    equipment: inputs.access?.equipment ?? starterEquipment(inputs.equipment),
     ...(exerciseGoals.length ? { goals: exerciseGoals } : {}),
     ...(lims.length
       ? {
@@ -144,5 +166,18 @@ export function exerciseStarter(inputs: ExerciseInputs): ExerciseStarter {
       : {}),
     constraints: { location: routine.id === 'gym' ? 'gym' : 'home' },
   };
+  // New starter prescriptions only: never schedule an avoided or unsupported movement.
+  const config = exercise as ExerciseSection;
+  const compatible = (entries: readonly SessionExercise[]) => entries.flatMap(entry => {
+    const resolved = prescribeExercise(entry, config);
+    return resolved.avoid || !movementSupported(resolved.movement, config) ? [] : [{ ...entry, movement: resolved.movement, label: resolved.label }];
+  });
+  const activity = activities.find(entry => entry.id === 'strength')!;
+  const session = activity.session as Session;
+  const filtered = compatible(session.exercises);
+  const fallback = compatible(routines.find(entry => entry.id === 'none')!.session.exercises);
+  const full = filtered.length ? filtered : fallback;
+  const short = session.short ? compatible(session.short.exercises) : [];
+  activity.session = { ...session, exercises: full, ...(session.short ? { short: { ...session.short, exercises: short.length ? short : full.slice(0, 2) } } : {}) };
   return { routine, activities, exercise, days: [...used] };
 }

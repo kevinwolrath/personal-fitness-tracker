@@ -165,7 +165,8 @@ describe('exercise state', () => {
     const s = exerciseState(plan, await loadExerciseHistory(store, plan, MON), { now: at(MON, '06:00'), today: MON });
     const moves = s.suggestions.map((x) => x.exercise.movement);
     expect(moves).not.toEqual(expect.arrayContaining(['vr_boxing']));
-    expect(moves).toContain('leg_extension');
+    expect(moves).not.toContain('leg_extension'); // legacy multi-gym stations need explicit confirmation
+    expect(moves).toContain('kettlebell_squat');
     expect(moves).not.toContain('biceps_curl');
   });
 });

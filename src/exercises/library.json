@@ -121,7 +121,10 @@
     {
       "id": "supinated_cross_body_dumbbell_curl",
       "name": "Supinated cross-body dumbbell curl",
-      "equipment": ["dumbbells", "free_weights"],
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
       "instructions": [
         "Stand tall with a dumbbell at each side, arms nearly straight and palms facing forward (supinated).",
         "Keep the upper arms and elbows close to the ribs, shoulders level and wrists straight.",
@@ -130,9 +133,18 @@
         "Alternate arms without swinging or rotating the torso. Count the prescribed repetitions for each arm."
       ],
       "steps": [
-        { "image": "supinated-cross-body-dumbbell-curl-1", "caption": "Start with both palms facing forward and elbows beside the ribs." },
-        { "image": "supinated-cross-body-dumbbell-curl-2", "caption": "Right arm: curl diagonally toward the left shoulder with a palm-up grip, then lower slowly." },
-        { "image": "supinated-cross-body-dumbbell-curl-3", "caption": "Left arm: curl toward the right shoulder. Return under control and continue alternating." }
+        {
+          "image": "supinated-cross-body-dumbbell-curl-1",
+          "caption": "Start with both palms facing forward and elbows beside the ribs."
+        },
+        {
+          "image": "supinated-cross-body-dumbbell-curl-2",
+          "caption": "Right arm: curl diagonally toward the left shoulder with a palm-up grip, then lower slowly."
+        },
+        {
+          "image": "supinated-cross-body-dumbbell-curl-3",
+          "caption": "Left arm: curl toward the right shoulder. Return under control and continue alternating."
+        }
       ]
     },
     {
@@ -401,6 +413,288 @@
         {
           "image": "kettlebell-shrug-2",
           "caption": "Raise shoulders straight up, pause, then lower slowly without rolling."
+        }
+      ]
+    },
+    {
+      "id": "bodyweight_squat",
+      "name": "Bodyweight squat",
+      "equipment": [],
+      "instructions": [
+        "Stand with feet about shoulder-width apart and keep the whole foot planted.",
+        "Sit the hips back and bend the knees in line with the toes, keeping the spine neutral.",
+        "Lower only as far as comfortable, then stand under control."
+      ],
+      "steps": [
+        {
+          "image": "bodyweight-squat-1",
+          "caption": "Stand tall with arms forward."
+        },
+        {
+          "image": "bodyweight-squat-2",
+          "caption": "Sit back into the squat, then return to standing."
+        }
+      ]
+    },
+    {
+      "id": "incline_push_up",
+      "name": "Incline push-up",
+      "equipment": [
+        "bench"
+      ],
+      "instructions": [
+        "Place your palms on a stable bench with hands slightly wider than shoulders.",
+        "Step back into a straight plank, brace the trunk and bend the elbows to lower the chest towards the edge.",
+        "Press back to straight arms without letting the hips sag."
+      ],
+      "steps": [
+        {
+          "image": "incline-push-up-1",
+          "caption": "Start in a straight-arm plank on a stable bench."
+        },
+        {
+          "image": "incline-push-up-2",
+          "caption": "Lower the chest towards the bench, then press back up."
+        }
+      ]
+    },
+    {
+      "id": "glute_bridge",
+      "name": "Glute bridge",
+      "equipment": [],
+      "instructions": [
+        "Lie on your back with knees bent and feet flat, about hip-width apart.",
+        "Brace gently and lift the hips until shoulders, hips and knees form a line.",
+        "Keep the ribs down; lower slowly without arching the lower back."
+      ],
+      "steps": [
+        {
+          "image": "glute-bridge-1",
+          "caption": "Lie back with knees bent and feet planted."
+        },
+        {
+          "image": "glute-bridge-2",
+          "caption": "Lift the hips while shoulders stay on the floor."
+        }
+      ]
+    },
+    {
+      "id": "reverse_lunge",
+      "name": "Reverse lunge",
+      "equipment": [],
+      "instructions": [
+        "Stand tall with feet hip-width apart.",
+        "Step one foot back and bend both knees, keeping the front foot flat and the trunk steady.",
+        "Push through the front foot to stand. Alternate sides as prescribed."
+      ],
+      "steps": [
+        {
+          "image": "reverse-lunge-1",
+          "caption": "Start tall and balanced."
+        },
+        {
+          "image": "reverse-lunge-2",
+          "caption": "Step back and lower into a controlled lunge, then return."
+        }
+      ]
+    },
+    {
+      "id": "dead_bug",
+      "name": "Dead bug",
+      "equipment": [],
+      "instructions": [
+        "Lie on your back with arms above the chest and hips and knees bent to about 90 degrees.",
+        "Keep the lower back gently against the floor while extending one arm and the opposite leg.",
+        "Return under control, then switch sides. Shorten the reach if the back begins to arch."
+      ],
+      "steps": [
+        {
+          "image": "dead-bug-1",
+          "caption": "Start with arms up and knees bent over the hips."
+        },
+        {
+          "image": "dead-bug-2",
+          "caption": "Reach the opposite arm and leg away while keeping the trunk steady."
+        }
+      ]
+    },
+    {
+      "id": "band_row",
+      "name": "Resistance band row",
+      "equipment": [
+        "resistance_bands"
+      ],
+      "instructions": [
+        "Secure a suitable resistance band to a stable anchor in front of you at lower-chest height.",
+        "Stand balanced with arms forward and pull the handles towards the lower ribs.",
+        "Keep shoulders down and the trunk still; let the arms straighten slowly."
+      ],
+      "steps": [
+        {
+          "image": "band-row-1",
+          "caption": "Hold the band with arms extended towards its anchor."
+        },
+        {
+          "image": "band-row-2",
+          "caption": "Draw the elbows back beside the ribs, then return slowly."
+        }
+      ]
+    },
+    {
+      "id": "band_chest_press",
+      "name": "Resistance band chest press",
+      "equipment": [
+        "resistance_bands"
+      ],
+      "instructions": [
+        "Secure a suitable band behind you at chest height and hold the ends beside the chest.",
+        "Use a stable staggered stance and press forwards without shrugging the shoulders.",
+        "Return the hands slowly, keeping the wrists straight and trunk steady."
+      ],
+      "steps": [
+        {
+          "image": "band-chest-press-1",
+          "caption": "Start with the band behind you and hands beside the chest."
+        },
+        {
+          "image": "band-chest-press-2",
+          "caption": "Press the handles forwards, then return under control."
+        }
+      ]
+    },
+    {
+      "id": "band_pull_apart",
+      "name": "Band pull-apart",
+      "equipment": [
+        "resistance_bands"
+      ],
+      "instructions": [
+        "Hold a resistance band in front of the chest with arms straight at shoulder height.",
+        "Pull the hands apart while keeping elbows nearly straight and shoulders down.",
+        "Return slowly without letting the band snap back."
+      ],
+      "steps": [
+        {
+          "image": "band-pull-apart-1",
+          "caption": "Hold the band in front of the chest."
+        },
+        {
+          "image": "band-pull-apart-2",
+          "caption": "Spread the arms wide and stretch the band across the chest."
+        }
+      ]
+    },
+    {
+      "id": "dumbbell_row",
+      "name": "One-arm dumbbell row",
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "instructions": [
+        "Support one hand and the same-side knee on a stable bench, with the other foot on the floor.",
+        "Keep the back neutral and let the dumbbell hang below the shoulder.",
+        "Pull the elbow towards the hip without twisting the trunk, then lower slowly. Repeat on the other side."
+      ],
+      "steps": [
+        {
+          "image": "dumbbell-row-1",
+          "caption": "Support yourself on the bench with the dumbbell hanging."
+        },
+        {
+          "image": "dumbbell-row-2",
+          "caption": "Row the dumbbell towards the hip with the elbow beside the ribs."
+        }
+      ]
+    },
+    {
+      "id": "floor_press",
+      "name": "Dumbbell floor press",
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "instructions": [
+        "Lie on the floor with knees bent and a dumbbell in each hand.",
+        "Keep wrists over elbows and upper arms about 45 degrees from the torso. Lower until the upper arms gently touch the floor.",
+        "Press above the chest, then lower under control without bouncing the elbows."
+      ],
+      "steps": [
+        {
+          "image": "floor-press-1",
+          "caption": "Start with elbows bent and upper arms resting on the floor."
+        },
+        {
+          "image": "floor-press-2",
+          "caption": "Press the dumbbells above the chest, then lower slowly."
+        }
+      ]
+    },
+    {
+      "id": "romanian_deadlift",
+      "name": "Dumbbell Romanian deadlift",
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "instructions": [
+        "Stand with a dumbbell in each hand and the knees slightly bent.",
+        "Push the hips back while keeping the weights close to the legs and the back neutral.",
+        "Stop within your comfortable hip-hinge range, then stand by bringing the hips forwards."
+      ],
+      "steps": [
+        {
+          "image": "romanian-deadlift-1",
+          "caption": "Stand tall with dumbbells beside the thighs."
+        },
+        {
+          "image": "romanian-deadlift-2",
+          "caption": "Hinge at the hips with soft knees, then stand under control."
+        }
+      ]
+    },
+    {
+      "id": "farmer_carry",
+      "name": "Dumbbell farmer carry",
+      "equipment": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "instructions": [
+        "Hold a dumbbell in each hand with arms straight at your sides.",
+        "Stand tall with shoulders level and walk with short, controlled steps.",
+        "Keep the weights steady without leaning or shrugging; stop and lower them safely when finished."
+      ],
+      "steps": [
+        {
+          "image": "farmer-carry-1",
+          "caption": "Start tall with weights hanging at your sides."
+        },
+        {
+          "image": "farmer-carry-2",
+          "caption": "Walk with controlled steps, keeping the torso upright and weights steady."
+        }
+      ]
+    },
+    {
+      "id": "leg_press",
+      "name": "Leg press",
+      "equipment": [
+        "home_gym"
+      ],
+      "instructions": [
+        "Adjust the seat and stops for a comfortable range, then place feet about shoulder-width apart on the footplate.",
+        "Keep your back and head against the pad and lower the sled within a range that keeps the pelvis supported.",
+        "Press away without locking the knees. Use the machine safety stops and follow its setup instructions."
+      ],
+      "steps": [
+        {
+          "image": "leg-press-1",
+          "caption": "Start seated with knees bent and feet planted on the plate."
+        },
+        {
+          "image": "leg-press-2",
+          "caption": "Press the plate away while keeping knees slightly soft, then lower slowly."
         }
       ]
     }

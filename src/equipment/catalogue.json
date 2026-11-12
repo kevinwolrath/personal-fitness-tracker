@@ -1,0 +1,976 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "multi_gym",
+      "name": "Multi-gym"
+    },
+    {
+      "id": "dumbbells",
+      "name": "Dumbbells"
+    },
+    {
+      "id": "kettlebells",
+      "name": "Kettlebells"
+    },
+    {
+      "id": "barbells",
+      "name": "Barbells & plates"
+    },
+    {
+      "id": "benches_racks",
+      "name": "Benches & racks"
+    },
+    {
+      "id": "cables",
+      "name": "Cable machines"
+    },
+    {
+      "id": "machines",
+      "name": "Strength machines"
+    },
+    {
+      "id": "cardio",
+      "name": "Cardio equipment"
+    },
+    {
+      "id": "bands",
+      "name": "Resistance bands"
+    },
+    {
+      "id": "functional",
+      "name": "Functional training"
+    },
+    {
+      "id": "boxing",
+      "name": "Boxing"
+    },
+    {
+      "id": "vr",
+      "name": "VR"
+    },
+    {
+      "id": "bodyweight",
+      "name": "Bodyweight & mobility"
+    }
+  ],
+  "items": [
+    {
+      "id": "multi_gym_frame",
+      "name": "Multi-gym frame",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_frame",
+      "shape": "gym",
+      "capabilities": [],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_chest_press",
+      "name": "Chest press station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_chest_press",
+      "shape": "press",
+      "capabilities": [
+        "chest_press"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_lat_pulldown",
+      "name": "Lat pulldown station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_lat_pulldown",
+      "shape": "pulldown",
+      "capabilities": [
+        "lat_pulldown"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_low_row",
+      "name": "Low row station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_low_row",
+      "shape": "row",
+      "capabilities": [
+        "cable_row"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_leg_extension",
+      "name": "Leg extension station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_leg_extension",
+      "shape": "extension",
+      "capabilities": [
+        "leg_extension"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_leg_curl",
+      "name": "Leg curl station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_leg_curl",
+      "shape": "curl",
+      "capabilities": [
+        "leg_curl"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_pec_deck",
+      "name": "Pec deck station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_pec_deck",
+      "shape": "fly",
+      "capabilities": [
+        "pec_deck"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_high_pulley",
+      "name": "High pulley station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_high_pulley",
+      "shape": "pulldown",
+      "capabilities": [
+        "high_pulley"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_low_pulley",
+      "name": "Low pulley station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_low_pulley",
+      "shape": "row",
+      "capabilities": [
+        "low_pulley"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_press_arm",
+      "name": "Shoulder press station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_press_arm",
+      "shape": "overhead",
+      "capabilities": [
+        "shoulder_press"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_dip",
+      "name": "Dip station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_dip",
+      "shape": "dip",
+      "capabilities": [
+        "dip_station"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "multi_gym_ab",
+      "name": "Abdominal station",
+      "group": "multi_gym",
+      "type": "home_gym",
+      "image": "multi_gym_ab",
+      "shape": "ab",
+      "capabilities": [
+        "ab_machine"
+      ],
+      "detail": "Select only the stations fitted to your machine. Selecting the frame does not select any stations."
+    },
+    {
+      "id": "dumbbells_fixed",
+      "name": "Fixed dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_fixed",
+      "shape": "dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Fixed dumbbells"
+    },
+    {
+      "id": "dumbbells_adjustable",
+      "name": "Adjustable dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_adjustable",
+      "shape": "adjustable_dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Adjustable dumbbells"
+    },
+    {
+      "id": "dumbbells_hex",
+      "name": "Hex dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_hex",
+      "shape": "hex_dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Hex dumbbells"
+    },
+    {
+      "id": "dumbbells_round",
+      "name": "Round dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_round",
+      "shape": "round_dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Round dumbbells"
+    },
+    {
+      "id": "dumbbells_selectorized",
+      "name": "Selectorized dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_selectorized",
+      "shape": "selector_dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Selectorized dumbbells"
+    },
+    {
+      "id": "dumbbells_loadable",
+      "name": "Loadable dumbbells",
+      "group": "dumbbells",
+      "type": "dumbbells",
+      "image": "dumbbells_loadable",
+      "shape": "loadable_dumbbell",
+      "capabilities": [
+        "dumbbells",
+        "free_weights"
+      ],
+      "detail": "Loadable dumbbells"
+    },
+    {
+      "id": "kettlebells_cast",
+      "name": "Cast-iron kettlebells",
+      "group": "kettlebells",
+      "type": "kettlebell",
+      "image": "kettlebells_cast",
+      "shape": "kettle",
+      "capabilities": [
+        "kettlebell"
+      ],
+      "detail": "Cast-iron kettlebells"
+    },
+    {
+      "id": "kettlebells_competition",
+      "name": "Competition kettlebells",
+      "group": "kettlebells",
+      "type": "kettlebell",
+      "image": "kettlebells_competition",
+      "shape": "competition_kettle",
+      "capabilities": [
+        "kettlebell"
+      ],
+      "detail": "Competition kettlebells"
+    },
+    {
+      "id": "kettlebells_adjustable",
+      "name": "Adjustable kettlebells",
+      "group": "kettlebells",
+      "type": "kettlebell",
+      "image": "kettlebells_adjustable",
+      "shape": "adjustable_kettle",
+      "capabilities": [
+        "kettlebell"
+      ],
+      "detail": "Adjustable kettlebells"
+    },
+    {
+      "id": "olympic_bar",
+      "name": "Olympic barbell",
+      "group": "barbells",
+      "type": "barbell",
+      "image": "olympic_bar",
+      "shape": "barbell",
+      "capabilities": [
+        "barbell"
+      ],
+      "detail": "Olympic barbell"
+    },
+    {
+      "id": "standard_bar",
+      "name": "Standard barbell",
+      "group": "barbells",
+      "type": "barbell",
+      "image": "standard_bar",
+      "shape": "barbell",
+      "capabilities": [
+        "barbell"
+      ],
+      "detail": "Standard barbell"
+    },
+    {
+      "id": "ez_bar",
+      "name": "EZ curl bar",
+      "group": "barbells",
+      "type": "barbell",
+      "image": "ez_bar",
+      "shape": "ez",
+      "capabilities": [
+        "ez_bar"
+      ],
+      "detail": "EZ curl bar"
+    },
+    {
+      "id": "trap_bar",
+      "name": "Trap bar",
+      "group": "barbells",
+      "type": "barbell",
+      "image": "trap_bar",
+      "shape": "trap",
+      "capabilities": [
+        "trap_bar"
+      ],
+      "detail": "Trap bar"
+    },
+    {
+      "id": "plates",
+      "name": "Weight plates",
+      "group": "barbells",
+      "type": "weight_plates",
+      "image": "plates",
+      "shape": "plates",
+      "capabilities": [
+        "weight_plates"
+      ],
+      "detail": "Weight plates"
+    },
+    {
+      "id": "bumper_plates",
+      "name": "Bumper plates",
+      "group": "barbells",
+      "type": "weight_plates",
+      "image": "bumper_plates",
+      "shape": "plates",
+      "capabilities": [
+        "weight_plates"
+      ],
+      "detail": "Bumper plates"
+    },
+    {
+      "id": "flat_bench",
+      "name": "Flat bench",
+      "group": "benches_racks",
+      "type": "bench",
+      "image": "flat_bench",
+      "shape": "bench",
+      "capabilities": [
+        "bench"
+      ],
+      "detail": "Flat bench"
+    },
+    {
+      "id": "adjustable_bench",
+      "name": "Adjustable bench",
+      "group": "benches_racks",
+      "type": "bench",
+      "image": "adjustable_bench",
+      "shape": "incline",
+      "capabilities": [
+        "bench",
+        "incline_bench"
+      ],
+      "detail": "Adjustable bench"
+    },
+    {
+      "id": "decline_bench",
+      "name": "Decline bench",
+      "group": "benches_racks",
+      "type": "bench",
+      "image": "decline_bench",
+      "shape": "decline",
+      "capabilities": [
+        "bench",
+        "decline_bench"
+      ],
+      "detail": "Decline bench"
+    },
+    {
+      "id": "power_rack",
+      "name": "Power rack",
+      "group": "benches_racks",
+      "type": "other",
+      "image": "power_rack",
+      "shape": "rack",
+      "capabilities": [
+        "rack",
+        "pull_up_bar"
+      ],
+      "detail": "Power rack"
+    },
+    {
+      "id": "squat_rack",
+      "name": "Squat rack",
+      "group": "benches_racks",
+      "type": "other",
+      "image": "squat_rack",
+      "shape": "squat_rack",
+      "capabilities": [
+        "rack"
+      ],
+      "detail": "Squat rack"
+    },
+    {
+      "id": "squat_stands",
+      "name": "Squat stands",
+      "group": "benches_racks",
+      "type": "other",
+      "image": "squat_stands",
+      "shape": "stands",
+      "capabilities": [
+        "rack"
+      ],
+      "detail": "Squat stands"
+    },
+    {
+      "id": "single_cable",
+      "name": "Single cable column",
+      "group": "cables",
+      "type": "cable_machine",
+      "image": "single_cable",
+      "shape": "cable",
+      "capabilities": [
+        "cable_machine",
+        "high_pulley",
+        "low_pulley"
+      ],
+      "detail": "Single cable column"
+    },
+    {
+      "id": "dual_cable",
+      "name": "Dual adjustable cables",
+      "group": "cables",
+      "type": "cable_machine",
+      "image": "dual_cable",
+      "shape": "dual_cable",
+      "capabilities": [
+        "cable_machine",
+        "dual_cable",
+        "high_pulley",
+        "low_pulley"
+      ],
+      "detail": "Dual adjustable cables"
+    },
+    {
+      "id": "cable_crossover",
+      "name": "Cable crossover",
+      "group": "cables",
+      "type": "cable_machine",
+      "image": "cable_crossover",
+      "shape": "crossover",
+      "capabilities": [
+        "cable_machine",
+        "dual_cable",
+        "high_pulley",
+        "low_pulley"
+      ],
+      "detail": "Cable crossover"
+    },
+    {
+      "id": "cable_row",
+      "name": "Seated cable row machine",
+      "group": "cables",
+      "type": "cable_machine",
+      "image": "cable_row",
+      "shape": "row",
+      "capabilities": [
+        "cable_row",
+        "low_pulley"
+      ],
+      "detail": "Seated cable row machine"
+    },
+    {
+      "id": "lat_machine",
+      "name": "Lat pulldown machine",
+      "group": "cables",
+      "type": "cable_machine",
+      "image": "lat_machine",
+      "shape": "pulldown",
+      "capabilities": [
+        "lat_pulldown",
+        "high_pulley"
+      ],
+      "detail": "Lat pulldown machine"
+    },
+    {
+      "id": "chest_press_machine",
+      "name": "Chest press machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "chest_press_machine",
+      "shape": "press",
+      "capabilities": [
+        "chest_press"
+      ],
+      "detail": "Chest press machine"
+    },
+    {
+      "id": "leg_press_machine",
+      "name": "Leg press machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "leg_press_machine",
+      "shape": "leg_press",
+      "capabilities": [
+        "leg_press"
+      ],
+      "detail": "Leg press machine"
+    },
+    {
+      "id": "leg_extension_machine",
+      "name": "Leg extension machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "leg_extension_machine",
+      "shape": "extension",
+      "capabilities": [
+        "leg_extension"
+      ],
+      "detail": "Leg extension machine"
+    },
+    {
+      "id": "leg_curl_machine",
+      "name": "Leg curl machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "leg_curl_machine",
+      "shape": "curl",
+      "capabilities": [
+        "leg_curl"
+      ],
+      "detail": "Leg curl machine"
+    },
+    {
+      "id": "pec_deck_machine",
+      "name": "Pec deck machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "pec_deck_machine",
+      "shape": "fly",
+      "capabilities": [
+        "pec_deck"
+      ],
+      "detail": "Pec deck machine"
+    },
+    {
+      "id": "shoulder_press_machine",
+      "name": "Shoulder press machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "shoulder_press_machine",
+      "shape": "overhead",
+      "capabilities": [
+        "shoulder_press"
+      ],
+      "detail": "Shoulder press machine"
+    },
+    {
+      "id": "calf_machine",
+      "name": "Calf raise machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "calf_machine",
+      "shape": "calf",
+      "capabilities": [
+        "calf_machine"
+      ],
+      "detail": "Calf raise machine"
+    },
+    {
+      "id": "hip_abductor",
+      "name": "Hip abductor machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "hip_abductor",
+      "shape": "abductor",
+      "capabilities": [
+        "hip_abductor"
+      ],
+      "detail": "Hip abductor machine"
+    },
+    {
+      "id": "hip_adductor",
+      "name": "Hip adductor machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "hip_adductor",
+      "shape": "adductor",
+      "capabilities": [
+        "hip_adductor"
+      ],
+      "detail": "Hip adductor machine"
+    },
+    {
+      "id": "smith_machine",
+      "name": "Smith machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "smith_machine",
+      "shape": "smith",
+      "capabilities": [
+        "smith_machine"
+      ],
+      "detail": "Smith machine"
+    },
+    {
+      "id": "assisted_pull_up",
+      "name": "Assisted pull-up machine",
+      "group": "machines",
+      "type": "home_gym",
+      "image": "assisted_pull_up",
+      "shape": "assisted",
+      "capabilities": [
+        "assisted_pull_up"
+      ],
+      "detail": "Assisted pull-up machine"
+    },
+    {
+      "id": "exercise_bike",
+      "name": "Stationary bike",
+      "group": "cardio",
+      "type": "exercise_bike",
+      "image": "exercise_bike",
+      "shape": "bike",
+      "capabilities": [
+        "exercise_bike"
+      ],
+      "detail": "Stationary bike"
+    },
+    {
+      "id": "treadmill",
+      "name": "Treadmill",
+      "group": "cardio",
+      "type": "treadmill",
+      "image": "treadmill",
+      "shape": "treadmill",
+      "capabilities": [
+        "treadmill"
+      ],
+      "detail": "Treadmill"
+    },
+    {
+      "id": "rowing_machine",
+      "name": "Rowing machine",
+      "group": "cardio",
+      "type": "rower",
+      "image": "rowing_machine",
+      "shape": "rower",
+      "capabilities": [
+        "rower"
+      ],
+      "detail": "Rowing machine"
+    },
+    {
+      "id": "elliptical",
+      "name": "Elliptical trainer",
+      "group": "cardio",
+      "type": "other",
+      "image": "elliptical",
+      "shape": "elliptical",
+      "capabilities": [
+        "elliptical"
+      ],
+      "detail": "Elliptical trainer"
+    },
+    {
+      "id": "stair_climber",
+      "name": "Stair climber",
+      "group": "cardio",
+      "type": "other",
+      "image": "stair_climber",
+      "shape": "stairs",
+      "capabilities": [
+        "stair_climber"
+      ],
+      "detail": "Stair climber"
+    },
+    {
+      "id": "bicycle",
+      "name": "Bicycle",
+      "group": "cardio",
+      "type": "bicycle",
+      "image": "bicycle",
+      "shape": "bicycle",
+      "capabilities": [
+        "bicycle"
+      ],
+      "detail": "Bicycle"
+    },
+    {
+      "id": "long_band",
+      "name": "Long resistance band",
+      "group": "bands",
+      "type": "resistance_bands",
+      "image": "long_band",
+      "shape": "band",
+      "capabilities": [
+        "resistance_bands"
+      ],
+      "detail": "Long resistance band"
+    },
+    {
+      "id": "tube_band",
+      "name": "Resistance tubes & handles",
+      "group": "bands",
+      "type": "resistance_bands",
+      "image": "tube_band",
+      "shape": "tube",
+      "capabilities": [
+        "resistance_bands"
+      ],
+      "detail": "Resistance tubes & handles"
+    },
+    {
+      "id": "mini_band",
+      "name": "Mini resistance loops",
+      "group": "bands",
+      "type": "resistance_bands",
+      "image": "mini_band",
+      "shape": "mini_band",
+      "capabilities": [
+        "mini_band"
+      ],
+      "detail": "Mini resistance loops"
+    },
+    {
+      "id": "battle_ropes",
+      "name": "Battle ropes",
+      "group": "functional",
+      "type": "battle_ropes",
+      "image": "battle_ropes",
+      "shape": "ropes",
+      "capabilities": [
+        "battle_ropes"
+      ],
+      "detail": "Battle ropes"
+    },
+    {
+      "id": "suspension",
+      "name": "Suspension trainer",
+      "group": "functional",
+      "type": "other",
+      "image": "suspension",
+      "shape": "suspension",
+      "capabilities": [
+        "suspension"
+      ],
+      "detail": "Suspension trainer"
+    },
+    {
+      "id": "medicine_ball",
+      "name": "Medicine ball",
+      "group": "functional",
+      "type": "other",
+      "image": "medicine_ball",
+      "shape": "ball",
+      "capabilities": [
+        "medicine_ball"
+      ],
+      "detail": "Medicine ball"
+    },
+    {
+      "id": "slam_ball",
+      "name": "Slam ball",
+      "group": "functional",
+      "type": "other",
+      "image": "slam_ball",
+      "shape": "slam",
+      "capabilities": [
+        "slam_ball"
+      ],
+      "detail": "Slam ball"
+    },
+    {
+      "id": "sandbag",
+      "name": "Training sandbag",
+      "group": "functional",
+      "type": "other",
+      "image": "sandbag",
+      "shape": "sandbag",
+      "capabilities": [
+        "sandbag"
+      ],
+      "detail": "Training sandbag"
+    },
+    {
+      "id": "plyo_box",
+      "name": "Plyometric box",
+      "group": "functional",
+      "type": "other",
+      "image": "plyo_box",
+      "shape": "box",
+      "capabilities": [
+        "plyo_box"
+      ],
+      "detail": "Plyometric box"
+    },
+    {
+      "id": "push_sled",
+      "name": "Push sled",
+      "group": "functional",
+      "type": "other",
+      "image": "push_sled",
+      "shape": "sled",
+      "capabilities": [
+        "sled"
+      ],
+      "detail": "Push sled"
+    },
+    {
+      "id": "landmine",
+      "name": "Landmine attachment",
+      "group": "functional",
+      "type": "other",
+      "image": "landmine",
+      "shape": "landmine",
+      "capabilities": [
+        "landmine"
+      ],
+      "detail": "Landmine attachment"
+    },
+    {
+      "id": "jump_rope",
+      "name": "Jump rope",
+      "group": "functional",
+      "type": "jump_rope",
+      "image": "jump_rope",
+      "shape": "jump_rope",
+      "capabilities": [
+        "jump_rope"
+      ],
+      "detail": "Jump rope"
+    },
+    {
+      "id": "heavy_bag",
+      "name": "Hanging heavy bag",
+      "group": "boxing",
+      "type": "heavy_bag",
+      "image": "heavy_bag",
+      "shape": "bag",
+      "capabilities": [
+        "heavy_bag"
+      ],
+      "detail": "Hanging heavy bag"
+    },
+    {
+      "id": "freestanding_bag",
+      "name": "Freestanding punch bag",
+      "group": "boxing",
+      "type": "heavy_bag",
+      "image": "freestanding_bag",
+      "shape": "standing_bag",
+      "capabilities": [
+        "heavy_bag"
+      ],
+      "detail": "Freestanding punch bag"
+    },
+    {
+      "id": "speed_bag",
+      "name": "Speed bag platform",
+      "group": "boxing",
+      "type": "other",
+      "image": "speed_bag",
+      "shape": "speed_bag",
+      "capabilities": [
+        "speed_bag"
+      ],
+      "detail": "Speed bag platform"
+    },
+    {
+      "id": "boxing_gloves",
+      "name": "Boxing gloves",
+      "group": "boxing",
+      "type": "boxing_gloves",
+      "image": "boxing_gloves",
+      "shape": "gloves",
+      "capabilities": [
+        "boxing_gloves"
+      ],
+      "detail": "Boxing gloves"
+    },
+    {
+      "id": "vr_headset",
+      "name": "VR headset & controllers",
+      "group": "vr",
+      "type": "vr_headset",
+      "image": "vr_headset",
+      "shape": "vr",
+      "capabilities": [
+        "vr_headset"
+      ],
+      "detail": "VR headset & controllers"
+    },
+    {
+      "id": "pull_up_bar",
+      "name": "Pull-up bar",
+      "group": "bodyweight",
+      "type": "pull_up_bar",
+      "image": "pull_up_bar",
+      "shape": "pull_up",
+      "capabilities": [
+        "pull_up_bar"
+      ],
+      "detail": "Pull-up bar"
+    },
+    {
+      "id": "dip_bars",
+      "name": "Parallel dip bars",
+      "group": "bodyweight",
+      "type": "other",
+      "image": "dip_bars",
+      "shape": "dip",
+      "capabilities": [
+        "dip_station"
+      ],
+      "detail": "Parallel dip bars"
+    },
+    {
+      "id": "yoga_mat",
+      "name": "Exercise mat",
+      "group": "bodyweight",
+      "type": "yoga_mat",
+      "image": "yoga_mat",
+      "shape": "mat",
+      "capabilities": [
+        "yoga_mat"
+      ],
+      "detail": "Exercise mat"
+    }
+  ]
+}

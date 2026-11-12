@@ -161,7 +161,7 @@ export const sections = {
     title: 'Exercise',
     fields: {
       goals: nested('exercise', 'goals', 'Training goals', ex.goals, 'Training goals (enum list)'),
-      equipment: nested('exercise', 'equipment', 'Equipment', ex.equipment, 'Available equipment: [{ type, label?, brand?, weightsKg?, notes? }]'),
+      equipment: nested('exercise', 'equipment', 'Equipment', ex.equipment, 'My Gym equipment/station access only (formatVersion 9): [{ type, catalogueId?, available?, label?, brand?, weightsKg?, notes? }]. catalogueId identifies an exact catalogue item; multi-gym stations are selected separately. available defaults to true; false preserves metadata but removes access. No doses or workout changes.'),
       limitations: nested('exercise', 'limitations', 'Limitations', ex.limitations, 'Movement limits: [{ movement, status: "avoid"|"caution"|"allowed", reason? }]'),
       substitutions: nested('exercise', 'substitutions', 'Substitutions', ex.substitutions, 'Preferred swaps: [{ instead, use: [movement, …], reason? }]'),
       activityTypes: nested('exercise', 'activityTypes', 'Activity types', ex.activityTypes, 'Kinds of training the user does: [{ id, label, kind, intensity?, equipment?, notes? }]'),
@@ -173,7 +173,7 @@ export const sections = {
         'customExercises',
         'Custom exercises',
         ex.customExercises,
-        'Exercises the user adds to the shared catalogue (formatVersion 8): [{ movement (new snake_case id, not a built-in one), name, kind?: "strength"|"conditioning", equipment: [type, …] ([] = none), primary: [muscle, …], secondary?: [muscle, …], defaultDose?: { sets, reps | seconds }, guidance?: [cue, …] }]. Muscles are the muscle-group ids listed below. Only add an exercise the user describes; never invent equipment.',
+        'Exercises the user adds to the shared catalogue (formatVersion 8): [{ movement (new snake_case id, not a built-in one), name, kind?: "strength"|"conditioning", equipment: [type, …] ([] = none), primary: [muscle, …], secondary?: [muscle, …], defaultDose?: { sets, reps | seconds }, guidance?: [cue, …] }]. Muscles are the muscle-group ids listed below. Optional requirements (formatVersion 9) are arrays of complete alternatives of My Gym catalogueId values: all IDs inside one alternative are needed. Only add an exercise the user describes; never invent equipment.',
       ),
       muscleGrowth: nested(
         'exercise',

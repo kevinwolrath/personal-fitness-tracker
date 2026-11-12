@@ -1,3 +1,4 @@
+import { setEquipmentSelection } from '../../equipment/catalogue';
 /** #122 Muscle Growth: a category over the shared exercise catalogue, not a second exercise system. */
 import seed from '../../../plans/seed.plan.json';
 import { buildGuide } from '../guide';
@@ -27,8 +28,8 @@ const shrug = { movement: 'dumbbell_shrug', name: 'Dumbbell shrug', kind: 'stren
 
 function withGrowth(exercise: Record<string, unknown>): Plan {
   const raw = clone(seed) as any;
-  raw.formatVersion = 8;
-  raw.exercise = { ...raw.exercise, ...exercise };
+  raw.formatVersion = 9;
+  raw.exercise = { ...raw.exercise, equipment: setEquipmentSelection(raw.exercise.equipment, ['multi_gym_chest_press', 'multi_gym_lat_pulldown', 'multi_gym_leg_extension'], true), ...exercise };
   const r = validatePlan(raw);
   if (!r.ok) throw new Error(r.errors.join('\n'));
   return r.plan;
@@ -211,7 +212,7 @@ describe('configuration', () => {
     if (!parsed.ok) throw new Error(parsed.errors.join('\n'));
     const applied = applyConfigUpdate(clone(seed), parsed.update);
     if (!applied.ok) throw new Error(applied.errors.join('\n'));
-    expect(applied.nextRaw.formatVersion).toBe(8);
+    expect(applied.nextRaw.formatVersion).toBe(9);
     expect(applied.plan.exercise?.muscleGrowth?.targets).toEqual(['biceps', 'upper_back']);
     // The schedule, rest days and the resistance session are untouched.
     expect(applied.nextRaw.schedule).toEqual((seed as any).schedule);

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { supportsEquipment } from '../equipment/catalogue';
 import { equipmentTypes, movementId, type ExerciseSection } from '../plan/schema';
 import data from './inventory.json';
 
@@ -17,11 +18,14 @@ export const inventorySchema = z.strictObject({
     z.strictObject({
       /** The movement id plans use (`session.exercises[].movement`) and the exercise library's id (contract 09). */
       movement: movementId,
+      /** Previously custom/preset movements promoted in #158 retain their saved custom metadata. */
+      allowCustomOverride: z.boolean().optional(),
       name: z.string().min(1).max(40),
       /** strength: sets and reps; conditioning: rounds or time (e.g. boxing). Conditioning stays separate from strength sessions. */
       kind: z.enum(['strength', 'conditioning']),
       /** Any one of these equipment types is enough; empty = no equipment. */
       equipment: z.array(z.enum(equipmentTypes)).max(6),
+      requirements: z.array(z.array(z.string().min(1)).min(1)).min(1).optional(),
       /**
        * The one-tap dose on Today's workout and the log form's starting draft (#56): sets and exactly one of reps or
        * seconds. A plan's own dose for the movement always wins. Not a recommendation and not completed work.
@@ -79,10 +83,9 @@ export type Eligibility = { exercise: InventoryExercise; caution: boolean };
  * only the no-equipment exercises are eligible. Pure.
  */
 export function eligibleExercises(config: ExerciseSection | undefined, inventory: Inventory = exerciseInventory): Eligibility[] {
-  const owned = new Set((config?.equipment ?? []).map((e) => e.type));
   const status = new Map((config?.limitations ?? []).map((l) => [l.movement, l.status]));
   return inventory.exercises
-    .filter((e) => e.equipment.length === 0 || e.equipment.some((t) => owned.has(t)))
+    .filter((e) => supportsEquipment(e, config))
     .filter((e) => status.get(e.movement) !== 'avoid')
     .map((exercise) => ({ exercise, caution: status.get(exercise.movement) === 'caution' }));
 }

@@ -1,3 +1,4 @@
+import { movementSupported } from '../exercises/availability';
 import type { LocalDate } from '../plan/dates';
 import { resolveDay, type ResolvedDay } from '../plan/resolveDay';
 import type { Activity, Plan, Purpose, Requirement } from '../plan/schema';
@@ -29,6 +30,8 @@ export type PrescriptionItem = {
   requirement?: Requirement;
   /** Requirement items: the alternatives scheduled today. */
   options: Activity[];
+  /** Existing scheduled item is kept for review, but unavailable equipment is not recommended. */
+  equipmentUnavailable?: boolean;
   /** Requirement items: which alternative satisfied it. */
   satisfiedBy?: { activityId: string; label: string };
   /** Count-tracked progress (activity, or the leading option of a requirement). */
@@ -89,6 +92,7 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
       state: stateOf(log),
       activity: a,
       options: [],
+      ...((a.movement && !movementSupported(a.movement, plan.exercise)) || (a.session?.exercises.length && a.session.exercises.every(e => !movementSupported(e.movement, plan.exercise))) ? { equipmentUnavailable: true } : {}),
       count: a.tracking.type === 'count' ? log?.count ?? 0 : undefined,
       target: a.tracking.type === 'count' ? a.tracking.target : undefined,
       completedAt: log?.status === 'done' ? log.updatedAt : undefined,
@@ -126,7 +130,8 @@ export function prescribeDay(plan: Plan, date: LocalDate, records: DayRecords): 
       order: Math.min(...options.map((o) => order.get(o.id) ?? 0)),
       state,
       requirement: r,
-      options,
+      options: options.filter(o => !o.movement || movementSupported(o.movement, plan.exercise) || !!logs[o.id]?.status),
+      ...(options.every(o => !!o.movement && !movementSupported(o.movement, plan.exercise)) ? { equipmentUnavailable: true } : {}),
       satisfiedBy: done ? { activityId: done.id, label: done.label } : undefined,
       count: lead && lead.tracking.type === 'count' ? logs[lead.id]?.count ?? 0 : undefined,
       target: lead && lead.tracking.type === 'count' ? lead.tracking.target : undefined,

@@ -1,3 +1,6 @@
+import { equipmentCapabilities } from '../equipment/catalogue';
+import { movementSupported } from './availability';
+import { exerciseInventory } from './inventory';
 import { describeItem } from '../config/diff';
 import type { CustomExercise, ExerciseSection } from '../plan/schema';
 import { exerciseDose, movementLabel, type PrescribedExercise } from '../prescription/session';
@@ -21,6 +24,7 @@ export type ExerciseGuide = {
   equipment: string[];
   instructions: string[];
   steps: GuideStep[];
+  equipmentUnavailable?: boolean;
 };
 
 const humanEquipment = (type: string) => type.replace(/_/g, ' ');
@@ -30,7 +34,14 @@ export function buildGuide(exercise: PrescribedExercise, config?: ExerciseSectio
   // A custom catalogue exercise (#122) has the user's own name, equipment and cues, and no illustrations.
   const custom: CustomExercise | undefined = config?.customExercises?.find((c) => c.movement === exercise.movement);
   const def = findDefinition(exercise.movement, library) ?? (custom ? { id: custom.movement, name: custom.name, equipment: custom.equipment, instructions: custom.guidance ?? [], steps: [] } : undefined);
-  const configured = def ? (config?.equipment ?? []).filter((item) => def.equipment.includes(item.type)) : [];
+  const requirement = custom ?? exerciseInventory.exercises.find(entry => entry.movement === exercise.movement) ?? def;
+  const alternatives = requirement ? ('requirements' in requirement && requirement.requirements ? requirement.requirements : requirement.equipment.map(capability => [capability])) : [];
+  const relevant = (config?.equipment ?? []).filter(item => {
+    const capabilities = equipmentCapabilities({ equipment: [item] });
+    return alternatives.some(all => all.some(capability => capabilities.has(capability)));
+  });
+  // Keep a legacy machine label as context when no station is confirmed; it never grants exercise access.
+  const configured = relevant.length ? relevant : def?.equipment.includes('home_gym') ? (config?.equipment ?? []).filter(item => item.available !== false && item.type === 'home_gym' && (!item.catalogueId || item.catalogueId === 'multi_gym_frame')) : [];
   const equipment = configured.length
     ? configured.map((item) => describeItem('exercise.equipment', item))
     : def?.equipment.length
@@ -50,5 +61,6 @@ export function buildGuide(exercise: PrescribedExercise, config?: ExerciseSectio
     equipment,
     instructions: def?.instructions ?? [],
     steps: def?.steps ?? [],
+    ...(config && requirement && !movementSupported(exercise.movement, config) ? { equipmentUnavailable: true } : {}),
   };
 }

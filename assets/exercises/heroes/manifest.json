@@ -886,5 +886,629 @@
     "file": "kettlebell-shrug-neutral-2.jpg",
     "step": 2,
     "baseImage": "kettlebell-shrug-2"
+  },
+  {
+    "id": "bodyweight-squat-male-1",
+    "movement": "bodyweight_squat",
+    "hero": "male",
+    "file": "bodyweight-squat-male-1.jpg",
+    "step": 1,
+    "baseImage": "bodyweight-squat-1"
+  },
+  {
+    "id": "bodyweight-squat-male-2",
+    "movement": "bodyweight_squat",
+    "hero": "male",
+    "file": "bodyweight-squat-male-2.jpg",
+    "step": 2,
+    "baseImage": "bodyweight-squat-2"
+  },
+  {
+    "id": "bodyweight-squat-female-1",
+    "movement": "bodyweight_squat",
+    "hero": "female",
+    "file": "bodyweight-squat-female-1.jpg",
+    "step": 1,
+    "baseImage": "bodyweight-squat-1"
+  },
+  {
+    "id": "bodyweight-squat-female-2",
+    "movement": "bodyweight_squat",
+    "hero": "female",
+    "file": "bodyweight-squat-female-2.jpg",
+    "step": 2,
+    "baseImage": "bodyweight-squat-2"
+  },
+  {
+    "id": "bodyweight-squat-neutral-1",
+    "movement": "bodyweight_squat",
+    "hero": "neutral",
+    "file": "bodyweight-squat-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "bodyweight-squat-1"
+  },
+  {
+    "id": "bodyweight-squat-neutral-2",
+    "movement": "bodyweight_squat",
+    "hero": "neutral",
+    "file": "bodyweight-squat-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "bodyweight-squat-2"
+  },
+  {
+    "id": "incline-push-up-male-1",
+    "movement": "incline_push_up",
+    "hero": "male",
+    "file": "incline-push-up-male-1.jpg",
+    "step": 1,
+    "baseImage": "incline-push-up-1"
+  },
+  {
+    "id": "incline-push-up-male-2",
+    "movement": "incline_push_up",
+    "hero": "male",
+    "file": "incline-push-up-male-2.jpg",
+    "step": 2,
+    "baseImage": "incline-push-up-2"
+  },
+  {
+    "id": "incline-push-up-female-1",
+    "movement": "incline_push_up",
+    "hero": "female",
+    "file": "incline-push-up-female-1.jpg",
+    "step": 1,
+    "baseImage": "incline-push-up-1"
+  },
+  {
+    "id": "incline-push-up-female-2",
+    "movement": "incline_push_up",
+    "hero": "female",
+    "file": "incline-push-up-female-2.jpg",
+    "step": 2,
+    "baseImage": "incline-push-up-2"
+  },
+  {
+    "id": "incline-push-up-neutral-1",
+    "movement": "incline_push_up",
+    "hero": "neutral",
+    "file": "incline-push-up-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "incline-push-up-1"
+  },
+  {
+    "id": "incline-push-up-neutral-2",
+    "movement": "incline_push_up",
+    "hero": "neutral",
+    "file": "incline-push-up-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "incline-push-up-2"
+  },
+  {
+    "id": "glute-bridge-male-1",
+    "movement": "glute_bridge",
+    "hero": "male",
+    "file": "glute-bridge-male-1.jpg",
+    "step": 1,
+    "baseImage": "glute-bridge-1"
+  },
+  {
+    "id": "glute-bridge-male-2",
+    "movement": "glute_bridge",
+    "hero": "male",
+    "file": "glute-bridge-male-2.jpg",
+    "step": 2,
+    "baseImage": "glute-bridge-2"
+  },
+  {
+    "id": "glute-bridge-female-1",
+    "movement": "glute_bridge",
+    "hero": "female",
+    "file": "glute-bridge-female-1.jpg",
+    "step": 1,
+    "baseImage": "glute-bridge-1"
+  },
+  {
+    "id": "glute-bridge-female-2",
+    "movement": "glute_bridge",
+    "hero": "female",
+    "file": "glute-bridge-female-2.jpg",
+    "step": 2,
+    "baseImage": "glute-bridge-2"
+  },
+  {
+    "id": "glute-bridge-neutral-1",
+    "movement": "glute_bridge",
+    "hero": "neutral",
+    "file": "glute-bridge-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "glute-bridge-1"
+  },
+  {
+    "id": "glute-bridge-neutral-2",
+    "movement": "glute_bridge",
+    "hero": "neutral",
+    "file": "glute-bridge-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "glute-bridge-2"
+  },
+  {
+    "id": "reverse-lunge-male-1",
+    "movement": "reverse_lunge",
+    "hero": "male",
+    "file": "reverse-lunge-male-1.jpg",
+    "step": 1,
+    "baseImage": "reverse-lunge-1"
+  },
+  {
+    "id": "reverse-lunge-male-2",
+    "movement": "reverse_lunge",
+    "hero": "male",
+    "file": "reverse-lunge-male-2.jpg",
+    "step": 2,
+    "baseImage": "reverse-lunge-2"
+  },
+  {
+    "id": "reverse-lunge-female-1",
+    "movement": "reverse_lunge",
+    "hero": "female",
+    "file": "reverse-lunge-female-1.jpg",
+    "step": 1,
+    "baseImage": "reverse-lunge-1"
+  },
+  {
+    "id": "reverse-lunge-female-2",
+    "movement": "reverse_lunge",
+    "hero": "female",
+    "file": "reverse-lunge-female-2.jpg",
+    "step": 2,
+    "baseImage": "reverse-lunge-2"
+  },
+  {
+    "id": "reverse-lunge-neutral-1",
+    "movement": "reverse_lunge",
+    "hero": "neutral",
+    "file": "reverse-lunge-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "reverse-lunge-1"
+  },
+  {
+    "id": "reverse-lunge-neutral-2",
+    "movement": "reverse_lunge",
+    "hero": "neutral",
+    "file": "reverse-lunge-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "reverse-lunge-2"
+  },
+  {
+    "id": "dead-bug-male-1",
+    "movement": "dead_bug",
+    "hero": "male",
+    "file": "dead-bug-male-1.jpg",
+    "step": 1,
+    "baseImage": "dead-bug-1"
+  },
+  {
+    "id": "dead-bug-male-2",
+    "movement": "dead_bug",
+    "hero": "male",
+    "file": "dead-bug-male-2.jpg",
+    "step": 2,
+    "baseImage": "dead-bug-2"
+  },
+  {
+    "id": "dead-bug-female-1",
+    "movement": "dead_bug",
+    "hero": "female",
+    "file": "dead-bug-female-1.jpg",
+    "step": 1,
+    "baseImage": "dead-bug-1"
+  },
+  {
+    "id": "dead-bug-female-2",
+    "movement": "dead_bug",
+    "hero": "female",
+    "file": "dead-bug-female-2.jpg",
+    "step": 2,
+    "baseImage": "dead-bug-2"
+  },
+  {
+    "id": "dead-bug-neutral-1",
+    "movement": "dead_bug",
+    "hero": "neutral",
+    "file": "dead-bug-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "dead-bug-1"
+  },
+  {
+    "id": "dead-bug-neutral-2",
+    "movement": "dead_bug",
+    "hero": "neutral",
+    "file": "dead-bug-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "dead-bug-2"
+  },
+  {
+    "id": "band-row-male-1",
+    "movement": "band_row",
+    "hero": "male",
+    "file": "band-row-male-1.jpg",
+    "step": 1,
+    "baseImage": "band-row-1"
+  },
+  {
+    "id": "band-row-male-2",
+    "movement": "band_row",
+    "hero": "male",
+    "file": "band-row-male-2.jpg",
+    "step": 2,
+    "baseImage": "band-row-2"
+  },
+  {
+    "id": "band-row-female-1",
+    "movement": "band_row",
+    "hero": "female",
+    "file": "band-row-female-1.jpg",
+    "step": 1,
+    "baseImage": "band-row-1"
+  },
+  {
+    "id": "band-row-female-2",
+    "movement": "band_row",
+    "hero": "female",
+    "file": "band-row-female-2.jpg",
+    "step": 2,
+    "baseImage": "band-row-2"
+  },
+  {
+    "id": "band-row-neutral-1",
+    "movement": "band_row",
+    "hero": "neutral",
+    "file": "band-row-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "band-row-1"
+  },
+  {
+    "id": "band-row-neutral-2",
+    "movement": "band_row",
+    "hero": "neutral",
+    "file": "band-row-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "band-row-2"
+  },
+  {
+    "id": "band-chest-press-male-1",
+    "movement": "band_chest_press",
+    "hero": "male",
+    "file": "band-chest-press-male-1.jpg",
+    "step": 1,
+    "baseImage": "band-chest-press-1"
+  },
+  {
+    "id": "band-chest-press-male-2",
+    "movement": "band_chest_press",
+    "hero": "male",
+    "file": "band-chest-press-male-2.jpg",
+    "step": 2,
+    "baseImage": "band-chest-press-2"
+  },
+  {
+    "id": "band-chest-press-female-1",
+    "movement": "band_chest_press",
+    "hero": "female",
+    "file": "band-chest-press-female-1.jpg",
+    "step": 1,
+    "baseImage": "band-chest-press-1"
+  },
+  {
+    "id": "band-chest-press-female-2",
+    "movement": "band_chest_press",
+    "hero": "female",
+    "file": "band-chest-press-female-2.jpg",
+    "step": 2,
+    "baseImage": "band-chest-press-2"
+  },
+  {
+    "id": "band-chest-press-neutral-1",
+    "movement": "band_chest_press",
+    "hero": "neutral",
+    "file": "band-chest-press-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "band-chest-press-1"
+  },
+  {
+    "id": "band-chest-press-neutral-2",
+    "movement": "band_chest_press",
+    "hero": "neutral",
+    "file": "band-chest-press-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "band-chest-press-2"
+  },
+  {
+    "id": "band-pull-apart-male-1",
+    "movement": "band_pull_apart",
+    "hero": "male",
+    "file": "band-pull-apart-male-1.jpg",
+    "step": 1,
+    "baseImage": "band-pull-apart-1"
+  },
+  {
+    "id": "band-pull-apart-male-2",
+    "movement": "band_pull_apart",
+    "hero": "male",
+    "file": "band-pull-apart-male-2.jpg",
+    "step": 2,
+    "baseImage": "band-pull-apart-2"
+  },
+  {
+    "id": "band-pull-apart-female-1",
+    "movement": "band_pull_apart",
+    "hero": "female",
+    "file": "band-pull-apart-female-1.jpg",
+    "step": 1,
+    "baseImage": "band-pull-apart-1"
+  },
+  {
+    "id": "band-pull-apart-female-2",
+    "movement": "band_pull_apart",
+    "hero": "female",
+    "file": "band-pull-apart-female-2.jpg",
+    "step": 2,
+    "baseImage": "band-pull-apart-2"
+  },
+  {
+    "id": "band-pull-apart-neutral-1",
+    "movement": "band_pull_apart",
+    "hero": "neutral",
+    "file": "band-pull-apart-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "band-pull-apart-1"
+  },
+  {
+    "id": "band-pull-apart-neutral-2",
+    "movement": "band_pull_apart",
+    "hero": "neutral",
+    "file": "band-pull-apart-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "band-pull-apart-2"
+  },
+  {
+    "id": "dumbbell-row-male-1",
+    "movement": "dumbbell_row",
+    "hero": "male",
+    "file": "dumbbell-row-male-1.jpg",
+    "step": 1,
+    "baseImage": "dumbbell-row-1"
+  },
+  {
+    "id": "dumbbell-row-male-2",
+    "movement": "dumbbell_row",
+    "hero": "male",
+    "file": "dumbbell-row-male-2.jpg",
+    "step": 2,
+    "baseImage": "dumbbell-row-2"
+  },
+  {
+    "id": "dumbbell-row-female-1",
+    "movement": "dumbbell_row",
+    "hero": "female",
+    "file": "dumbbell-row-female-1.jpg",
+    "step": 1,
+    "baseImage": "dumbbell-row-1"
+  },
+  {
+    "id": "dumbbell-row-female-2",
+    "movement": "dumbbell_row",
+    "hero": "female",
+    "file": "dumbbell-row-female-2.jpg",
+    "step": 2,
+    "baseImage": "dumbbell-row-2"
+  },
+  {
+    "id": "dumbbell-row-neutral-1",
+    "movement": "dumbbell_row",
+    "hero": "neutral",
+    "file": "dumbbell-row-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "dumbbell-row-1"
+  },
+  {
+    "id": "dumbbell-row-neutral-2",
+    "movement": "dumbbell_row",
+    "hero": "neutral",
+    "file": "dumbbell-row-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "dumbbell-row-2"
+  },
+  {
+    "id": "floor-press-male-1",
+    "movement": "floor_press",
+    "hero": "male",
+    "file": "floor-press-male-1.jpg",
+    "step": 1,
+    "baseImage": "floor-press-1"
+  },
+  {
+    "id": "floor-press-male-2",
+    "movement": "floor_press",
+    "hero": "male",
+    "file": "floor-press-male-2.jpg",
+    "step": 2,
+    "baseImage": "floor-press-2"
+  },
+  {
+    "id": "floor-press-female-1",
+    "movement": "floor_press",
+    "hero": "female",
+    "file": "floor-press-female-1.jpg",
+    "step": 1,
+    "baseImage": "floor-press-1"
+  },
+  {
+    "id": "floor-press-female-2",
+    "movement": "floor_press",
+    "hero": "female",
+    "file": "floor-press-female-2.jpg",
+    "step": 2,
+    "baseImage": "floor-press-2"
+  },
+  {
+    "id": "floor-press-neutral-1",
+    "movement": "floor_press",
+    "hero": "neutral",
+    "file": "floor-press-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "floor-press-1"
+  },
+  {
+    "id": "floor-press-neutral-2",
+    "movement": "floor_press",
+    "hero": "neutral",
+    "file": "floor-press-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "floor-press-2"
+  },
+  {
+    "id": "romanian-deadlift-male-1",
+    "movement": "romanian_deadlift",
+    "hero": "male",
+    "file": "romanian-deadlift-male-1.jpg",
+    "step": 1,
+    "baseImage": "romanian-deadlift-1"
+  },
+  {
+    "id": "romanian-deadlift-male-2",
+    "movement": "romanian_deadlift",
+    "hero": "male",
+    "file": "romanian-deadlift-male-2.jpg",
+    "step": 2,
+    "baseImage": "romanian-deadlift-2"
+  },
+  {
+    "id": "romanian-deadlift-female-1",
+    "movement": "romanian_deadlift",
+    "hero": "female",
+    "file": "romanian-deadlift-female-1.jpg",
+    "step": 1,
+    "baseImage": "romanian-deadlift-1"
+  },
+  {
+    "id": "romanian-deadlift-female-2",
+    "movement": "romanian_deadlift",
+    "hero": "female",
+    "file": "romanian-deadlift-female-2.jpg",
+    "step": 2,
+    "baseImage": "romanian-deadlift-2"
+  },
+  {
+    "id": "romanian-deadlift-neutral-1",
+    "movement": "romanian_deadlift",
+    "hero": "neutral",
+    "file": "romanian-deadlift-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "romanian-deadlift-1"
+  },
+  {
+    "id": "romanian-deadlift-neutral-2",
+    "movement": "romanian_deadlift",
+    "hero": "neutral",
+    "file": "romanian-deadlift-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "romanian-deadlift-2"
+  },
+  {
+    "id": "farmer-carry-male-1",
+    "movement": "farmer_carry",
+    "hero": "male",
+    "file": "farmer-carry-male-1.jpg",
+    "step": 1,
+    "baseImage": "farmer-carry-1"
+  },
+  {
+    "id": "farmer-carry-male-2",
+    "movement": "farmer_carry",
+    "hero": "male",
+    "file": "farmer-carry-male-2.jpg",
+    "step": 2,
+    "baseImage": "farmer-carry-2"
+  },
+  {
+    "id": "farmer-carry-female-1",
+    "movement": "farmer_carry",
+    "hero": "female",
+    "file": "farmer-carry-female-1.jpg",
+    "step": 1,
+    "baseImage": "farmer-carry-1"
+  },
+  {
+    "id": "farmer-carry-female-2",
+    "movement": "farmer_carry",
+    "hero": "female",
+    "file": "farmer-carry-female-2.jpg",
+    "step": 2,
+    "baseImage": "farmer-carry-2"
+  },
+  {
+    "id": "farmer-carry-neutral-1",
+    "movement": "farmer_carry",
+    "hero": "neutral",
+    "file": "farmer-carry-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "farmer-carry-1"
+  },
+  {
+    "id": "farmer-carry-neutral-2",
+    "movement": "farmer_carry",
+    "hero": "neutral",
+    "file": "farmer-carry-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "farmer-carry-2"
+  },
+  {
+    "id": "leg-press-male-1",
+    "movement": "leg_press",
+    "hero": "male",
+    "file": "leg-press-male-1.jpg",
+    "step": 1,
+    "baseImage": "leg-press-1"
+  },
+  {
+    "id": "leg-press-male-2",
+    "movement": "leg_press",
+    "hero": "male",
+    "file": "leg-press-male-2.jpg",
+    "step": 2,
+    "baseImage": "leg-press-2"
+  },
+  {
+    "id": "leg-press-female-1",
+    "movement": "leg_press",
+    "hero": "female",
+    "file": "leg-press-female-1.jpg",
+    "step": 1,
+    "baseImage": "leg-press-1"
+  },
+  {
+    "id": "leg-press-female-2",
+    "movement": "leg_press",
+    "hero": "female",
+    "file": "leg-press-female-2.jpg",
+    "step": 2,
+    "baseImage": "leg-press-2"
+  },
+  {
+    "id": "leg-press-neutral-1",
+    "movement": "leg_press",
+    "hero": "neutral",
+    "file": "leg-press-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "leg-press-1"
+  },
+  {
+    "id": "leg-press-neutral-2",
+    "movement": "leg_press",
+    "hero": "neutral",
+    "file": "leg-press-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "leg-press-2"
   }
 ]

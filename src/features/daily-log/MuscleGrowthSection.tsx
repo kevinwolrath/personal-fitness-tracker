@@ -78,6 +78,7 @@ export function MuscleGrowthSection({ day, when, inventory, coverage, hints, edi
       <Text style={type.body} testID="muscle-growth-counts">
         {counts}
       </Text>
+      {!!day.equipmentReview?.length && <Text style={type.detail} testID="muscle-growth-equipment-review">Review My Gym equipment for {day.equipmentReview.join(', ')}. Your routine and its doses are kept.</Text>}
       {workload.length > 0 && (
         <Text style={type.detail} testID="muscle-growth-workload">
           This week, all training: {workload.join(' · ')}

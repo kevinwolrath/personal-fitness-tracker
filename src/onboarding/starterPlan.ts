@@ -1,5 +1,5 @@
 import type { RawPlan } from '../config/sections';
-import { CURRENT_FORMAT_VERSION, weekdays } from '../plan/schema';
+import { CURRENT_FORMAT_VERSION, weekdays, type ExerciseSection } from '../plan/schema';
 import { exerciseStarter, exerciseStyles } from '../presets/exercisePlan';
 import { mealActivities, mealDay, plannedSlots } from '../presets/meals';
 import { isMinor, toProfile, type Draft } from './draft';
@@ -13,7 +13,7 @@ export const STARTER_PLAN_ID = 'my-plan';
  * plan from the bundled presets (an exercise week with a rest day, and sample meals that respect their dietary
  * needs). Under 18: tracking only. Nothing is copied from anyone else's plan, and no energy targets are set.
  */
-export function buildStarterPlan(d: Draft, seed: NutritionSeed = activeNutritionSeed()): RawPlan {
+export function buildStarterPlan(d: Draft, seed: NutritionSeed = activeNutritionSeed(), access?: ExerciseSection): RawPlan {
   const profile = toProfile(d);
   const imperial = d.unit === 'lb';
   let activities: Record<string, unknown>[] = [];
@@ -23,6 +23,7 @@ export function buildStarterPlan(d: Draft, seed: NutritionSeed = activeNutrition
       goals: d.fitnessGoals,
       activityLevel: d.activityLevel,
       equipment: d.equipment,
+      access,
       limitations: d.physicalLimits,
       daysPerWeek: d.daysPerWeek,
       style: exerciseStyles[d.exerciseOption]?.id,
@@ -79,7 +80,7 @@ export function replanExisting(current: RawPlan, setup: RawPlan): RawPlan {
       return rest;
     }),
   };
-  if (setup.exercise) next.exercise = { ...(current.exercise ?? {}), ...setup.exercise };
+  if (setup.exercise) next.exercise = { ...(current.exercise ?? {}), ...setup.exercise, ...(current.exercise?.equipment ? { equipment: current.exercise.equipment } : {}) };
   return next;
 }
 

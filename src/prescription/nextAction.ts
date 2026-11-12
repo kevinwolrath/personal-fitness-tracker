@@ -47,7 +47,7 @@ export function estimatedMinutes(i: PrescriptionItem): number | undefined {
  * Otherwise null, and the card is hidden. Nothing here removes or changes items in the day's checklist.
  */
 export function nextAction(p: Prescription, nowMinutes: number): NextAction | null {
-  const open = p.items.filter((i) => isOpen(i) && isAvailable(i, p.items));
+  const open = p.items.filter((i) => isOpen(i) && !i.equipmentUnavailable && isAvailable(i, p.items));
 
   // The next fixed-time commitment: when the earliest unresolved timed item still to come becomes due.
   const nextCommitment = (self: PrescriptionItem) =>

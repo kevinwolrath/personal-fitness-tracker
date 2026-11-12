@@ -15,3 +15,9 @@ Open `options.html?option=a`, `b` or `c`; add `&expanded` to inspect the exercis
 Reuse `muscleCoverage`, `suggestExercises`, `eligibleExercises`, `inventoryFor`, `loadExerciseHistory`, `doseFor` and `workoutToggle` rather than introducing parallel muscle, recovery or logging data. Rank only when recorded history supports a comparison. Consider primary/secondary effective load, recent training-day frequency, recovery/reports and remaining scheduled/Muscle Growth workload. Exclude recovering/injured/sore dependent muscles and unavailable/avoided exercises. Keep rest-day and insufficient-history states neutral. Use the existing stable per-day movement log identity; a recommended movement already represented by a session/routine must never create another free log.
 
 Required verification: weighting/ranking explanations, recovery/reports, sparse history, equipment/limitations, planned workload, optional logging/undo/deduplication, native render and complete mobile journey. No configuration schema change.
+
+## Approved implementation
+
+Kevin chose A in chat. The implementation adds `src/exercises/recommendedResistance.ts` as a pure derivation over the existing exercise state and day/routine rows. It reuses the existing history, weighting, window, recovery, eligibility, artwork, doses and stable per-day logging identity. Coverage refreshes on session record changes and minute/foreground clock changes; the workout's frozen before-today display order is retained.
+
+The authoritative behavior is [contract 19](../../design-contracts/19-recommended-resistance.md). Actual phone captures are under `screenshots/`; prototype values above remain illustrative. Test results are recorded in the PR. No new dependency, network service, stored recommendation or configuration schema was introduced.

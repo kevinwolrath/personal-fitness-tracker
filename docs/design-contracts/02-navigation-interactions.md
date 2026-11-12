@@ -16,6 +16,8 @@ Optional gamification (#73, contract 16) uses content cards on Today (after meas
 
 ## Layout layers (#19)
 
+Recommended Resistance Training (#157, contract 19) is an optional expandable Today content card after Today's workout and Muscle Growth. Its controls stay in content; it adds no header/shell controls or required progress items and preserves the first-content vertical budget.
+
 Every main screen stacks three layers, top to bottom. Each control belongs to one layer only.
 
 | Layer | Owned by | Contains | Rules |

@@ -65,28 +65,38 @@ describe('enrollment key build wiring (#136)', () => {
     expect(read('playwright.config.ts')).toMatch(/E2E_API_URL = 'https:\/\/health\.example\.test'/);
   });
 
-  it('#155: release builds refuse a URL that includes the API path (the app adds it); the release script really does', () => {
+  it('#155: the workflow and the local APK build refuse a URL that includes the API path (the app adds it)', () => {
     expect(read('.github/workflows/google-play-internal.yml')).toContain("-match '/api/body-anvil(/|$)'");
     expect(read('scripts/build-apk.ps1')).toContain("-match '/api/body-anvil(/|$)'");
-    // Run just the release script's URL checks (everything up to the keystore) with each value.
+    expect(read('scripts/google-play-release.sh')).toMatch(/\*\/api\/body-anvil\|\*\/api\/body-anvil\/\*\) echo .*exit 1/);
+  });
+
+  // The release script runs in the Linux release container. Running its checks here needs a working POSIX bash: on a
+  // Windows runner `bash` may be missing, or WSL's launcher without a Linux install. Probe first (as for python below).
+  const bash = (() => {
+    try {
+      return execFileSync('bash', ['-c', 'x=ok; case "$x" in ok) echo ok ;; esac'], { encoding: 'utf8', stdio: 'pipe' }).trim() === 'ok';
+    } catch {
+      return false;
+    }
+  })();
+  (bash ? it : it.skip)('#155: the release script itself refuses a URL that includes the API path', () => {
     const sh = read('scripts/google-play-release.sh');
-    // Windows checkouts may have CRLF line endings, which bash would read as part of each pattern.
+    // CRLF-safe; the value is set inside the script, not via the environment.
     const checks = sh.slice(sh.indexOf('case "$EXPO_PUBLIC_BODY_ANVIL_API_URL"'), sh.indexOf('KEYSTORE=')).replace(/\r/g, '');
-    // The value is set inside the script, not via the environment: on Windows `bash` may be WSL's, which doesn't
-    // receive the caller's environment variables (the script would then see an empty URL and refuse everything).
-    const ok = (url: string) => {
+    const run = (url: string) => {
       try {
         execFileSync('bash', ['-c', `EXPO_PUBLIC_BODY_ANVIL_API_URL='${url}'\n${checks}`], { stdio: 'pipe' });
-        return true;
-      } catch {
-        return false;
+        return 'accepted';
+      } catch (e) {
+        return `refused: ${String((e as { stderr?: Buffer }).stderr ?? '').trim()}`;
       }
     };
-    expect(ok('https://questspirestudios.com')).toBe(true);
-    expect(ok('https://questspirestudios.com/api/body-anvil/v1')).toBe(false);
-    expect(ok('https://questspirestudios.com/api/body-anvil/v1/')).toBe(false);
-    expect(ok('https://questspirestudios.com/api/body-anvil')).toBe(false);
-    expect(ok('http://questspirestudios.com')).toBe(false);
+    expect(run('https://questspirestudios.com')).toBe('accepted');
+    expect(run('https://questspirestudios.com/api/body-anvil/v1')).toMatch(/^refused: .*the site only/);
+    expect(run('https://questspirestudios.com/api/body-anvil/v1/')).toMatch(/^refused: .*the site only/);
+    expect(run('https://questspirestudios.com/api/body-anvil')).toMatch(/^refused: .*the site only/);
+    expect(run('http://questspirestudios.com')).toMatch(/^refused: .*https/);
   });
 
   const python = (() => {

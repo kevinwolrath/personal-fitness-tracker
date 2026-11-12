@@ -199,6 +199,42 @@ export async function revokeShareLink(d: Pick<SyncDeps, 'store' | 'client' | 'se
   await d.secrets.set(SECRET_KEYS.shares, JSON.stringify((await savedShares(d.secrets)).filter((s) => s.id !== shareId))).catch(() => undefined);
 }
 
+/** #168: everything, all history, every category, 24 hours. */
+export const EVERYTHING: Omit<ShareScope, 'format'> = { range: 'all', categories: ['measurements', 'activity', 'sleep', 'nutrition', 'training', 'plan'], expiresIn: 24 * 3600 };
+
+export type EverythingResult = { link: SavedShare; format: ShareScope['format']; receipt: Receipt };
+
+/**
+ * Share everything (#168): one tap. Syncs first, so the link is the phone's current data; makes no link if the sync
+ * fails (never a stale link). Then shares all history and every category for 24 hours. When that is more than one link
+ * can hold (the Worker's share limit), it shares the Worker's per-metric summary of all history instead of cutting the
+ * period. Throws a SyncError the sheet shows.
+ */
+export async function shareEverything(d: SyncDeps, onStage: (stage: 'sync' | 'link') => void = () => undefined): Promise<EverythingResult> {
+  onStage('sync');
+  const sync = await syncNow(d);
+  if (!sync.ok) throw new SyncError(sync.error.kind, `Your server copy couldn’t be updated, so no link was made. ${sync.error.message}`, sync.error.status, sync.error.retryAfterSeconds);
+  const cred = await linkedCredential(d);
+  if (!cred) throw new SyncError('auth', 'Sync your data once to link this phone first.');
+  onStage('link');
+  let scope: ShareScope = { ...EVERYTHING, format: 'records' };
+  let preview;
+  try {
+    preview = await d.client.previewShare(cred, scope);
+  } catch (e) {
+    if (!(e instanceof SyncError && e.kind === 'tooLarge')) throw e;
+    scope = { ...EVERYTHING, format: 'summary' };
+    preview = await d.client.previewShare(cred, scope);
+  }
+  return { link: await createShareLink(d, scope, preview.revision), format: scope.format, receipt: sync.receipt };
+}
+
+/** The message for the share sheet: the AI instruction, saying when the link is a summary. */
+export const everythingMessage = (r: Pick<EverythingResult, 'link' | 'format'>) =>
+  r.format === 'summary'
+    ? `${aiInstruction(r.link.url, r.link.expiresAt)}\n(My full history is too long for one link, so this is a summary per measurement over all of it: count, average, lowest, highest, first and latest.)`
+    : aiInstruction(r.link.url, r.link.expiresAt);
+
 /** The ready-to-send message for an AI: the instruction and the link. Never contains the owner token. */
 export const aiInstruction = (url: string, expiresAt: string) =>
   `Read the JSON at this link and analyse my weight, waist, training and nutrition trends. Please identify the dates covered and any missing data.\n${url}\n(The link is read-only and expires ${expiresAt}.)`;

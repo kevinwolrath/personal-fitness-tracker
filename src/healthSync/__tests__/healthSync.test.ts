@@ -3,7 +3,7 @@ import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueSto
 import { healthSyncClient, normalizeBaseUrl, SyncError, type ShareScope } from '../client';
 import { buildSnapshot } from '../payload';
 import {
-  aiInstruction, createShareLink, credentialFor, ensureUserId, forgetLegacySettings, inspectRemote, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL,
+  aiInstruction, createShareLink, EVERYTHING, everythingMessage, shareEverything, credentialFor, ensureUserId, forgetLegacySettings, inspectRemote, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL,
   listShareLinks, NO_ENROLLMENT_KEY, previewShare, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps,
 } from '../service';
 import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
@@ -261,6 +261,80 @@ describe('Share my details', () => {
     const msg = aiInstruction(link.url, link.expiresAt);
     expect(msg).toContain(link.url);
     expect(msg).not.toContain(token(secrets));
+  });
+});
+
+describe('Share everything (#168)', () => {
+  const readLink = async (server: FakeHealthServer, url: string) => JSON.parse(await (await server.fetch(url, { method: 'GET', headers: {} })).text());
+
+  it('one call: syncs, then links all history and every category, plan targets included, for 24 hours', async () => {
+    const { deps, server, store } = await setup();
+    const r = await shareEverything(deps);
+    expect(r.format).toBe('records');
+    const shared = await readLink(server, r.link.url);
+    const snap = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
+    expect(shared.requested).toMatchObject({ range: 'all', categories: EVERYTHING.categories, from: null });
+    expect(shared.data).toEqual(snap.records); // everything the phone holds, nothing cut
+    expect(shared.data.some((x: { category: string }) => x.category === 'plan')).toBe(true);
+    expect(Date.parse(r.link.expiresAt) - server.now).toBe(24 * 3600 * 1000);
+    expect((await listShareLinks(deps)).map((l) => l.id)).toEqual([r.link.id]); // revocable from the list
+  });
+
+  it('syncs first every time, so the link holds data added since the last sync', async () => {
+    const { deps, server, store } = await setup();
+    await syncNow(deps);
+    const snap = await store.snapshot();
+    snap.observations.push({ ...snap.observations[0], id: 'new-weigh-in', metric: 'weight', value: 81.2, date: '2026-08-30', kind: 'observed' });
+    await store.replaceAll(snap);
+    const r = await shareEverything(deps);
+    const shared = await readLink(server, r.link.url);
+    expect(shared.data).toContainEqual(expect.objectContaining({ date: '2026-08-30', metric: 'weight', value: 81.2 }));
+    expect(server.requests.filter((q) => q.method === 'PUT')).toHaveLength(1); // the sync before the share
+  });
+
+  it('a failed sync makes no link and says so (never a stale link)', async () => {
+    const { deps, server } = await setup();
+    await syncNow(deps);
+    server.offline = true;
+    await expect(shareEverything(deps)).rejects.toMatchObject({ kind: 'offline', message: expect.stringMatching(/^Your server copy couldn’t be updated, so no link was made\. Couldn’t reach the server/) });
+    expect(server.shares).toHaveLength(0);
+    server.offline = false;
+    server.failNext = 500;
+    await expect(shareEverything(deps)).rejects.toMatchObject({ kind: 'server' });
+    expect(server.shares).toHaveLength(0);
+  });
+
+  it('without the build’s enrollment key, an unlinked phone gets the clear message and nothing is sent', async () => {
+    const { deps, server } = await setup();
+    await expect(shareEverything({ ...deps, enrollmentKey: '' })).rejects.toMatchObject({ kind: 'config', message: expect.stringContaining(NO_ENROLLMENT_KEY) });
+    expect(server.requests).toHaveLength(0);
+  });
+
+  it('more than one link can hold: all history as the Worker’s summary, never a shorter period; the message says so', async () => {
+    const { deps, server, store } = await setup();
+    const snap = await store.snapshot();
+    const base = snap.observations[0];
+    for (let i = 0; i < 1500; i++) {
+      const date = new Date(Date.parse('2022-01-01') + i * 86_400_000).toISOString().slice(0, 10);
+      snap.observations.push({ ...base, id: `steps-${i}`, metric: 'steps', value: 5000 + i, date, kind: 'observed' });
+    }
+    await store.replaceAll(snap);
+    const r = await shareEverything(deps);
+    expect(r.format).toBe('summary');
+    const shared = await readLink(server, r.link.url);
+    expect(shared.requested.range).toBe('all');
+    expect(shared.coverage.from).toBe('2022-01-01');
+    expect(shared.data).toContainEqual(expect.objectContaining({ category: 'activity', metric: 'steps', first: { date: '2022-01-01', value: 5000 } }));
+    expect(everythingMessage(r)).toMatch(/summary per measurement over all of it/);
+  });
+
+  it('the share-sheet message has the link and instruction, never the owner token', async () => {
+    const { deps, secrets } = await setup();
+    const r = await shareEverything(deps);
+    const msg = everythingMessage(r);
+    expect(msg).toContain(r.link.url);
+    expect(msg).not.toContain(token(secrets));
+    expect(msg).not.toMatch(/summary per measurement/);
   });
 });
 

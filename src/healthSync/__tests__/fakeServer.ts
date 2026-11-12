@@ -21,6 +21,23 @@ const metrics: Record<string, string[]> = {
   nutrition: ['energy', 'protein', 'carbs', 'fat', 'fiber', 'water', 'meals'],
   plan: ['energyTarget', 'proteinTarget', 'carbsTarget', 'fatTarget', 'stepTarget', 'weightTarget', 'sessionsPlanned'],
 };
+export const SHARE_BYTES = 64 * 1024;
+/** The Worker's summary format: per category, metric and source. */
+function summarize(records: { date: string; category: string; metric: string; value: number; source: string }[]) {
+  const groups = new Map<string, { category: string; metric: string; source: string; count: number; sum: number; min: number; max: number; first: { date: string; value: number }; last: { date: string; value: number } }>();
+  for (const { date, category, metric, value, source } of records) {
+    const key = `${category}:${metric}:${source}`;
+    const g = groups.get(key) ?? { category, metric, source, count: 0, sum: 0, min: value, max: value, first: { date, value }, last: { date, value } };
+    g.count += 1;
+    g.sum += value;
+    g.min = Math.min(g.min, value);
+    g.max = Math.max(g.max, value);
+    if (date < g.first.date) g.first = { date, value };
+    if (date >= g.last.date) g.last = { date, value };
+    groups.set(key, g);
+  }
+  return [...groups.values()].map(({ sum, ...g }) => ({ ...g, mean: sum / g.count }));
+}
 const sources = ['manual', 'screenshot', 'healthConnect', 'integration', 'app', 'plan'];
 
 class ApiError extends Error {
@@ -186,14 +203,17 @@ export class FakeHealthServer {
     return res(201, { id: share.id, url: `${u.origin}${prefix}/shared/${share.token}`, expiresAt: new Date(share.expiresAt).toISOString() });
   }
 
-  /** The Worker's projectShare, "records" format (summary not needed by the app). */
+  /** The Worker's projectShare (records or summary), with its 64 KB share limit (worker/snapshot.mjs). */
   private project(user: User, scope: Scope) {
-    const snap = JSON.parse(user.snapshot) as { schemaVersion: number; appVersion: string; coverage: { to: string }; records: { date: string; category: string }[] };
+    const snap = JSON.parse(user.snapshot) as { schemaVersion: number; appVersion: string; coverage: { to: string }; records: { date: string; category: string; metric: string; value: number; source: string }[] };
     const to = snap.coverage.to;
     const from = scope.range === 'all' ? null : new Date(Date.parse(to) - (scope.range - 1) * 86_400_000).toISOString().slice(0, 10);
-    const data = snap.records.filter((r) => scope.categories.includes(r.category) && (from === null || r.date >= from));
-    const dates = data.map((r) => r.date).sort();
-    return { schemaVersion: snap.schemaVersion, provenance: { app: 'Body Anvil', appVersion: snap.appVersion }, format: scope.format, requested: { range: scope.range, categories: scope.categories, from, to }, coverage: { from: dates[0] ?? null, to: dates[dates.length - 1] ?? null }, data };
+    const records = snap.records.filter((r) => scope.categories.includes(r.category) && (from === null || r.date >= from));
+    const dates = records.map((r) => r.date).sort();
+    const data = scope.format === 'records' ? records : summarize(records);
+    const out = { schemaVersion: snap.schemaVersion, provenance: { app: 'Body Anvil', appVersion: snap.appVersion }, format: scope.format, requested: { range: scope.range, categories: scope.categories, from, to }, coverage: { from: dates[0] ?? null, to: dates[dates.length - 1] ?? null }, data };
+    if (new TextEncoder().encode(JSON.stringify(out)).byteLength > SHARE_BYTES) throw new ApiError(413, 'Share too large. Choose summary or narrow the scope');
+    return out;
   }
 }
 

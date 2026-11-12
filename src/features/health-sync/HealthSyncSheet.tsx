@@ -6,6 +6,8 @@ import { categories, categoryLabels, OMITTED, type Category, type ShareRange, ty
 import {
   aiInstruction,
   createShareLink,
+  everythingMessage,
+  shareEverything,
   credentialFor,
   ensureUserId,
   fullPayload,
@@ -16,6 +18,7 @@ import {
   syncNow,
   syncStatus,
   forgetLegacySettings,
+  type EverythingResult,
   type SavedShare,
   type SharePreview,
   type SyncDeps,
@@ -76,7 +79,7 @@ function Summary({ p, bytes, testID }: { p: unknown; bytes: number | null; testI
 
 /**
  * Health data sync (#134): a private copy of your health data on your own server (Sync my data), and expiring,
- * read-only links for an AI (Share my details). Nothing is sent without a tap; nothing on this phone is changed by
+ * read-only links for an AI (Share everything in one tap, #168; Advanced sharing to choose). Nothing is sent without a tap; nothing on this phone is changed by
  * looking at the server copy. The owner key stays in secure storage.
  */
 export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onClose: () => void }) {
@@ -90,6 +93,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmSync, setConfirmSync] = useState<{ snapshot: SyncSnapshot; bytes: number } | null>(null);
   const [remote, setRemote] = useState<RemoteSnapshot | null>(null);
+  const [everything, setEverything] = useState<EverythingResult | null>(null);
   // Share
   const [range, setRange] = useState<ShareRange>(30);
   const [chosen, setChosen] = useState<Category[]>(['measurements', 'activity', 'sleep', 'nutrition', 'training']);
@@ -153,6 +157,40 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       if (!r.ok) throw r.error;
       setNotice(r.linked ? 'Linked and uploaded' : 'Uploaded');
     });
+  // #168: one tap. Sync, link everything for 24 hours, then the system share sheet. No link if the sync fails.
+  const doShareEverything = () =>
+    run('Updating your server copy…', async () => {
+      setRemote(null);
+      setConfirmSync(null);
+      setEverything(null);
+      if (!linked && !CAN_LINK) throw new Error(NO_ENROLLMENT_KEY);
+      let r: EverythingResult;
+      try {
+        r = await shareEverything(deps(), (stage) => alive.current && setBusy(stage === 'sync' ? 'Updating your server copy…' : 'Creating a read-only link…'));
+      } finally {
+        await refresh().catch(() => undefined);
+      }
+      if (!alive.current) return;
+      setEverything(r);
+      setBusy('Opening share…');
+      const shared = await shareText(everythingMessage(r), 'My health data');
+      if (shared === 'copied') setNotice('Copied the link and instructions. Paste them into your AI chat.');
+      else if (shared === 'unavailable') setNotice('Sharing isn’t available here. Copy the link below instead.');
+      else setNotice(r.format === 'summary' ? 'Link ready: a summary of all your history (too long for one link in full).' : 'Link ready: all your history, read-only for 24 hours.');
+    });
+  const copyEverything = () =>
+    run('Copying…', async () => {
+      if (!everything) return;
+      await Clipboard.setStringAsync(everythingMessage(everything));
+      setNotice('Copied the link and instructions. Paste them into your AI chat.');
+    });
+  const revokeEverything = () =>
+    run('Revoking…', async () => {
+      if (!everything) return;
+      await revokeShareLink(deps(), everything.link.id);
+      setEverything(null);
+      setNotice('Link revoked');
+    });
   const viewRemote = () =>
     run('Downloading…', async () => {
       setRemote(await inspectRemote(deps()));
@@ -214,7 +252,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
 
   return (
     <Sheet visible onClose={() => !busy && onClose()} label="Health data sync" fill>
-      <ModalHeader title={page === 'home' ? 'Health data sync' : 'Share my details'} dismiss={{ label: 'Close', a11yLabel: 'Close health data sync', onPress: () => !busy && onClose() }} />
+      <ModalHeader title={page === 'home' ? 'Health data sync' : 'Advanced sharing'} dismiss={{ label: 'Close', a11yLabel: 'Close health data sync', onPress: () => !busy && onClose() }} />
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="health-sync-sheet">
         {page === 'share' && <Button title="Back to health data sync" variant="quiet" onPress={() => { setPage('home'); setError(null); setNotice(null); }} />}
         {busy && (
@@ -258,7 +296,22 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
                 <Button title="Cancel" variant="quiet" disabled={!!busy} onPress={() => setConfirmSync(null)} />
               </View>
             )}
-            <Button title="Share my details" variant="secondary" disabled={!!busy || !configured} onPress={() => { setPage('share'); setError(null); setNotice(null); if (linked) loadLinks(); }} testID="health-sync-share" />
+            <Button title="Share everything" variant="secondary" disabled={!!busy || !configured || (!linked && !CAN_LINK)} onPress={doShareEverything} testID="health-sync-share-everything" />
+            <Text style={type.detail}>Syncs first, then shares all your history as a read-only link for 24 hours.</Text>
+            {everything && (
+              <View style={styles.panel} testID="everything-link">
+                <Text style={type.section}>Link ready</Text>
+                <Text style={styles.mono} selectable>
+                  {everything.link.url}
+                </Text>
+                <Text style={type.detail}>
+                  {everything.format === 'summary' ? 'A summary of all your history' : 'All your history'} · expires {when(everything.link.expiresAt)}
+                </Text>
+                <Button title="Copy AI link" variant="secondary" disabled={!!busy} onPress={copyEverything} testID="everything-copy" />
+                <Button title="Revoke now" variant="quiet" disabled={!!busy} onPress={revokeEverything} testID="everything-revoke" />
+              </View>
+            )}
+            <Button title="Advanced sharing" variant="quiet" disabled={!!busy || !configured} onPress={() => { setPage('share'); setError(null); setNotice(null); if (linked) loadLinks(); }} testID="health-sync-share" />
             <Button title="View the server copy" variant="quiet" disabled={!!busy || !linked || !configured} onPress={viewRemote} testID="health-sync-view" />
             {remote && (
               <View style={styles.panel} testID="health-sync-remote">

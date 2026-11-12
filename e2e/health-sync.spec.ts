@@ -169,3 +169,30 @@ test('#136 build enrollment key: sent on enroll and its retries only; a rejected
   expect(stored).not.toContain(accepted);
   expect(await page.getByTestId('health-sync-sheet').innerText()).not.toContain(accepted);
 });
+
+test('#168 share everything: one tap syncs, links all history for 24 hours and hands the message over', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const server = new FakeHealthServer();
+  await route(page, server);
+  await seedRecords(page, { observations: [weigh('2026-08-01', 95), weigh('2026-10-30', 92.4), weigh('2026-11-01', 92.1)] });
+  await openAt(page, MONDAY);
+  await open(page);
+  if (test.info().project.name === 'phone') await page.screenshot({ path: 'docs/design/issue-168/after-home.png' });
+  await expect(page.getByTestId('health-sync-share')).toHaveText('Advanced sharing');
+  await page.getByTestId('health-sync-share-everything').click();
+  // The browser has no share sheet here, so the message is copied (the Android build opens the system share sheet).
+  await expect(page.getByTestId('health-sync-notice')).toHaveText('Copied the link and instructions. Paste them into your AI chat.');
+  expect(server.users.size).toBe(1);
+  const share = server.shares[0];
+  expect(share.scope).toEqual({ range: 'all', categories: ['measurements', 'activity', 'sleep', 'nutrition', 'training', 'plan'], format: 'records', expiresIn: 86400 });
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toContain(`${BASE}/api/body-anvil/v1/shared/${share.token}`);
+  const read = await (await server.fetch(`${BASE}/api/body-anvil/v1/shared/${share.token}`, { method: 'GET', headers: {} })).text();
+  expect(read).toContain('2026-08-01'); // all history, not the last 30 days
+  expect(read).toContain('weightTarget'); // plan targets included
+  await expect(page.getByTestId('everything-link')).toContainText('All your history');
+  if (test.info().project.name === 'phone') await page.screenshot({ path: 'docs/design/issue-168/after-link.png' });
+  await page.getByTestId('everything-revoke').click();
+  await expect(page.getByTestId('health-sync-notice')).toHaveText('Link revoked');
+  expect(share.revoked).toBe(true);
+});

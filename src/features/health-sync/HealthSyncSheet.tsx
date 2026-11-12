@@ -27,6 +27,9 @@ import {
 } from '../../healthSync/service';
 import { BUILD_API, BUILD_ENROLLMENT_KEY, DEV_BUILD } from '../../healthSync/config';
 import { toLocalDate } from '../../plan/dates';
+import { buildAiExport, databaseStart } from '../../export/aiExport';
+import { localIsoTimestamp } from '../../format';
+import { shareJson } from '../../platform/files';
 import { random } from '../../platform/random';
 import { secrets } from '../../platform/secrets';
 import { shareText } from '../../platform/shareText';
@@ -229,6 +232,20 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       setLinks(await listShareLinks(deps()));
       setNotice('Link revoked');
     });
+  // #167: a detailed file for an AI, built on this phone: coverage by source, database start, meals and exercises.
+  const shareDetailedFile = () =>
+    run('Preparing the file…', async () => {
+      const today = toLocalDate(new Date());
+      const doc = buildAiExport(await store.snapshot(), {
+        generatedAt: localIsoTimestamp(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'unknown',
+        today,
+        appVersion: APP_VERSION,
+        databaseStart: await databaseStart(store),
+      });
+      await shareJson(`body-anvil-ai-export-${today}.json`, JSON.stringify(doc, null, 1));
+      setNotice('Shared the detailed file. Attach it to your AI chat.');
+    });
   const copyAiLink = () =>
     run('Copying…', async () => {
       if (!link) return;
@@ -400,6 +417,11 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
                 ))}
               </View>
             )}
+            <View style={styles.panel} testID="share-detailed">
+              <Text style={type.section}>Detailed file</Text>
+              <Text style={type.detail}>Every measurement, meal and exercise with its time and source, and what your data covers (when this phone’s records start, and Health Connect history), as a file to attach to an AI chat. Made on this phone; nothing is uploaded.</Text>
+              <Button title="Share a detailed file" variant="secondary" disabled={!!busy} onPress={shareDetailedFile} testID="share-detailed-file" />
+            </View>
           </>
         )}
       </ScrollView>

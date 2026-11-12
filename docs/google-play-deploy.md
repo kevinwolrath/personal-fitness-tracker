@@ -57,7 +57,7 @@ The release then appears under Play Console → Testing → Internal testing. If
 
 ### Build cache on .45
 
-Gradle's downloads and build outputs are kept in the Docker volume `pft-gradle-cache` (mounted as `GRADLE_USER_HOME`), and the image `pft-google-play` is kept between runs so `npm ci` reruns only when `package-lock.json` changes. The first deploy after this change, or after the cache is cleared, takes the old full time; later deploys reuse the cache. The base image is pinned by digest in `docker/android-play.Dockerfile` (and `docker/android.Dockerfile`), so it is never re-pulled; change both to upgrade.
+Gradle's downloads and build outputs are kept in the Docker volume `pft-gradle-cache` (mounted as `GRADLE_USER_HOME`), and the image `pft-google-play` is kept between runs so `npm ci` reruns only when `package-lock.json` changes. The first deploy after this change, or after the cache is cleared, takes the old full time; later deploys reuse the cache. The base image is pinned by digest in `docker/android-play.Dockerfile` (and `docker/android.Dockerfile`), so it is never re-pulled; change both to upgrade. The Android SDK parts the build needs (CMake 3.22.1, the NDK, build-tools and platform; the base image ships other versions) are installed into the image once, in a cached layer before `npm ci`, so Gradle never downloads them during a build (#160: two parallel CMake downloads raced and broke a deploy). When React Native's NDK, build-tools or compile SDK changes, update `ANDROID_SDK_PACKAGES` in both Dockerfiles; `src/repo/__tests__/androidSdk.test.ts` fails until you do. The first deploy after this change rebuilds that layer once.
 
 To start from scratch (for example after a strange Gradle error), on .45:
 

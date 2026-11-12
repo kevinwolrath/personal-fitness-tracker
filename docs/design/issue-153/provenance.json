@@ -1,0 +1,23 @@
+[
+  {
+    "hero": "male",
+    "tool": "built-in image_gen",
+    "source": "exec-c3118dd1-0456-4ed2-ad90-af5c66a9de05.png",
+    "sourceSha256": "a0445ca6b55a80b93908d6d6755a72e859235596cd7ae81096197c9ed4277d5e",
+    "reference": "hammer-curl-male-1.jpg"
+  },
+  {
+    "hero": "female",
+    "tool": "built-in image_gen",
+    "source": "exec-ec9200bb-1e55-4d5e-82dd-14a2f3bc1fa3.png",
+    "sourceSha256": "abee1c7ea26615e8dc472b23ed38c0471215d0dfb28c96521846fd91ea845028",
+    "reference": "hammer-curl-1.jpg"
+  },
+  {
+    "hero": "neutral",
+    "tool": "built-in image_gen",
+    "source": "exec-053c87c7-6615-4331-b496-233d3140c8f9.png",
+    "sourceSha256": "1646d797297d5943ff5fddf32d217374dca0fbcc891e7c0f15192a2bf2be9a38",
+    "reference": "hammer-curl-neutral-1.jpg"
+  }
+]

@@ -116,4 +116,10 @@ export const heroIllustrations: Record<string, ImageSourcePropType> = {
   'battle-ropes-female-2': require('../../assets/exercises/heroes/battle-ropes-female-2.jpg'),
   'battle-ropes-neutral-1': require('../../assets/exercises/heroes/battle-ropes-neutral-1.jpg'),
   'battle-ropes-neutral-2': require('../../assets/exercises/heroes/battle-ropes-neutral-2.jpg'),
+  'kettlebell-shrug-male-1': require('../../assets/exercises/heroes/kettlebell-shrug-male-1.jpg'),
+  'kettlebell-shrug-male-2': require('../../assets/exercises/heroes/kettlebell-shrug-male-2.jpg'),
+  'kettlebell-shrug-female-1': require('../../assets/exercises/heroes/kettlebell-shrug-female-1.jpg'),
+  'kettlebell-shrug-female-2': require('../../assets/exercises/heroes/kettlebell-shrug-female-2.jpg'),
+  'kettlebell-shrug-neutral-1': require('../../assets/exercises/heroes/kettlebell-shrug-neutral-1.jpg'),
+  'kettlebell-shrug-neutral-2': require('../../assets/exercises/heroes/kettlebell-shrug-neutral-2.jpg'),
 };

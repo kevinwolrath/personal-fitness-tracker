@@ -72,9 +72,11 @@ describe('enrollment key build wiring (#136)', () => {
     const sh = read('scripts/google-play-release.sh');
     // Windows checkouts may have CRLF line endings, which bash would read as part of each pattern.
     const checks = sh.slice(sh.indexOf('case "$EXPO_PUBLIC_BODY_ANVIL_API_URL"'), sh.indexOf('KEYSTORE=')).replace(/\r/g, '');
+    // The value is set inside the script, not via the environment: on Windows `bash` may be WSL's, which doesn't
+    // receive the caller's environment variables (the script would then see an empty URL and refuse everything).
     const ok = (url: string) => {
       try {
-        execFileSync('bash', ['-c', checks], { env: { ...process.env, EXPO_PUBLIC_BODY_ANVIL_API_URL: url }, stdio: 'pipe' });
+        execFileSync('bash', ['-c', `EXPO_PUBLIC_BODY_ANVIL_API_URL='${url}'\n${checks}`], { stdio: 'pipe' });
         return true;
       } catch {
         return false;

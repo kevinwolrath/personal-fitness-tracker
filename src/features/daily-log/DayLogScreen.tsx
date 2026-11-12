@@ -45,6 +45,7 @@ import { CoverageSheet } from '../muscles/CoverageSheet';
 import { GamificationCard, GamificationCelebration } from '../../gamification/Gamification';
 import { useGamification } from '../../gamification/GamificationProvider';
 import type { MealLog } from '../../nutrition/contract';
+import { confirmedMeals, dayLogs as dayActivityLogs } from '../../nutrition/plannedMeals';
 import { dayIntake } from '../../nutrition/intake';
 import { restOfDay } from '../../nutrition/restOfDay';
 import { RestOfDayCard } from './RestOfDayCard';
@@ -163,16 +164,18 @@ export function DayLogScreen() {
   }, [store, date]);
   useEffect(loadMeals, [loadMeals, dataVersion]);
   const mealFor = useMemo(() => Object.fromEntries(mealLogs.filter((m) => m.activityId && m.planId === plan.id).map((m) => [m.activityId!, m])) as Record<string, MealLog | undefined>, [mealLogs, plan.id]);
-  const eaten = useMemo(() => intakeLines(dayIntake(date, mealLogs, records.observations), energy), [date, mealLogs, records, energy]);
+  // #154: ticked plan meals count as eaten, at their planned estimates (a replaced meal counts as its logged meal).
+  const confirmed = useMemo(() => confirmedMeals(dayActivityLogs(records.activities, plan.id, date), mealLogs, (_d, planId) => (planId === plan.id ? plan : null)), [records, plan, date, mealLogs]);
+  const eaten = useMemo(() => intakeLines(dayIntake(date, mealLogs, records.observations, confirmed), energy), [date, mealLogs, records, energy, confirmed]);
   const rest = useMemo(
     () =>
       restOfDay({
-        plan, date, today, nowMinutes, items: prescription.items, mealLogs, observations: records.observations, energy,
+        plan, date, today, nowMinutes, items: prescription.items, mealLogs, confirmed, observations: records.observations, energy,
         weightKg: latestMeasurement.weight?.value ?? null,
         restDay: (plan.exercise?.restDays ?? []).includes(weekdayOf(date)),
         injured: !!exerciseState?.coverage.some((c) => c.report === 'injured'),
       }),
-    [plan, date, today, nowMinutes, prescription, mealLogs, records, energy, latestMeasurement, exerciseState],
+    [plan, date, today, nowMinutes, prescription, mealLogs, confirmed, records, energy, latestMeasurement, exerciseState],
   );
   const [removingMeal, setRemovingMeal] = useState<MealLog | null>(null);
   const logDifferent = (item: PrescriptionItem) => router.push({ pathname: '/meal-photo', params: { date, activity: item.key } });

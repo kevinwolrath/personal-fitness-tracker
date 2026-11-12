@@ -9,7 +9,8 @@ import { fromCanonical, toCanonical } from '../observations/units';
 import { activitySummary, isHealthActivity, isWalk } from '../observations/activity';
 import { formatDistance } from '../observations/units';
 import type { MealLog } from '../nutrition/contract';
-import { dayIntake, mealSumsByDate, nutrientForMetric } from '../nutrition/intake';
+import { dayIntake, mealDates, nutrientForMetric } from '../nutrition/intake';
+import { confirmedMeals, type ConfirmedMeal } from '../nutrition/plannedMeals';
 import { observedChanges } from './changes';
 import { forecast, trendInsight } from './forecast';
 import {
@@ -101,18 +102,19 @@ export type ProgressOptions = {
 };
 
 /**
- * Eaten per day (#97, contract 15): the day total (entered, from a screenshot or imported) where there is one,
- * otherwise the sum of that day's logged meals. The two are never added together.
+ * Eaten per day (#97, #154, contract 15): the day total (entered, from a screenshot or imported) where there is one,
+ * otherwise the sum of that day's meals: logged meals plus ticked planned meals at their planned estimates. The two
+ * are never added together. A day whose meals don't all state the nutrient is marked incomplete (an under-count).
  */
-export function intakeSeries(observations: Observation[], mealLogs: MealLog[], metric: 'energy_intake' | 'protein_intake'): Point[] {
+export function intakeSeries(observations: Observation[], mealLogs: MealLog[], metric: 'energy_intake' | 'protein_intake', confirmed: ConfirmedMeal[] = []): Point[] {
   const totals = dailySeries(observations, metric);
   const has = new Set(totals.map((p) => p.date));
   const key = nutrientForMetric(metric)!;
-  const meals = [...mealSumsByDate(mealLogs, key)]
-    .filter(([date]) => !has.has(date))
-    .map(([date, value]): Point => {
-      const incomplete = dayIntake(date, mealLogs, []).values[key]?.incomplete ?? false;
-      return { date, value, kind: 'measured', source: 'meals', ...(incomplete ? { incomplete } : {}) };
+  const meals = mealDates(mealLogs, confirmed)
+    .filter((date) => !has.has(date))
+    .flatMap((date): Point[] => {
+      const v = dayIntake(date, mealLogs, [], confirmed).values[key];
+      return v ? [{ date, value: v.value, kind: 'measured', source: 'meals', ...(v.incomplete ? { incomplete: true } : {}) }] : [];
     });
   return [...totals, ...meals].sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -325,18 +327,22 @@ const workoutPurposes: string[] = ['strength', 'conditioning_high_intensity', 'c
 
 /**
  * Part 2 (#52): workouts done vs scheduled, active minutes, steps, energy eaten vs burned, energy balance and
- * protein. Intake comes only from logged or imported intake observations, never from ticked planned meals.
+ * protein. Intake is a day total (entered or imported) or, without one, the day's meals: logged meals plus ticked
+ * planned meals at their planned estimates (#154).
  * Energy values are estimates (food logging and wearables both are) and say so.
  */
 function activityCharts(observations: Observation[], plan: Plan, today: LocalDate, from: LocalDate | null, opts: ProgressOptions) {
   const charts = {} as Record<ChartId, ChartModel>;
+  const versions = [...(opts.history?.planVersions ?? [])].sort((a, b) => a.until.localeCompare(b.until));
+  /** The plan that applied on `d`: the version replaced by the first change made after that day, else the current one. */
+  const planOn = (d: LocalDate) => versions.find((v) => d < v.until)?.plan ?? plan;
+  // #154: ticked planned meals count as eaten, at the planned estimates of the plan in effect that day.
+  const confirmed = confirmedMeals(opts.history?.activityLogs ?? [], opts.mealLogs ?? [], (d, planId) => (planId === plan.id ? planOn(d) : null));
   const span = from ? `since ${new Date(`${from}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : 'overall';
 
   // Workouts: required training items of the plan in effect each day, done vs scheduled, per week.
   const logs = opts.history?.activityLogs ?? [];
-  const versions = [...(opts.history?.planVersions ?? [])].sort((a, b) => a.until.localeCompare(b.until));
-  /** The plan that applied on `d`: the version replaced by the first change made after that day, else the current one. */
-  const planOn = (d: LocalDate) => versions.find((v) => d < v.until)?.plan ?? plan;
+
   const overrides = new Map((opts.history?.dayOverrides ?? []).map((o) => [o.date, o.dayTypeId]));
   const firstLog = logs.length ? logs[0].date : today;
   const start = from ?? (firstLog < today ? firstLog : addDays(today, -27));
@@ -425,7 +431,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   // Energy eaten vs burned (estimates), in the device's energy unit.
   const unit = entryUnit(opts.energy ?? plan.units.energy);
   const toUnit = (p: Point): Point => ({ ...p, value: convertEnergy(p.value, 'kJ', unit) });
-  const eaten = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'energy_intake'), from, today).map(toUnit);
+  const eaten = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'energy_intake', confirmed), from, today).map(toUnit);
   // Burned: a day's total if one was recorded, else estimated resting energy + Health Connect active energy (never both).
   const expenditure = expenditureSeries(observations, plan);
   const burned = inRange(expenditure.points, from, today).map(toUnit) as BurnedPoint[];
@@ -446,21 +452,22 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     tag: 'Estimate',
     unit,
     series: [
-      { label: 'Eaten (logged or imported)', points: eaten, style: 'dots', tone: 'accent' },
+      { label: 'Eaten (ticked, logged or imported)', points: eaten, style: 'dots', tone: 'accent' },
       ...(burnedTotal.length ? [{ label: 'Burned (total from a wearable or entry)', points: burnedTotal, style: 'dots' as const, tone: 'warm' as const }] : []),
       ...(burnedEstimate.length ? [{ label: 'Burned (estimate: resting + active)', points: burnedEstimate, style: 'dots' as const, tone: 'ink' as const }] : []),
     ],
     empty: eaten.length || burned.length
       ? null
       : [
-          'Eaten appears when you log what you ate (a meal photo or typed in) or import a day total. Ticking a planned meal doesn’t count as eaten.',
+          'Eaten appears when you tick meals you ate on Today (counted at the plan’s estimates), log a meal (photo or typed) or import a day total.',
           missingNote || 'Burned appears when Health Connect or a wearable reports energy.',
         ].join(' '),
     note: eaten.length || burned.length
       ? [
           'Both are estimates: food logs and wearables can be off by a lot.',
           restingNote,
-          !eaten.length ? 'Nothing eaten is logged yet: log meals you actually ate; ticked planned meals don’t count.' : '',
+          !eaten.length ? 'Nothing eaten is recorded yet: tick meals you ate on Today, or log them.' : '',
+          confirmed.length ? 'Ticked plan meals count at the plan’s estimates; log a meal instead when it was different.' : '',
           missingNote,
         ].filter(Boolean).join(' ')
       : null,
@@ -471,7 +478,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   // Only days with both values: a day's eaten minus that same day's burned, then the weekly average of those days (#67).
   // Today is still in progress (more eating, more activity), so it never counts: only finished days with both.
   const burnedOn = new Map(burned.map((p) => [p.date, p.value]));
-  // A day whose logged meals don't all state their energy is an under-count: never a balance.
+  // A day whose meals (logged or ticked) don't all state their energy is an under-count: never a balance.
   const dailyBalance: Point[] = eaten.filter((p) => p.date < today && !p.incomplete && burnedOn.has(p.date)).map((p) => ({ date: p.date, value: p.value - burnedOn.get(p.date)!, kind: 'calculated' }));
   const balance: Point[] = bucketMeans(dailyBalance, 'week').map((b) => ({ date: b.bucket, value: b.value, kind: 'calculated' }));
   const lastBal = balance[balance.length - 1];
@@ -487,7 +494,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     empty: balance.length
       ? null
       : !eaten.length
-        ? 'Needs what you ate: log meals you actually ate (photo or typed), or import a day total. Ticked planned meals don’t count.'
+        ? 'Needs what you ate: tick meals you ate on Today, log meals (photo or typed), or import a day total.'
         : !burned.length
           ? missingNote || 'Needs energy burned on the same days: connect Health Connect or enter a total.'
           : 'Needs energy eaten and energy burned recorded on the same days (finished days only: today is still in progress).',
@@ -496,7 +503,7 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
   };
 
   // Protein vs the plan's protein target.
-  const protein = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'protein_intake'), from, today);
+  const protein = inRange(intakeSeries(observations, opts.mealLogs ?? [], 'protein_intake', confirmed), from, today);
   const target = plan.nutrition.targets.find((t) => t.quantity === 'grams' && /protein/i.test(`${t.id} ${t.label}`));
   const p7 = last7(protein);
   charts.protein = {
@@ -506,9 +513,9 @@ function activityCharts(observations: Observation[], plan: Plan, today: LocalDat
     sub: p7 !== null ? `Last 7 days (days with data)${target?.min ? ` · target ${target.min}${target.max ? `–${target.max}` : '+'} g` : ''}` : null,
     tag: null,
     unit: 'g',
-    series: [{ label: 'Logged or imported', points: protein, style: 'dots', tone: 'accent' }],
+    series: [{ label: 'Ticked, logged or imported', points: protein, style: 'dots', tone: 'accent' }],
     reference: target?.min ? { value: target.min, label: 'Target (minimum)' } : undefined,
-    empty: protein.length ? null : 'Protein appears here when you log or import it. Ticking a planned meal doesn’t count as eaten.',
+    empty: protein.length ? null : 'Protein appears here when you tick meals you ate on Today, log meals or import protein.',
     note: null,
     summary: p7 !== null ? `Protein ${Math.round(p7)} grams a day over the last 7 days.` : 'Protein: none recorded.',
   };

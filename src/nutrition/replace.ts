@@ -7,9 +7,9 @@ export type { MealCompletion };
 
 /**
  * Replace semantics (#97). Pure. Logging a different meal for a scheduled meal marks that meal done, so the day's
- * progress ("n of 7") moves on; the meal log records what was actually eaten. The planned recipe is never counted
- * as eaten (it never was: ticked plan meals don't count, contract 14). Removing the meal log puts the scheduled
- * meal back to not done.
+ * progress ("n of 7") moves on; the meal log records what was actually eaten. A ticked plan meal counts at its
+ * planned estimate (#154), but a replaced one counts only as its meal log, never both. Removing the meal log puts the
+ * scheduled meal back to not done.
  */
 
 /** The completion change for replacing (`replaced = true`) or un-replacing a scheduled meal; null if it isn't scheduled that day. */

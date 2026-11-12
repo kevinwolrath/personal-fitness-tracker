@@ -21,7 +21,7 @@ it('shows eaten, total burned and estimated burned with their own legend labels'
   );
   const c = r.charts.energy;
   render(<LineChart series={c.series} unit={c.unit} testID="energy-chart" />);
-  expect(screen.getByText('Eaten (logged or imported)')).toBeTruthy();
+  expect(screen.getByText('Eaten (ticked, logged or imported)')).toBeTruthy();
   expect(screen.getByText('Burned (total from a wearable or entry)')).toBeTruthy();
   expect(screen.getByText('Burned (estimate: resting + active)')).toBeTruthy();
   expect(c.tag).toBe('Estimate');

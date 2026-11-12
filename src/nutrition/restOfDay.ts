@@ -3,6 +3,7 @@ import type { Observation } from '../observations/types';
 import type { Plan } from '../plan/schema';
 import type { PrescriptionItem } from '../prescription/prescribe';
 import type { MealLog } from './contract';
+import type { ConfirmedMeal } from './plannedMeals';
 import { dayIntake } from './intake';
 
 /**
@@ -44,6 +45,8 @@ export type RestOfDayInput = {
   nowMinutes: number;
   items: PrescriptionItem[];
   mealLogs: MealLog[];
+  /** Ticked planned meals, counted as eaten at their planned estimates (#154). */
+  confirmed?: ConfirmedMeal[];
   observations: Observation[];
   energy: EnergyDisplay;
   /** Latest body weight in kg, for activity estimates. */
@@ -67,7 +70,7 @@ export function restOfDay(i: RestOfDayInput): RestOfDay {
   const toKj = (v: number) => convertEnergy(v, plan.units.energy, 'kJ');
   const energyT = plan.nutrition.targets.find((t) => t.quantity === 'energy');
   const proteinT = plan.nutrition.targets.find((t) => t.quantity === 'grams' && /protein/i.test(`${t.id} ${t.label}`));
-  const intake = dayIntake(i.date, i.mealLogs, i.observations);
+  const intake = dayIntake(i.date, i.mealLogs, i.observations, i.confirmed ?? []);
   const eatenKj = intake.values.energyKj?.value ?? null;
   const eatenP = intake.values.proteinG?.value ?? null;
 

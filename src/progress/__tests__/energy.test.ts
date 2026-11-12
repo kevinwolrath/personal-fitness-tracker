@@ -105,7 +105,7 @@ describe('Health Connect → store → Progress (the reported bug: steps importe
   });
 });
 
-describe('intake: the same numbers as Today, never planned meals', () => {
+describe('intake: the same numbers as Today (logged and ticked meals)', () => {
   it('Progress intake equals Today’s dayIntake on every date (day total wins over meals, never added)', () => {
     const observations = [obs('2026-11-02', 'energy_intake', 9000), obs('2026-11-02', 'energy_intake', 7000, 'integration'), obs('2026-11-03', 'protein_intake', 140)];
     const meals = [meal('a', '2026-11-02', 3000, 20), meal('b', '2026-11-03', 4000, 30), meal('c', '2026-11-04', 2500, null)];
@@ -119,16 +119,24 @@ describe('intake: the same numbers as Today, never planned meals', () => {
     }
   });
 
-  it('ticking planned meals done never counts as eaten', () => {
+  it('#154: a ticked planned meal counts as eaten at its planned estimate, on past days too', () => {
+    const tick = (date: string, activityId: string, status: 'done' | 'pending' = 'done') => ({ planId: base.id, date, activityId, status, count: 0, labelSnapshot: activityId, updatedAt: 't' });
     const r = progressReport([obs('2026-11-03', 'total_energy', 10000)], adult, TODAY, '30d', {
       energy: 'kJ',
       mealLogs: [],
-      history: { activityLogs: [{ planId: base.id, date: '2026-11-03', activityId: 'lunch', status: 'done', count: 0, labelSnapshot: 'Lunch', updatedAt: 't' }], dayOverrides: [] },
+      history: { activityLogs: [tick('2026-11-03', 'lunch'), tick('2026-11-04', 'lunch', 'pending')], dayOverrides: [] },
     });
-    expect(r.charts.energy.series[0].points).toEqual([]);
-    expect(r.charts.protein.series[0].points).toEqual([]);
-    expect(r.charts['energy-balance'].empty).toMatch(/Ticked planned meals don’t count/);
-    expect(r.charts.energy.note).toMatch(/ticked planned meals don’t count/);
+    expect(r.charts.energy.series[0].points.map((p) => [p.date, p.value])).toEqual([['2026-11-03', 1780]]);
+    expect(r.charts.protein.series[0].points.map((p) => [p.date, p.value])).toEqual([['2026-11-03', 42]]);
+    expect(r.charts['energy-balance'].series[0].points).toEqual([expect.objectContaining({ value: 1780 - 10000 })]);
+    expect(r.charts.energy.note).toMatch(/Ticked plan meals count at the plan’s estimates/);
+  });
+
+  it('#154: a ticked meal with no planned energy makes the day incomplete: shown, never in the balance', () => {
+    const tick = (activityId: string) => ({ planId: base.id, date: '2026-11-03', activityId, status: 'done' as const, count: 0, labelSnapshot: activityId, updatedAt: 't' });
+    const r = progressReport([obs('2026-11-03', 'total_energy', 10000)], adult, TODAY, '30d', { energy: 'kJ', mealLogs: [], history: { activityLogs: [tick('lunch'), tick('snack')], dayOverrides: [] } });
+    expect(r.charts.energy.series[0].points).toEqual([expect.objectContaining({ date: '2026-11-03', value: 1780, incomplete: true })]);
+    expect(r.charts['energy-balance'].series[0].points).toEqual([]);
   });
 
   it('a day whose logged meals don’t all state their energy is an under-count: shown as eaten, never in the balance', () => {

@@ -71,7 +71,7 @@ export function isDevHost(hostname: string): boolean {
 /**
  * The API base URL as an origin plus optional path, without a trailing slash; null when unusable. `https://` always;
  * `http://` only for a dev build (`dev: true`) talking to a development host (isDevHost). Never credentials, a query
- * or a fragment in the address.
+ * or a fragment in the address. A trailing `/api/body-anvil/v1` is dropped, since the client adds it (#155).
  */
 export function normalizeBaseUrl(input: string, opts: { dev?: boolean } = {}): string | null {
   try {
@@ -79,7 +79,9 @@ export function normalizeBaseUrl(input: string, opts: { dev?: boolean } = {}): s
     const ok = u.protocol === 'https:' || (u.protocol === 'http:' && !!opts.dev && isDevHost(u.hostname));
     if (!ok) return null;
     if (u.username || u.password || u.search || u.hash) return null;
-    return `${u.origin}${u.pathname.replace(/\/+$/, '')}`;
+    // #155: a value that already ends in the API path would double it (…/v1/api/body-anvil/v1/enroll → 404). Drop it.
+    const path = u.pathname.replace(/\/+$/, '');
+    return `${u.origin}${path.endsWith(API_PREFIX) ? path.slice(0, -API_PREFIX.length) : path}`;
   } catch {
     return null;
   }

@@ -15,6 +15,10 @@ case "$EXPO_PUBLIC_BODY_ANVIL_API_URL" in
   https://*) ;;
   *) echo "EXPO_PUBLIC_BODY_ANVIL_API_URL must start with https:// for a release build" >&2; exit 1 ;;
 esac
+# #155: the app adds /api/body-anvil/v1 itself; a value that includes it is a configuration mistake.
+case "$EXPO_PUBLIC_BODY_ANVIL_API_URL" in
+  */api/body-anvil|*/api/body-anvil/*) echo "EXPO_PUBLIC_BODY_ANVIL_API_URL must be the site only (e.g. https://questspirestudios.com); the app adds /api/body-anvil/v1" >&2; exit 1 ;;
+esac
 
 KEYSTORE=/run/secrets/personal-fitness-tracker-upload.jks
 [ -f "$KEYSTORE" ] || { echo "Upload keystore is missing" >&2; exit 1; }

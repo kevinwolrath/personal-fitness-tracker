@@ -220,6 +220,20 @@ describe('client', () => {
     expect(normalizeBaseUrl('not a url')).toBeNull();
   });
 
+  it('#155: a base URL that already ends in the API path is used without doubling it', async () => {
+    expect(normalizeBaseUrl('https://questspire.example/api/body-anvil/v1')).toBe('https://questspire.example');
+    expect(normalizeBaseUrl('https://questspire.example/api/body-anvil/v1/')).toBe('https://questspire.example');
+    expect(normalizeBaseUrl('https://questspire.example/base/api/body-anvil/v1')).toBe('https://questspire.example/base');
+    expect(normalizeBaseUrl('https://questspire.example/base')).toBe('https://questspire.example/base');
+    const urls: string[] = [];
+    const client = healthSyncClient('https://questspire.example/api/body-anvil/v1', async (url) => {
+      urls.push(url);
+      return { status: 401, headers: { get: () => null }, text: async () => '{}' };
+    });
+    await client.getSnapshot({ userId: 'u', ownerToken: 't'.repeat(20) }).catch(() => undefined);
+    expect(urls).toEqual(['https://questspire.example/api/body-anvil/v1/users/u/snapshot']);
+  });
+
   it('a missing address and an unreadable reply are clear errors', async () => {
     const { deps } = await setup();
     const r = await syncNow({ ...deps, client: healthSyncClient('', async () => { throw new Error('unused'); }) });

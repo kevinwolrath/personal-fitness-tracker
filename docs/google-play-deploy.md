@@ -20,7 +20,7 @@ These are the names the workflow reads (`.github/workflows/google-play-internal.
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` — the Google Play service-account JSON key, as plain JSON text
 Repository **variable** (Settings → Secrets and variables → Actions → Variables), not a secret:
 
-- `BODY_ANVIL_API_URL`: the Body Anvil API base URL, `https://…` (#146). It's inlined into the app. The workflow and the build refuse a missing or non-https value, and the build checks that the AAB contains it. See [the health sync API](health-sync-api.md#base-url).
+- `BODY_ANVIL_API_URL`: the site the Body Anvil API runs on, `https://questspirestudios.com`, without `/api/body-anvil/v1` (#146, #155). It's inlined into the app. The workflow and the build refuse a missing or non-https value, or one that includes the API path, and the build checks that the AAB contains it. See [the health sync API](health-sync-api.md#base-url).
 
 Repository secret:
 

@@ -1,0 +1,1256 @@
+[
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight squat. Side three-quarter view. Start standing tall, arms forward. Finish hips back and knees bent in a comfortable squat, feet planted, neutral spine. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "bodyweight_squat",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-0a829ba4-ce2a-4147-be46-840824d42b9a.png",
+    "sourceSha256": "c5574a96d7ff6805782a027560a1bc6fab667c6e0ceef7df8d895719f6846c65",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 48095,
+        "sha256": "f70f0ea684b21521b5f0e1e91b8ff7386f0c6c63e001144d8709371ab44d8ac5"
+      },
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47049,
+        "sha256": "34fbdcfc4b55f8a9df343fecf3e5a5dfbc0ef9c49edd5ca78f4737f02fca4f8b"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight squat. Side three-quarter view. Start standing tall, arms forward. Finish hips back and knees bent in a comfortable squat, feet planted, neutral spine. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "bodyweight_squat",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-af612f4d-56d7-47f2-b05f-97274b1e2c16.png",
+    "sourceSha256": "99db6e2f51ce4a74467564f578a2b1f799e88dc47b7705f4d6e2192bb91fee13",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46433,
+        "sha256": "8a72062a31195d5803224ce32f8c0bdb6cfd39b0052d74f093dd6c4eed297a83"
+      },
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46638,
+        "sha256": "da3e53feb62f21aa963170d99eda710fd92e861dd4570ef85308d2ff504af9dd"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight squat. Side three-quarter view. Start standing tall, arms forward. Finish hips back and knees bent in a comfortable squat, feet planted, neutral spine. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "bodyweight_squat",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-86991fb9-c227-4968-8356-81dd162f0fcd.png",
+    "sourceSha256": "64e8e78cfb8a903bfd27d1a8f86387256cfeca328847ae60bfe115e0cf326c53",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 44263,
+        "sha256": "be2c755520d0a7c52b6d8ffb9b7bc499f3aea20abc56a4e53815575083b6b03f"
+      },
+      {
+        "file": "assets/exercises/heroes/bodyweight-squat-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 43943,
+        "sha256": "239906f20ea56268a73e08722f76b26ac36bab46907f4aef9c56fef0b1812765"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Incline push-up with palms on a stable waist-height exercise bench. Side view. Start straight plank from shoulders to heels, arms extended; finish elbows bent and chest near bench edge. Body rigid, heels raised, bench same in both frames. No floor push-up. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "incline_push_up",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-956dd457-4661-450d-bb91-7cd08c97de8c.png",
+    "sourceSha256": "6beb7243ed83a577519c334fdeba11bff6b0b07fab617f2972ff7c5253aadcb8",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/incline-push-up-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46851,
+        "sha256": "434b91ecf4bf3e0e21b1b68c95a9ea469073972b47b66b9293a7f11080e25112"
+      },
+      {
+        "file": "assets/exercises/heroes/incline-push-up-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 44518,
+        "sha256": "c86c40eb0f6d6a009b6953f60ca7006de91617632033aa6c45c6eba6f4d38cf8"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Incline push-up with palms on a stable waist-height exercise bench. Side view. Start straight plank from shoulders to heels, arms extended; finish elbows bent and chest near bench edge. Body rigid, heels raised, bench same in both frames. No floor push-up. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "incline_push_up",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-43826208-8059-42a8-bbeb-28ffb65be7f9.png",
+    "sourceSha256": "4a9a13cf79cddceda7fb6dbd8e25fe9b72b9a327c4eb21ca697d83f465bd3793",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/incline-push-up-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49432,
+        "sha256": "7aa47f75c093224afb40bc11bd5d3025fe15477cf08e7c0803c7e6288f788c2f"
+      },
+      {
+        "file": "assets/exercises/heroes/incline-push-up-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46965,
+        "sha256": "1646046210115451a2dbf0747341c259c97a37da7b9f38c50704a57600f0816f"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Incline push-up with palms on a stable waist-height exercise bench. Side view. Start straight plank from shoulders to heels, arms extended; finish elbows bent and chest near bench edge. Body rigid, heels raised, bench same in both frames. No floor push-up. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "incline_push_up",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-24e91863-44d7-4b25-ab24-2fe42eae6786.png",
+    "sourceSha256": "9fe914b7adab7aee02beccac975ed823b874cd28da24ed3da1ca8c52eff20627",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/incline-push-up-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49649,
+        "sha256": "b4de8fbe348fa1d2dfc208504c8cecfcaddad2b5f84e94e2d1c9bc2a17b7ab68"
+      },
+      {
+        "file": "assets/exercises/heroes/incline-push-up-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46998,
+        "sha256": "527f19c2e33647513e2cfe94dca448e50ac31ffc9bb96f41975e9818105c45f6"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Supine glute bridge on floor, side view. Start lying on back, knees bent and feet flat near hips, arms on floor. Finish hips lifted into straight shoulder-hip-knee line with shoulders/head still on floor. No back hyperextension. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "glute_bridge",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-a41ce174-acba-4030-b2b6-aabafdfc13a9.png",
+    "sourceSha256": "abc7f44a6a2167f8c317abb854ff1bf3ba479486badde59ecd74dad040769750",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/glute-bridge-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 48141,
+        "sha256": "d2ec6bf6ab09e6c86153d16869f630dcd233824612c7be1ee3da850e5eebeda7"
+      },
+      {
+        "file": "assets/exercises/heroes/glute-bridge-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47862,
+        "sha256": "f900876bf9cef5073f4e192aa608d36430eb6ab00638f1f64a02f73e3ba27954"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Supine glute bridge on floor, side view. Start lying on back, knees bent and feet flat near hips, arms on floor. Finish hips lifted into straight shoulder-hip-knee line with shoulders/head still on floor. No back hyperextension. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "glute_bridge",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-f04adeb6-ae54-4ae5-926f-46b810647fa7.png",
+    "sourceSha256": "b8c4b52dab39d890f0cbb7c093c8a81b98441acb32996e403c6548afc142ef70",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/glute-bridge-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47198,
+        "sha256": "098ca9668b5b7cd5f4cbc8185f0c277079ed5c5ee63c87ba79dfe5ae7323c85b"
+      },
+      {
+        "file": "assets/exercises/heroes/glute-bridge-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47873,
+        "sha256": "51785d1fff041285718bc07185c610cd1e9d798f56ece2990e839273d34b4d8f"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Supine glute bridge on floor, side view. Start lying on back, knees bent and feet flat near hips, arms on floor. Finish hips lifted into straight shoulder-hip-knee line with shoulders/head still on floor. No back hyperextension. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "glute_bridge",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-1586db0f-4dcf-47bf-b615-e93113fb5daf.png",
+    "sourceSha256": "8fcb67175c16cd8a0c78a8e78c847edff6fc9ee37eada57de01de9819cafe995",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/glute-bridge-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 39390,
+        "sha256": "61d41f244198457ea8acebd684f93ed9e2b8f61b881e3e8f4d4969c5bd52ecd6"
+      },
+      {
+        "file": "assets/exercises/heroes/glute-bridge-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 40734,
+        "sha256": "a05d58b2e05b75ab044593f24c941e3c5468805be460dda661120aa6dd92b44c"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight reverse lunge, three-quarter side view. Start standing with feet hip width. Finish one foot stepped back, both knees bent, rear knee hovering above floor, front foot flat, torso tall. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "reverse_lunge",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-279f0895-e6df-4c34-a83f-913370258f5f.png",
+    "sourceSha256": "b89ff9d024a764142afe31411b1f0cf3184bf405a36c21d85434b208b914aea1",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47423,
+        "sha256": "0d061617a1fcbd102a175a54c0afaabaf4221567490b7bfd98f99da571ab3629"
+      },
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47214,
+        "sha256": "36ee58ba9685f1a3e9958fa4c1167afca4b59736cce09357d5fcb2d319d84beb"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight reverse lunge, three-quarter side view. Start standing with feet hip width. Finish one foot stepped back, both knees bent, rear knee hovering above floor, front foot flat, torso tall. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "reverse_lunge",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-a12fe0a6-e9ec-4221-8299-c6be1fcf2d78.png",
+    "sourceSha256": "b09d85c27d12639aa148cb9669b8aa72d53fab5421ccc03cc244b5c0cd4a53a6",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 47955,
+        "sha256": "7ee4ca83752df445b51cc52f27cf162731af1b218bff4dcca089d59169312f1e"
+      },
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 46997,
+        "sha256": "850d88852d278ebe7dc68740c806ac41cfb0360f0aadc6726d64b3d70447ac86"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Bodyweight reverse lunge, three-quarter side view. Start standing with feet hip width. Finish one foot stepped back, both knees bent, rear knee hovering above floor, front foot flat, torso tall. No weights. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "reverse_lunge",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-7e55f689-6433-4670-8ef9-a5da28a05f26.png",
+    "sourceSha256": "ca01268a7db48c3dce0efaa68f07cbc0e6132d720c23918607e818a2402d90df",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 45603,
+        "sha256": "23d35915b0354c18b42b3c06aae869713221415af22bdbdd00a22c20871b4854"
+      },
+      {
+        "file": "assets/exercises/heroes/reverse-lunge-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 45794,
+        "sha256": "3ac7ce5db613c80bb5d2be9fba8fd97c26fa343b646ac3c00d56eb29f6e27228"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dead bug core exercise, side view on floor. Start supine, arms vertical, hips/knees at 90 degrees. Finish opposite arm and leg extended toward floor, other arm vertical and other knee bent; lower back stays against floor, head rests. Clearly opposite limbs. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dead_bug",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-2fbbbd4d-d624-4207-9c2d-b32e6b1aba70.png",
+    "sourceSha256": "def17307988bd6a71841a3cbf3c7897725424bd553f98ef448e4685430079986",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dead-bug-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 37182,
+        "sha256": "e2d72f7625dd51a33513053a90c86e3fe599cf9494f242b896ac5732546544da"
+      },
+      {
+        "file": "assets/exercises/heroes/dead-bug-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 40559,
+        "sha256": "47dd217b36209c63739da1f94796f1ce958912785a3cf4f7cb6a70fd1706dea8"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dead bug core exercise, side view on floor. Start supine, arms vertical, hips/knees at 90 degrees. Finish opposite arm and leg extended toward floor, other arm vertical and other knee bent; lower back stays against floor, head rests. Clearly opposite limbs. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dead_bug",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-cdc2be48-fdf1-443e-af66-33c3f3ef0604.png",
+    "sourceSha256": "9965c217f55a7dbb1745ce21e71b4149ea66680e6ed5f942744f903629270101",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dead-bug-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 41122,
+        "sha256": "2f05cbe0667ca8368d56e20ee8e8d3943fd81d15cb283b7c009b1df615a28ecd"
+      },
+      {
+        "file": "assets/exercises/heroes/dead-bug-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 43349,
+        "sha256": "767550d11956b871e54cf62e567f25700bc7d59803b6768d837c695bc8abdf2b"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dead bug core exercise, side view on floor. Start supine, arms vertical, hips/knees at 90 degrees. Finish opposite arm and leg extended toward floor, other arm vertical and other knee bent; lower back stays against floor, head rests. Clearly opposite limbs. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dead_bug",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-9cb6d3d6-8251-441a-b381-66d5deba8cbf.png",
+    "sourceSha256": "1956550e72c2f3a32820cf94fa05a8355d08f65e1dd1d7d9c7de3bd5fdb6cc45",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dead-bug-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 40093,
+        "sha256": "e561678091a6a726520e20737dbf908542b15942c691e4552064113418df0c36"
+      },
+      {
+        "file": "assets/exercises/heroes/dead-bug-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 44036,
+        "sha256": "5a87de7e31fecf93da5048d07200e7ec3120d125387810b5b8374264119c6880"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band row. Side view with band anchored securely at lower chest height in front of hero. Start arms extended holding ends, band visibly connects hands to anchor. Finish elbows drawn back beside ribs, hands near lower ribs, torso unchanged upright. No cable machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_row",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-9daa124c-f6ca-4a67-b5f5-4baa7d85075c.png",
+    "sourceSha256": "2980737e2eeb2ebaf73ba610884dfad0d9bb1e57de8576718984ca817c801893",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-row-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 52545,
+        "sha256": "619c087c8de5ad35674ef49e2bf3f5578dc856a9140f0236db88fa73c9805c05"
+      },
+      {
+        "file": "assets/exercises/heroes/band-row-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 51287,
+        "sha256": "49e5a812a3d3e2292b90718859342202933a92a612bbf172104c30bcd3b4685a"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band row. Side view with band anchored securely at lower chest height in front of hero. Start arms extended holding ends, band visibly connects hands to anchor. Finish elbows drawn back beside ribs, hands near lower ribs, torso unchanged upright. No cable machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_row",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-d2d00524-d970-48ed-8f5f-0a178d3acbf6.png",
+    "sourceSha256": "9f4b95391f61e81b3b0ea5220cc75f0738d0243c0a311371e8fed038fe124920",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-row-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 52949,
+        "sha256": "e8939f706b160fdb7282fc5beee4f3e6b77d42e84a98637bf99d81b2ee2bace3"
+      },
+      {
+        "file": "assets/exercises/heroes/band-row-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 52671,
+        "sha256": "48ef1d863bb307fcffaaf3964e1f426b00c0164f30b8eb4487f15af622d797aa"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band row. Side view with band anchored securely at lower chest height in front of hero. Start arms extended holding ends, band visibly connects hands to anchor. Finish elbows drawn back beside ribs, hands near lower ribs, torso unchanged upright. No cable machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_row",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-36029e78-00d9-423a-9b50-e3fa9ecb610a.png",
+    "sourceSha256": "11522514a85a9f30910da2c85939f77d1db3185761eb5442c3e8ef4c046c49ce",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-row-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 44667,
+        "sha256": "35bb999464abf2d6ff4c3f1d4da6c369e432bb678946cdfb28ecf453f9cae3f9"
+      },
+      {
+        "file": "assets/exercises/heroes/band-row-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 44466,
+        "sha256": "36cb695097f9ff3967be6943bf92611fb9e2ac9a3af7b7b0d64c0443ea1c1db6"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band chest press. Three-quarter side view, band anchored securely behind hero at chest height. Start elbows bent, hands beside chest holding band ends; finish arms extended forward at chest height, band remains visibly connected behind. Staggered stable stance, no machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_chest_press",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-5905f595-ec80-4363-8462-294c3aaadd22.png",
+    "sourceSha256": "6b1de65f6cba60f9a5dfa103d1f71cbd17bde558a5dbc68623eccc10e66aebc1",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-chest-press-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 54283,
+        "sha256": "e4500591e6db8d7da320bb58788adbe6b529a47fb8a1bdb3c07df937ba6cef98"
+      },
+      {
+        "file": "assets/exercises/heroes/band-chest-press-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 55195,
+        "sha256": "06b615ca86640a90f6a194cc91d4873e20d6da2a4f5e1c049ce4c8324c6d75b6"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band chest press. Three-quarter side view, band anchored securely behind hero at chest height. Start elbows bent, hands beside chest holding band ends; finish arms extended forward at chest height, band remains visibly connected behind. Staggered stable stance, no machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_chest_press",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-efbd3776-72d9-4631-99e1-b82821a9f805.png",
+    "sourceSha256": "d08f3e8c653557c2c2709b11e509651fc62c23bd0f0578b524336ea2bce5110b",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-chest-press-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 60478,
+        "sha256": "123bc7eba5eec71c4a8ea43488c1d7e655cb5450d37b91b17c1fbdf17c8c4bbc"
+      },
+      {
+        "file": "assets/exercises/heroes/band-chest-press-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 61728,
+        "sha256": "1530ff9663fa54520a082e2544479d084243c2be84607a6002ae63ae20fcebaf"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance-band chest press. Three-quarter side view, band anchored securely behind hero at chest height. Start elbows bent, hands beside chest holding band ends; finish arms extended forward at chest height, band remains visibly connected behind. Staggered stable stance, no machine. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_chest_press",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-93a78be3-9bc9-4803-a1ed-2625c449218b.png",
+    "sourceSha256": "047e1190bf0d1e00ce6443c94479ee6658c72131ba48faba32af1f605573ec77",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-chest-press-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 57283,
+        "sha256": "d63123449223cbad06f668d944d9d264b857aedaa53463819e6c2fb27a069457"
+      },
+      {
+        "file": "assets/exercises/heroes/band-chest-press-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 57188,
+        "sha256": "4b9205fdf351ca99f9c0eb9379538991b1df9412df3a81c873c0381ee2149af6"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance band pull-apart, front view. Start arms straight forward at shoulder height, hands shoulder width holding short elastic band. Finish straight arms spread wide at shoulder height, stretched band across chest. Do not bend elbows, lift shoulders or move torso. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_pull_apart",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-368d0782-bd68-4e0a-afd5-015a69544542.png",
+    "sourceSha256": "b8880c2badaf77e71b31f9651221acb870762b6394496dd98d7a2a62c3f94262",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49374,
+        "sha256": "a9cde4306c18dbbe066c3382f257845fcb191e1df2c7fc15192728dd5c6490a3"
+      },
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 55902,
+        "sha256": "00d64cbcb0cbf4e9e4e4bfd94cced34f23e98b8e2d89a887a2b05924212c6c44"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance band pull-apart, front view. Start arms straight forward at shoulder height, hands shoulder width holding short elastic band. Finish straight arms spread wide at shoulder height, stretched band across chest. Do not bend elbows, lift shoulders or move torso. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_pull_apart",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-ba138ff6-5506-48a6-bad6-823c608e723b.png",
+    "sourceSha256": "4e8ce63581942155f8e136cf96790339137182a405606e14f07bd84b51f1e315",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 43035,
+        "sha256": "a33eafd262c7236d2cf898e9e9a19808ce54510367a8328c8351d45648194fd2"
+      },
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 48096,
+        "sha256": "d1c610cbd9cb3a7c9c7c0d143d5d3803cfebe4bb23bc88c2aff35e9c2576bd99"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Standing resistance band pull-apart, front view. Start arms straight forward at shoulder height, hands shoulder width holding short elastic band. Finish straight arms spread wide at shoulder height, stretched band across chest. Do not bend elbows, lift shoulders or move torso. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "band_pull_apart",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-c3aebc50-8e4f-4bd7-a074-78fbbf1bed6c.png",
+    "sourceSha256": "0d1770f403170f77c51d44ee1b07838109e48614317270ef20a5513c295ed55b",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 42710,
+        "sha256": "fe4278f33be26bb97f683330855ee3c7bcf63cd69159e152f4be9b01d76935b7"
+      },
+      {
+        "file": "assets/exercises/heroes/band-pull-apart-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49098,
+        "sha256": "ecab7f18c53766b43690594dc537d02167afc89d510e675b01d93805a3db23ca"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: One-arm dumbbell row supported on exercise bench, three-quarter side view. One hand and same-side knee on bench, opposite foot planted on floor, neutral spine near horizontal. Start other arm hanging straight holding HEX DUMBBELL, finish elbow pulled back and dumbbell beside hip. No kettlebell. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dumbbell_row",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-d2f750cd-7b65-4d71-94db-b82e107d6ad1.png",
+    "sourceSha256": "7a75434f5d96e02fe0a30962e774f4930d8230eceff56bdabaff16c7c2d697d2",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 69986,
+        "sha256": "3a0728b962a56718c6e47a0cce2c097b418b455c57c718da869a1392e4bccfae"
+      },
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 66372,
+        "sha256": "bd246cf1fdfae1a21bca843a27f8674fa230af9d858cff16c3a4d3511ae9f835"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: One-arm dumbbell row supported on exercise bench, three-quarter side view. One hand and same-side knee on bench, opposite foot planted on floor, neutral spine near horizontal. Start other arm hanging straight holding HEX DUMBBELL, finish elbow pulled back and dumbbell beside hip. No kettlebell. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dumbbell_row",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-40aba690-ced0-44f1-bb6d-43cfd207e3b7.png",
+    "sourceSha256": "5f7e2fcedb3725176bd02a3bf1fb42c51f7dc45a1bedfaeb84a16e9011607979",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 71179,
+        "sha256": "4a99a7baf401d94fcaedf895914069adcf32f5f4509e9d8b8ae3511d44bbeb24"
+      },
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 67600,
+        "sha256": "518b8c70d630c2e551b1036a98fe1e05a42c143c4b7ace24b574b57e7d33b78c"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: One-arm dumbbell row supported on exercise bench, three-quarter side view. One hand and same-side knee on bench, opposite foot planted on floor, neutral spine near horizontal. Start other arm hanging straight holding HEX DUMBBELL, finish elbow pulled back and dumbbell beside hip. No kettlebell. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "dumbbell_row",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-4912479c-69c4-4b77-9eb8-2b722e089243.png",
+    "sourceSha256": "9462ea4615f5f25f3e2be693bd1a8670de3dab83caa24edbc54184112c5552f9",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 62540,
+        "sha256": "39f9851a1061d011c3bcd4aabc0b5602b58e5c6943df9b1675dd1181c8b79dab"
+      },
+      {
+        "file": "assets/exercises/heroes/dumbbell-row-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 59846,
+        "sha256": "0f8c8cf1907a96df46dd757d2d6db18136127b327b5524687b87baa547f8bd84"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell floor press, three-quarter side view. Hero supine on floor, knees bent and feet flat, a hex dumbbell in each hand. Start elbows bent with upper arms resting gently on floor at 45 degrees to torso; finish both arms vertical above chest. Head and back remain on floor. No bench. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "floor_press",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-d099ee98-ee44-4136-8910-c1f27f1adfb0.png",
+    "sourceSha256": "8dfb1d1e96d018b39459449547b42d0c86c37eb8e7a42367b821bc1fb3ec328f",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/floor-press-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 51375,
+        "sha256": "bb59aa0ca0e531af7e09860bbc9ac44ae22b2ba4368fe9bf60b5f37ebc745c3b"
+      },
+      {
+        "file": "assets/exercises/heroes/floor-press-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 55502,
+        "sha256": "f0ef20ff3a031fc14fda999d502d16bb5d50aa8655d7bdaf8ac43da4743f084b"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell floor press, three-quarter side view. Hero supine on floor, knees bent and feet flat, a hex dumbbell in each hand. Start elbows bent with upper arms resting gently on floor at 45 degrees to torso; finish both arms vertical above chest. Head and back remain on floor. No bench. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "floor_press",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-ac4a938a-a673-480b-b278-44da5821f9bb.png",
+    "sourceSha256": "cac4ead0c162661ec4fae857f3945ac0d54240f5fd57076dbb00a2ffc819dccf",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/floor-press-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 54012,
+        "sha256": "6b5bb166b0e67611c1170243a361e16397fc1e31d954c3fb25accee3b8e7f576"
+      },
+      {
+        "file": "assets/exercises/heroes/floor-press-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 56488,
+        "sha256": "38cb720921d7fa92cc73089f2995fb2e571a55d7b1941f3c53d69e169d998f63"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell floor press, three-quarter side view. Hero supine on floor, knees bent and feet flat, a hex dumbbell in each hand. Start elbows bent with upper arms resting gently on floor at 45 degrees to torso; finish both arms vertical above chest. Head and back remain on floor. No bench. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "floor_press",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-29e7ebac-cbcd-4288-946e-2a67ff3fd2c0.png",
+    "sourceSha256": "c83aec6764aedc5ae7b06d9f2bd3078fb358461f0a0999ac755131a76b46edb3",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/floor-press-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49888,
+        "sha256": "194065138a48703d1451f4e5600eb8a4db43607762887601f5a4e5298e16c096"
+      },
+      {
+        "file": "assets/exercises/heroes/floor-press-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 53317,
+        "sha256": "fdb8bc3770faf9f8cfbe8552b576d15e81e740cbda0016549cc47c02482094bc"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell Romanian deadlift, side three-quarter view, hex dumbbell in each hand. Start standing with soft knees and dumbbells at thighs. Finish hips pushed back, torso hinged forward with flat neutral back, dumbbells near mid-shins close to legs, knees only slightly bent. Not squat, no rounded back. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "romanian_deadlift",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-f0aaacde-3478-40e7-8a6c-a294315aeb6c.png",
+    "sourceSha256": "b6b65a4e4ac792461804e7cdfa30ba4c9528b2552f63f109929034d0b25ecf2d",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 50547,
+        "sha256": "1fa6f45a950029f7cdda231b213844fcc337a1098ad72ed5fa6ee599edb8e46a"
+      },
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49417,
+        "sha256": "e6535ee2a8bd0038840829670edeb87864dadfbf45e1195b1c3147399936c3a2"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell Romanian deadlift, side three-quarter view, hex dumbbell in each hand. Start standing with soft knees and dumbbells at thighs. Finish hips pushed back, torso hinged forward with flat neutral back, dumbbells near mid-shins close to legs, knees only slightly bent. Not squat, no rounded back. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "romanian_deadlift",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-39f00ca3-6aa2-45b0-8508-542e7eed0abe.png",
+    "sourceSha256": "40eab55428be412fcb764546d152794e52582f2c9c05aa684b18340506ddbdaa",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49077,
+        "sha256": "6e52a98e3a340e9a41d578716391592b5dee74281f8c007e0cc7bf5916eaf9c5"
+      },
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 49826,
+        "sha256": "db8ee1e94fb34cd91832ff7c8a45a32bcd0e7f62da3787e7867619fb8cb59ee5"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell Romanian deadlift, side three-quarter view, hex dumbbell in each hand. Start standing with soft knees and dumbbells at thighs. Finish hips pushed back, torso hinged forward with flat neutral back, dumbbells near mid-shins close to legs, knees only slightly bent. Not squat, no rounded back. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "romanian_deadlift",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-6319f6db-25b4-4d2c-b932-709bff686674.png",
+    "sourceSha256": "92ac816d7f8cfd623f77a76a90353256aa6e3ea188a245bd4a52eb008cb9930b",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-neutral-1.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 62406,
+        "sha256": "c5a4b9705563026b1a234a9abe5f5940b9f7bd939773a1c8d7bc7bfc2daddb4d"
+      },
+      {
+        "file": "assets/exercises/heroes/romanian-deadlift-neutral-2.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 62183,
+        "sha256": "93a64844709e6aca65726927b9ed0a581d32afb1d2b5a0b4d831784305b9a040"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell farmer carry, front three-quarter view, heavy hex dumbbell in each hand hanging beside thighs with straight arms. Start standing tall shoulders level; finish a short controlled walking step with torso tall and weights steady at sides. No overhead lift, no shrug. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "farmer_carry",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-c02b92af-7433-41d8-b5a0-c47d6d2881e8.png",
+    "sourceSha256": "30f111e8aab6b529a30580f91e3756e9d19ac004b369217123be79b9d346d6a2",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/farmer-carry-male-1.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 73912,
+        "sha256": "33d9cf3a7d6f2e786886cce89fde8f9e9144a9295c75642f84f1f9d8688d8eb2"
+      },
+      {
+        "file": "assets/exercises/heroes/farmer-carry-male-2.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 75376,
+        "sha256": "8ad63788fe796247f5ff9972a7abe0134e4b1313f4b10e7369a75b955fb29594"
+      }
+    ],
+    "priorSource": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-5a13812b-c1b8-4517-b926-433fbdaae556.png",
+    "priorSourceSha256": "37a94b77c0ff141e0f7d58b9f8edb9555658e73eee776cd9c44e68bdece6552f",
+    "revisionPrompt": "Edit this two-panel dumbbell farmer carry demonstration to correct walking form. Preserve the same male hero identity, costume, dumbbells, dark background, two equal-width panels and full-body framing. Use a SIDE THREE-QUARTER camera in BOTH panels so two separate foot tracks are visible. Left: standing tall with feet hip-width apart. Right: one short walking stride with feet still on two parallel hip-width tracks. DO NOT CROSS FEET OR LEGS and do not use a fashion runway stride. Torso upright, shoulders level, straight arms holding dumbbells steady at sides. Correct safe training demonstration. No text. Both panels must fit fully inside their own half."
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell farmer carry, front three-quarter view, heavy hex dumbbell in each hand hanging beside thighs with straight arms. Start standing tall shoulders level; finish a short controlled walking step with torso tall and weights steady at sides. No overhead lift, no shrug. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "farmer_carry",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-02b1dc1e-00b4-474c-a70e-3060dfd8bb6a.png",
+    "sourceSha256": "8808e593f3d6e041a2fe482fe93d252b0d3ec90474ba746d4036fb8fb4eca2a2",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/farmer-carry-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 51583,
+        "sha256": "db66ac03b020f61192c24e5377fbf5a2a7a9ce07177bae43fb27d9c4b209098d"
+      },
+      {
+        "file": "assets/exercises/heroes/farmer-carry-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 52104,
+        "sha256": "1d61850cc1c0f01cc539541b88898008961a0c5a0b5b7d94590666d81d015327"
+      }
+    ],
+    "priorSource": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-957f390c-d251-44f9-9675-367a11a51c0d.png",
+    "priorSourceSha256": "12197fd3dc09525db997eff36618b5ae70b31c68cdae8f19d0c2574bba61e6f5",
+    "revisionPrompt": "Edit this two-panel dumbbell farmer carry demonstration to correct walking form. Preserve the same female hero identity, costume, dumbbells, dark background, two equal-width panels and full-body framing. Use a SIDE THREE-QUARTER camera in BOTH panels so two separate foot tracks are visible. Left: standing tall with feet hip-width apart. Right: one short walking stride with feet still on two parallel hip-width tracks. DO NOT CROSS FEET OR LEGS and do not use a fashion runway stride. Torso upright, shoulders level, straight arms holding dumbbells steady at sides. Correct safe training demonstration. No text. Both panels must fit fully inside their own half."
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Dumbbell farmer carry, front three-quarter view, heavy hex dumbbell in each hand hanging beside thighs with straight arms. Start standing tall shoulders level; finish a short controlled walking step with torso tall and weights steady at sides. No overhead lift, no shrug. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "farmer_carry",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-38480649-1c74-457c-bc34-da41d902479f.png",
+    "sourceSha256": "15dde4531dcff3a2cd22c5bb624fb0a0c0b8820775f5e1105cb39195f5975dbd",
+    "dimensions": [
+      1536,
+      1024
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/farmer-carry-neutral-1.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 75607,
+        "sha256": "3770bfef798227e6c94ab99f90389b76f519fea8dc44640940aac4c72eb5e03d"
+      },
+      {
+        "file": "assets/exercises/heroes/farmer-carry-neutral-2.jpg",
+        "dimensions": [
+          758,
+          1014
+        ],
+        "bytes": 74800,
+        "sha256": "33be2fb7a16ce6a967a3e7cf8fbdf7dbdff5e50cd5f46fa9512322e1b9017433"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same male Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Seated inclined leg press machine, side view showing recognizable padded angled seat/backrest, footplate and sled rails. Start seated with back/head supported, feet shoulder-width on footplate, knees bent toward chest within comfortable range. Finish press footplate away, knees nearly extended but not locked. Feet remain on plate and back on pad in both frames. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "leg_press",
+    "hero": "male",
+    "file": "hammer-curl-male-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-1fa0c267-296b-4ae6-b7d2-6b7b91fdd3e5.png",
+    "sourceSha256": "db7c393262e5177e8b811426265967c218536c67151f0a85becc6be7cccab294",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/leg-press-male-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 69117,
+        "sha256": "70ed85d294d315897661dc0e909292c445b982416ed3070dc98026a47f0b6fde"
+      },
+      {
+        "file": "assets/exercises/heroes/leg-press-male-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 68593,
+        "sha256": "087272b6e2b235867f1e5ddfc9fe6cc06bfffdafc926202d5b3e7a2dd2c94210"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same female Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Seated inclined leg press machine, side view showing recognizable padded angled seat/backrest, footplate and sled rails. Start seated with back/head supported, feet shoulder-width on footplate, knees bent toward chest within comfortable range. Finish press footplate away, knees nearly extended but not locked. Feet remain on plate and back on pad in both frames. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "leg_press",
+    "hero": "female",
+    "file": "hammer-curl-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-64d9bea9-e092-4daa-89f3-1f90059449ee.png",
+    "sourceSha256": "9289e4a02a5df40f7694aee82c5fd4fad097251e3e20796c341d61f93ad00c89",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/leg-press-female-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 75459,
+        "sha256": "39fa0a8802e194fdc4c9a23954526484b30af4b5694750ed75c643fc0b1662db"
+      },
+      {
+        "file": "assets/exercises/heroes/leg-press-female-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 76754,
+        "sha256": "3d6a84027573b15d29c1a7bcef9c538e295be6b96ba1214d37782a45aac61e1b"
+      }
+    ]
+  },
+  {
+    "prompt": "Generate an accurate exercise guide as TWO equal-width panels (start left, finish right), no text or labels. Reference image is character identity/style reference only. Preserve the same androgynous neutral Body Anvil superhero, charcoal/orange costume and dark background. Full body and all equipment must be completely visible with generous padding in BOTH panels; fixed camera and consistent scale; no center overlap. Exercise: Seated inclined leg press machine, side view showing recognizable padded angled seat/backrest, footplate and sled rails. Start seated with back/head supported, feet shoulder-width on footplate, knees bent toward chest within comfortable range. Finish press footplate away, knees nearly extended but not locked. Feet remain on plate and back on pad in both frames. Anatomically correct exercise coaching, realistic equipment, no unrelated props. Each panel will be split into a separate offline illustrated step.",
+    "movement": "leg_press",
+    "hero": "neutral",
+    "file": "hammer-curl-neutral-1.jpg",
+    "source": "C:\\Users\\kevin\\.codex\\generated_images\\01a1cd52-54e4-74f0-9b5e-beceb18c10d4\\exec-eeea6684-f90a-45e1-bd96-2123a75a6609.png",
+    "sourceSha256": "4fb8cd3c523073613902e1551584678c8ecdbd3d945ba66da47d7e94c2f3cdc1",
+    "dimensions": [
+      1774,
+      887
+    ],
+    "outputs": [
+      {
+        "file": "assets/exercises/heroes/leg-press-neutral-1.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 72809,
+        "sha256": "28859e3b7384288c1c52129f611b597e6c20a5289bc9c5604b0e9419a69a8cf3"
+      },
+      {
+        "file": "assets/exercises/heroes/leg-press-neutral-2.jpg",
+        "dimensions": [
+          768,
+          768
+        ],
+        "bytes": 71854,
+        "sha256": "de9a48a10206a937646810a1b9910690f6bbe2224144c860cd8b804c6894a24f"
+      }
+    ]
+  }
+]

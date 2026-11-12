@@ -42,7 +42,7 @@ test('the sheet lists every eligible exercise; a non-plan tick is one free log, 
   await expect(page.getByTestId('today-workout-totals')).toContainText('5planned'); // #90: the plan only
   await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(5);
   await page.getByTestId('today-workout-extras').click(); // the rest of the catalogue, kept separate
-  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(13); // #151: one more optional catalogue movement.
+  await expect(workoutSheet(page).getByRole('checkbox')).toHaveCount(21); // #158: expanded illustrated catalogue; five planned exercises stay unchanged.
   await expect(workoutSheet(page)).not.toContainText('VR boxing'); // conditioning stays its own task
 
   await tick(page, 'Standing calf raises, 3 × 15').click();

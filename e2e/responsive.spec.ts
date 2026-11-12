@@ -1,3 +1,5 @@
+import { equipmentCatalogue, setEquipmentSelection } from '../src/equipment/catalogue';
+import seed from '../plans/seed.plan.json';
 import { expect, test, type Page } from '@playwright/test';
 import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, openWorkoutSheet, seedPlan, seedRecords, workoutSheet } from './helpers';
 
@@ -354,4 +356,20 @@ test('Progress (#52) fits at every width, with the Edit charts sheet open too', 
   await page.setViewportSize({ width: 320, height: 800 });
   await page.waitForTimeout(300);
   expect(await layoutProblems(page), 'edit charts at 320px').toEqual([]);
+});
+
+test('My Gym groups, search and image details fit every supported width (#158)', async ({ page }) => {
+  test.setTimeout(90_000);
+  await seedPlan(page, { ...seed, formatVersion: 9, exercise: { ...seed.exercise, equipment: setEquipmentSelection([], equipmentCatalogue.items.map(item => item.id), true) } });
+  await openAt(page, MONDAY);
+  await chooseFromMenu(page, 'My Gym');
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.getByTestId('gym-search').fill('dumbbells');
+    expect(await layoutProblems(page), `My Gym at ${width}`).toEqual([]);
+    await page.getByRole('button', { name: 'Details for Adjustable dumbbells', exact: true }).click();
+    await expect(page.getByTestId('gym-detail')).toBeVisible();
+    expect(await layoutProblems(page), `My Gym details at ${width}`).toEqual([]);
+    await page.getByRole('button', { name: 'Back to My Gym', exact: true }).click();
+  }
 });

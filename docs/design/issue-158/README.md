@@ -1,6 +1,6 @@
 # My Gym (#158): layout review and implementation map
 
-Started from develop after #162 merged (77933e9). Product implementation has not started: CLAUDE.md requires 2-3 phone-size options and Kevin's choice before a new screen/control is built.
+Started from develop after #162 merged (77933e9). Kevin approved B's expandable grouping with A's compact image rows and explicitly authorized implementation, testing, PR and merge without another design approval.
 
 ## Layout options (390 x 844)
 
@@ -38,4 +38,10 @@ My Gym opens from existing app-menu content. The sheet header owns Close and My 
 
 ## Status
 
-Awaiting Kevin's layout choice (A/B/C). No product code or persistent data schema has changed for #158 yet.
+Implemented the approved hybrid. My Gym configures equipment access only: 75 equipment/station items in 13 groups, one canonical configuration list and shared availability for 31 illustrated movements. Existing prescriptions, doses and history are preserved. Format 9 supports exact station IDs, availability flags that retain metadata, and complete custom equipment alternatives. All 13 preset-art exceptions are resolved. Validation results are recorded in the PR.
+
+## Assets and provenance
+
+The 75 equipment SVGs are saved in `assets/equipment/`; the generator and bundled registry are `scripts/build-gym-art.cjs` and `src/equipment/artwork.generated.json`. Existing hero art is reused and 78 additional phase JPEGs are saved at `assets/exercises/heroes/{movement-with-hyphens}-{male,female,neutral}-{1,2}.jpg` for the 13 formerly missing starter movements. These were generated with built-in image_gen using the existing character references. `generation-results.json` records the exact prompt set, sources, output paths, dimensions, sizes and hashes; `art-revisions.json` records the farmer-carry stride correction. The seven pose-review sheets were visually inspected, along with full source images where detail needed confirmation.
+
+The real mobile screenshots are under `screenshots/`; option-a/b/c and comparison.png remain the historical layout choices. The authoritative behavior is [contract 18](../../design-contracts/18-my-gym.md).

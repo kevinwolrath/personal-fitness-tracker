@@ -1,3 +1,4 @@
+import { setEquipmentSelection } from '../src/equipment/catalogue';
 import { expect, type Page } from '@playwright/test';
 import seed from '../plans/seed.plan.json';
 
@@ -50,6 +51,9 @@ export async function seedPlan(page: Page, plan: unknown) {
  */
 export const seedWithStrengthWindow = (when: 'morning' | 'lunch' | 'afternoon' | 'evening' = 'morning') => ({
   ...seed,
+  formatVersion: 9,
+  // This training fixture explicitly confirms its stations; the real legacy seed still requires My Gym review.
+  exercise: { ...seed.exercise, equipment: setEquipmentSelection(seed.exercise.equipment as any, ['multi_gym_chest_press', 'multi_gym_lat_pulldown', 'multi_gym_leg_extension'], true) },
   activities: seed.activities.map((a) => (a.id === 'resistance' ? { ...a, when } : a)),
 });
 
@@ -93,7 +97,7 @@ export const historyObservations = [
 export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');
 
 /** App-level operations live in the header menu (#15). */
-export async function chooseFromMenu(page: Page, label: 'Configure with AI' | 'Export all data' | 'Edit setup answers') {
+export async function chooseFromMenu(page: Page, label: 'Configure with AI' | 'Export all data' | 'Edit setup answers' | 'My Gym' | 'Muscle coverage & exercise log') {
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
 }

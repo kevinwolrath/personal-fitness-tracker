@@ -144,10 +144,17 @@ describe('part 2: activity, energy and protein', () => {
     expect(week(office)).not.toBe(week(home));
   });
 
-  it('ticked planned meals never count as eaten: energy and protein stay empty without intake data', () => {
+  it('#154: ticked planned meals count as eaten; the flexible dinner (no planned values) marks the day incomplete', () => {
     const r = progressReport([], plan, TODAY, '30d', { history: { activityLogs: [log('2026-11-05', 'lunch'), log('2026-11-05', 'dinner')], dayOverrides: [] } });
-    expect(r.charts.energy.empty).toMatch(/Ticking a planned meal doesn’t count as eaten/);
-    expect(r.charts.protein.empty).toMatch(/Ticking a planned meal doesn’t count as eaten/);
+    expect(r.charts.energy.series[0].points).toEqual([expect.objectContaining({ date: '2026-11-05', value: 1780, source: 'meals', incomplete: true })]);
+    expect(r.charts.protein.series[0].points).toEqual([expect.objectContaining({ date: '2026-11-05', value: 42 })]);
+  });
+
+  it('#154: with nothing ticked or logged, the empty states point to ticking meals on Today', () => {
+    const r = progressReport([], plan, TODAY, '30d', { history: { activityLogs: [], dayOverrides: [] } });
+    expect(r.charts.energy.empty).toMatch(/tick meals you ate on Today/);
+    expect(r.charts.protein.empty).toMatch(/tick meals you ate on Today/);
+    expect(r.charts['energy-balance'].empty).toMatch(/tick meals you ate on Today/);
   });
 
   it('energy: estimates in the phone’s energy unit; balance only for weeks with both', () => {

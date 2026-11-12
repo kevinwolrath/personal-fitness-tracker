@@ -63,17 +63,21 @@ Any number may be `null` (unknown).
 
 - Saving a meal that replaces a scheduled meal writes the `meal_log` and marks that meal **done** in one transaction (`saveMealLog`), with a completion event and day snapshot (08). Day progress counts it. Its row reads "Replaced: <meal>" with the estimate and its source ("Photo estimate", "AI estimate" or "Entered by you"); a tap on its circle opens the sheet instead of undoing it.
 - The sheet shows **What you ate instead**: foods, totals, confidence, assumptions, photos (full screen on tap), **Edit meal** and **Remove meal**. Remove asks first, then deletes the log and its photos and puts the scheduled meal back to not done, atomically (`removeMealLog`).
-- The plan's recipe is never counted as eaten (it never was: 14).
+- A replaced meal's planned values are never counted: the logged meal is what was eaten. This is also how a portion or contents that differed from the plan is corrected (#154).
 
 ## Day totals (no double counting)
 
 `dayIntake` (`src/nutrition/intake.ts`):
 
 - Logged meals are summed, each once, from their foods.
-- If the day also has a **day total** (`energy_intake` / `protein_intake` entered by hand, read from a screenshot or imported), the day total is that nutrient's value and the meals are **not** added on top. The line says so.
+- **Ticked planned meals count as eaten (#154).** Ticking a scheduled meal on Today is the confirmation: there is no second "Ate this" action. It counts at the meal's planned energy and protein (`nutrition` in the plan version in effect that day) as an **estimate** (`src/nutrition/plannedMeals.ts`). The tick is the meal's existing `activity_log` (one per plan, date and meal), so ticking again, unticking, restarting, backup and restore can't double count, and nothing new is stored. Unticking removes it.
+  - A meal **replaced** by a logged meal counts only as the logged meal. An **extra** logged meal (not replacing one) counts as well: it's a different meal.
+  - A ticked meal without a planned value for a nutrient (the flexible meal never has one) adds nothing for it and marks the day **incomplete** ("may be low"). Never zero, never guessed. When no ticked or logged meal states a value, the line reads "Eaten: not known yet".
+  - Planned values cover energy and protein only.
+- If the day also has a **day total** (`energy_intake` / `protein_intake` entered by hand, read from a screenshot or imported), the day total is that nutrient's value and the meals (logged and ticked) are **not** added on top. The line says so.
 - Carbohydrate and fat come from logged meals only.
 
-Today's targets line gains **Eaten ≈ … kJ · … g protein · … g carbs · … g fat**, with where it came from. Progress (14) uses the same rule for the energy and protein charts. There are no new charts.
+Today's targets line gains **Eaten ≈ … kJ · … g protein · … g carbs · … g fat**, with where it came from ("from 1 logged meal · 2 ticked meals at plan estimates"). Progress (14) uses the same rule for the energy and protein charts. There are no new charts.
 
 ## Rest of today (#99)
 

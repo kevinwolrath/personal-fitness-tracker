@@ -217,7 +217,8 @@ describe('optional AI refinement', () => {
     const prompt = buildSetupPrompt(raw, answered(), TODAY);
     for (const s of ['Female', '40–59', '70–99 kg (a range)', 'Gradual weight loss, Gain muscle', 'Vegetarian', 'Sore left knee']) expect(prompt).toContain(s);
     expect(prompt).toMatch(/Leave nutrition out completely/);
-    expect(prompt).not.toMatch(/ChatGPT|Claude|Gemini|OpenAI|liab/i);
+    // "liab" as a word start: "liability" is banned, "reliable" (shared instructions, #148) is fine.
+    expect(prompt).not.toMatch(/ChatGPT|Claude|Gemini|OpenAI|\bliab/i);
     expect(prompt).toMatch(/not medical advice/);
   });
 

@@ -30,8 +30,8 @@ export function mealSummary(m: MealLog, energy: EnergyDisplay, full = false): st
 export const sourceTag = (m: MealLog) => (m.source === 'photo-ai' ? (m.photos.length ? 'Photo estimate' : 'AI estimate') : 'Entered by you');
 
 /**
- * The Daily Log's "Eaten" line: what was actually eaten that day, with where it came from. Null when nothing
- * is known. Says when a day total is used instead of the meals, so nothing looks double counted.
+ * The Daily Log's "Eaten" line: what was eaten that day (logged meals, and ticked plan meals at their planned
+ * estimates, #154), with where it came from. Null when nothing is known. Says when a day total is used instead of the meals, so nothing looks double counted.
  */
 export function intakeLines(d: DayIntake, energy: EnergyDisplay): { main: string; note: string } | null {
   const v = d.values;
@@ -40,13 +40,15 @@ export function intakeLines(d: DayIntake, energy: EnergyDisplay): { main: string
     energy,
     true,
   );
-  if (!main) return null;
   const n = d.meals.length;
+  const t = d.confirmed.length;
+  // #154: ticked plan meals with no planned values: say so rather than show nothing (or a zero).
+  if (!main) return t ? { main: 'Eaten: not known yet', note: `${t} ticked meal${t === 1 ? '' : 's'} with no planned energy or protein` } : null;
   const notes = [
     n ? `from ${n} logged meal${n === 1 ? '' : 's'}` : null,
-    d.overridden.length ? `${d.overridden.map((k) => (k === 'energyKj' ? 'energy' : 'protein')).join(' and ')} from your day total, not added to the meals` : !n ? 'your day total' : null,
-    Object.values(v).some((x) => x?.incomplete) ? 'some foods unknown, so it may be low' : null,
-    'ticked plan meals don’t count',
+    t ? `${n ? '' : 'from '}${t} ticked meal${t === 1 ? '' : 's'} at plan estimates` : null,
+    d.overridden.length ? `${d.overridden.map((k) => (k === 'energyKj' ? 'energy' : 'protein')).join(' and ')} from your day total, not added to the meals` : !n && !t ? 'your day total' : null,
+    Object.values(v).some((x) => x?.incomplete) ? (t ? 'some values unknown, so it may be low' : 'some foods unknown, so it may be low') : null,
   ].filter(Boolean);
   return { main: `Eaten ${main}`, note: notes.join(' · ') };
 }

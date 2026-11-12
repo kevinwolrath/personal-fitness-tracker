@@ -10,3 +10,6 @@ export function toBase64Url(bytes: Uint8Array): string {
   }
   return out;
 }
+
+/** Bytes as lowercase hex (#163: the Worker's 64-character key format for 32 bytes). */
+export const toHex = (bytes: Uint8Array): string => Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');

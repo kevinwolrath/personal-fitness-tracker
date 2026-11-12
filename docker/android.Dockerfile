@@ -9,6 +9,21 @@ WORKDIR /app
 ARG ANDROID_ABIS=arm64-v8a
 ENV GRADLE_USER_HOME=/gradle-cache
 
+# #160: the Android SDK parts this project builds with, installed once into the image. The base image ships other
+# versions (CMake 3.30.5, NDK 28.2, build-tools 37), so without this Gradle downloads these on every build, in parallel
+# tasks: two CMake installs raced and one read a half-written zip ("Archive is not a ZIP archive"). A failed download
+# fails this layer, which is then never cached. Before npm ci, so the layer stays cached until a version changes.
+# Versions: NDK, build-tools 36 and platform 36 from react-native/gradle/libs.versions.toml (checked by
+# src/repo/__tests__/androidSdk.test.ts); CMake 3.22.1 and build-tools 35 are the Android Gradle plugin's defaults.
+ARG ANDROID_SDK_PACKAGES="cmake;3.22.1 ndk;27.1.12297006 build-tools;35.0.0 build-tools;36.0.0 platforms;android-36"
+RUN yes | sdkmanager --licenses > /dev/null && \
+    sdkmanager --install $ANDROID_SDK_PACKAGES > /tmp/sdkmanager.log 2>&1 || { tail -n 50 /tmp/sdkmanager.log; exit 1; }; \
+    /opt/android/cmake/3.22.1/bin/cmake --version && \
+    test -f /opt/android/ndk/27.1.12297006/source.properties && \
+    test -d /opt/android/build-tools/35.0.0 && test -d /opt/android/build-tools/36.0.0 && \
+    test -f /opt/android/platforms/android-36/android.jar && \
+    rm -f /tmp/sdkmanager.log
+
 # React Native 0.81 / Expo SDK 54 need Node 20.19.4 or newer. Fail early with a clear message.
 RUN node -e "const [a,b,c]=process.versions.node.split('.').map(Number); if (a<20||(a===20&&(b<19||(b===19&&c<4)))) { console.error('Node '+process.versions.node+' is too old: need >= 20.19.4'); process.exit(1) }"
 

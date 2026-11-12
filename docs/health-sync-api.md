@@ -1,11 +1,15 @@
-# Health data sync API (#134): app-side contract
+# Health data sync API (#134, #163)
 
-Body Anvil's health-data client talks to a **Cloudflare Worker + D1 backend hosted in Questspire Studio** (Questspire
-Studio #4, owned by Codex). This document is the contract the app implements. The backend should match it, or the
-two should be reconciled on #134 before release. Automated tests use an in-memory fake of this contract
-(`src/healthSync/__tests__/fakeServer.ts`); the deployed Worker is checked with `npm run check:sync-server` (below).
+Body Anvil syncs with the **Body Anvil Worker in Questspire Studio** (Cloudflare Worker + D1, `questspirestudios.com`).
+**The Worker's contract is authoritative:** questspirestudio `docs/body-anvil/SYNC_API.md`, implemented in
+`worker/index.mjs` and `worker/snapshot.mjs`. This page records how the app uses it.
 
-No Cloudflare account, domain or credential is in this repository. Nothing here was deployed.
+The app was first built to a contract written here before the Worker existed, and the two were never reconciled.
+Every upload got `400 Invalid enrollment envelope` (#163). Since #163:
+- The app follows the Worker.
+- The in-memory fake (`src/healthSync/__tests__/fakeServer.ts`) copies the Worker's checks key by key.
+- Before a sync change ships, run the real Worker locally against the app (see "Checking against the real Worker").
+- Run `npm run check:sync-server` against the deployed one.
 
 ## Base URL
 
@@ -62,11 +66,13 @@ intercepted requests.
 
 ## Identity
 
-- **Data ID** (`userId`): a random UUID v4 made by the app once and kept in its local database (`app_meta`), so a
-  full backup carries it to a new phone.
-- **Owner token**: issued by the server at enrollment; random, at least 128 bits. Sent only as
-  `Authorization: Bearer <token>`. It is never put in a URL, logged or included in a shared document.
-- **Enrollment secret**: random (256 bits, base64url), made and saved by the app *before* it first enrolls.
+- **Data ID** (`uuid`): a random UUID v4 made once and kept in the local database (`app_meta`), so a full backup
+  carries it to a new phone. Sent in lowercase.
+- **Owner token**: 64 lowercase hex, issued by the Worker at enrollment. Stored only in secure storage, with its data
+  ID. Sent only as `Authorization: Bearer <token>`. Never in a URL, a log, a backup or a shared document.
+- **Retry key**: 32 random bytes as 64 lowercase hex, saved in secure storage *before* the first enroll. An interrupted
+  enroll is retried with the same key: the Worker returns the same owner token (`200`) without changing the stored
+  snapshot, so the app then uploads the current one with `PUT`.
 
 ## Enrollment key (#136)
 
@@ -142,71 +148,83 @@ values, so without it an old key can survive. The e2e builds always clear, and u
 
 `.env`, `.env.local` and `.env.*` are excluded from Docker build contexts (`.dockerignore`); `.env*.local` is git-ignored.
 
-## Endpoints
+## Endpoints the app uses
+
+All under `/api/body-anvil/v1`. JSON requests need `Content-Type: application/json`.
 
 | Method and path | Auth | Body | Success |
 |---|---|---|---|
-| `POST /enroll` | `X-Enrollment-Key` (build-time key) | `{ userId, enrollmentSecret, snapshot }` | `201` (new) or `200` (same `userId` **and** same secret again: idempotent retry) `{ userId, ownerToken, snapshot: Receipt }` |
-| `PUT /users/{userId}/snapshot` | owner | the snapshot document | `200 Receipt` (replaces the latest; repeating the same body is harmless) |
-| `GET /users/{userId}/snapshot` | owner | – | `200 { snapshot, etag, uploadedAt, bytes }`; `404` when none |
-| `POST /users/{userId}/shares` | owner | `{ scope: { days: 7\|30\|90\|null, categories: string[] }, expiresInHours: 1\|24, document }` | `201 ShareLink` |
-| `GET /users/{userId}/shares` | owner | – | `200 { shares: ShareLink without url[] }` |
-| `DELETE /users/{userId}/shares/{shareId}` | owner | – | `204` |
-| `GET /s/{shareToken}` (public, outside `/api`) | none (the token is the capability) | – | `200` the shared `document` as plain `application/json`; `404` when unknown, expired or revoked |
+| `POST /enroll` | `X-Enrollment-Key` (64 hex, build-time) | `{ uuid, retryKey, snapshot }` | `201` new, `200` retry: `{ ownerToken, updatedAt, revision, checksum }` |
+| `PUT /users/{uuid}/snapshot` | owner | the snapshot | `200 { updatedAt, revision, checksum }` |
+| `GET /users/{uuid}/snapshot` | owner | – | `200` the snapshot; `X-Body-Anvil-Updated-At`, `X-Body-Anvil-Revision`, `ETag` headers |
+| `POST /users/{uuid}/shares/preview` | owner | `{ range: 7\|30\|90\|"all", categories, format: "records", expiresIn }` | `200 { revision, data }`: exactly what a link would show |
+| `POST /users/{uuid}/shares` | owner | the same scope plus `revision` from the preview | `201 { id, url, expiresAt }`; `409` if a sync changed the snapshot since the preview |
+| `DELETE /users/{uuid}/shares/{id}` | owner | – | `200 { revoked: true }` |
+| `GET /shared/{token}` | none (the token is the capability) | – | `200` the shared projection; `404` when unknown, expired or revoked |
 
-- `Receipt` = `{ etag, uploadedAt (UTC ISO), bytes }`.
-- `ShareLink` = `{ shareId, url, createdAt, expiresAt, revokedAt|null, scope, bytes? }`. `url` is
-  `https://<host>/s/<shareToken>` and is returned only by `POST`.
-- **Shares store the exact `document` the app sent**, which is what the user previewed. A share token can read only its
-  own document. It can never upload, change, delete or list anything, or reach other snapshots. Store the token as a
-  hash. Public reads: no redirect, no cookies, no JS, `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`.
+- **Share links:** the Worker has no list of links, so the phone keeps the ones it made in secure storage (each URL
+  is a read credential). They aren't backed up, and expired ones drop off.
+- **Before the phone is linked:** the share preview is worked out on the phone (the same projection as the Worker's),
+  for "Share as text" only.
+- **Not used yet:** credential rotation (`POST /users/{uuid}/credentials/rotate`) and the `summary` share format.
 
 ## Errors
 
-The body is `{ "error": { "code": "...", "message": "..." } }`, never echoing a token or health data. The app maps statuses:
-`400`/`422` invalid, `401`/`403` auth, `404` not found, `409` conflict (enroll: this `userId` is already enrolled
-with a different secret), `413` too large, `429` rate limited (`Retry-After` seconds honoured), `5xx` server.
-The app sends at most 5 MB per document.
+The body is `{ "error": "..." }`. The app maps statuses to its messages, and never shows the server's text or the address:
 
-## The document (`body-anvil-health`, schemaVersion 1)
+| Status | Meaning |
+|---|---|
+| `400`, `415` | the data was rejected |
+| `401` on enroll | enrollment key |
+| `401`, `403` | owner token |
+| `404` | not found |
+| `409` | enroll: the ID is already linked; share: the snapshot changed |
+| `413` | too large |
+| `429` | rate limited (`Retry-After`) |
+| `503` on enroll | enrollment off |
+| `5xx` | server |
 
-Built by `buildHealthPayload` (`src/healthSync/payload.ts`) from the records the app actually stores:
-`schema`, `schemaVersion`, `generatedAt`, `app`, `coverage { from, to, requestedFrom, requestedTo }`,
-`scope { days, categories }`, `counts`, `readMe`, `omitted`, and the chosen sections:
+Limits: 1 MB and 15,000 records per snapshot; 64 KB per share.
 
-- `plan`: the plan, without the display name;
-- `body`, `activity`, `sleep`: values with `date`, `metric`, `label`, `value`, `unit`, `kind` and `source { type, app, confidence, edited }`;
-- `nutrition { dailyTotals, meals }`;
-- `training { checklist, exercises, muscleReports }`.
+## The snapshot
 
-**Never included:** the display name, meal photos and screenshots (and text read from them), location (none
-recorded), credentials.
+Built by `buildSnapshot` (`src/healthSync/payload.ts`):
+`{ schemaVersion: 1, appVersion: "x.y.z", coverage: { from, to }, records: [{ date, category, metric, value, source }] }`.
+`coverage.to` is today and `from` is the earliest record. No other key is accepted, so names, free text, photos,
+location and credentials can't be sent.
 
-## Open questions for the backend
+| App data | Records |
+|---|---|
+| Observations: weight, waist, body fat | `measurements` weight (kg), waist (cm), bodyFat (%) |
+| Observations: steps, active energy, active minutes, distance | `activity` steps, activeEnergy (**kcal**, converted from kJ), activeMinutes, distance (km) |
+| Observations: time asleep | `sleep` duration (min) |
+| Observations: energy and protein eaten (day totals) | `nutrition` energy (kcal), protein (g), with their own source |
+| Logged meals and ticked plan meals (#154), on days without a day total | `nutrition` energy, protein, carbs, fat, meals (count), source `app` |
+| Plan workouts ticked; exercise log | `training` sessions, duration (planned minutes), sets, reps, volume (kg), source `app` |
+| Today's plan | `plan` energyTarget (kcal), proteinTarget (g), weightTarget (kg), source `plan` |
 
-0. (#136) The issue names `POST /api/body-anvil/v1/enroll`, so all paths moved to the `/api/body-anvil/v1` prefix.
-   Is the enroll body's retry field named `retryKey` on the server? The app sends `enrollmentSecret`.
+Sources: `manual`, `screenshot`, `healthConnect` (imported), `app` (derived totals) and `plan`. Inferred values are
+left out. Metrics the Worker doesn't have are not sent: resting heart rate, sleep and readiness scores, floors,
+custom measurements and muscle reports.
 
-1. **Moving to a new phone:** a restored backup brings the data ID but not the owner token (a secret, never backed up),
-   so the new phone's enroll gets `409`. The app explains this and changes nothing. A recovery step is needed, such as
-   a one-time recovery code shown at enrollment, or re-linking from the old phone. Its shape is the backend's call;
-   the app will add the UI once it's agreed.
-2. Token rotation and revocation by the owner (the app already handles `401` by explaining and changing nothing).
-3. Rate limits and the maximum body size (the app assumes 5 MB).
+## Checking against the real Worker
 
-## curl (placeholders)
+Run questspirestudio's `worker/index.mjs` locally:
+- Node's `node:sqlite` stands in for D1, after applying `migrations/0001_body_anvil.sql`.
+- The rate limiters are stubs.
+- Serve it over HTTP on `localhost:8787`.
 
-```bash
-curl -sS -X PUT "https://<host>/api/body-anvil/v1/users/<userId>/snapshot" \
-  -H "Authorization: Bearer <owner token>" -H "Content-Type: application/json" --data @snapshot.json
-curl -sS "https://<host>/api/body-anvil/v1/users/<userId>/snapshot" -H "Authorization: Bearer <owner token>"
-curl -sS "https://<host>/s/<share token>"
-```
+Point the app's `healthSyncClient('http://localhost:8787', fetch, { dev: true })` at it and run:
+1. a wrong-key enroll, then the first sync and a second sync;
+2. the read-back;
+3. share preview, create and read, then revoke.
+
+This found #163, and it passed before #163 merged.
 
 ## Checking it on a phone
 
 After the merge and the Google Play internal-testing deploy, once the backend is live:
-1. Menu → Health data sync → set the address → Sync my data. Confirm the summary, then link and upload.
+1. Menu → Health data sync → Sync my data. Confirm the summary, then link and upload.
 2. Sync again: it says Uploaded, and the last sync time updates.
-3. Share my details → 7 days, Body only → Preview → Create → Copy AI link. Paste it into an AI chat and check that it reads the JSON.
+3. Share my details → 7 days, Body measurements only → Preview → Create → Copy AI link. Paste it into an AI chat and check that it reads the JSON.
 4. Revoke the link and check that it no longer opens.

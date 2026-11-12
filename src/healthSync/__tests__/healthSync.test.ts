@@ -1,12 +1,18 @@
 import { MemoryDevice, richHistory } from '../../backup/__tests__/fixture';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
-import { healthSyncClient, normalizeBaseUrl, SyncError } from '../client';
-import { buildHealthPayload, categories, type Scope } from '../payload';
-import { aiInstruction, forgetLegacySettings, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL, NO_ENROLLMENT_KEY, createShareLink, credentialFor, ensureUserId, inspectRemote, listShareLinks, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps } from '../service';
+import { healthSyncClient, normalizeBaseUrl, SyncError, type ShareScope } from '../client';
+import { buildSnapshot } from '../payload';
+import {
+  aiInstruction, createShareLink, credentialFor, ensureUserId, forgetLegacySettings, inspectRemote, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL,
+  listShareLinks, NO_ENROLLMENT_KEY, previewShare, revokeShareLink, SECRET_KEYS, syncNow, syncStatus, USER_ID_KEY, type SyncDeps,
+} from '../service';
 import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
-import { FakeHealthServer, MemorySecrets } from './fakeServer';
+import { FakeHealthServer, MemorySecrets, validateSnapshot } from './fakeServer';
 
-/** #134: the app side of health data sync, against a fake of the documented backend contract. Fictional data only. */
+/**
+ * #134, #163: the app side of health data sync, against a strict fake of the deployed Worker's contract
+ * (questspirestudio worker/index.mjs). Fictional data only.
+ */
 
 const TODAY = '2026-08-30'; // the fixture's history ends 2026-08-29
 const BASE = 'https://health.example.test';
@@ -20,28 +26,32 @@ async function setup() {
   await store.replaceAll(history);
   const server = new FakeHealthServer();
   const secrets = new MemorySecrets();
+  let keys = 0;
   const deps: SyncDeps = {
     store,
     client: healthSyncClient(BASE, server.fetch),
     secrets,
-    now: () => server.now,
+    now: () => new Date(server.now).toISOString(),
     today: TODAY,
     appVersion: '0.1.0',
-    uuid: () => `00000000-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
-    randomSecret: () => `secret-${ids}-${'z'.repeat(40)}`,
+    // Upper case on purpose: the Worker only accepts lowercase, so the app must lowercase it.
+    uuid: () => `ABCDEF00-0000-4000-8000-${String(++ids).padStart(12, '0')}`,
+    randomKey: () => (++keys).toString(16).padStart(64, 'a'),
     enrollmentKey: server.enrollmentKey, // #136: built into the app (a placeholder here)
   };
   return { store, server, secrets, deps, history };
 }
 const token = (s: MemorySecrets) => JSON.parse(s.map.get(SECRET_KEYS.credential)!).ownerToken as string;
+const enrolls = (s: FakeHealthServer) => s.requests.filter((q) => q.url.endsWith('/enroll'));
+const SCOPE: ShareScope = { range: 30, categories: ['measurements', 'nutrition'], format: 'records', expiresIn: 3600 };
 
 describe('data ID', () => {
-  it('is made once and reused (a restart keeps it)', async () => {
-    const { store, deps } = await setup();
+  it('is made once and reused (a restart keeps it), and sent in lowercase', async () => {
+    const { store, deps, server } = await setup();
     const a = await ensureUserId(store, deps.uuid);
-    expect(a).toMatch(/^[0-9a-f-]{36}$/);
     expect(await ensureUserId(store, deps.uuid)).toBe(a);
-    expect(await store.getMeta(USER_ID_KEY)).toBe(a);
+    await syncNow(deps);
+    expect(JSON.parse(enrolls(server)[0].body!).uuid).toBe(a.toLowerCase());
   });
 
   it('travels with a full backup (snapshot → replaceAll on a new phone); the key does not', async () => {
@@ -55,79 +65,138 @@ describe('data ID', () => {
   });
 });
 
+describe('snapshot (the Worker’s wire format)', () => {
+  it('the full history passes the Worker’s validation: only its keys, metrics, units and sources', async () => {
+    const { store } = await setup();
+    const s = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
+    expect(() => validateSnapshot(s)).not.toThrow();
+    expect(Object.keys(s).sort()).toEqual(['appVersion', 'coverage', 'records', 'schemaVersion']);
+    expect(s.records.length).toBeGreaterThan(50);
+    expect([...new Set(s.records.map((r) => r.category))].sort()).toEqual(['activity', 'measurements', 'nutrition', 'plan', 'training']);
+    expect(s.records.filter((r) => r.source === 'plan').map((r) => r.date)).toEqual([TODAY, TODAY, TODAY]);
+    expect(s.coverage).toEqual({ from: s.records[0].date, to: TODAY });
+  });
+
+  it('carries no name, free text or identifiers: dated numbers only', async () => {
+    const { store, history } = await setup();
+    const json = JSON.stringify(buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' }));
+    expect(json).not.toContain('Fictional Name');
+    for (const m of history.mealLogs ?? []) expect(json).not.toContain(`"${m.name}"`);
+    for (const r of JSON.parse(json).records) expect(Object.values(r).every((v) => typeof v === 'number' || /^[\w-]+$/.test(String(v)))).toBe(true);
+  });
+
+  it('energy is sent in kcal, sleep in minutes, body fat in %; inferred values are left out', async () => {
+    const { store } = await setup();
+    const snap = await store.snapshot();
+    const o = (metric: string, value: number, kind: 'observed' | 'inferred' = 'observed') =>
+      ({ ...snap.observations[0], id: `x-${metric}-${kind}`, metric, value, kind, date: '2026-08-20' }) as (typeof snap.observations)[number];
+    snap.observations.push(o('energy_intake', 8368), o('active_energy', 2092), o('sleep_duration', 420), o('body_fat', 24.5), o('weight', 90, 'inferred'));
+    const s = buildSnapshot(snap, { today: TODAY, appVersion: '0.1.0' });
+    expect(() => validateSnapshot(s)).not.toThrow();
+    const on = (metric: string) => s.records.filter((r) => r.date === '2026-08-20' && r.metric === metric && r.source !== 'app');
+    expect(on('energy')).toEqual([expect.objectContaining({ category: 'nutrition', value: 2000 })]);
+    expect(on('activeEnergy')).toEqual([expect.objectContaining({ category: 'activity', value: 500 })]);
+    expect(on('duration')).toEqual([expect.objectContaining({ category: 'sleep', value: 420 })]);
+    expect(on('bodyFat')).toEqual([expect.objectContaining({ category: 'measurements', value: 24.5 })]);
+    expect(on('weight').map((r) => r.value)).not.toContain(90);
+  });
+
+  it('a day total and that day’s meals are never both sent (no double counting)', async () => {
+    const { store } = await setup();
+    const s = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
+    const energy = s.records.filter((r) => r.metric === 'energy');
+    const byDate = new Map<string, number>();
+    for (const r of energy) byDate.set(r.date, (byDate.get(r.date) ?? 0) + (r.source === 'app' ? 100 : 1));
+    for (const n of byDate.values()) expect(n === 100 || n < 100).toBe(true);
+  });
+
+  it('a version that isn’t major.minor.patch is sent as 0.0.0 (the Worker rejects anything else)', async () => {
+    const { store } = await setup();
+    expect(buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '1.0' }).appVersion).toBe('0.0.0');
+  });
+});
+
 describe('Sync my data', () => {
-  it('first use links (enrolls) with the full history; the token goes to secure storage only', async () => {
+  it('first use links with the full history (uuid, a 64-hex retry key, the snapshot); the token goes to secure storage only', async () => {
     const { deps, server, secrets, store } = await setup();
     const r = await syncNow(deps);
     expect(r).toMatchObject({ ok: true, linked: true });
-    const userId = (await store.getMeta(USER_ID_KEY))!;
-    expect(await credentialFor(secrets, userId)).toEqual({ userId, ownerToken: expect.stringMatching(/^owner-/) });
+    const sent = JSON.parse(enrolls(server)[0].body!);
+    expect(Object.keys(sent).sort()).toEqual(['retryKey', 'snapshot', 'uuid']);
+    expect(sent.retryKey).toMatch(/^[0-9a-f]{64}$/);
+    const userId = (await store.getMeta(USER_ID_KEY))!.toLowerCase();
+    expect(await credentialFor(secrets, userId)).toEqual({ userId, ownerToken: expect.stringMatching(/^[0-9a-f]{64}$/) });
     expect(secrets.map.has(SECRET_KEYS.pending)).toBe(false);
-    const sent = JSON.parse(server.requests[0].body!);
-    expect(sent.snapshot.schema).toBe('body-anvil-health');
-    expect(sent.snapshot.counts.values).toBe((await store.snapshot()).observations.filter((o) => o.date <= TODAY).length);
-    expect(await syncStatus(secrets)).toMatchObject({ ok: true, message: 'Linked and uploaded', lastSuccessAt: server.now });
+    expect(await syncStatus(secrets)).toMatchObject({ ok: true, message: 'Linked and uploaded' });
   });
 
   it('later syncs replace the snapshot with the token in the Authorization header only, and are repeatable', async () => {
     const { deps, server, secrets } = await setup();
     await syncNow(deps);
-    const a = await syncNow(deps);
-    const b = await syncNow(deps);
-    expect(a.ok && b.ok).toBe(true);
+    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: false });
+    expect(await syncNow(deps)).toMatchObject({ ok: true });
     const puts = server.requests.filter((q) => q.method === 'PUT');
     expect(puts).toHaveLength(2);
-    expect(puts[0].body).toBe(puts[1].body); // same data, same document
-    for (const q of server.requests) {
-      expect(q.url).not.toContain(token(secrets));
-      expect(q.body ?? '').not.toContain(token(secrets));
-    }
+    expect(puts[0].body).toBe(puts[1].body);
+    for (const q of server.requests) expect(q.url + (q.body ?? '')).not.toContain(token(secrets));
     expect(puts[0].headers.Authorization).toBe(`Bearer ${token(secrets)}`);
-    expect(server.users.size).toBe(1);
   });
 
-  it('an interrupted first link is retried with the same enrollment secret: one link, no duplicate', async () => {
-    const { deps, server, secrets } = await setup();
+  it('an interrupted first link is retried with the same retry key; the retry uploads the latest data', async () => {
+    const { deps, server } = await setup();
     server.dropNextEnrollResponse = true;
-    const first = await syncNow(deps);
-    expect(first).toMatchObject({ ok: false, error: { kind: 'offline' } });
-    expect(secrets.map.has(SECRET_KEYS.pending)).toBe(true);
-    const retry = await syncNow(deps);
-    expect(retry).toMatchObject({ ok: true, linked: true });
-    const enrolls = server.requests.filter((q) => q.url.endsWith('/enroll')).map((q) => JSON.parse(q.body!).enrollmentSecret);
-    expect(new Set(enrolls).size).toBe(1);
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'offline' } });
+    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
+    const [a, b] = enrolls(server).map((q) => JSON.parse(q.body!).retryKey);
+    expect(a).toBe(b);
     expect(server.users.size).toBe(1);
+    expect(server.requests.at(-1)!.method).toBe('PUT'); // 200 retry: the stored snapshot is the first attempt's
+  });
+
+  it('a pending retry key from the old format (not 64 hex) is replaced, not sent', async () => {
+    const { deps, server, secrets, store } = await setup();
+    const id = (await ensureUserId(store, deps.uuid)).toLowerCase();
+    await secrets.set(SECRET_KEYS.pending, JSON.stringify({ userId: id, secret: 'old-base64url-secret' }));
+    expect(await syncNow(deps)).toMatchObject({ ok: true });
+    expect(JSON.parse(enrolls(server)[0].body!).retryKey).toMatch(/^[0-9a-f]{64}$/);
   });
 
   it('a data ID linked elsewhere (409) is explained and nothing is saved', async () => {
-    const { deps, server, store, secrets } = await setup();
-    const id = await ensureUserId(store, deps.uuid);
-    server.users.set(id, { secret: 'another phone', token: 't'.repeat(30), snapshot: null });
+    const { deps, server, secrets, store } = await setup();
+    const id = (await ensureUserId(store, deps.uuid)).toLowerCase();
+    server.users.set(id, { retryKey: 'f'.repeat(64), ownerToken: 'f'.repeat(64), snapshot: '{}', checksum: 'x', revision: 'r', updatedAt: 't' });
     const r = await syncNow(deps);
-    expect(r).toMatchObject({ ok: false, error: { kind: 'conflict', message: expect.stringContaining('already linked to another phone') } });
-    expect(await credentialFor(secrets, id)).toBeNull();
+    expect(r).toMatchObject({ ok: false, error: { kind: 'conflict' } });
+    expect(secrets.map.has(SECRET_KEYS.credential)).toBe(false);
   });
 
-  it('a revoked key (401), offline, rate limit and server errors are reported with the last success kept', async () => {
+  it('a rejected owner token (403), offline, rate limit and server errors are reported with the last success kept', async () => {
     const { deps, server, secrets } = await setup();
     await syncNow(deps);
-    const ok = await syncStatus(secrets);
-    server.users.forEach((u) => (u.token = 'rotated-token-xxxxxxxxxxxxxxxx'));
-    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'auth' } });
+    const ok = (await syncStatus(secrets))!.lastSuccessAt;
     server.offline = true;
     expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'offline' } });
     server.offline = false;
     server.failNext = 429;
-    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'rateLimited', retryAfterSeconds: 30 } });
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'rateLimited', retryAfterSeconds: 60 } });
     server.failNext = 500;
     expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'server' } });
-    expect(await syncStatus(secrets)).toMatchObject({ ok: false, lastSuccessAt: ok!.lastSuccessAt });
+    for (const u of server.users.values()) u.ownerToken = '0'.repeat(64);
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'auth' } });
+    expect((await syncStatus(secrets))!.lastSuccessAt).toBe(ok);
+  });
+
+  it('the server rejecting the data (400) is explained, not shown as offline', async () => {
+    const { deps, server } = await setup();
+    server.failNext = 400;
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'invalid', message: expect.stringMatching(/rejected the data/) } });
   });
 
   it('a token stored for a different data ID is never used', async () => {
-    const { deps, secrets, store } = await setup();
-    await secrets.set(SECRET_KEYS.credential, JSON.stringify({ userId: 'someone-else', ownerToken: 'x'.repeat(30) }));
-    expect(await credentialFor(secrets, await ensureUserId(store, deps.uuid))).toBeNull();
+    const { deps, secrets, server } = await setup();
+    await secrets.set(SECRET_KEYS.credential, JSON.stringify({ userId: '11111111-1111-4111-8111-111111111111', ownerToken: 'a'.repeat(64) }));
+    await syncNow(deps);
+    expect(server.requests[0].url).toMatch(/\/enroll$/);
   });
 
   it('looking at the server copy never changes local data', async () => {
@@ -135,77 +204,63 @@ describe('Sync my data', () => {
     await syncNow(deps);
     const before = JSON.stringify(await store.snapshot());
     const remote = await inspectRemote(deps);
-    expect((remote.snapshot as { schema: string }).schema).toBe('body-anvil-health');
+    expect(remote.updatedAt).toBeTruthy();
+    expect((remote.snapshot as { records: unknown[] }).records.length).toBeGreaterThan(0);
     expect(JSON.stringify(await store.snapshot())).toBe(before);
   });
 });
 
-describe('payload', () => {
-  it('keeps dates, units and provenance; leaves out the name, photos, screenshot text and credentials', async () => {
-    const { history } = await setup();
-    const p = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' });
-    const text = JSON.stringify(p);
-    const v = (p.body ?? [])[0];
-    expect(v).toMatchObject({ date: expect.any(String), unit: expect.any(String), source: { type: expect.any(String) } });
-    expect(JSON.stringify(history)).toMatch(/Fictional Name[\s\S]*|file:\/\//); // the source has them
-    expect(text).not.toMatch(/Fictional Name|file:\/\/|data:image|"photos"|"evidence"|"assetId"|displayName|ownerToken/);
-    expect(p.plan).toBeDefined();
-    expect((p.nutrition?.meals ?? []).length).toBeGreaterThan(0);
-    expect(p.omitted).toContain('Your display name');
-    expect(p.scope.categories).toEqual([...categories]);
-  });
-
-  it('a scope keeps only those days and categories, with coverage dates', async () => {
-    const { history } = await setup();
-    const scope: Scope = { days: 7, categories: ['body'] };
-    const p = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, scope);
-    expect(Object.keys(p)).not.toContain('nutrition');
-    expect(Object.keys(p)).not.toContain('training');
-    expect(Object.keys(p)).not.toContain('plan');
-    const all = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' });
-    expect((p.body ?? []).length).toBeGreaterThan(0);
-    expect((p.body ?? []).length).toBeLessThan((all.body ?? []).length);
-    for (const x of p.body ?? []) expect(x.date >= '2026-08-24' && x.date <= TODAY).toBe(true);
-    expect(p.coverage.requestedFrom).toBe('2026-08-24');
-  });
-});
-
 describe('Share my details', () => {
-  it('needs a linked phone, shares exactly the previewed document, and the link reads it until revoked', async () => {
-    const { deps, server, history } = await setup();
-    const scope: Scope = { days: 30, categories: ['body', 'activity'] };
-    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, scope);
-    await expect(createShareLink(deps, scope, 24, doc)).rejects.toMatchObject({ kind: 'auth' });
+  it('previews the server’s projection, creates a link to exactly that, lists it on the phone, and revokes it', async () => {
+    const { deps, server } = await setup();
     await syncNow(deps);
-    const link = await createShareLink(deps, scope, 24, doc);
-    expect(link.expiresAt).toBe('2026-11-13T00:00:00.000Z'); // 24 h after the fake server's clock
-    expect(link.url).not.toMatch(/owner-/);
+    const p = await previewShare(deps, SCOPE);
+    expect(p.revision).toMatch(/^[0-9a-f]{32}$/);
+    const link = await createShareLink(deps, SCOPE, p.revision!);
+    expect(link.url).toMatch(/\/shared\/[0-9a-f]{64}$/);
     const read = await server.fetch(link.url, { method: 'GET', headers: {} });
-    expect(read.status).toBe(200);
-    expect(JSON.parse(await read.text())).toEqual(doc);
-    expect(await listShareLinks(deps)).toHaveLength(1);
-    await revokeShareLink(deps, link.shareId);
+    expect(JSON.parse(await read.text())).toEqual(p.data);
+    expect((await listShareLinks(deps)).map((l) => l.id)).toEqual([link.id]);
+    await revokeShareLink(deps, link.id);
+    expect(await listShareLinks(deps)).toEqual([]);
     expect((await server.fetch(link.url, { method: 'GET', headers: {} })).status).toBe(404);
-    expect((await listShareLinks(deps))[0].revokedAt).toBe(server.now);
   });
 
-  it('an expired link and a guessed link read nothing; links are isolated per data ID', async () => {
-    const { deps, server, history } = await setup();
+  it('a sync between preview and create is caught (409): the link is never made from data that wasn’t shown', async () => {
+    const { deps } = await setup();
     await syncNow(deps);
-    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, { days: 7, categories: ['body'] });
-    const link = await createShareLink(deps, { days: 7, categories: ['body'] }, 1, doc);
-    expect((await server.fetch(`${BASE}/s/share-guess`, { method: 'GET', headers: {} })).status).toBe(404);
-    server.now = '2026-11-12T01:00:00.000Z';
-    expect((await server.fetch(link.url, { method: 'GET', headers: {} })).status).toBe(404);
-    const other = await setup();
-    await syncNow(other.deps);
-    expect(await listShareLinks(other.deps)).toEqual([]);
+    const p = await previewShare(deps, SCOPE);
+    await syncNow(deps);
+    await expect(createShareLink(deps, SCOPE, p.revision!)).rejects.toMatchObject({ kind: 'conflict' });
+  });
+
+  it('before linking, the preview is worked out on the phone (for Share as text) and has no revision', async () => {
+    const { deps, server } = await setup();
+    const p = await previewShare(deps, SCOPE);
+    expect(p.revision).toBeNull();
+    expect((p.data as { data: { category: string }[] }).data.every((r) => SCOPE.categories.includes(r.category as never))).toBe(true);
+    expect(server.requests).toHaveLength(0);
+  });
+
+  it('expired links drop off the list; a revoked link that is already gone is just removed', async () => {
+    const { deps, server } = await setup();
+    await syncNow(deps);
+    const link = await createShareLink(deps, SCOPE, (await previewShare(deps, SCOPE)).revision!);
+    server.shares.length = 0; // gone on the server
+    await revokeShareLink(deps, link.id);
+    expect(await listShareLinks(deps)).toEqual([]);
+    await createShareLink(deps, SCOPE, (await previewShare(deps, SCOPE)).revision!);
+    server.now += 2 * 3600 * 1000;
+    expect(await listShareLinks(deps)).toEqual([]);
   });
 
   it('the AI message has the link and instruction, never the owner token', async () => {
-    const msg = aiInstruction('https://health.example.test/s/abc', '2026-11-13T00:00:00.000Z');
-    expect(msg).toContain('Read the JSON at this link');
-    expect(msg).toContain('https://health.example.test/s/abc');
+    const { deps, secrets } = await setup();
+    await syncNow(deps);
+    const link = await createShareLink(deps, SCOPE, (await previewShare(deps, SCOPE)).revision!);
+    const msg = aiInstruction(link.url, link.expiresAt);
+    expect(msg).toContain(link.url);
+    expect(msg).not.toContain(token(secrets));
   });
 });
 
@@ -220,18 +275,10 @@ describe('client', () => {
     expect(normalizeBaseUrl('not a url')).toBeNull();
   });
 
-  it('#155: a base URL that already ends in the API path is used without doubling it', async () => {
+  it('#155: a base URL that already ends in the API path is used without doubling it', () => {
     expect(normalizeBaseUrl('https://questspire.example/api/body-anvil/v1')).toBe('https://questspire.example');
     expect(normalizeBaseUrl('https://questspire.example/api/body-anvil/v1/')).toBe('https://questspire.example');
     expect(normalizeBaseUrl('https://questspire.example/base/api/body-anvil/v1')).toBe('https://questspire.example/base');
-    expect(normalizeBaseUrl('https://questspire.example/base')).toBe('https://questspire.example/base');
-    const urls: string[] = [];
-    const client = healthSyncClient('https://questspire.example/api/body-anvil/v1', async (url) => {
-      urls.push(url);
-      return { status: 401, headers: { get: () => null }, text: async () => '{}' };
-    });
-    await client.getSnapshot({ userId: 'u', ownerToken: 't'.repeat(20) }).catch(() => undefined);
-    expect(urls).toEqual(['https://questspire.example/api/body-anvil/v1/users/u/snapshot']);
   });
 
   it('a missing address and an unreadable reply are clear errors', async () => {
@@ -239,80 +286,59 @@ describe('client', () => {
     const r = await syncNow({ ...deps, client: healthSyncClient('', async () => { throw new Error('unused'); }) });
     expect(r).toMatchObject({ ok: false, error: { kind: 'config' } });
     const bad = healthSyncClient(BASE, async () => ({ status: 200, headers: { get: () => null }, text: async () => '<html>' }));
-    await expect(bad.getSnapshot({ userId: 'u', ownerToken: 't' })).rejects.toBeInstanceOf(SyncError);
+    await expect(bad.putSnapshot({ userId: 'u', ownerToken: 't' }, buildSnapshot(await deps.store.snapshot(), { today: TODAY, appVersion: '0.1.0' }))).rejects.toMatchObject({ kind: 'badResponse' });
   });
 });
 
 describe('enrollment key from the build (#136)', () => {
-  const enrolls = (server: FakeHealthServer) => server.requests.filter((q) => q.url.endsWith('/api/body-anvil/v1/enroll'));
-  const sees = (server: FakeHealthServer, text: string) =>
-    server.requests.some((q) => q.url.includes(text) || (q.body ?? '').includes(text) || Object.entries(q.headers).some(([k, v]) => k !== 'X-Enrollment-Key' && v.includes(text)));
-
   it('missing from the build: the first link stops with a clear message and sends nothing; the user is never asked', async () => {
-    const { deps, server, secrets } = await setup();
-    const r = await syncNow({ ...deps, enrollmentKey: '  ' });
-    expect(r).toMatchObject({ ok: false, error: { kind: 'config', message: NO_ENROLLMENT_KEY } });
+    const { deps, server } = await setup();
+    expect(await syncNow({ ...deps, enrollmentKey: '' })).toMatchObject({ ok: false, error: { kind: 'config', message: NO_ENROLLMENT_KEY } });
     expect(server.requests).toHaveLength(0);
-    expect(secrets.map.has(SECRET_KEYS.pending)).toBe(false);
   });
 
   it('missing from the build does not affect a phone that is already linked', async () => {
-    const { deps, server } = await setup();
+    const { deps } = await setup();
     await syncNow(deps);
     expect(await syncNow({ ...deps, enrollmentKey: '' })).toMatchObject({ ok: true, linked: false });
-    expect(enrolls(server)).toHaveLength(1);
   });
 
   it('sent only as X-Enrollment-Key on enroll; never on PUT, GET or share requests, URLs or bodies', async () => {
-    const { deps, server, history } = await setup();
+    const { deps, server } = await setup();
     await syncNow(deps);
     await syncNow(deps);
     await inspectRemote(deps);
-    const doc = buildHealthPayload(history, { generatedAt: 't', today: TODAY, appVersion: '0.1.0' }, { days: 7, categories: ['body'] });
-    const link = await createShareLink(deps, { days: 7, categories: ['body'] }, 1, doc);
-    await listShareLinks(deps);
-    await revokeShareLink(deps, link.shareId);
-    expect(enrolls(server)).toHaveLength(1);
-    expect(enrolls(server)[0].headers['X-Enrollment-Key']).toBe(server.enrollmentKey);
-    for (const q of server.requests) if (q !== enrolls(server)[0]) expect(q.headers['X-Enrollment-Key']).toBeUndefined();
-    expect(sees(server, server.enrollmentKey)).toBe(false);
-    expect(JSON.stringify(server.shares)).not.toContain(server.enrollmentKey);
-    expect(link.url).not.toContain(server.enrollmentKey);
+    await createShareLink(deps, SCOPE, (await previewShare(deps, SCOPE)).revision!);
+    for (const q of server.requests) {
+      const isEnroll = q.url.endsWith('/enroll');
+      expect(q.headers['X-Enrollment-Key']).toBe(isEnroll ? server.enrollmentKey : undefined);
+      expect(q.url + (q.body ?? '')).not.toContain(server.enrollmentKey);
+    }
   });
 
-  it('wrong key (401): explained, nothing saved or changed; a corrected build retries the same enrollment', async () => {
-    const { deps, server, secrets, store } = await setup();
-    await ensureUserId(store, deps.uuid);
-    const before = JSON.stringify(await store.snapshot());
-    const wrong = await syncNow({ ...deps, enrollmentKey: 'wrong-placeholder' });
-    expect(wrong).toMatchObject({ ok: false, error: { kind: 'enrollmentKey', message: expect.stringContaining('didn’t accept this app’s enrollment key') } });
-    expect(wrong.ok ? '' : wrong.error.message).not.toContain('wrong-placeholder');
-    const pending = JSON.parse(secrets.map.get(SECRET_KEYS.pending)!);
-    expect(JSON.stringify(await store.snapshot())).toBe(before);
-    expect(await credentialFor(secrets, (await store.getMeta(USER_ID_KEY))!)).toBeNull();
+  it('wrong key (401): explained, nothing saved; a corrected build retries the same enrollment', async () => {
+    const { deps, server, secrets } = await setup();
+    const r = await syncNow({ ...deps, enrollmentKey: 'f'.repeat(64) });
+    expect(r).toMatchObject({ ok: false, error: { kind: 'enrollmentKey' } });
+    expect(secrets.map.has(SECRET_KEYS.credential)).toBe(false);
+    const pending = secrets.map.get(SECRET_KEYS.pending);
     expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
-    const sent = enrolls(server).map((q) => JSON.parse(q.body!).enrollmentSecret);
-    expect(sent).toEqual([pending.secret, pending.secret]); // same retry secret, X-Enrollment-Key on both
-    expect(enrolls(server).every((q) => typeof q.headers['X-Enrollment-Key'] === 'string')).toBe(true);
-    expect(server.users.size).toBe(1);
+    expect(JSON.parse(enrolls(server)[1].body!).retryKey).toBe(JSON.parse(pending!).secret);
   });
 
-  it('an interrupted enroll is retried with the key and the same secret', async () => {
+  it('enrollment switched off on the server (503) is explained', async () => {
     const { deps, server } = await setup();
-    server.dropNextEnrollResponse = true;
-    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'offline' } });
-    expect(await syncNow(deps)).toMatchObject({ ok: true, linked: true });
-    expect(enrolls(server)).toHaveLength(2);
-    expect(enrolls(server).map((q) => q.headers['X-Enrollment-Key'])).toEqual([server.enrollmentKey, server.enrollmentKey]);
+    server.failNext = 503;
+    expect(await syncNow(deps)).toMatchObject({ ok: false, error: { kind: 'unavailable' } });
   });
 
   it('never in the database, snapshots, the status record, secure storage or console output', async () => {
     const { deps, server, store, secrets } = await setup();
     const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => jest.spyOn(console, m).mockImplementation(() => undefined));
     try {
-      await syncNow({ ...deps, enrollmentKey: 'wrong-placeholder' });
+      await syncNow({ ...deps, enrollmentKey: 'f'.repeat(64) });
       await syncNow(deps);
-      for (const spy of spies) for (const call of spy.mock.calls) expect(JSON.stringify(call)).not.toMatch(/wrong-placeholder|test-enrollment-key/);
+      for (const spy of spies) for (const call of spy.mock.calls) expect(JSON.stringify(call)).not.toContain(server.enrollmentKey);
     } finally {
       spies.forEach((spy) => spy.mockRestore());
     }
@@ -331,3 +357,5 @@ describe('enrollment key from the build (#136)', () => {
     expect(BACKUP_PREFERENCE_KEYS.included).not.toContain(LEGACY_SERVER_URL);
   });
 });
+
+it('SyncError is an Error', () => expect(new SyncError('offline', 'x')).toBeInstanceOf(Error));

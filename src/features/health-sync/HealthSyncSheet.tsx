@@ -1,8 +1,8 @@
 import * as Clipboard from 'expo-clipboard';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { healthSyncClient, type RemoteSnapshot, type ShareLink, type ShareSummary } from '../../healthSync/client';
-import { buildHealthPayload, categories, categoryLabels, OMITTED, utf8Bytes, type Category, type HealthPayload, type ShareDays } from '../../healthSync/payload';
+import { healthSyncClient, SyncError, type RemoteSnapshot, type ShareScope } from '../../healthSync/client';
+import { categories, categoryLabels, OMITTED, type Category, type ShareRange, type SyncSnapshot } from '../../healthSync/payload';
 import {
   aiInstruction,
   createShareLink,
@@ -11,10 +11,13 @@ import {
   fullPayload,
   inspectRemote,
   listShareLinks,
+  previewShare,
   revokeShareLink,
   syncNow,
   syncStatus,
   forgetLegacySettings,
+  type SavedShare,
+  type SharePreview,
   type SyncDeps,
   type SyncStatus,
   NO_ENROLLMENT_KEY,
@@ -40,24 +43,26 @@ const when = (iso: string | null | undefined) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 };
-const DAYS: { value: ShareDays; label: string }[] = [
+const RANGES: { value: ShareRange; label: string }[] = [
   { value: 7, label: '7 days' },
   { value: 30, label: '30 days' },
   { value: 90, label: '90 days' },
-  { value: null, label: 'All' },
+  { value: 'all', label: 'All' },
 ];
 
-/** What a payload holds, in words: the preview for sync and share. */
-function Summary({ p, bytes, testID }: { p: HealthPayload; bytes: number; testID: string }) {
+type Shape = { coverage?: { from?: string | null; to?: string | null }; records?: { category?: string }[]; data?: { category?: string }[] };
+/** What a snapshot or a shared projection holds, in words: the preview for sync and share. */
+function Summary({ p, bytes, testID }: { p: unknown; bytes: number | null; testID: string }) {
   const { type } = useTheme();
-  const c = p.counts;
+  const v = (p ?? {}) as Shape;
+  const records = Array.isArray(v.records) ? v.records : Array.isArray(v.data) ? v.data : [];
+  const present = categories.filter((c) => records.some((r) => r.category === c));
   const lines = [
-    p.coverage.from ? `${p.coverage.from} to ${p.coverage.to}` : 'No records in this period',
-    `${c.values.toLocaleString()} measurements and daily values`,
-    `${c.meals} meals, ${c.checklist} plan check-offs, ${c.exercises} exercises`,
-    `${p.scope.categories.map((x) => categoryLabels[x].label).join(', ')}`,
-    `About ${size(bytes)}`,
-  ];
+    v.coverage?.from ? `${v.coverage.from} to ${v.coverage.to}` : 'No records in this period',
+    `${records.length.toLocaleString()} daily values`,
+    present.length ? present.map((x) => categoryLabels[x].label).join(', ') : null,
+    bytes !== null ? `About ${size(bytes)}` : null,
+  ].filter((l): l is string => !!l);
   return (
     <View testID={testID}>
       {lines.map((l) => (
@@ -83,16 +88,16 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [confirmSync, setConfirmSync] = useState<{ payload: HealthPayload; bytes: number } | null>(null);
+  const [confirmSync, setConfirmSync] = useState<{ snapshot: SyncSnapshot; bytes: number } | null>(null);
   const [remote, setRemote] = useState<RemoteSnapshot | null>(null);
   // Share
-  const [days, setDays] = useState<ShareDays>(30);
-  const [chosen, setChosen] = useState<Category[]>(['body', 'activity', 'sleep', 'nutrition', 'training']);
+  const [range, setRange] = useState<ShareRange>(30);
+  const [chosen, setChosen] = useState<Category[]>(['measurements', 'activity', 'sleep', 'nutrition', 'training']);
   const [hours, setHours] = useState<1 | 24>(24);
-  const [preview, setPreview] = useState<{ payload: HealthPayload; bytes: number } | null>(null);
+  const [preview, setPreview] = useState<SharePreview | null>(null);
   const [showJson, setShowJson] = useState(false);
-  const [link, setLink] = useState<ShareLink | null>(null);
-  const [links, setLinks] = useState<ShareSummary[]>([]);
+  const [link, setLink] = useState<SavedShare | null>(null);
+  const [links, setLinks] = useState<SavedShare[]>([]);
   const running = useRef(false);
   const alive = useRef(true);
   useEffect(() => () => void (alive.current = false), []);
@@ -102,7 +107,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       const now = new Date();
       // #146: the build's API URL only (config.ts); there is no other source and no default.
       const base = BUILD_API.ok ? BUILD_API.url : '';
-      return { store, client: healthSyncClient(base, (u, init) => fetch(u, init), { dev: DEV_BUILD }), secrets, now: () => new Date().toISOString(), today: toLocalDate(now), appVersion: APP_VERSION, uuid: random.uuid, randomSecret: random.secret, enrollmentKey: BUILD_ENROLLMENT_KEY };
+      return { store, client: healthSyncClient(base, (u, init) => fetch(u, init), { dev: DEV_BUILD }), secrets, now: () => new Date().toISOString(), today: toLocalDate(now), appVersion: APP_VERSION, uuid: random.uuid, randomKey: random.hexKey, enrollmentKey: BUILD_ENROLLMENT_KEY };
     },
     [store],
   );
@@ -153,21 +158,27 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
       setRemote(await inspectRemote(deps()));
     });
 
-  const sharePayload = useMemo(() => preview?.payload ?? null, [preview]);
+  const scope = (): ShareScope => ({ range, categories: categories.filter((c) => chosen.includes(c)), format: 'records', expiresIn: hours * 3600 });
   const makePreview = () =>
     run('Preparing preview…', async () => {
       setLink(null);
-      const d = deps();
-      const payload = buildHealthPayload(await store.snapshot(), { generatedAt: d.now(), today: d.today, appVersion: APP_VERSION }, { days, categories: categories.filter((c) => chosen.includes(c)) });
-      setPreview({ payload, bytes: utf8Bytes(JSON.stringify(payload)) });
+      setPreview(await previewShare(deps(), scope()));
       setShowJson(false);
     });
   const createLink = () =>
     run('Creating link…', async () => {
-      if (!sharePayload) return;
-      const l = await createShareLink(deps(), { days, categories: sharePayload.scope.categories }, hours, sharePayload);
-      setLink(l);
-      setLinks(await listShareLinks(deps()).catch(() => []));
+      if (!preview?.revision) return;
+      try {
+        setLink(await createShareLink(deps(), scope(), preview.revision));
+      } catch (e) {
+        // The server copy changed since the preview (a sync in between): the link must match what was shown.
+        if (e instanceof SyncError && e.kind === 'conflict') {
+          setPreview(null);
+          throw new Error('Your server copy changed since this preview. Preview again, then create the link.');
+        }
+        throw e;
+      }
+      setLinks(await listShareLinks(deps()));
     });
   const loadLinks = () =>
     run('Loading links…', async () => {
@@ -176,8 +187,8 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
   const revoke = (id: string) =>
     run('Revoking…', async () => {
       await revokeShareLink(deps(), id);
-      if (link?.shareId === id) setLink(null);
-      setLinks(await listShareLinks(deps()).catch(() => []));
+      if (link?.id === id) setLink(null);
+      setLinks(await listShareLinks(deps()));
       setNotice('Link revoked');
     });
   const copyAiLink = () =>
@@ -188,8 +199,8 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
     });
   const shareAsText = () =>
     run('Opening share…', async () => {
-      if (!sharePayload) return;
-      const r = await shareText(`Analyse my health data below: weight, waist, training and nutrition trends. Please identify the dates covered and any missing data.\n\n${JSON.stringify(sharePayload)}`, 'My health data');
+      if (!preview) return;
+      const r = await shareText(`Analyse my health data below: weight, waist, training and nutrition trends. Please identify the dates covered and any missing data.\n\n${JSON.stringify(preview.data)}`, 'My health data');
       if (r === 'unavailable') throw new Error('Sharing isn’t available on this phone.');
       if (r === 'copied') setNotice('Copied the data as text.');
     });
@@ -241,7 +252,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
             {confirmSync && (
               <View style={[styles.panel, styles.warnPanel]} testID="health-sync-confirm">
                 <Text style={type.body}>This sends your complete history to your private server copy, replacing the last one:</Text>
-                <Summary p={confirmSync.payload} bytes={confirmSync.bytes} testID="health-sync-contents" />
+                <Summary p={confirmSync.snapshot} bytes={confirmSync.bytes} testID="health-sync-contents" />
                 <Text style={type.detail}>Not sent: {OMITTED.join('; ')}.</Text>
                 <Button title={linked ? 'Upload now' : 'Link and upload'} disabled={!!busy} onPress={doSync} testID="health-sync-upload" />
                 <Button title="Cancel" variant="quiet" disabled={!!busy} onPress={() => setConfirmSync(null)} />
@@ -252,11 +263,9 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
             {remote && (
               <View style={styles.panel} testID="health-sync-remote">
                 <Text style={type.section}>On the server</Text>
-                <Text style={type.body}>Uploaded {when(remote.uploadedAt)} · {size(remote.bytes)}</Text>
-                {(() => {
-                  const p = remote.snapshot as Partial<HealthPayload> | null;
-                  return p?.coverage ? <Text style={type.detail}>{p.coverage.from ?? '—'} to {p.coverage.to ?? '—'} · {p.counts?.values ?? 0} values, {p.counts?.meals ?? 0} meals</Text> : null;
-                })()}
+                {/* The time comes in a response header, which browsers can't read unless the Worker exposes it (#163). */}
+                <Text style={type.body}>{remote.updatedAt ? `Uploaded ${when(remote.updatedAt)}` : 'Your last upload'}</Text>
+                <Summary p={remote.snapshot} bytes={null} testID="health-sync-remote-contents" />
                 <Text style={type.detail}>For viewing only. It isn’t copied into this phone; to move data between phones use Back up data and Restore data.</Text>
               </View>
             )}
@@ -270,8 +279,8 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
             <Text style={type.detail}>Make a read-only link to the data you choose, for ChatGPT, Claude, Gemini or another AI. It can’t change anything and it expires.</Text>
             <Text style={type.section}>Period</Text>
             <View style={styles.row} role="radiogroup" aria-label="Period">
-              {DAYS.map((d) => (
-                <Pressable key={d.label} role="radio" aria-checked={days === d.value} aria-label={d.label} onPress={() => { setDays(d.value); setPreview(null); setLink(null); }} style={[styles.chip, days === d.value && styles.selected]}>
+              {RANGES.map((d) => (
+                <Pressable key={d.label} role="radio" aria-checked={range === d.value} aria-label={d.label} onPress={() => { setRange(d.value); setPreview(null); setLink(null); }} style={[styles.chip, range === d.value && styles.selected]}>
                   <Text style={type.body}>{d.label}</Text>
                 </Pressable>
               ))}
@@ -286,7 +295,7 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
             <Text style={type.section}>Link expires after</Text>
             <View style={styles.row} role="radiogroup" aria-label="Link expires after">
               {([1, 24] as const).map((h) => (
-                <Pressable key={h} role="radio" aria-checked={hours === h} aria-label={h === 1 ? '1 hour' : '24 hours'} onPress={() => setHours(h)} style={[styles.chip, hours === h && styles.selected]}>
+                <Pressable key={h} role="radio" aria-checked={hours === h} aria-label={h === 1 ? '1 hour' : '24 hours'} onPress={() => { setHours(h); setLink(null); }} style={[styles.chip, hours === h && styles.selected]}>
                   <Text style={type.body}>{h === 1 ? '1 hour' : '24 hours'}</Text>
                 </Pressable>
               ))}
@@ -295,20 +304,21 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
             {preview && (
               <View style={styles.panel} testID="share-preview-panel">
                 <Text style={type.section}>Exactly this will be shared</Text>
-                <Summary p={preview.payload} bytes={preview.bytes} testID="share-contents" />
+                <Summary p={preview.data} bytes={preview.bytes} testID="share-contents" />
+                <Text style={type.detail}>{preview.revision ? 'From your last sync. Sync again first to include anything newer.' : 'From this phone. Sync once to be able to make a link.'}</Text>
                 <Text style={type.detail}>Never shared: {OMITTED.join('; ')}.</Text>
                 <Button title={showJson ? 'Hide the data' : 'Show the data'} variant="quiet" onPress={() => setShowJson((s) => !s)} />
                 {showJson && (
                   <Text style={styles.mono} selectable testID="share-json">
-                    {JSON.stringify(preview.payload, null, 1).slice(0, 4000)}
-                    {JSON.stringify(preview.payload, null, 1).length > 4000 ? '\n…' : ''}
+                    {JSON.stringify(preview.data, null, 1).slice(0, 4000)}
+                    {JSON.stringify(preview.data, null, 1).length > 4000 ? '\n…' : ''}
                   </Text>
                 )}
                 <View style={[styles.panel, styles.warnPanel]}>
                   <Text style={type.body}>Anyone with the link can read this until it expires or you revoke it.</Text>
                   <Text style={type.detail}>Pasting it into an AI chat may keep the link and data in that service’s history. Expiry doesn’t remove copies already fetched.</Text>
                 </View>
-                {!link && <Button title="Create read-only link" disabled={!!busy || !linked} onPress={createLink} testID="share-create" />}
+                {!link && <Button title="Create read-only link" disabled={!!busy || !linked || !preview.revision} onPress={createLink} testID="share-create" />}
                 <Button title="Share as text instead" variant="secondary" disabled={!!busy} onPress={shareAsText} testID="share-text" />
                 <Text style={type.detail}>Use text if your AI can’t open links.</Text>
               </View>
@@ -321,23 +331,20 @@ export function HealthSyncSheet({ store, onClose }: { store: TrackingStore; onCl
                 </Text>
                 <Text style={type.detail}>Expires {when(link.expiresAt)}</Text>
                 <Button title="Copy AI link" disabled={!!busy} onPress={copyAiLink} testID="share-copy" />
-                <Button title="Revoke now" variant="quiet" disabled={!!busy} onPress={() => revoke(link.shareId)} />
+                <Button title="Revoke now" variant="quiet" disabled={!!busy} onPress={() => revoke(link.id)} />
               </View>
             )}
             {links.length > 0 && (
               <View style={styles.panel} testID="share-links">
                 <Text style={type.section}>Your links</Text>
-                {links.map((l) => {
-                  const active = !l.revokedAt && Date.parse(l.expiresAt) > Date.now();
-                  return (
-                    <View key={l.shareId} style={styles.linkRow}>
-                      <Text style={type.body}>
-                        {l.scope.days ? `${l.scope.days} days` : 'All history'} · {active ? `expires ${when(l.expiresAt)}` : l.revokedAt ? 'revoked' : 'expired'}
-                      </Text>
-                      {active && <Button title="Revoke" variant="quiet" disabled={!!busy} onPress={() => revoke(l.shareId)} />}
-                    </View>
-                  );
-                })}
+                {links.map((l) => (
+                  <View key={l.id} style={styles.linkRow}>
+                    <Text style={type.body}>
+                      {l.range === 'all' ? 'All history' : `${l.range} days`} · expires {when(l.expiresAt)}
+                    </Text>
+                    <Button title="Revoke" variant="quiet" disabled={!!busy} onPress={() => revoke(l.id)} />
+                  </View>
+                ))}
               </View>
             )}
           </>

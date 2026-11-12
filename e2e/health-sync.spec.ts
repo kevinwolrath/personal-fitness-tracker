@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { FakeHealthServer } from '../src/healthSync/__tests__/fakeServer';
 import { MONDAY, openAt, seedRecords } from './helpers';
 
-/** #134: Health data sync against a fake of the documented backend (no real server, fictional data). */
+/** #134, #163: Health data sync against a strict fake of the deployed Worker's contract (no real server, fictional data). */
 
 const BASE = 'https://health.example.test';
 const src = { type: 'manual', app: null, capturedAt: null, confidence: null, importId: null, assetId: null, evidence: null, edited: false };
@@ -42,9 +42,10 @@ test('sync my data: confirm what is sent, link, then upload again; nothing local
   await expect(page.getByTestId('health-sync-link-state')).toHaveText('Your first sync links this phone to the server.');
 
   await page.getByTestId('health-sync-prepare').click();
-  await expect(page.getByTestId('health-sync-contents')).toContainText('2026-10-30 to 2026-11-01');
+  // The snapshot covers through today (plan targets are dated today).
+  await expect(page.getByTestId('health-sync-contents')).toContainText('2026-10-30 to 2026-11-02');
   await page.screenshot({ path: 'docs/design/issue-134/sync-confirm.png', fullPage: true });
-  await expect(page.getByTestId('health-sync-confirm')).toContainText('Not sent: Your display name');
+  await expect(page.getByTestId('health-sync-confirm')).toContainText('Not sent: Your name');
   expect(server.requests).toHaveLength(0); // nothing sent before the tap
   await page.getByTestId('health-sync-upload').click();
   await expect(page.getByTestId('health-sync-notice')).toHaveText('Linked and uploaded');
@@ -55,12 +56,12 @@ test('sync my data: confirm what is sent, link, then upload again; nothing local
   await page.getByTestId('health-sync-upload').click();
   await expect(page.getByTestId('health-sync-notice')).toHaveText('Uploaded');
   const put = server.requests.find((q) => q.method === 'PUT')!;
-  const token = [...server.users.values()][0].token;
+  const token = [...server.users.values()][0].ownerToken;
   expect(put.url).not.toContain(token);
   expect(put.body).not.toContain(token);
 
   await page.getByTestId('health-sync-view').click();
-  await expect(page.getByTestId('health-sync-remote')).toContainText('2026-10-30 to 2026-11-01');
+  await expect(page.getByTestId('health-sync-remote')).toContainText('2026-10-30 to 2026-11-02');
   expect(await page.evaluate(() => localStorage.getItem('pft:tracking:v1'))).toBe(before);
   // The owner token is never part of a backup's preferences or the tracking data.
   expect(before).not.toContain(token);
@@ -86,22 +87,24 @@ test('share my details: choose scope, preview exactly what is shared, create, co
   await page.getByRole('button', { name: 'Show the data' }).click();
   await expect(page.getByTestId('share-json')).not.toContainText('2026-08-01');
   await page.getByTestId('share-create').click();
-  await expect(page.getByTestId('share-link')).toContainText(`${BASE}/s/`);
+  await expect(page.getByTestId('share-link')).toContainText(`${BASE}/api/body-anvil/v1/shared/`);
   const shared = server.shares[0];
-  expect(shared.scope).toEqual({ days: 7, categories: ['body'] });
-  expect(JSON.stringify(shared.document)).not.toContain('2026-08-01');
+  expect(shared.scope).toEqual({ range: 7, categories: ['measurements'], format: 'records', expiresIn: 86400 });
+  const read = await (await server.fetch(`${BASE}/api/body-anvil/v1/shared/${shared.token}`, { method: 'GET', headers: {} })).text();
+  expect(read).toContain('2026-10-30');
+  expect(read).not.toContain('2026-08-01');
   await page.getByTestId('share-copy').click();
   await expect(page.getByTestId('health-sync-notice')).toContainText('Copied the link');
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   expect(clip).toContain('Read the JSON at this link');
-  expect(clip).toContain(`${BASE}/s/${shared.token}`);
-  expect(clip).not.toContain([...server.users.values()][0].token);
+  expect(clip).toContain(`${BASE}/api/body-anvil/v1/shared/${shared.token}`);
+  expect(clip).not.toContain([...server.users.values()][0].ownerToken);
   await page.screenshot({ path: 'docs/design/issue-134/share-link.png', fullPage: true });
 
   await page.getByRole('button', { name: 'Revoke now' }).click();
   await expect(page.getByTestId('health-sync-notice')).toHaveText('Link revoked');
-  expect(shared.revokedAt).not.toBeNull();
-  await expect(page.getByTestId('share-links')).toContainText('revoked');
+  expect(shared.revoked).toBe(true);
+  await expect(page.getByTestId('share-links')).toHaveCount(0);
 });
 
 test('offline: the error is shown and nothing is marked as synced', async ({ page }) => {
@@ -133,7 +136,7 @@ test('#136 build enrollment key: sent on enroll and its retries only; a rejected
 
   // The server rejects the build's key: explained, nothing linked, nothing local changed.
   const accepted = server.enrollmentKey;
-  server.enrollmentKey = 'server-expects-another-placeholder';
+  server.enrollmentKey = 'f'.repeat(64);
   await page.getByTestId('health-sync-prepare').click();
   await page.getByTestId('health-sync-upload').click();
   await expect(page.getByTestId('health-sync-error')).toContainText('didn’t accept this app’s enrollment key');
@@ -141,7 +144,7 @@ test('#136 build enrollment key: sent on enroll and its retries only; a rejected
   expect(await page.evaluate(() => localStorage.getItem('pft.healthSync.pending'))).toBeTruthy();
   await page.screenshot({ path: 'docs/design/issue-136/rejected-key.png', fullPage: true });
 
-  // Retry (e.g. after the Worker secret is fixed): same enrollment secret, key sent again, one link.
+  // Retry (e.g. after the Worker secret is fixed): same retry key, key sent again, one link.
   server.enrollmentKey = accepted;
   await page.getByTestId('health-sync-prepare').click();
   await page.getByTestId('health-sync-upload').click();
@@ -149,7 +152,7 @@ test('#136 build enrollment key: sent on enroll and its retries only; a rejected
   const enrolls = server.requests.filter((q) => q.url.endsWith('/enroll'));
   expect(enrolls).toHaveLength(2);
   expect(enrolls.map((q) => q.headers['X-Enrollment-Key'])).toEqual([accepted, accepted]);
-  expect(new Set(enrolls.map((q) => JSON.parse(q.body!).enrollmentSecret)).size).toBe(1);
+  expect(new Set(enrolls.map((q) => JSON.parse(q.body!).retryKey)).size).toBe(1);
 
   // Ordinary sync, server view and sharing never carry it.
   await page.getByTestId('health-sync-prepare').click();

@@ -12,8 +12,8 @@ const phone = (width: number, height: number) => ({
 });
 
 /** E2E_DEV=1: run the dev-server smoke test against `expo start --web` instead of the production export. */
-/** Placeholder only, never a real key; must match FakeHealthServer.enrollmentKey. */
-export const E2E_ENROLLMENT_KEY = 'test-enrollment-key-placeholder';
+/** Placeholder only, never a real key, in the Worker's format (64 lowercase hex); must match FakeHealthServer.enrollmentKey. */
+export const E2E_ENROLLMENT_KEY = 'e'.repeat(64);
 /** #146: the e2e API base, served by the fake backend in e2e/health-sync.spec.ts (never a real server). */
 export const E2E_API_URL = 'https://health.example.test';
 const e2eEnv = { EXPO_PUBLIC_BODY_ANVIL_ENROLLMENT_KEY: E2E_ENROLLMENT_KEY, EXPO_PUBLIC_BODY_ANVIL_API_URL: E2E_API_URL };

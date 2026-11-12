@@ -1,160 +1,188 @@
-import { metricDef } from '../observations/metrics';
+import { convertEnergy } from '../energy';
+import type { MealLog } from '../nutrition/contract';
+import { dayIntake, mealDates } from '../nutrition/intake';
+import { confirmedMeals, nutritionTargets } from '../nutrition/plannedMeals';
+import { toCanonical } from '../observations/units';
 import type { Observation } from '../observations/types';
 import { addDays, type LocalDate } from '../plan/dates';
-import type { MealLog } from '../nutrition/contract';
+import type { Plan } from '../plan/schema';
+import { validatePlan } from '../plan/validate';
 import type { StoreSnapshot } from '../storage/types';
 
 /**
- * The health data Body Anvil uploads (#134): one plain JSON document an AI or a person can read. Pure.
+ * The snapshot Body Anvil uploads (#134, #163), in the deployed Worker's wire format (questspirestudio
+ * docs/body-anvil/SYNC_API.md, worker/snapshot.mjs). Pure.
  *
- * - **Sync my data** sends everything (`days: null`, every category) to the owner's private snapshot.
- * - **Share my details** sends only the scope the user picked (last 7/30/90 days or all, chosen categories) to a
- *   read-only link. The preview shows exactly this document, so what's shared is what was shown.
+ * `{ schemaVersion: 1, appVersion, coverage: { from, to }, records: [{ date, category, metric, value, source }] }`:
+ * dated numbers only, in fixed units (kg, cm, %, km, kcal, min, g). The Worker rejects any other key, so nothing else
+ * can leave the phone: no names, meal or exercise names, notes, photos, screenshots, location or credentials.
  *
- * Never included: the display name (a direct identifier), meal photos or any file, screenshot text, location (the
- * app records none), and any credential. Each record keeps its date, unit and where it came from (provenance).
+ * - Observations recorded on a day become records as they are (each separately; inferred values are left out).
+ * - Food: a day total (entered or imported) is sent as recorded; on days without one, the day's meals (logged meals and
+ *   ticked plan meals at their estimates, #154) are sent as one `app` total, never both (contract 15).
+ * - Training: per day, sessions done (plan workouts ticked), their planned minutes, and sets, reps and volume from the
+ *   exercise log.
+ * - Plan: today's energy and protein targets and the weight goal, as `plan` records (separate from what happened).
  */
 
-export const HEALTH_SCHEMA = 'body-anvil-health';
-export const HEALTH_SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 1;
+/** The Worker's limits (worker/snapshot.mjs). */
+export const MAX_RECORDS = 15_000;
+export const MAX_SNAPSHOT_BYTES = 1024 * 1024;
 
-export const categories = ['body', 'activity', 'sleep', 'nutrition', 'training', 'plan'] as const;
+export const categories = ['measurements', 'activity', 'sleep', 'nutrition', 'training', 'plan'] as const;
 export type Category = (typeof categories)[number];
 export const categoryLabels: Record<Category, { label: string; detail: string }> = {
-  body: { label: 'Body measurements', detail: 'Weight, waist, body fat, resting heart rate' },
-  activity: { label: 'Activity', detail: 'Steps, distance, energy burned, workouts' },
-  sleep: { label: 'Sleep and recovery', detail: 'Sleep time and scores, readiness' },
-  nutrition: { label: 'Food', detail: 'Meals logged and daily energy and protein eaten' },
-  training: { label: 'Training log', detail: 'Plan check-offs, exercises, sore or injured muscles' },
-  plan: { label: 'Plan and goals', detail: 'Your plan, targets and setup answers (no name)' },
+  measurements: { label: 'Body measurements', detail: 'Weight, waist, body fat' },
+  activity: { label: 'Activity', detail: 'Steps, distance, active energy and minutes' },
+  sleep: { label: 'Sleep', detail: 'Time asleep' },
+  nutrition: { label: 'Food', detail: 'Daily energy, protein, carbs, fat and meals eaten' },
+  training: { label: 'Training', detail: 'Workouts done, minutes, sets, reps and volume' },
+  plan: { label: 'Plan targets', detail: 'Energy and protein targets, weight goal' },
 };
 
-export type ShareDays = 7 | 30 | 90 | null;
-export type Scope = { days: ShareDays; categories: Category[] };
-export const FULL_SCOPE: Scope = { days: null, categories: [...categories] };
+export type Source = 'manual' | 'screenshot' | 'healthConnect' | 'integration' | 'app' | 'plan';
+export type SyncRecord = { date: LocalDate; category: Category; metric: string; value: number; source: Source };
+export type SyncSnapshot = { schemaVersion: 1; appVersion: string; coverage: { from: LocalDate | null; to: LocalDate }; records: SyncRecord[] };
+
+export type ShareRange = 7 | 30 | 90 | 'all';
+export type Scope = { range: ShareRange; categories: Category[] };
 
 export const OMITTED = [
-  'Your display name',
-  'Meal photos and screenshots (and any text read from them)',
+  'Your name, and the names of meals, foods and exercises',
+  'Notes, meal photos and screenshots',
   'Location: the app records none',
   'Passwords, keys and the link credential',
 ] as const;
 
-const metricCategory: Record<string, Category> = {
-  weight: 'body', weight_change: 'body', body_fat: 'body', waist: 'body', resting_heart_rate: 'body',
-  steps: 'activity', distance: 'activity', floors: 'activity', active_minutes: 'activity', active_energy: 'activity',
-  total_energy: 'activity', exercise_session: 'activity', cardio_score: 'activity',
-  sleep_duration: 'sleep', sleep_score: 'sleep', readiness_score: 'sleep',
-  energy_intake: 'nutrition', protein_intake: 'nutrition',
-};
-/** Plan-defined measurements (custom metric ids) are body measurements. */
-export const categoryOf = (metric: string): Category => metricCategory[metric] ?? 'body';
+const KCAL_PER_KJ = 1 / 4.184;
+const round = (v: number, dp = 2) => Math.round(v * 10 ** dp) / 10 ** dp;
 
-type Value = {
-  date: LocalDate;
-  metric: string;
-  label: string;
-  value: number;
-  unit: string;
-  kind: Observation['kind'];
-  source: { type: Observation['source']['type']; app: string | null; confidence: number | null; edited: boolean };
-  note?: string;
-  workout?: { type: string | null; start: string; end: string; distanceMeters?: number };
+/** App metric → Worker category and metric. Values are already in the Worker's unit except energy (kJ → kcal). */
+const observed: Record<string, { category: Category; metric: string; energy?: true }> = {
+  weight: { category: 'measurements', metric: 'weight' },
+  waist: { category: 'measurements', metric: 'waist' },
+  body_fat: { category: 'measurements', metric: 'bodyFat' },
+  steps: { category: 'activity', metric: 'steps' },
+  active_energy: { category: 'activity', metric: 'activeEnergy', energy: true },
+  active_minutes: { category: 'activity', metric: 'activeMinutes' },
+  distance: { category: 'activity', metric: 'distance' },
+  sleep_duration: { category: 'sleep', metric: 'duration' },
+  energy_intake: { category: 'nutrition', metric: 'energy', energy: true },
+  protein_intake: { category: 'nutrition', metric: 'protein' },
 };
 
-const value = (o: Observation): Value => ({
-  date: o.date,
-  metric: o.metric,
-  label: metricDef(o.metric)?.label ?? o.label ?? o.metric,
-  value: o.value,
-  unit: o.unit,
-  kind: o.kind,
-  source: { type: o.source.type, app: o.source.app, confidence: o.source.confidence, edited: o.source.edited },
-  ...(o.note ? { note: o.note } : {}),
-  ...(o.activity ? { workout: { type: o.label, start: o.activity.start, end: o.activity.end, ...(o.activity.distanceMeters !== undefined ? { distanceMeters: o.activity.distanceMeters } : {}) } } : {}),
-});
+const sourceOf = (o: Observation): Source => (o.source.type === 'integration' ? 'healthConnect' : o.source.type === 'screenshot' ? 'screenshot' : 'manual');
 
-const meal = (m: MealLog) => {
-  const sum = (k: 'energyKj' | 'proteinG' | 'carbsG' | 'fatG') => {
-    const xs = m.items.map((i) => i[k]).filter((x): x is number => x !== null);
-    return xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) * 10) / 10 : null;
-  };
-  return {
-    date: m.date,
-    at: m.at,
-    name: m.name,
-    replacedPlannedMeal: m.replacedLabel,
-    items: m.items.map((i) => ({ name: i.name, quantity: i.quantity, unit: i.unit, energyKj: i.energyKj, proteinG: i.proteinG, carbsG: i.carbsG, fatG: i.fatG })),
-    totals: { energyKj: sum('energyKj'), proteinG: sum('proteinG'), carbsG: sum('carbsG'), fatG: sum('fatG') },
-    source: m.source === 'photo-ai' ? 'estimated from a photo by AI, checked by the user' : 'typed in by the user',
-    confidence: m.confidence,
-    edited: m.edited,
-  };
-};
+/** A numeric `major.minor.patch` (the Worker rejects anything else). */
+export const wireVersion = (v: string) => (/^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(v) ? v : '0.0.0');
 
-/** The plan as data, without the display name. */
-function planData(json: string): unknown {
+function parsePlan(json: string): Plan | null {
   try {
-    const plan = JSON.parse(json) as { profile?: Record<string, unknown> };
-    if (plan.profile) {
-      const { displayName: _name, ...profile } = plan.profile;
-      return { ...plan, profile };
-    }
-    return plan;
+    const r = validatePlan(JSON.parse(json));
+    return r.ok ? r.plan : null;
   } catch {
     return null;
   }
 }
 
-export function buildHealthPayload(s: StoreSnapshot, meta: { generatedAt: string; today: LocalDate; appVersion: string }, scope: Scope = FULL_SCOPE) {
-  const from = scope.days ? addDays(meta.today, -(scope.days - 1)) : null;
-  const inScope = (d: string) => (!from || d >= from) && d <= meta.today;
-  const want = new Set(scope.categories);
-  const obs = s.observations.filter((o) => inScope(o.date) && want.has(categoryOf(o.metric)));
-  const of = (c: Category) => obs.filter((o) => categoryOf(o.metric) === c).map(value);
-  const meals = want.has('nutrition') ? (s.mealLogs ?? []).filter((m) => inScope(m.date)).map(meal) : [];
-  const training = want.has('training')
-    ? {
-        checklist: s.activityLogs.filter((a) => inScope(a.date) && a.status !== 'pending').map((a) => ({ date: a.date, item: a.labelSnapshot, status: a.status, count: a.count, ...(a.variant ? { variant: a.variant } : {}), ...(a.exercisesDone?.length ? { exercisesDone: a.exercisesDone } : {}) })),
-        exercises: (s.exerciseLogs ?? []).filter((l) => inScope(l.date)).map((l) => ({ date: l.date, movement: l.movement, sets: l.sets, reps: l.reps, seconds: l.seconds, ...(l.loadKg != null ? { loadKg: l.loadKg } : {}), ...(l.rir != null ? { rir: l.rir } : {}), ...(l.routine ? { routine: l.routine } : {}), status: l.status ?? 'done' })),
-        muscleReports: (s.muscleReports ?? []).filter((r) => inScope(r.at.slice(0, 10)) || r.clearedAt === null).map((r) => ({ muscle: r.muscle, kind: r.kind, at: r.at, clearedAt: r.clearedAt })),
-      }
-    : null;
-  const sections = {
-    ...(want.has('plan') && s.plans[0] ? { plan: { revision: s.plans[0].revision, data: planData(s.plans[0].json) } } : {}),
-    ...(want.has('body') ? { body: of('body') } : {}),
-    ...(want.has('activity') ? { activity: of('activity') } : {}),
-    ...(want.has('sleep') ? { sleep: of('sleep') } : {}),
-    ...(want.has('nutrition') ? { nutrition: { dailyTotals: of('nutrition'), meals } } : {}),
-    ...(training ? { training } : {}),
+export function buildSnapshot(s: StoreSnapshot, meta: { today: LocalDate; appVersion: string }): SyncSnapshot {
+  const today = meta.today;
+  const out: SyncRecord[] = [];
+  const add = (date: LocalDate, category: Category, metric: string, value: number | null, source: Source) => {
+    if (value === null || !Number.isFinite(value) || value < 0 || value > 1e9 || date > today) return;
+    if (metric === 'bodyFat' && value > 100) return;
+    out.push({ date, category, metric, value: round(value), source });
   };
-  const dates = [...obs.map((o) => o.date), ...meals.map((m) => m.date), ...(training ? [...training.checklist, ...training.exercises].map((x) => x.date) : [])].sort();
-  return {
-    schema: HEALTH_SCHEMA,
-    schemaVersion: HEALTH_SCHEMA_VERSION,
-    generatedAt: meta.generatedAt,
-    app: { name: 'Body Anvil', version: meta.appVersion },
-    coverage: { from: dates[0] ?? null, to: dates[dates.length - 1] ?? null, requestedFrom: from, requestedTo: meta.today },
-    scope: { days: scope.days, categories: categories.filter((c) => want.has(c)) },
-    counts: {
-      values: obs.length,
-      meals: meals.length,
-      checklist: training?.checklist.length ?? 0,
-      exercises: training?.exercises.length ?? 0,
-      muscleReports: training?.muscleReports.length ?? 0,
-    },
-    readMe: [
-      'Personal health and fitness records from the Body Anvil app. Each value has a date (the day it is about), a unit and its source.',
-      'source.type: manual = entered by the user; screenshot = read from a screenshot and confirmed by the user; integration = imported (e.g. Health Connect).',
-      'kind: observed = recorded; inferred = calculated by the app. Planned meals are never counted as eaten; only logged meals and recorded daily totals are.',
-      'Days with no record are missing data, not zero.',
-    ],
-    omitted: [...OMITTED],
-    ...sections,
-  };
+
+  for (const o of s.observations) {
+    const m = observed[o.metric];
+    if (!m || o.kind !== 'observed') continue;
+    add(o.date, m.category, m.metric, m.energy ? o.value * KCAL_PER_KJ : o.value, sourceOf(o));
+  }
+
+  // Food from meals, only on days without a day total of their own (dayIntake decides, as on Today).
+  const plans = new Map(s.plans.map((p) => [p.planId, parsePlan(p.json)]));
+  const mealLogs: MealLog[] = s.mealLogs ?? [];
+  const ticked = confirmedMeals(s.activityLogs, mealLogs, (_d, planId) => plans.get(planId) ?? null);
+  for (const date of mealDates(mealLogs, ticked)) {
+    const d = dayIntake(date, mealLogs, s.observations, ticked);
+    const v = d.values;
+    if (v.energyKj?.from === 'meals') add(date, 'nutrition', 'energy', v.energyKj.value * KCAL_PER_KJ, 'app');
+    if (v.proteinG?.from === 'meals') add(date, 'nutrition', 'protein', v.proteinG.value, 'app');
+    if (v.carbsG) add(date, 'nutrition', 'carbs', v.carbsG.value, 'app');
+    if (v.fatG) add(date, 'nutrition', 'fat', v.fatG.value, 'app');
+    add(date, 'nutrition', 'meals', d.meals.length + d.confirmed.length, 'app');
+  }
+
+  // Training per day: ticked plan workouts and the exercise log.
+  const sessions = new Map<string, { n: number; minutes: number }>();
+  for (const a of s.activityLogs) {
+    if (a.status !== 'done') continue;
+    const act = plans.get(a.planId)?.activities.find((x) => x.id === a.activityId);
+    if (act?.kind !== 'exercise') continue;
+    const t = sessions.get(a.date) ?? { n: 0, minutes: 0 };
+    t.n += 1;
+    const dur = act.duration;
+    if (dur) t.minutes += a.variant === 'short' && 'min' in dur ? dur.min : 'minutes' in dur ? dur.minutes : dur.max;
+    sessions.set(a.date, t);
+  }
+  for (const [date, t] of sessions) {
+    add(date, 'training', 'sessions', t.n, 'app');
+    if (t.minutes) add(date, 'training', 'duration', t.minutes, 'app');
+  }
+  const lifting = new Map<string, { sets: number; reps: number; volume: number }>();
+  for (const l of s.exerciseLogs ?? []) {
+    if ((l.status ?? 'done') !== 'done' || !l.sets) continue;
+    const t = lifting.get(l.date) ?? { sets: 0, reps: 0, volume: 0 };
+    t.sets += l.sets;
+    if (l.reps) {
+      t.reps += l.sets * l.reps;
+      if (l.loadKg) t.volume += l.sets * l.reps * l.loadKg;
+    }
+    lifting.set(l.date, t);
+  }
+  for (const [date, t] of lifting) {
+    add(date, 'training', 'sets', t.sets, 'app');
+    if (t.reps) add(date, 'training', 'reps', t.reps, 'app');
+    if (t.volume) add(date, 'training', 'volume', t.volume, 'app');
+  }
+
+  // Today's plan targets.
+  const plan = s.plans[0] ? plans.get(s.plans[0].planId) : null;
+  if (plan) {
+    const { energy, protein } = nutritionTargets(plan);
+    const e = energy ? energy.max ?? energy.min : undefined;
+    if (e !== undefined) add(today, 'plan', 'energyTarget', convertEnergy(e, plan.units.energy, 'kcal'), 'plan');
+    const p = protein ? protein.min ?? protein.max : undefined;
+    if (p !== undefined) add(today, 'plan', 'proteinTarget', p, 'plan');
+    const goal = plan.goals.find((g) => g.measurementId === 'weight');
+    if (goal) add(today, 'plan', 'weightTarget', toCanonical(goal.target, plan.units.mass, 'mass'), 'plan');
+  }
+
+  out.sort((a, b) => a.date.localeCompare(b.date) || a.category.localeCompare(b.category) || a.metric.localeCompare(b.metric));
+  return { schemaVersion: SCHEMA_VERSION, appVersion: wireVersion(meta.appVersion), coverage: { from: out[0]?.date ?? null, to: today }, records: out };
 }
 
-export type HealthPayload = ReturnType<typeof buildHealthPayload>;
+/**
+ * What a read-only link with this scope shows, worked out on the phone the same way the Worker does
+ * (worker/snapshot.mjs `projectShare`, "records" format). Used to preview before the phone is linked, and for
+ * "Share as text".
+ */
+export function projectShare(snapshot: SyncSnapshot, scope: Scope) {
+  const to = snapshot.coverage.to;
+  const from = scope.range === 'all' ? null : addDays(to, -(scope.range - 1));
+  const records = snapshot.records.filter((r) => scope.categories.includes(r.category) && (from === null || r.date >= from));
+  const dates = records.map((r) => r.date).sort();
+  return {
+    schemaVersion: snapshot.schemaVersion,
+    provenance: { app: 'Body Anvil', appVersion: snapshot.appVersion },
+    format: 'records' as const,
+    requested: { range: scope.range, categories: scope.categories, from, to },
+    coverage: { from: dates[0] ?? null, to: dates[dates.length - 1] ?? null },
+    data: records,
+  };
+}
 
 /** UTF-8 byte length of a string (no TextEncoder dependency). */
 export function utf8Bytes(s: string): number {

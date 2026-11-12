@@ -9,14 +9,14 @@ import { FakeHealthServer } from '../../../healthSync/__tests__/fakeServer';
 const API = 'https://health.example.test';
 jest.mock('../../../healthSync/config', () => ({
   BUILD_API: { ok: true, url: 'https://health.example.test' },
-  BUILD_ENROLLMENT_KEY: 'test-enrollment-key-placeholder',
+  BUILD_ENROLLMENT_KEY: 'e'.repeat(64),
   DEV_BUILD: false,
 }));
 jest.mock('../../../platform/secrets', () => {
   const map = new Map<string, string>();
   return { secrets: { get: async (k: string) => map.get(k) ?? null, set: async (k: string, v: string) => void map.set(k, v), remove: async (k: string) => void map.delete(k) } };
 });
-jest.mock('../../../platform/random', () => ({ random: { uuid: () => '00000000-0000-4000-8000-000000000002', secret: () => 's'.repeat(43) } }));
+jest.mock('../../../platform/random', () => ({ random: { uuid: () => '00000000-0000-4000-8000-000000000002', hexKey: () => 'c'.repeat(64) } }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
 
 import { HealthSyncSheet } from '../HealthSyncSheet';

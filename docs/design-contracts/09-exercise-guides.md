@@ -63,7 +63,7 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
   - session ticks (and whole-workout "done"), with doses from that day's snapshot, else the plan in effect;
   - plan activities that name a `movement` (formatVersion 7), for example VR boxing: rounds done (even part-way), or the planned duration once a check is done; skipped counts nothing;
   - exercises logged on their own (contract 04).
-- **Conditioning** stays separate from strength sessions and suggestions, but its muscle work counts. Legacy movements outside the inventory (e.g. `cable_row`) keep their data and simply add no muscle history.
+- **Conditioning** stays separate from strength sessions and suggestions, but its muscle work counts. Movements outside the current shared inventory keep their data and simply add no muscle history; promoted catalogue movements use their shared mappings.
 
 **Rules** (`COVERAGE`, tunable; tests pin each):
 - **Effective sets:**
@@ -92,6 +92,8 @@ Advisory planning only: the app orders and explains, it never blocks a choice or
 - **Default doses:** every strength entry has a `defaultDose` (sets plus reps or seconds). It's the one-tap dose when no plan prescribes the movement, never a recommendation.
 
 **Production UI (#79):** the expanded workout sheet includes a proportionate front/rear artwork preview and **Muscle coverage & log exercise**. The expanded inline workout and app menu also open coverage. The coverage sheet has fixed Close and scrollable art/detail/list content. It uses `loadExerciseHistory` and `exerciseState` for current coverage and suggestions, not a parallel engine. Historical workout logging uses its selected date; the coverage label always names today's date. Future-day forms are read-only.
+
+**Acceptance follow-through (#56):** while coverage stays open, minute/foreground clock changes refresh the existing engine's recovery state without resetting the selected muscle, Priority/Reports view or logging draft. All logger drafts resolve against the plan's complete shared catalogue, including custom default sets and seconds/repetitions; viewing or refreshing never records work. Today's prescribed counts remain separate from catalogue extras (contract 08). The current approved Hero Forge maps/outlines and textual status cues below supersede historical silhouette/four-colour mock-up wording.
 
 - All 14 inventory groups have accessible, named text rows with effective sets and explicit unknown/priority/coverage/recovering/sore/injured labels. Automatic recovery is never labelled as injury. Selecting a row brings the corresponding detail into view.
 - Supplied #77 PNGs and curved SVG region data are copied unchanged under `assets/hero-forge/app/`. PNG and path coordinates share the same 1024 × 1536 pixel system and scale proportionally. Profile `male`/`female` select their exact sets; absent/other/future values use the distinct neutral set. No new account or question.

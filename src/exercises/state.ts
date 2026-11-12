@@ -75,6 +75,8 @@ export async function loadExerciseHistory(store: TrackingStore, plan: Plan, toda
 }
 
 export type ExerciseState = {
+  /** Canonical performed entries for derived recommendations; never a second persisted history. */
+  entries: ExerciseEntry[];
   coverage: MuscleCoverage[];
   /** Eligible strength exercises, most useful first; nothing is removed. */
   suggestions: Suggestion[];
@@ -115,7 +117,7 @@ export function exerciseState(
   }
   const restDay = restDays.includes(weekdayOf(at.today));
   const dayOrder = suggestExercises(eligibleExercises(plan.exercise, inventory), startOfDay).map((s) => s.exercise.movement);
-  return { coverage, suggestions, enoughHistory: hasEnoughHistory(history.entries, inventory, at.today), restDay, sessionOrders, dayOrder, priorityOrder: enoughBefore };
+  return { entries: history.entries.filter(e => e.date <= at.today && Date.parse(e.at) <= Date.parse(at.now)), coverage, suggestions, enoughHistory: hasEnoughHistory(history.entries, inventory, at.today), restDay, sessionOrders, dayOrder, priorityOrder: enoughBefore };
 }
 
 /** Log an exercise done outside any session (#56), at any time and on any day, rest days included. */

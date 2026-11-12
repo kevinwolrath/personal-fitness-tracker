@@ -21,7 +21,7 @@ import { coverageLabel, MuscleMap, type MapMode } from './MuscleMap';
 /** Real #56 history and store actions; this component contains presentation, not a second recovery engine. */
 export function CoverageSheet({ date, editable, session, onClose, initialPage = 'map' }: { date: LocalDate; editable: boolean; session?: PrescribedSession; onClose: () => void; initialPage?: 'map' | 'inventory' }) {
   const { store, plan, dataVersion, notifyDataChanged } = useApp();
-  const { today } = useClock();
+  const { today, nowMinutes } = useClock();
   const { colors, type } = useTheme();
   const styles = useStyles();
   const [state, setState] = useState<ExerciseState | null>(null);
@@ -53,7 +53,7 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
       // Muscle Growth items (#122) have their own checklist on Today: only free extras are listed here.
       setLogs(recorded.filter((l) => l.routine !== 'muscle_growth'));
     }
-  }, [store, plan, today, date]);
+  }, [store, plan, today, nowMinutes, date]);
   useEffect(() => { load().catch(() => setError('Could not load coverage. Try again.')); }, [load, dataVersion]);
   const act = async (fn: () => Promise<unknown>) => {
     if (pending.current) return;
@@ -69,7 +69,7 @@ export function CoverageSheet({ date, editable, session, onClose, initialPage = 
   const choose = (next: InventoryExercise) => {
     // Same starting dose as Today's one-tap (#56): today's session, else the plan, else the inventory default.
     const today = [...(session?.exercises ?? []), ...(session?.short?.exercises ?? [])].find(e => e.movement === next.movement);
-    const d = doseFor(next.movement, plan, today);
+    const d = doseFor(next.movement, plan, today, catalogue);
     setExercise(next); setSets(String(d.sets));
     // An editable draft of what was done, never recorded until saved.
     const seconds = next.kind === 'conditioning' || d.seconds !== undefined;

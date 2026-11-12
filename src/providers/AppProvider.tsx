@@ -5,6 +5,8 @@ import { loadActivePlan } from '../plan/bootstrap';
 import { preferences } from '../platform/preferences';
 import { planSchema, type Plan } from '../plan/schema';
 import { openStore } from '../storage/openStore';
+import { noteDatabaseStart } from '../export/aiExport';
+import { localIsoTimestamp } from '../format';
 import { ensureUserId } from '../healthSync/service';
 import { random } from '../platform/random';
 import type { TrackingStore } from '../storage/types';
@@ -62,6 +64,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // #134: this data's ID, made once when there is data to sync (first-run setup stores nothing until it finishes).
       // Kept in the database, so a full backup carries it. Never blocks or fails startup.
       if (plan) Promise.resolve().then(() => ensureUserId(store, random.uuid)).catch(() => undefined);
+      // #167: when this database started (or was first seen, if it already had data), for exports to state coverage.
+      if (plan) Promise.resolve().then(() => noteDatabaseStart(store, localIsoTimestamp())).catch(() => undefined);
       // #138: screenshot import is gone; don't keep its API key (a secret) on the phone.
       Promise.resolve().then(() => preferences.forgetScreenshotImportKey()).catch(() => undefined);
       setChosenEnergy(energy);

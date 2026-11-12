@@ -196,3 +196,24 @@ test('#168 share everything: one tap syncs, links all history for 24 hours and h
   await expect(page.getByTestId('health-sync-notice')).toHaveText('Link revoked');
   expect(share.revoked).toBe(true);
 });
+
+test('#167 detailed file: made on the phone, states its coverage, never uploaded', async ({ page }) => {
+  const server = new FakeHealthServer();
+  await route(page, server);
+  await seedRecords(page, { observations: [weigh('2026-10-30', 92.4), weigh('2026-11-01', 92.1)] });
+  await openAt(page, MONDAY);
+  await open(page);
+  await page.getByTestId('health-sync-share').click();
+  await page.getByTestId('share-detailed').scrollIntoViewIfNeeded();
+  await expect(page.getByTestId('share-detailed')).toBeVisible();
+  if (test.info().project.name === 'phone') await page.screenshot({ path: 'docs/design/issue-167/advanced-sharing.png' });
+  const download = page.waitForEvent('download');
+  await page.getByTestId('share-detailed-file').click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe('body-anvil-ai-export-2026-11-02.json');
+  const doc = JSON.parse(require('node:fs').readFileSync(await file.path(), 'utf8'));
+  expect(doc).toMatchObject({ format: 'body-anvil-ai-export', version: 1, coverage: { app: { from: '2026-10-30', to: '2026-11-01' }, healthConnect: null } });
+  expect(doc.database.startedAtKind).toMatch(/created|firstSeen/);
+  expect(doc.measurements.map((m: { id: string }) => m.id)).toEqual(['w-2026-10-30', 'w-2026-11-01']);
+  expect(server.requests).toHaveLength(0); // nothing uploaded
+});

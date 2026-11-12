@@ -172,6 +172,7 @@ export function TodayWorkoutSheet({ workout, coverage, gender, editable, onToggl
             style={styles.extras}
             accessibilityRole="button"
             accessibilityState={{ expanded: extrasOpen }}
+            aria-expanded={extrasOpen}
             accessibilityLabel={`Extras: ${extraRows.length} more you can add${w.extras.done ? `, ${w.extras.done} done` : ''}`}
             testID="today-workout-extras"
           >

@@ -70,7 +70,8 @@ describe('enrollment key build wiring (#136)', () => {
     expect(read('scripts/build-apk.ps1')).toContain("-match '/api/body-anvil(/|$)'");
     // Run just the release script's URL checks (everything up to the keystore) with each value.
     const sh = read('scripts/google-play-release.sh');
-    const checks = sh.slice(sh.indexOf('case "$EXPO_PUBLIC_BODY_ANVIL_API_URL"'), sh.indexOf('KEYSTORE='));
+    // Windows checkouts may have CRLF line endings, which bash would read as part of each pattern.
+    const checks = sh.slice(sh.indexOf('case "$EXPO_PUBLIC_BODY_ANVIL_API_URL"'), sh.indexOf('KEYSTORE=')).replace(/\r/g, '');
     const ok = (url: string) => {
       try {
         execFileSync('bash', ['-c', checks], { env: { ...process.env, EXPO_PUBLIC_BODY_ANVIL_API_URL: url }, stdio: 'pipe' });

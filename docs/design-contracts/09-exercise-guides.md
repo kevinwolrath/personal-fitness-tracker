@@ -39,6 +39,8 @@ Adding an exercise is a library definition plus bundled illustrations and a stat
 
 ## The guide sheet
 
+**Approved layout A (#98):** retain the 4:3 movement pager and step controls, then always render a compact front/rear activation strip with primary/secondary names and activation-only legend, before equipment and instructions. No Show/Hide toggle. The map uses the same explicit male/female/neutral fallback as the movement pose; absent/other/unknown remains neutral. The strip uses the plan's complete shared catalogue (including custom mappings and permitted overrides), never a parallel bundled-only lookup. Unknown mappings have an explicit unavailable state. Figures are about 153dp tall; the text may wrap below them on narrow phones or large text. Close stays fixed, all content remains scrollable, and guide browsing never logs work. No shell/Today header change.
+
 - **Opens from:** any prescribed exercise row: the "Do this next" card and the workout's details sheet (full and short sessions). The rows are buttons labelled "<label>, <dose>. Show how".
 - **Context:** the guide nests inside the sheet that opened it (02's sheet rules), so closing it returns to that sheet, or to the day when opened from the card.
 - **Shows:**

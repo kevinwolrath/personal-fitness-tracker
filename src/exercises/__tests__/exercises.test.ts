@@ -88,6 +88,24 @@ describe('buildGuide', () => {
   const strength = seedPlan.activities.find((a) => a.id === 'resistance')!.session!;
   const guide = (i: number) => buildGuide(prescribeExercise(strength.exercises[i], seedPlan.exercise), seedPlan.exercise);
 
+  it('uses the shared primary/secondary vocabulary for every bundled movement', () => {
+    for (const exercise of inventory.exercises) {
+      const mapping = buildGuide({ movement: exercise.movement, label: exercise.name }).muscles!;
+      expect(mapping.primary.map(muscle => muscle.id)).toEqual(exercise.primary);
+      expect(mapping.secondary.map(muscle => muscle.id)).toEqual(exercise.secondary);
+      expect([...mapping.primary, ...mapping.secondary].every(muscle => inventory.muscleGroups.some(group => group.id === muscle.id && group.label === muscle.label))).toBe(true);
+    }
+  });
+
+  it('maps custom exercises and permitted overrides from the same catalogue as logging', () => {
+    const config = { customExercises: [
+      { movement: 'custom_hold', name: 'Custom hold', kind: 'strength' as const, equipment: [] as [], primary: ['core'], secondary: ['shoulders'] },
+      { movement: 'kettlebell_shrug', name: 'My shrug', kind: 'strength' as const, equipment: ['kettlebell' as const], primary: ['upper_back'], secondary: ['core'] },
+    ] };
+    expect(buildGuide({ movement: 'custom_hold', label: 'Custom hold' }, config).muscles).toEqual({ primary: [{ id: 'core', label: 'Core/abdominals' }], secondary: [{ id: 'shoulders', label: 'Shoulders' }] });
+    expect(buildGuide({ movement: 'kettlebell_shrug', label: 'My shrug' }, config).muscles?.secondary).toEqual([{ id: 'core', label: 'Core/abdominals' }]);
+  });
+
   it('joins the reusable definition with today\'s prescription and the configured equipment', () => {
     expect(guide(0)).toMatchObject({
       name: 'Kettlebell squat', hasDefinition: true, prescription: '3 × 10', equipment: ['16 kg and 24 kg kettlebells'],

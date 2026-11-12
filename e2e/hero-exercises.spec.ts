@@ -7,7 +7,7 @@ import seed from '../plans/seed.plan.json';
 import library from '../src/exercises/library.json';
 test.setTimeout(120_000);
 
-import { MONDAY, openAt, seedPlan, chooseFromMenu } from './helpers';
+import { MONDAY, openAt, seedPlan, seedRecords, chooseFromMenu } from './helpers';
 
 const customShrug = { movement: 'kettlebell_shrug', name: 'Kettlebell shrug', kind: 'strength' as const, equipment: ['kettlebell' as const], primary: ['upper_back'], secondary: ['forearms'], defaultDose: { sets: 2, reps: 12 } };
 
@@ -34,6 +34,16 @@ for (const hero of ['male', 'female', 'neutral'] as const) {
       expect(firstUrl).toContain('/assets/');
       const pose = manifest.find(entry => entry.movement === exercise.movement && entry.step === 1 && entry.hero === hero)!;
       expect(firstUrl).toContain(pose.id);
+      const activation = page.getByTestId('guide-activation');
+      await expect(activation).toBeAttached();
+      await expect(page.getByRole('button', { name: /Show activated muscles|Hide activated muscles/ })).toHaveCount(0);
+      await expect(activation.locator('image').first()).toHaveAttribute('href', new RegExp(`${hero}-front`));
+      await expect(activation.locator('image').last()).toHaveAttribute('href', new RegExp(`${hero}-back`));
+      const regions = await activation.locator('path[data-testid]').evaluateAll(nodes => nodes.map(node => ({ id: node.getAttribute('data-testid')!.replace(/^muscle-(front|back)-/, ''), fill: node.getAttribute('fill'), dash: node.getAttribute('stroke-dasharray') })));
+      for (const region of regions) {
+        expect(region.fill, `${exercise.movement}: ${region.id}`).toBe([...exercise.primary, ...exercise.secondary].includes(region.id) ? '#78C9DF' : 'transparent');
+        expect(region.dash, `${exercise.movement}: ${region.id}`).toBe(exercise.secondary.includes(region.id) ? '12 8' : null);
+      }
       await expect(page.getByTestId('guide-artwork-note')).toHaveCount(0);
       if (exercise.movement === 'kettlebell_shrug' && info.project.name === 'phone') {
         mkdirSync('docs/design/issue-153/screenshots', { recursive: true });
@@ -68,7 +78,10 @@ for (const hero of ['male', 'female', 'neutral'] as const) {
 }
 
 test('saved profile changes replace the guide hero without reloading the app', async ({ page }) => {
+  await seedRecords(page, { exerciseLogs: [{ id: 'profile-history', movement: 'hammer_curl', date: '2026-10-20', at: '2026-10-20T09:00:00+11:00', sets: 2, reps: 12, seconds: null, intensity: null }] });
   await openAt(page, MONDAY);
+  const original = await page.evaluate(() => JSON.parse(JSON.parse(localStorage.getItem('pft:tracking:v1')!).plan.json));
+  const history = await page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!).exerciseLogs);
   for (const gender of ['male', 'female', 'other', undefined]) {
     await chooseFromMenu(page, 'Edit setup answers');
     if (gender) await page.getByTestId(`gender-${gender}`).click();
@@ -85,6 +98,11 @@ test('saved profile changes replace the guide hero without reloading the app', a
     const hero = gender === 'male' || gender === 'female' ? gender : 'neutral';
     const pose = manifest.find(entry => entry.movement === 'kettlebell_squat' && entry.step === 1 && entry.hero === hero)!;
     await expect(page.getByTestId('guide-image-1').locator('img')).toHaveAttribute('src', new RegExp(pose.id));
+    await expect(page.getByTestId('guide-activation').locator('image').first()).toHaveAttribute('href', new RegExp(`${hero}-front`));
+    await expect(page.getByTestId('guide-activation').locator('image').last()).toHaveAttribute('href', new RegExp(`${hero}-back`));
+    const saved = await page.evaluate(() => JSON.parse(JSON.parse(localStorage.getItem('pft:tracking:v1')!).plan.json));
+    for (const key of ['activities', 'dayTypes', 'targets', 'exercise', 'goals', 'measurements']) expect(saved[key]).toEqual(original[key]);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pft:tracking:v1')!).exerciseLogs)).toEqual(history);
     await page.getByRole('button', { name: 'Close guide', exact: true }).click();
     await page.getByRole('button', { name: 'Back to exercise inventory', exact: true }).click();
     await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();

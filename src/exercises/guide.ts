@@ -1,6 +1,7 @@
 import { equipmentCapabilities } from '../equipment/catalogue';
 import { movementSupported } from './availability';
 import { exerciseInventory } from './inventory';
+import { inventoryFor } from './catalogue';
 import { describeItem } from '../config/diff';
 import type { CustomExercise, ExerciseSection } from '../plan/schema';
 import { exerciseDose, movementLabel, type PrescribedExercise } from '../prescription/session';
@@ -25,6 +26,7 @@ export type ExerciseGuide = {
   instructions: string[];
   steps: GuideStep[];
   equipmentUnavailable?: boolean;
+  muscles?: { primary: { id: string; label: string }[]; secondary: { id: string; label: string }[] };
 };
 
 const humanEquipment = (type: string) => type.replace(/_/g, ' ');
@@ -50,6 +52,9 @@ export function buildGuide(exercise: PrescribedExercise, config?: ExerciseSectio
   const limitation = config?.limitations?.find((l) => l.movement === exercise.movement && l.status === 'caution');
   const name = def?.name ?? exercise.label ?? movementLabel(exercise.movement);
   const dose = exerciseDose(exercise);
+  const inventory = inventoryFor({ exercise: config });
+  const mapping = inventory.exercises.find(entry => entry.movement === exercise.movement);
+  const muscleNames = (ids: string[]) => ids.map(id => ({ id, label: inventory.muscleGroups.find(group => group.id === id)!.label }));
   return {
     movement: exercise.movement,
     name,
@@ -61,6 +66,7 @@ export function buildGuide(exercise: PrescribedExercise, config?: ExerciseSectio
     equipment,
     instructions: def?.instructions ?? [],
     steps: def?.steps ?? [],
+    ...(mapping ? { muscles: { primary: muscleNames(mapping.primary), secondary: muscleNames(mapping.secondary) } } : {}),
     ...(config && requirement && !movementSupported(exercise.movement, config) ? { equipmentUnavailable: true } : {}),
   };
 }

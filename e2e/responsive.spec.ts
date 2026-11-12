@@ -176,7 +176,15 @@ test('the exercise guide (long instructions, substitution note, caution) fits at
       await page.setViewportSize({ width, height: 900 });
       await page.waitForTimeout(50);
       expect(await layoutProblems(page), `${name} at ${width}px`).toEqual([]);
+      const activation = page.getByTestId('guide-activation');
+      await expect(activation).toBeAttached();
+      const band = await activation.boundingBox();
+      const instructions = await page.getByTestId('guide-instructions').boundingBox();
+      expect(band!.y + band!.height).toBeLessThanOrEqual(instructions!.y);
     }
+    await page.setViewportSize({ width: 320, height: 844 });
+    await page.getByTestId('guide-activation').locator('[dir="auto"]').evaluateAll(nodes => nodes.forEach(node => { (node as HTMLElement).style.fontSize = `${parseFloat(getComputedStyle(node).fontSize) * 2}px`; }));
+    expect(await layoutProblems(page), `${name} at 320px with enlarged activation text`).toEqual([]);
     await page.getByRole('button', { name: 'Close guide' }).click();
   }
 });

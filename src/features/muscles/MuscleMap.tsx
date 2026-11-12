@@ -17,17 +17,17 @@ const legend: Record<MapMode, string> = {
   activated: '● Primary · dashed secondary. Activation preview only; not a completion.',
 };
 /** One shared pixel coordinate system for the supplied PNG and every independent region. */
-export function MuscleMap({ gender, coverage = [], mode = 'priority', activated = [], secondary = [], selected, onSelect, compact = false }: {
+export function MuscleMap({ gender, coverage = [], mode = 'priority', activated = [], secondary = [], selected, onSelect, compact = false, strip = false }: {
   gender?: unknown; coverage?: MuscleCoverage[]; mode?: MapMode; activated?: string[]; secondary?: string[];
-  selected?: string; onSelect?: (id: string) => void; compact?: boolean;
+  selected?: string; onSelect?: (id: string) => void; compact?: boolean; strip?: boolean;
 }) {
   const { colors, type } = useTheme();
   const c = characterFor(gender);
   const key = useId().replace(/[^a-zA-Z0-9]/g, '');
   return <View testID="muscle-map-art">
     <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
-      {(['front', 'back'] as BodyView[]).map(view => <View key={view} style={{ width: '50%', maxWidth: compact ? 100 : 210 }}>
-        <Svg viewBox="180 0 664 1536" width="100%" style={{ aspectRatio: 664 / 1536 }} accessibilityLabel={`${c}, ${view} muscle map. Use the muscle list for status and selection.`}>
+      {(['front', 'back'] as BodyView[]).map(view => <View key={view} style={{ width: '50%', maxWidth: strip ? 66 : compact ? 100 : 210 }}>
+        <Svg viewBox="180 0 664 1536" width="100%" style={{ aspectRatio: 664 / 1536 }} accessibilityLabel={mode === 'activated' ? `${c}, ${view} activated muscle map. Muscle names are listed in text.` : `${c}, ${view} muscle map. Use the muscle list for status and selection.`}>
           <Defs>
             <Pattern id={`${key}-${view}-sore`} width={18} height={18} patternUnits="userSpaceOnUse"><Path d="M-3 3L3 -3M0 18L18 0M15 21L21 15" stroke={colors.sore} strokeWidth={6} /></Pattern>
             <Pattern id={`${key}-${view}-injured`} width={20} height={20} patternUnits="userSpaceOnUse"><Path d="M0 0L20 20M20 0L0 20" stroke={colors.injured} strokeWidth={5} /></Pattern>
@@ -47,9 +47,9 @@ export function MuscleMap({ gender, coverage = [], mode = 'priority', activated 
             </G>;
           })}
         </Svg>
-        {!compact && <Text style={[type.detail, { textAlign: 'center' }]}>{view === 'back' ? 'Rear' : 'Front'}</Text>}
+        {!compact && <Text style={[type.detail, { textAlign: 'center' }, strip && { fontSize: 10 }]}>{view === 'back' ? 'Rear' : 'Front'}</Text>}
       </View>)}
     </View>
-    {!compact && <Text style={[type.detail, { marginTop: 8 }]}>{legend[mode]}</Text>}
+    {!compact && !strip && <Text style={[type.detail, { marginTop: 8 }]}>{legend[mode]}</Text>}
   </View>;
 }

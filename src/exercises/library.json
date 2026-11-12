@@ -381,6 +381,28 @@
           "caption": "Switch the hand positions to continue alternating waves."
         }
       ]
+    },
+    {
+      "id": "kettlebell_shrug",
+      "name": "Kettlebell shrug",
+      "equipment": [
+        "kettlebell"
+      ],
+      "instructions": [
+        "Stand tall with feet hip-width apart and a kettlebell in each hand, arms straight at your sides.",
+        "Keep your head level and lift your shoulders straight up towards your ears without bending your elbows.",
+        "Pause briefly, then lower your shoulders slowly to the starting position. Do not roll your shoulders."
+      ],
+      "steps": [
+        {
+          "image": "kettlebell-shrug-1",
+          "caption": "Start tall with shoulders relaxed and kettlebells at your sides."
+        },
+        {
+          "image": "kettlebell-shrug-2",
+          "caption": "Raise shoulders straight up, pause, then lower slowly without rolling."
+        }
+      ]
     }
   ]
 }

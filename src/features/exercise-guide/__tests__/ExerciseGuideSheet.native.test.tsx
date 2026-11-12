@@ -87,3 +87,19 @@ it('renders nothing when closed', () => {
   render(<ExerciseGuideSheet guide={null} onClose={() => {}} />);
   expect(screen.queryByTestId('exercise-guide')).toBeNull();
 });
+
+it.each(['male', 'female', 'other'])('#153 shows and pages the kettlebell shrug for %s', gender => {
+  const guide = buildGuide({ movement: 'kettlebell_shrug', label: 'Kettlebell shrug', sets: 2, reps: 12 }, {
+    customExercises: [{ movement: 'kettlebell_shrug', name: 'Kettlebell shrug', kind: 'strength', equipment: ['kettlebell'], primary: ['upper_back'], secondary: ['forearms'] }],
+  });
+  render(<ExerciseGuideSheet guide={guide} gender={gender} onClose={() => {}} />);
+  fireEvent(screen.getByTestId('guide-pager'), 'layout', layout);
+  expect(screen.queryByTestId('guide-no-image')).toBeNull();
+  expect(screen.getByTestId('guide-prescription')).toHaveTextContent('Today: 2 \u00d7 12');
+  for (let step = 1; step <= 2; step++) {
+    expect(screen.getByTestId('guide-position')).toHaveTextContent(`${step} / 2`);
+    expect(screen.getByTestId(`guide-image-${step}`, { includeHiddenElements: true }).props.source).toEqual(exerciseArtwork(guide.steps[step - 1].image, gender).source);
+    if (step === 1) fireEvent.press(screen.getByLabelText('Next step'));
+  }
+  expect(screen.getByText(/Do not roll your shoulders/)).toBeTruthy();
+});

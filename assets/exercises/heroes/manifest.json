@@ -838,5 +838,53 @@
     "file": "supinated-cross-body-dumbbell-curl-neutral-3.jpg",
     "step": 3,
     "baseImage": "supinated-cross-body-dumbbell-curl-3"
+  },
+  {
+    "id": "kettlebell-shrug-male-1",
+    "movement": "kettlebell_shrug",
+    "hero": "male",
+    "file": "kettlebell-shrug-male-1.jpg",
+    "step": 1,
+    "baseImage": "kettlebell-shrug-1"
+  },
+  {
+    "id": "kettlebell-shrug-male-2",
+    "movement": "kettlebell_shrug",
+    "hero": "male",
+    "file": "kettlebell-shrug-male-2.jpg",
+    "step": 2,
+    "baseImage": "kettlebell-shrug-2"
+  },
+  {
+    "id": "kettlebell-shrug-female-1",
+    "movement": "kettlebell_shrug",
+    "hero": "female",
+    "file": "kettlebell-shrug-female-1.jpg",
+    "step": 1,
+    "baseImage": "kettlebell-shrug-1"
+  },
+  {
+    "id": "kettlebell-shrug-female-2",
+    "movement": "kettlebell_shrug",
+    "hero": "female",
+    "file": "kettlebell-shrug-female-2.jpg",
+    "step": 2,
+    "baseImage": "kettlebell-shrug-2"
+  },
+  {
+    "id": "kettlebell-shrug-neutral-1",
+    "movement": "kettlebell_shrug",
+    "hero": "neutral",
+    "file": "kettlebell-shrug-neutral-1.jpg",
+    "step": 1,
+    "baseImage": "kettlebell-shrug-1"
+  },
+  {
+    "id": "kettlebell-shrug-neutral-2",
+    "movement": "kettlebell_shrug",
+    "hero": "neutral",
+    "file": "kettlebell-shrug-neutral-2.jpg",
+    "step": 2,
+    "baseImage": "kettlebell-shrug-2"
   }
 ]

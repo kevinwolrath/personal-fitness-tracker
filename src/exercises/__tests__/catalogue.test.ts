@@ -1,5 +1,6 @@
 /** #122 Muscle Growth: a category over the shared exercise catalogue, not a second exercise system. */
 import seed from '../../../plans/seed.plan.json';
+import { buildGuide } from '../guide';
 import { applyConfigUpdate, parseConfigUpdate } from '../../config/update';
 import { gameFrom } from '../../gamification/model';
 import { addDays } from '../../plan/dates';
@@ -252,4 +253,18 @@ describe('older plans and data (#126: v8 only if old plans migrate safely)', () 
     const history = await loadExerciseHistory(store, p.plan, MON);
     expect(history.entries.map((e) => e.movement)).toEqual(['hammer_curl']);
   });
+});
+
+it('#153 adds a guide without invalidating or overriding an existing custom kettlebell shrug', () => {
+  const custom = { ...shrug, movement: 'kettlebell_shrug', name: 'Kettlebell shrug', equipment: ['kettlebell'], defaultDose: { sets: 2, reps: 12 } };
+  const plan = withGrowth({ customExercises: [custom], muscleGrowth: { enabled: true, targets: ['upper_back'], exercises: [{ movement: custom.movement, sets: 2, reps: 12 }] } });
+  expect(catalogueErrors(plan)).toEqual([]);
+  expect(inventoryFor(plan).exercises.filter(entry => entry.movement === custom.movement)).toEqual([expect.objectContaining({ movement: custom.movement, name: custom.name, defaultDose: custom.defaultDose })]);
+  const guide = buildGuide({ movement: custom.movement, label: custom.name, sets: 2, reps: 12 }, plan.exercise);
+  expect(guide.steps.map(step => step.image)).toEqual(['kettlebell-shrug-1', 'kettlebell-shrug-2']);
+  const parsed = parseConfigUpdate(JSON.stringify({ fitnessConfigUpdate: { schemaVersion: 1, exercise: { muscleGrowth: plan.exercise!.muscleGrowth } } }));
+  if (!parsed.ok) throw new Error(parsed.errors.join('\n'));
+  const applied = applyConfigUpdate(plan, parsed.update);
+  expect(applied.ok).toBe(true);
+  if (applied.ok) expect(applied.plan.exercise!.customExercises).toEqual(plan.exercise!.customExercises);
 });

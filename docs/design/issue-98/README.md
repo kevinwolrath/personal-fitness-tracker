@@ -19,4 +19,29 @@ Run `node docs/design/issue-98/build-options.cjs` to regenerate `options.html`; 
 
 All controls remain in exercise-guide sheet content except the existing fixed ModalHeader/Close. No shell/Today header or 200px-budget change. The proposed map sizes are previews for a phone, not tablet/desktop layouts.
 
-Next: after owner choice, update contract 09 in its own commit, implement the agreed layout and shared mappings, test all profile variants/unknown fallback, all 31 movements, relevant regions, profile-only persistence, read-only guide browsing, offline native bundles and phone scrolling. Record actual before/after captures and any remaining physical-device limits in the PR.
+## Approved implementation
+
+Kevin chose A — Compact strip in chat. Contract 09 was updated in its own commit. The 4:3 movement pager and fixed Close are retained; the compact activation strip is always mounted below the step caption, before equipment/instructions. The Show/Hide state and control are removed. Figures are about 153dp tall; labels can wrap beneath them on narrow phones or with larger text. Classic light uses the existing readable text tokens.
+
+`buildGuide` now joins the movement to `inventoryFor` and supplies named primary/secondary regions. The strip uses that same result for built-in movements, custom entries and permitted overrides. Unknown mappings and missing custom poses have explicit unavailable states. No new illustration, unrelated fallback pose, schema, dependency or stored data was introduced. Coverage/workout map defaults stay unchanged.
+
+## Acceptance and evidence
+
+| Criterion | Verification |
+|---|---|
+| Same profile hero in demonstration and front/rear activation | Every one of the 31 bundled movements is checked against the canonical pose manifest and matching map image paths for male, female and neutral, across all three phone widths. Native tests cover absent/other/unknown too. |
+| Correct activated regions | Browser tests inspect every rendered region against the movement's primary/secondary arrays: filled primary, dashed secondary, transparent inactive regions. Push-up regressions specifically reject active quadriceps. Approved map/PNG bindings and all 14 region IDs retain existing hash/coverage tests. |
+| Always-visible compact layout | No toggle or collapsed state. Figures are bounded below 180dp; activation precedes instructions. Existing responsive sweep covers 320–1280px and enlarged activation text at 320px, fixed Close and normal vertical scrolling. |
+| Shared/custom mappings | Pure tests cover all bundled movements, custom holds and permitted overrides. Native/browser tests confirm a custom hold shows its configured core/shoulder mapping without inventing a demonstration pose. |
+| Profile changes without reset | The real Edit setup answers → Save profile journey updates both hero sources without reload, while preserving activities, day types, targets, exercise configuration, goals, measurements and seeded exercise history. |
+| Fallback policy | Current authoritative contract 09 uses neutral for absent/other/unknown. Historical female-default wording is reconciled with that established rule; no silent default change. |
+| Read-only and offline | Full catalogue browsing leaves canonical tracking JSON unchanged. Dedicated paging/offline cases preserve data, and Android/iOS exports include the existing bundled assets. |
+
+Actual 390px push-up captures for male/female/other/unspecified and Classic light are in `screenshots/`. `before-{hero}.png` and `after-{hero}.png` compare the same prior squat-guide baseline and the approved strip for all three heroes. Seven changed phone baselines and full actual screens were visually reviewed. Prototypes remain illustrative history rather than app captures. Physical-device/emulator testing was not performed.
+
+## Validation
+
+- TypeScript and full Jest passed: 111 suites, 1345 tests; 1 suite / 8 tests skipped.
+- Initial focused guide/catalogue journeys: 22 passed, 2 skipped, including all 31 movements and all profiles on all three widths.
+- Full production browser run: 662 passed, 117 skipped; one early test assumed the male pose filename contained `-male`, whereas its canonical manifest retains a legacy filename. The assertion now resolves the manifest, matching the existing all-movement audit. Corrected dedicated guide journeys: 15 passed across all widths; profile/history preservation: 3 passed; Classic light: 1 passed.
+- Android/iOS exports and serial development smoke passed. The first dev attempt encountered a Windows watcher race while another Playwright process deleted temporary trace folders; the serial rerun used output outside the watched tree and passed without application errors.

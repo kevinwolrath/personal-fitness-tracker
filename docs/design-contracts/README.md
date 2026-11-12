@@ -8,7 +8,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 |---|----------|--------|
 | 01 | [Product & mobile UX](01-product-ux.md) | Platform targets, visual and interaction principles, what V1 excludes |
 | 02 | [Navigation & interactions](02-navigation-interactions.md) | Layout layers (app shell, screen header, content) and vertical budget, the Daily Log, routes, date navigation, tap/swipe/drag rules |
-| 03 | [Plan format](03-plan-format.md) + [`plan.schema.json`](plan.schema.json) | The versioned JSON plan package the app renders (formatVersion 1–6; v3 adds meal ingredients and preparation, v4 activity reminders, v5 due times, v6 the setup profile) |
+| 03 | [Plan format](03-plan-format.md) + [`plan.schema.json`](plan.schema.json) | The versioned JSON plan package the app renders (formatVersion 1–9; v9 adds exact equipment/station access; v3 adds meal ingredients and preparation, v4 activity reminders, v5 due times, v6 the setup profile) |
 | 04 | [Persistence & data ownership](04-persistence.md) | What is stored, where, who owns it, export |
 | 05 | [Web & phone-viewport testing](05-web-viewport-testing.md) | Web as a test surface, viewports, Playwright, responsive sweep |
 | 06 | [Observations, import & export](06-observations-import-export.md) | Canonical observation model, provenance, full-history export, backup, health data sync (screenshot import removed, #138) |
@@ -23,6 +23,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 15 | [Photo meal logging](15-photo-meal-logging.md) | Log different meal: the photo → share with AI → paste → review wizard, the versioned reply contract and parser, photo storage and privacy, replace semantics, day totals without double counting |
 | 16 | [Optional quests & achievements](16-gamification.md) | Opt-in, capped reversible XP, levels, recovery, milestones, gallery, artwork and deterministic journey |
 | 17 | [Approved branding & icons](17-branding.md) | Immutable masters, launcher/adaptive/notification/splash/store assets, startup and verification scope |
+| 18 | [My Gym](18-my-gym.md) | Grouped equipment access, independent stations, one availability resolver, migration 9, offline images and history preservation |
 
 Example fixture: [`fixtures/plans/generic-example.plan.json`](../../fixtures/plans/generic-example.plan.json).
 

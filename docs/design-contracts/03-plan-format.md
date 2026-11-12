@@ -100,3 +100,7 @@ Validation happens once, on import. Stored plans are trusted.
 ## Explicitly not in v1
 
 Multi-week or periodised programs, progressive overload, sets, reps and weights per exercise, timers, reminders, per-day text overrides, conditional logic, localisation of plan text, unit conversion. Each would need a new `formatVersion`.
+
+## Format version 9: equipment access (#158)
+
+`exercise.equipment` remains canonical (up to 256 entries), adding optional `catalogueId` and `available`. Exact IDs/types are validated against the shared catalogue. Absent available means true; false retains metadata but grants no exercise access. Station selection is independent and never inferred from a machine brand. Custom exercises may add `requirements: [[catalogueId, ...], ...]`: any complete alternative is enough, with all items inside it required. These fields require version 9; older versions remain accepted without them. See [contract 18](18-my-gym.md).

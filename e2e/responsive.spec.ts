@@ -9,6 +9,24 @@ import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFro
  */
 const WIDTHS = [320, 340, 360, 375, 390, 412, 430, 500, 768, 1280];
 
+test('Muscle coverage Priority and Reports (#56) fit every width with reachable rows and fixed Close', async ({ page }) => {
+  await openAt(page, MONDAY);
+  await chooseFromMenu(page, 'Muscle coverage & exercise log');
+  const sheet = page.getByTestId('coverage-sheet');
+  await expect(sheet.getByTestId('muscle-detail')).toBeVisible();
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const mode of ['Priority', 'Reports: soreness and injury']) {
+      await sheet.getByRole('radio', { name: mode, exact: true }).click();
+      expect(await layoutProblems(page), `${mode} coverage at ${width}`).toEqual([]);
+      await sheet.getByTestId('select-muscle-hip_flexors').click();
+      await expect(sheet.getByTestId('muscle-detail')).toContainText('Hip flexors');
+      const close = await page.getByRole('button', { name: 'Close coverage', exact: true }).boundingBox();
+      expect(close && close.y >= 0 && close.y + close.height <= 844).toBeTruthy();
+    }
+  }
+});
+
 test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'the sweep sets its own viewports'));
 
 async function layoutProblems(page: Page): Promise<string[]> {
@@ -35,7 +53,10 @@ async function layoutProblems(page: Page): Promise<string[]> {
         }
         return false;
       })();
-      if (!inScroller && (r.left < frame.left - 0.5 || r.right > frame.right + 0.5)) {
+      // SVG descendants may extend beyond a cropped viewBox (the shared muscle-map bitmap does).
+      // Check the SVG viewport itself, not intentionally clipped artwork coordinates inside it.
+      const inSvg = el.tagName.toLowerCase() !== 'svg' && !!el.closest('svg');
+      if (!inScroller && !inSvg && (r.left < frame.left - 0.5 || r.right > frame.right + 0.5)) {
         problems.push(`outside frame: "${describe(el)}" ${Math.round(r.left)}–${Math.round(r.right)} vs ${Math.round(frame.left)}–${Math.round(frame.right)}`);
       }
       // Text wider than its own box is clipped (unless deliberately truncated with an ellipsis).
@@ -49,7 +70,6 @@ async function layoutProblems(page: Page): Promise<string[]> {
       const parent = el.parentElement;
       // Inside an <svg>, content beyond the viewBox is cropped by design (#81's muscle map crops its artwork this
       // way); the <svg> element itself is still checked against its parent.
-      const inSvg = el.tagName.toLowerCase() !== 'svg' && !!el.closest('svg');
       if (parent && !inSvg && getComputedStyle(parent).overflowX === 'hidden') {
         const p = parent.getBoundingClientRect();
         if (r.right > p.right + 0.5 || r.left < p.left - 0.5) problems.push(`spills out of parent: "${describe(el)}"`);

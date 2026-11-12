@@ -1,5 +1,7 @@
 # Issue 56 checkpoint
 
+> Historical pause checkpoint. Work resumed on 2026-11-13; see README.md for the current implementation and acceptance matrix.
+
 Selected by Codex after Kevin asked to choose one open issue. Branch: `codex/issue-56-inventory-acceptance`, based on develop `13ed952`. Start/approach documented on issue 56.
 
 Kevin is closing the laptop; save work and resume from this checkpoint.

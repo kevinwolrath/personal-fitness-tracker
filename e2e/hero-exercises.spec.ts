@@ -7,7 +7,7 @@ import seed from '../plans/seed.plan.json';
 import library from '../src/exercises/library.json';
 test.setTimeout(120_000);
 
-import { MONDAY, openAt, seedPlan, seedRecords, chooseFromMenu } from './helpers';
+import { MONDAY, leaveSettings, openAt, seedPlan, seedRecords, chooseFromMenu } from './helpers';
 
 const customShrug = { movement: 'kettlebell_shrug', name: 'Kettlebell shrug', kind: 'strength' as const, equipment: ['kettlebell' as const], primary: ['upper_back'], secondary: ['forearms'], defaultDose: { sets: 2, reps: 12 } };
 
@@ -89,6 +89,7 @@ test('saved profile changes replace the guide hero without reloading the app', a
     await page.getByTestId('setup-primary').click();
     await page.getByRole('button', { name: 'Review changes' }).click();
     await page.getByRole('button', { name: 'Save profile', exact: true }).click();
+    await leaveSettings(page); // Edit setup answers returns to Settings → Plan & goals (#174)
     await expect(page.getByTestId('day-progress')).toBeVisible();
     await page.getByRole('button', { name: 'Menu', exact: true }).click();
     await page.getByTestId('menu-coverage').click();

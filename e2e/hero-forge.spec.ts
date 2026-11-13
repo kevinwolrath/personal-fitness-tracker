@@ -1,12 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, closeWorkoutSheet, openAt, openWorkoutSheet, seedPlan, seedWithStrengthWindow, workoutSheet } from './helpers';
+import { MONDAY, closeWorkoutSheet, leaveSettings, openAt, openPreferences, openWorkoutSheet, seedPlan, seedWithStrengthWindow, workoutSheet } from './helpers';
 
-async function settings(page: Page) {
-  await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByTestId('menu-settings').click();
-  await expect(page.getByTestId('settings-sheet')).toBeVisible();
-}
+/** ☰ → Settings → App preferences (#174). */
+const settings = openPreferences;
 async function coverage(page: Page) {
   await page.getByRole('button', { name: 'Menu', exact: true }).click();
   await page.getByTestId('menu-coverage').click();
@@ -22,13 +19,13 @@ test('Hero Forge is the default; Classic selection persists and changes no track
   await settings(page);
   await expect(page.getByRole('radio', { name: 'Hero Forge · Theme 01' })).toBeChecked();
   await page.getByRole('radio', { name: 'Classic light' }).click();
-  await page.getByTestId('modal-dismiss').click();
+  await leaveSettings(page);
   await expect(page.getByTestId('phone-frame')).toHaveCSS('background-color', 'rgb(245, 242, 235)');
   await page.reload();
   await settings(page);
   await expect(page.getByRole('radio', { name: 'Classic light' })).toBeChecked();
   await page.getByRole('radio', { name: 'Hero Forge · Theme 01' }).click();
-  await page.getByTestId('modal-dismiss').click();
+  await leaveSettings(page);
   await expect(page.getByTestId('phone-frame')).toHaveCSS('background-color', 'rgb(16, 21, 25)');
   expect(await tracking(page)).toEqual(before);
 });
@@ -94,7 +91,7 @@ test('actual app before/after captures: Today, Progress, Workout and Coverage', 
   for (const theme of ['classic', 'hero-forge'] as const) {
     await settings(page);
     await page.getByTestId(`theme-${theme}`).click();
-    await page.getByTestId('modal-dismiss').click();
+    await leaveSettings(page);
     await page.getByTestId('day-scroll').evaluate(el => { el.scrollTop = 0; });
     await page.screenshot({ path: `${dir}/${width}-${theme}-today.png` });
     await page.getByRole('tab', { name: 'Progress' }).click();

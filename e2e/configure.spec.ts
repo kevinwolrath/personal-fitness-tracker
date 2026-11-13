@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import seed from '../plans/seed.plan.json';
 import { formatConfigText } from '../src/config/text';
-import { MONDAY, expandToFullDay, openAt, row, seedPlan, chooseFromMenu, exportAllData } from './helpers';
+import { MONDAY, expandToFullDay, openAt, row, seedPlan, chooseFromMenu, exportAllData, leaveSettings } from './helpers';
 
 /** Issue #7: AI-configurable fitness profile with partial, previewed, confirmed updates. */
 
@@ -159,6 +159,7 @@ test('nutrition-only update leaves exercise untouched and immediately drives the
 
   // The log is a view over the same configuration: fixed meals now have values, so dinner shows its budget.
   await page.getByRole('button', { name: 'Close' }).click();
+  await leaveSettings(page); // Configure returns to Settings → Plan & goals (#174)
   await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,300 kJ');
   await expect(row(page, 'dinner')).toContainText('≈ 4,300 kJ left');
 });
@@ -231,6 +232,7 @@ test('configuration changes are included in the full export', async ({ page }) =
   await checkUpdate(page, fixture('real-world-exercise'));
   await applyButton(page).click();
   await page.getByRole('button', { name: 'Close' }).click();
+  await leaveSettings(page); // Configure returns to Settings → Plan & goals (#174)
   const doc = await exportAllData(page);
   expect(doc.plans[0]).toMatchObject({ origin: 'config', plan: { formatVersion: 9, exercise: { constraints: { gymMembership: false } } } });
   expect(doc.configChanges).toHaveLength(1);

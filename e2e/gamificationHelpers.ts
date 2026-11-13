@@ -2,14 +2,18 @@ import { expect, type Page } from '@playwright/test';
 import { journeyPlan } from '../fixtures/gamification/journey';
 import { gameFrom } from '../src/gamification/model';
 import type { StoreSnapshot } from '../src/storage/types';
+import { leaveSettings, openPreferences } from './helpers';
 
 /** Shared by the #73 journey assertions and the #121 visual replay: the same real UI, the same fixture. */
+/** ☰ → Settings → App preferences, where the Quests switch lives (#174). */
 export async function settings(page: Page) {
-  await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByTestId('menu-settings').click();
+  await openPreferences(page);
 }
+/** Close the open sheet; with none open, back out of Settings to the main screen (#174). */
 export async function close(page: Page) {
-  await page.getByTestId('modal-dismiss').last().click();
+  const sheet = page.locator('[role="dialog"]').getByTestId('modal-dismiss');
+  if (await sheet.count()) await sheet.last().click();
+  else await leaveSettings(page);
 }
 /** Write a fixture checkpoint into isolated browser storage at a fixed synthetic date, then boot the app on it. */
 export async function install(page: Page, s: StoreSnapshot, date: string) {

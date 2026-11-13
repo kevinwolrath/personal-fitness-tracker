@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, chooseFromMenu, exportAllData, openAt, seedRecords } from './helpers';
+import { MONDAY, chooseFromMenu, exportAllData, leaveSettings, openAt, seedRecords } from './helpers';
 
 /** Issue #15: the Daily Log is about the day; configuration and export are one level down in the menu (#138: no import). */
 
@@ -24,11 +24,14 @@ test("the Daily Log has no I'm hungry action or history, and no app-level links"
   expect(doc.quickLogs).toHaveLength(1);
 });
 
-test('the header menu holds configure and export, and closes cleanly', async ({ page }) => {
+test('the header menu is grouped: Training, Sync & Share, then Settings (#174); it closes cleanly', async ({ page }) => {
   await openAt(page, MONDAY);
   await page.getByRole('button', { name: 'Menu' }).click();
   const menu = page.getByTestId('app-menu');
-  await expect(menu.getByRole('button')).toHaveText([/Health Connect/, /Configure with AI/, /My Gym/, /Edit setup answers/, /Reminders/, /Settings/, /Muscle Growth/, /Muscle coverage & exercise log/, /Back up data/, /Restore data/, /Health data sync/, /Export all data/]);
+  await expect(menu.getByRole('button')).toHaveText([/Muscle Growth/, /Muscle coverage & exercise log/, /Health data sync/, /Health Connect/, /Settings/]);
+  await expect(menu.getByRole('heading')).toHaveText(['Training', 'Sync & Share']);
+  // Today and Progress are tabs, not menu items.
+  await expect(menu.getByRole('button', { name: /^(Today|Progress)$/ })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(menu).toHaveCount(0);
   await expect(page.getByTestId('next-action')).toBeVisible();
@@ -50,10 +53,11 @@ test('export asks first; Cancel (or Escape) exports nothing, Export JSON downloa
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(dialog).toHaveCount(0);
 
-  await chooseFromMenu(page, 'Export all data');
+  await page.getByRole('button', { name: 'Export all data', exact: true }).click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+  await leaveSettings(page);
   await page.waitForTimeout(300);
   expect(downloads.n).toBe(0);
 

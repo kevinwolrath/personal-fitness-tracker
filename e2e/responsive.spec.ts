@@ -1,7 +1,7 @@
 import { equipmentCatalogue, setEquipmentSelection } from '../src/equipment/catalogue';
 import seed from '../plans/seed.plan.json';
 import { expect, test, type Page } from '@playwright/test';
-import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, openWorkoutSheet, seedPlan, seedRecords, workoutSheet } from './helpers';
+import { HISTORY_DAY, MONDAY, SATURDAY, THURSDAY, historyObservations, chooseFromMenu, openAt, openPreferences, openWorkoutSheet, seedPlan, seedRecords, workoutSheet } from './helpers';
 
 /**
  * Responsive sweep (contract 05): every width from a small Android phone to a desktop browser.
@@ -197,7 +197,8 @@ test('the app menu and the export confirmation fit at every width', async ({ pag
     await page.waitForTimeout(50);
     expect(await layoutProblems(page), `menu at ${width}px`).toEqual([]);
   }
-  await page.getByTestId('app-menu').getByRole('button', { name: 'Export all data' }).click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await chooseFromMenu(page, 'Export all data');
   await expect(page.getByRole('alertdialog')).toBeVisible();
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 900 });
@@ -246,9 +247,7 @@ test('energy in both units (#39): the Daily Log, a recorded value and the Settin
     await page.waitForTimeout(50);
     expect(await layoutProblems(page), `day at ${width}px`).toEqual([]);
   }
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('menu-settings').click();
-  await expect(page.getByTestId('settings-sheet')).toBeVisible();
+  await openPreferences(page);
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: 700 });
     await page.waitForTimeout(50);

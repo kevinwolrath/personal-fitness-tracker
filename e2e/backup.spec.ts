@@ -3,7 +3,7 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import seed from '../plans/seed.plan.json';
-import { MONDAY } from './helpers';
+import { MONDAY, chooseFromMenu, leaveSettings } from './helpers';
 
 /**
  * #128 Full offline backup and restore on the web build: back up a realistic fictional history with meal photos,
@@ -70,9 +70,9 @@ const canonical = (page: Page) =>
     return d;
   }, KEY);
 
-async function menu(page: Page, label: string) {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
+/** ☰ → Settings → Data management → Back up data / Restore data (#174). */
+async function menu(page: Page, label: 'Back up data' | 'Restore data') {
+  await chooseFromMenu(page, label);
 }
 
 async function backUp(page: Page, project: string): Promise<string> {
@@ -89,6 +89,7 @@ async function backUp(page: Page, project: string): Promise<string> {
   await expect(page.getByTestId('backup-contents')).toContainText('2 meals with 3 photos');
   await shot(page, '2-backup-done', project);
   await page.getByTestId('backup-done').getByRole('button', { name: 'Done' }).click();
+  await leaveSettings(page);
   return path;
 }
 

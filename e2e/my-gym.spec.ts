@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import seed from '../plans/seed.plan.json';
-import { MONDAY, openAt, seedPlan, seedRecords, openWorkoutSheet, closeWorkoutSheet, chooseFromMenu } from './helpers';
+import { MONDAY, leaveSettings, openAt, seedPlan, seedRecords, openWorkoutSheet, closeWorkoutSheet, chooseFromMenu } from './helpers';
 
 for (const hero of ['male', 'female', 'other']) {
   test(`#158 ${hero}: grouped equipment access drives Resistance, Muscle Growth, logs and offline guides without changing doses`, async ({ page }, info) => {
@@ -61,6 +61,7 @@ for (const hero of ['male', 'female', 'other']) {
     expect(after.activities).toEqual(before.activities);
     expect(after.exercise.muscleGrowth).toEqual(before.exercise.muscleGrowth);
     await page.getByRole('button', { name: 'Close', exact: true }).last().click();
+    await leaveSettings(page); // My Gym opens from Settings (#174)
     await page.reload();
     await expect(page.getByTestId('muscle-growth')).toContainText('Hammer curls');
     await openWorkoutSheet(page);

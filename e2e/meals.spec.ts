@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import seed from '../plans/seed.plan.json';
-import { openAt, row, seedPlan } from './helpers';
+import { openAt, row, seedPlan, leaveSettings } from './helpers';
 
 /** Issue #26: tap a meal → what exactly am I eating, how much, and how do I make it? */
 
@@ -143,6 +143,7 @@ test('an already-configured plan gets the lunch with a lunch-only update; the ot
   await expect(page.getByTestId('preview-nutrition')).not.toContainText('Fixed snack');
   await page.getByRole('button', { name: /^Apply 1 change$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
+  await leaveSettings(page); // Configure returns to Settings → Plan & goals (#174)
 
   await expect(row(page, 'snack')).toContainText('Apple and cheese'); // untouched
   await row(page, 'lunch').getByRole('button', { name: 'Fixed lunch details' }).click();

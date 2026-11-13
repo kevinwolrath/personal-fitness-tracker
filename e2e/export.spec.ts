@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { MONDAY, openAt, seedRecords } from './helpers';
+import { MONDAY, chooseFromMenu, openAt, seedRecords } from './helpers';
 
 /**
  * Export all data, including records from the removed screenshot import (#138): historical imports, their sessions
@@ -28,8 +28,7 @@ test('export all data downloads a versioned full-history JSON with provenance, h
   await page.getByRole('button', { name: 'Back to Today' }).click();
   await page.getByTestId('activity-lunch').getByRole('checkbox').click();
 
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('app-menu').getByRole('button', { name: 'Export all data' }).click();
+  await chooseFromMenu(page, 'Export all data');
   const download = page.waitForEvent('download');
   await page.getByRole('alertdialog').getByRole('button', { name: 'Export JSON' }).click();
   const file = await download;

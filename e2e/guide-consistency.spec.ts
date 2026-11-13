@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import seed from '../plans/seed.plan.json';
 import manifest from '../assets/exercises/heroes/manifest.json';
-import { MONDAY, chooseFromMenu, openAt, seedPlan } from './helpers';
+import { MONDAY, chooseFromMenu, leaveSettings, openAt, openPreferences, seedPlan } from './helpers';
 
 for (const gender of ['male', 'female', 'other', undefined]) {
   test(`#98 ${gender ?? 'unspecified'}: compact push-up activation, same hero, paging and offline read-only guide`, async ({ page }, info) => {
@@ -60,10 +60,9 @@ test('#98 a custom movement shows its configured muscles and an explicit missing
 test('#98 compact activation uses the existing Classic theme with readable labels', async ({ page }, info) => {
   test.skip(info.project.name !== 'phone', 'theme capture at the reference phone width');
   await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByTestId('menu-settings').click();
+  await openPreferences(page);
   await page.getByRole('radio', { name: 'Classic light', exact: true }).click();
-  await page.getByTestId('modal-dismiss').click();
+  await leaveSettings(page);
   await chooseFromMenu(page, 'Muscle coverage & exercise log');
   await page.getByRole('button', { name: 'Log exercise', exact: true }).click();
   await page.getByRole('button', { name: 'Choose Push-ups (knuckles)', exact: true }).click();

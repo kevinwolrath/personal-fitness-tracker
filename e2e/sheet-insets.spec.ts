@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, openAt } from './helpers';
+import { MONDAY, openAt, openSettings } from './helpers';
 
 /**
  * #142: sheets scroll their content above the sheet's bottom edge, so the last row can always be fully revealed and
@@ -29,7 +29,7 @@ test('the menu scrolls: its last item is fully visible and tappable', async ({ p
   await openMenu(page);
   const header = page.getByRole('button', { name: 'Close', exact: true });
   const last = await lastRowFullyVisible(page);
-  await expect(last).toHaveAccessibleName('Export all data');
+  await expect(last).toHaveAccessibleName('Settings');
   await expect(header).toBeVisible(); // the header stays put while the rows scroll
   await last.click();
   await expect(page.getByTestId('app-menu')).toHaveCount(0); // the tap reached the item: the menu closed
@@ -50,8 +50,8 @@ test.describe('short window (large font or display scaling)', () => {
 
 test('short content: the sheet is only as tall as its content (no permanent blank space)', async ({ page }) => {
   await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Menu', exact: true }).click();
-  await page.getByTestId('menu-reminders').click();
+  await openSettings(page);
+  await page.getByTestId('settings-reminders').click();
   const scroll = page.getByTestId('reminders-scroll');
   await expect(scroll).toBeVisible();
   // The scroll area is exactly its content's height: nothing to scroll, no padding stretched below it.

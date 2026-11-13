@@ -1,5 +1,5 @@
 import { addDays, weekdayOf, toLocalDate, type LocalDate } from '../plan/dates';
-import type { Plan } from '../plan/schema';
+import { planSchema, type Plan } from '../plan/schema';
 import { prescribeDay, type PrescriptionItem } from '../prescription/prescribe';
 import type { StoreSnapshot, DayRecords } from '../storage/types';
 import { dailySeries, weekStart } from '../progress/series';
@@ -14,7 +14,27 @@ export type Game = { xp: number; level: number; next: number; quests: Quest[]; w
 
 const validDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d);
 const safeNumber = (v: number) => Number.isFinite(v) && v > 0;
-const eventDate = (iso: string) => toLocalDate(new Date(iso));
+const eventDate = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '9999-12-31' : toLocalDate(d);
+};
+/** An earlier plan version from the configuration history, with the schema's defaults; null when unusable. */
+const plans = new Map<string, Plan | null>();
+function previousPlan(json: string, planId: string): Plan | null {
+  if (!plans.has(json)) {
+    let parsed: Plan | null = null;
+    try {
+      const r = planSchema.safeParse(JSON.parse(json));
+      parsed = r.success ? r.data : null;
+    } catch {
+      parsed = null; // a malformed old backup: keep the current plan
+    }
+    if (plans.size > 50) plans.clear();
+    plans.set(json, parsed);
+  }
+  const p = plans.get(json) ?? null;
+  return p && p.id === planId ? p : null;
+}
 
 /** Pure projection, never an incrementing reward ledger. Deletions and corrections reverse their rewards. */
 export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate): Game {
@@ -34,7 +54,10 @@ export function gameFrom(snapshot: StoreSnapshot, plan: Plan, today: LocalDate):
     // A saved prescription is the authority for an acted-on historical date. Otherwise use that date's plan revision.
     const versions = snapshot.configChanges.filter(c => eventDate(c.appliedAt) > date).sort((a,b) => a.appliedAt.localeCompare(b.appliedAt));
     let historical = plan;
-    try { if (versions[0]) { const p = JSON.parse(versions[0].previousPlanJson) as Plan; if (p.id === plan.id) historical = p; } } catch { /* retain current plan if an old backup is malformed */ }
+    // #176: plans are stored as written, without the schema's defaults (e.g. `tracking`). Parse them through the schema,
+    // as Progress does (planVersionsFrom); a raw cast made prescribeDay throw and Quests load forever.
+    const previous = versions[0] ? previousPlan(versions[0].previousPlanJson, plan.id) : null;
+    if (previous) historical = previous;
     const saved = snapshot.daySnapshots.find(s => s.planId === plan.id && s.date === date)?.prescribed as { items?: PrescriptionItem[] } | undefined;
     const prescription = prescribeDay(historical, date, records);
     const items = saved?.items ?? prescription.items;

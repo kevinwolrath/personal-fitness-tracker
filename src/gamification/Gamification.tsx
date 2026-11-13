@@ -34,7 +34,11 @@ export function GamificationCard({ gallery = false }: { gallery?: boolean }) {
   const [open,setOpen] = useState(false), [saving,setSaving] = useState(false), [error,setError] = useState<string | null>(null);
   if (!state?.enabled) return null;
   const game = state.game;
-  if (!game) return <Text style={type.detail}>{state.error ?? 'Loading quests…'}</Text>;
+  // #176: never an endless spinner: while loading say so; on a failure, say what happened and offer Retry.
+  if (!game) {
+    if (state.loadFailed) return <View style={styles.card} testID="gamification-error"><Text style={type.detail} accessibilityLiveRegion="polite">{state.error}</Text><Button title="Retry" variant="secondary" disabled={state.loading} onPress={state.retry} testID="gamification-retry" /></View>;
+    return <Text style={type.detail} testID="gamification-loading">{state.error ?? 'Loading quests…'}</Text>;
+  }
   const recovery = async () => {
     if (saving) return;
     setSaving(true); setError(null);
@@ -55,6 +59,7 @@ export function GamificationCard({ gallery = false }: { gallery?: boolean }) {
       {!gallery && <><Text style={type.detail}>{game.quests.filter(q=>q.done).length} / {game.quests.length} daily quests · up to {scoring.dailyCap} XP/day</Text><Text style={type.detail}>{game.weekly.label} · {game.weekly.xp} XP{game.weekly.done ? ' · Complete' : ''}</Text></>}
       <Button title={gallery ? 'Achievement gallery' : 'View quests & achievements'} variant="quiet" onPress={() => setOpen(true)} testID="open-achievements" />
       {state.error && <Text style={type.detail} accessibilityLiveRegion="polite">{state.error}</Text>}
+      {state.loadFailed && <Button title="Retry" variant="quiet" disabled={state.loading} onPress={state.retry} testID="gamification-retry" />}
     </View>
     <Sheet visible={open} onClose={() => setOpen(false)} label="Quests & achievements" fill>
       <ModalHeader title="Your forge" dismiss={{ label:'Close',onPress:()=>setOpen(false) }} />

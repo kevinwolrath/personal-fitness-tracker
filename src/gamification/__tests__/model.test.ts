@@ -106,3 +106,41 @@ it('uses the local calendar day for injury timestamps around midnight',()=>{
   expect(gameFrom(s,journeyPlan,'2026-06-30').xp).toBe(20);
   expect(gameFrom(s,journeyPlan,START).quests.some(q=>q.id.endsWith(':strength'))).toBe(false);
 });
+
+describe('#176: Quests never fail on stored history', () => {
+  // Plans are stored as written, without the schema's defaults. A configuration change keeps the previous plan that way.
+  const raw = { format:'pft-plan',formatVersion:7,id:journeyPlan.id,revision:1,title:'Fictional fitness journey', units:{mass:'kg',length:'cm',energy:'kJ'},
+    dayTypes:[{id:'regular',label:'Training'}], schedule:{mon:'regular',tue:'regular',wed:'regular',thu:'regular',fri:'regular',sat:'regular',sun:'regular'},
+    measurements:[], activities:[{id:'walk',kind:'exercise',purpose:'walking',label:'Comfortable walk'},{id:'strength',kind:'exercise',purpose:'strength',label:'Strength practice'}] };
+
+  it('a previous plan stored without defaults (no `tracking`) is read through the schema: no throw, quests still derived', () => {
+    const s = journeySnapshot(3);
+    s.configChanges = [{ id: 'c1', appliedAt: `${addDays(START, 10)}T00:00:00Z`, sections: [], payload: {}, fromRevision: 1, toRevision: 2, previousPlanJson: JSON.stringify(raw) } as never];
+    let g!: ReturnType<typeof gameFrom>;
+    expect(() => { g = gameFrom(s, journeyPlan, addDays(START, 3)); }).not.toThrow();
+    expect(g.quests.length).toBeGreaterThan(0);
+  });
+
+  it('a malformed or foreign previous plan falls back to the current plan', () => {
+    const s = journeySnapshot(2);
+    s.configChanges = [
+      { id: 'c1', appliedAt: `${addDays(START, 10)}T00:00:00Z`, sections: [], payload: {}, fromRevision: 1, toRevision: 2, previousPlanJson: '{not json' } as never,
+    ];
+    expect(gameFrom(s, journeyPlan, addDays(START, 2))).toEqual(gameFrom({ ...s, configChanges: [] }, journeyPlan, addDays(START, 2)));
+    s.configChanges = [{ ...s.configChanges[0], previousPlanJson: JSON.stringify({ ...raw, id: 'someone-else' }) } as never];
+    expect(gameFrom(s, journeyPlan, addDays(START, 2))).toEqual(gameFrom({ ...s, configChanges: [] }, journeyPlan, addDays(START, 2)));
+  });
+
+  it('a fresh, empty database gives level 1 with today’s quests', () => {
+    const empty = { ...journeySnapshot(0), activityLogs: [], observations: [], quickLogs: [], configChanges: [], daySnapshots: [], mealLogs: [], exerciseLogs: [], muscleReports: [] };
+    const g = gameFrom(empty, journeyPlan, START);
+    expect(g).toMatchObject({ xp: 0, level: 1 });
+    expect(g.quests.length).toBeGreaterThan(0);
+  });
+
+  it('an invalid timestamp in history doesn’t break loading', () => {
+    const s = journeySnapshot(2);
+    s.configChanges = [{ id: 'c1', appliedAt: 'not a date', sections: [], payload: {}, fromRevision: 1, toRevision: 2, previousPlanJson: JSON.stringify(raw) } as never];
+    expect(() => gameFrom(s, journeyPlan, addDays(START, 2))).not.toThrow();
+  });
+});

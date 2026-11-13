@@ -91,7 +91,11 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
       return log ? draftFromLog(log, now()) : null;
     }
     const activity = target.activityId ? plan.activities.find((a) => a.id === target.activityId && a.kind === 'meal') : undefined;
-    const draft = newDraft({ id: newId(), date: target.date, planId: activity ? plan.id : null, activityId: activity?.id ?? null, replacedLabel: activity?.label ?? null, now: now() });
+    // #179: a scheduled meal that already has a logged replacement is edited, not logged a second time.
+    const existing = activity ? (await store.mealLogs({ from: target.date, to: target.date })).find((m) => m.activityId === activity.id && m.planId === plan.id) : undefined;
+    const draft = existing
+      ? draftFromLog(existing, now())
+      : newDraft({ id: newId(), date: target.date, planId: activity ? plan.id : null, activityId: activity?.id ?? null, replacedLabel: activity?.label ?? null, now: now() });
     return opts.initialInput ? applyReply({ ...draft, step: 'paste' }, opts.initialInput, now()) : draft;
   }, [store, plan, target.date, target.activityId, target.editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -148,7 +152,8 @@ export function useMealPhoto(opts: { store: TrackingStore; plan: Plan; target: T
     setNotice(null);
     update((d) => {
     const i = STEPS.indexOf(d.step);
-    // With photos already taken, Back from the photos step doesn't return to the empty capture choice.
+      // #179: a pasted text estimate needs no photo, so with none, Back from pasting returns to the first choice.
+      if (d.step === 'paste' && !d.photos.length) return { ...d, step: 'capture' };
       return { ...d, step: i > 0 ? STEPS[i - 1] : d.step };
     });
   }, [update]);

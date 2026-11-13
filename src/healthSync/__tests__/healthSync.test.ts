@@ -10,6 +10,7 @@ import {
 } from '../service';
 import { BACKUP_PREFERENCE_KEYS } from '../../platform/preferences';
 import { FakeHealthServer, MemorySecrets, validateSnapshot } from './fakeServer';
+import { contractProblem, describeProblem } from '../contract';
 
 /**
  * #134, #163: the app side of health data sync, against a strict fake of the deployed Worker's contract
@@ -426,3 +427,64 @@ describe('enrollment key from the build (#136)', () => {
 });
 
 it('SyncError is an Error', () => expect(new SyncError('offline', 'x')).toBeInstanceOf(Error));
+
+describe('#181: "invalid" says what and where', () => {
+  const obs = (over: Record<string, unknown>) => ({ id: 'o-181', date: '2026-08-29', metric: 'resting-hr', value: 62, unit: 'bpm', kind: 'observed', label: null, note: null, recordedAt: '2026-08-29T07:00:00+10:00', source: { type: 'manual', app: null, capturedAt: null, confidence: null, importId: null, assetId: null, evidence: null, edited: false }, ...over });
+
+  it('a plan measurement with a kebab-case id (resting-hr) syncs (the old Worker refused it, failing the whole upload)', async () => {
+    const { deps, store } = await setup();
+    await store.replaceAll({ ...(await store.snapshot()), observations: [...(await store.snapshot()).observations, obs({}) as never] });
+    expect(await syncNow(deps)).toMatchObject({ ok: true });
+  });
+
+  it('the export always fits the contract: long or multi-line text, odd ids, many apps, fractional counts', async () => {
+    const { history } = await setup();
+    const s = {
+      ...history,
+      observations: [...history.observations, obs({ id: 'hc:steps:2026-08-29|x y', metric: 'steps', unit: 'count', source: { ...obs({}).source, type: 'integration', app: 'com.example.first.long.package.name,com.example.second.long.package,phone' } }) as never],
+      exerciseLogs: [...(history.exerciseLogs ?? []), { id: 'e 181', movement: 'push_up', date: '2026-08-29', at: '2026-08-29T08:00:00+10:00', sets: 3, reps: 10.5, seconds: 30.2, intensity: null, routine: null } as never],
+      mealLogs: [...(history.mealLogs ?? []), { id: 'm181', date: '2026-08-29', at: '2026-08-29T19:00:00+10:00', planId: null, activityId: null, replacedLabel: null, name: `Line one\nline two ${'x'.repeat(200)}`, items: [], aiTotals: null, confidence: null, assumptions: [], uncertainties: [], source: 'manual', schemaVersion: null, edited: false, photos: [], recordedAt: 'x', updatedAt: 'x' } as never],
+    };
+    const doc = buildAiExport(s, META);
+    expect(contractProblem(doc)).toBeNull();
+    expect(() => validateSnapshot(doc)).not.toThrow(); // the Worker's own checks (strict fake)
+    const m = doc.measurements.find((x) => x.metric === 'steps' && x.date === '2026-08-29' && x.id.startsWith('hc:steps'))!;
+    expect(m.id).toBe('hc:steps:2026-08-29_x_y');
+    expect(m.source.app!.length).toBeLessThanOrEqual(60);
+    expect(m.source.app).toMatch(/,\+\d$/);
+    expect(doc.training.exercises.find((e) => e.id === 'e_181')).toMatchObject({ reps: 11, seconds: 30 });
+    const meal = doc.food.flatMap((d) => d.loggedMeals).find((x) => x.id === 'm181')!;
+    expect(meal.name).toMatch(/^Line one line two x+$/);
+    expect(meal.name.length).toBe(120);
+  });
+
+  it('anything that still doesn’t fit is named (list, date, field) before sending, and nothing is sent', async () => {
+    const { deps, server, secrets } = await setup();
+    const real = deps.store.snapshot.bind(deps.store);
+    deps.store.snapshot = async () => ({ ...(await real()), exerciseLogs: [{ id: 'e1', movement: 'Push-Up!', date: '2026-08-29', at: 'x', sets: 1, reps: 1, seconds: null, intensity: null } as never] });
+    const r = await syncNow(deps);
+    expect(r).toMatchObject({ ok: false, error: { kind: 'invalid' } });
+    expect(r.ok || r.error.message).toBe('Not sent: An exercise log on 29 Aug 2026 (training.exercises[0]): movement must be a movement name of 1–60 lowercase letters, digits or _. Nothing was changed. Please report this message.');
+    expect(server.requests).toHaveLength(0);
+    expect((await syncStatus(secrets))?.message).toMatch(/^Not sent: An exercise log on 29 Aug 2026/);
+  });
+
+  it('a server rejection keeps the server’s reason (one line, bounded), never the token', async () => {
+    const reply = (status: number, body: string) => async () => ({ status, headers: { get: () => null }, text: async () => body });
+    const c = (body: string) => healthSyncClient(BASE, reply(400, body));
+    const cred = { userId: 'abcdef00-0000-4000-8000-000000000001', ownerToken: 'f'.repeat(64) };
+    await expect(c(JSON.stringify({ error: 'Invalid measurements: measurements[12] (2026-11-13): metric' })).putSnapshot(cred, {} as never)).rejects.toMatchObject({
+      kind: 'invalid', reason: 'Invalid measurements: measurements[12] (2026-11-13): metric',
+      message: 'The server rejected the data as invalid (server: Invalid measurements: measurements[12] (2026-11-13): metric). Nothing was changed.',
+    });
+    await expect(c('not json').putSnapshot(cred, {} as never)).rejects.toMatchObject({ kind: 'invalid', reason: null, message: 'The server rejected the data as invalid. Nothing was changed.' });
+    const long = await c(JSON.stringify({ error: `bad\n${'y'.repeat(500)}` })).putSnapshot(cred, {} as never).catch((e) => e);
+    expect(long.reason).toHaveLength(200);
+    expect(long.reason).not.toMatch(/\n/);
+  });
+
+  it('describeProblem names a logged meal inside a food day', () => {
+    expect(describeProblem({ section: 'food[3].loggedMeals', index: 1, date: '2026-11-13', field: 'name', rule: 'text of at most 120 characters, no line breaks' }))
+      .toBe('A logged meal on 13 Nov 2026 (food[3].loggedMeals[1]): name must be text of at most 120 characters, no line breaks.');
+  });
+});

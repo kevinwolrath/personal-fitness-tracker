@@ -52,7 +52,7 @@ function readNumber(v: unknown): { value: number | null; problem: string | null 
   if (typeof v === 'string') {
     const s = v.trim().toLowerCase();
     if (s === '' || s === 'null' || s === 'unknown' || s === 'n/a' || s === '?') return { value: null, problem: null };
-    const m = s.replace(/,/g, '').match(/^~?\s*(-?\d+(?:\.\d+)?)\s*(?:g|kj|ml)?$/);
+    const m = s.replace(/,/g, '').match(/^(?:~|≈|about|approx\.?|approximately|around)?\s*(-?\d+(?:\.\d+)?)\s*(?:g|grams?|kj|kilojoules?|ml)?$/);
     if (m) return { value: Number(m[1]), problem: null };
     return { value: null, problem: `“${v.slice(0, 30)}” isn’t a number` };
   }
@@ -94,18 +94,47 @@ function readConfidence(v: unknown, issues: Issue[]): Confidence | null {
   return null;
 }
 
+/**
+ * #179: the key spellings AIs actually use, mapped to the canonical fields. Matched case- and punctuation-insensitively
+ * ("energy_kj", "Energy (kJ)", "protein", "protein_g"…), so documented numbers never show up blank.
+ */
+const squash = (k: string) => k.toLowerCase().replace(/[^a-z]/g, '');
+const aliases: Record<NutrientKey, string[]> = {
+  energyKj: ['energykj', 'kj', 'kilojoules', 'energykilojoules', 'totalenergykj', 'energyinkj'],
+  proteinG: ['proteing', 'protein', 'proteingrams', 'proteiningrams', 'totalproteing', 'totalprotein'],
+  carbsG: ['carbsg', 'carbs', 'carbohydrate', 'carbohydrates', 'carbohydrateg', 'carbohydratesg', 'carbsgrams', 'totalcarbs'],
+  fatG: ['fatg', 'fat', 'fats', 'totalfat', 'totalfatg', 'fatgrams'],
+};
+const kcalAliases = ['energykcal', 'kcal', 'calories', 'kilocalories', 'cal', 'cals', 'energycal', 'totalcalories', 'totalkcal', 'caloriekcal'];
+function lookup(src: Record<string, unknown>, names: string[]): unknown {
+  for (const [k, v] of Object.entries(src)) if (names.includes(squash(k)) && v !== undefined) return v;
+  return undefined;
+}
+
 /** One nutrient of an item or the totals: number, kcal conversion, sign and limit checks. */
 function readNutrient(src: Record<string, unknown>, key: NutrientKey, max: number, where: string, path: string, issues: Issue[]): number | null {
   const label = nutrientLabels[key];
-  let raw: unknown = src[key];
+  let raw: unknown = src[key] ?? lookup(src, aliases[key]);
   let fromKcal = false;
   if (key === 'energyKj' && (raw === undefined || raw === null)) {
     // Mixed units: an AI that answers in kcal anyway. Converted exactly, and said so.
-    const kcal = src.energyKcal ?? src.kcal ?? src.calories;
+    const kcal = lookup(src, kcalAliases);
     if (kcal !== undefined && kcal !== null) {
       raw = kcal;
       fromKcal = true;
+    } else if (typeof src.energy === 'string' && /kcal|cal/i.test(src.energy)) {
+      raw = src.energy.replace(/\s*(?:kcal|kilocalories?|calories|cals?)\s*$/i, '');
+      fromKcal = true;
+    } else if (typeof src.energy === 'string' && /kj|kilojoule/i.test(src.energy)) {
+      raw = src.energy;
+    } else if (typeof src.energy === 'number') {
+      issues.push({ path: `${path}.energy`, message: `${where}: energy has no unit (kJ or kcal), so it’s left empty. Enter it if you know it.` });
+      return null;
     }
+  }
+  if (typeof raw === 'string' && /kcal|calorie/i.test(raw) && key === 'energyKj') {
+    raw = raw.replace(/\s*(?:kcal|kilocalories?|calories|cals?)\s*$/i, '');
+    fromKcal = true;
   }
   const n = readNumber(raw);
   if (n.problem) {
@@ -129,11 +158,14 @@ function readNutrient(src: Record<string, unknown>, key: NutrientKey, max: numbe
   return value;
 }
 
-export function validateReply(obj: Record<string, unknown>): ValidateResult {
+export function validateReply(input: Record<string, unknown>): ValidateResult {
+  let obj = input;
   const issues: Issue[] = [];
-  const version = obj.schemaVersion;
+  let version = obj.schemaVersion;
   if (version === undefined || version === null) {
-    return { ok: false, message: 'The reply has no schemaVersion, so it isn’t in the format from the prompt. Share the prompt with the AI again and paste its new reply.' };
+    // #179: a reply without a version is read as the current one, rather than refused.
+    version = MEAL_REPLY_SCHEMA_VERSION;
+    issues.push({ path: 'schemaVersion', message: `The reply had no schemaVersion, so it was read as version ${MEAL_REPLY_SCHEMA_VERSION}.` });
   }
   if (typeof version !== 'number' || !Number.isInteger(version)) {
     return { ok: false, message: 'The reply’s schemaVersion isn’t a whole number. Ask the AI to use the format from the prompt.' };
@@ -143,8 +175,15 @@ export function validateReply(obj: Record<string, unknown>): ValidateResult {
   }
   if (version < 1) return { ok: false, message: `schemaVersion ${version} isn’t a format this app knows. Share the prompt with the AI again.` };
 
+  // #179: the minimal form is one meal with its totals and no food list: read it as a single entry.
+  const totalsSource = isObj(obj.totals) ? obj.totals : obj;
+  const minimal = !Array.isArray(obj.items) && nutrientKeys.some((k) => readNutrient(totalsSource, k, limits.mealNutrient[k], 'Meal', 'totals', []) !== null);
+  if (minimal) {
+    const name = text(obj.mealName ?? obj.name ?? obj.description ?? obj.meal, limits.name) ?? '';
+    obj = { ...obj, items: [{ name: name || 'Meal', ...totalsSource }] };
+  }
   if (!Array.isArray(obj.items)) {
-    return { ok: false, message: 'The reply has no list of foods (“items”). Ask the AI to list each food in the format from the prompt.' };
+    return { ok: false, message: 'The reply has no foods (“items”) and no meal totals (energyKj, proteinG). Ask the AI for the meal’s total energy and protein, or the format from the prompt.' };
   }
   if (!obj.items.length) return { ok: false, message: 'The reply lists no foods. Check the photo shows the meal, or enter the foods yourself.' };
   if (obj.items.length > limits.items) return { ok: false, message: `The reply lists ${obj.items.length} foods; one meal can have at most ${limits.items}. Ask the AI to group small items.` };
@@ -189,8 +228,8 @@ export function validateReply(obj: Record<string, unknown>): ValidateResult {
   if (!items.length) return { ok: false, message: 'None of the foods in the reply could be read. Ask the AI to use the format from the prompt.' };
 
   let aiTotals: Nutrients | null = null;
-  if (isObj(obj.totals)) {
-    const t = obj.totals;
+  if (isObj(obj.totals) || minimal) {
+    const t = totalsSource;
     aiTotals = Object.fromEntries(nutrientKeys.map((k) => [k, readNutrient(t, k, limits.mealNutrient[k], 'AI totals', 'totals', issues)])) as Nutrients;
     if (nutrientKeys.every((k) => aiTotals![k] === null)) aiTotals = null;
   }
@@ -198,8 +237,8 @@ export function validateReply(obj: Record<string, unknown>): ValidateResult {
   return {
     ok: true,
     reply: {
-      schemaVersion: version,
-      mealName: text(obj.mealName, limits.name) ?? '',
+      schemaVersion: version as number,
+      mealName: text(obj.mealName ?? obj.name, limits.name) ?? '',
       items,
       aiTotals,
       confidence: readConfidence(obj.confidence, issues),

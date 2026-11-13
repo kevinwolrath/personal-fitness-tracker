@@ -7,6 +7,7 @@ import type { MealItem } from '../nutrition/contract';
 import { limits } from '../nutrition/contract';
 import { convert, namedUnit, unitsUpdate, unitWords, type Units } from './units';
 import { unitsSchema, type Plan } from '../plan/schema';
+import { asWrittenNote, mealTypeLabel, readMealEstimate, type MealEstimate } from './mealEstimate';
 
 export type Outcome = 'ACCEPT' | 'IGNORE' | 'CLARIFY' | 'REJECT';
 export type IntentKind = 'configuration_update' | 'meal_entry' | 'exercise_update' | 'clarification' | 'irrelevant_text' | 'unsupported_operation';
@@ -18,6 +19,8 @@ export type Intent = {
   message: string;
   update?: ConfigUpdate;
   items?: MealItem[];
+  /** A plain-text meal estimate (#179): one meal with its totals, for the meal review. */
+  estimate?: MealEstimate;
 };
 export type Interpretation = { intents: Intent[]; recovered: string[] };
 
@@ -69,6 +72,19 @@ function meal(source: string): Intent | null {
   return { ...intent('meal_entry', 'ACCEPT', source, { food: name, energy, energyKj, quantity: quantityValue, unit: quantityUnit }, 'Review this food in meal logging. Unknown quantities and nutrients remain empty.'), items: [item] };
 }
 
+/** One meal from a plain-text estimate (#179). ACCEPT when both totals are clear; otherwise CLARIFY, with what was read. */
+function estimateIntent(source: string, e: MealEstimate): Intent {
+  const name = (e.description ?? mealTypeLabel(e.mealType) ?? 'Meal').replace(/\.$/, '').slice(0, limits.name);
+  const item: MealItem = { name, quantity: null, unit: null, energyKj: e.energyKj, proteinG: e.proteinG, carbsG: null, fatG: null };
+  const fields = { mealType: e.mealType, description: e.description, date: e.date, energyKj: e.energyKj, proteinG: e.proteinG, estimated: e.estimated, asWritten: asWrittenNote(e), foods: e.foods };
+  const clear = e.energyKj !== null && e.proteinG !== null && !e.issues.length;
+  return {
+    ...intent('meal_entry', clear ? 'ACCEPT' : 'CLARIFY', source, fields, clear ? 'Review this meal estimate before saving.' : e.issues.join(' ')),
+    items: [item],
+    estimate: e,
+  };
+}
+
 function exercise(source: string, raw?: RawPlan): Intent | null {
   if (!/^(?:please\s+)?(?:increase|change|set|update|log|record|i did)\b/i.test(source)) return null;
   const movement = bundledInventory.exercises.find((entry) => {
@@ -103,7 +119,7 @@ function toLoadKg(value: string, unit: string): number | null {
 }
 
 /** Pure interpretation. Every accepted action is a proposal for an existing review workflow. */
-export function interpretInput(input: string, raw?: RawPlan): Interpretation {
+export function interpretInput(input: string, raw?: RawPlan, opts: { year?: number } = {}): Interpretation {
   if (input.length > MAX_INPUT_CHARS) return { intents: [intent('unsupported_operation', 'REJECT', input, {}, 'The input exceeds the existing import size limit.')], recovered: [] };
   const strict = parseConfigUpdate(input);
   if (strict.ok) {
@@ -121,6 +137,9 @@ export function interpretInput(input: string, raw?: RawPlan): Interpretation {
     }
     return { intents: [intent('configuration_update', 'REJECT', input, {}, strict.errors.join('\n'))], recovered: [] };
   }
+  // #179: an AI's plain-text meal estimate is ONE meal, read as a whole (its "and"s and lines aren't separate instructions).
+  const estimate = readMealEstimate(input, { year: opts.year });
+  if (estimate) return { intents: [estimateIntent(input, estimate)], recovered: [] };
   const intents: Intent[] = [];
   const units: Partial<Units> = {};
   let unitProblem: string | null = null;

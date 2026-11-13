@@ -21,15 +21,17 @@ describe('validateReply (#97): contract checks and normalisation', () => {
     });
   });
 
-  it('refuses missing, unknown and newer versions with actionable messages', () => {
-    expect(validateReply({ items: [item()] })).toMatchObject({ ok: false, message: expect.stringMatching(/no schemaVersion/) });
+  it('reads a missing version as the current one (#179); refuses unknown and newer versions with actionable messages', () => {
+    const r = validateReply({ items: [item()] });
+    expect(r).toMatchObject({ ok: true, reply: { schemaVersion: 1, items: [{ name: 'Rice', energyKj: 980, proteinG: 5 }] } });
+    expect(r.ok && r.issues.map((i) => i.message)).toEqual(['The reply had no schemaVersion, so it was read as version 1.']);
     expect(validateReply(base({ schemaVersion: 2 }))).toMatchObject({ ok: false, message: expect.stringMatching(/newer format \(schemaVersion 2\)/) });
     expect(validateReply(base({ schemaVersion: '1' }))).toMatchObject({ ok: false });
     expect(validateReply(base({ schemaVersion: 0 }))).toMatchObject({ ok: false });
   });
 
   it('refuses a reply with no foods, or too many', () => {
-    expect(validateReply(base({ items: undefined }))).toMatchObject({ ok: false, message: expect.stringMatching(/no list of foods/) });
+    expect(validateReply(base({ items: undefined }))).toMatchObject({ ok: false, message: expect.stringMatching(/no foods \(“items”\) and no meal totals/) });
     expect(validateReply(base({ items: [] }))).toMatchObject({ ok: false, message: expect.stringMatching(/no foods/) });
     expect(validateReply(base({ items: Array.from({ length: 31 }, () => item()) }))).toMatchObject({ ok: false });
     expect(validateReply(base({ items: ['rice'] }))).toMatchObject({ ok: false });
@@ -100,5 +102,40 @@ describe('validateReply (#97): contract checks and normalisation', () => {
     expect(r.ok && r.reply.mealName).toHaveLength(80);
     expect(r.ok && r.reply.assumptions).toHaveLength(12);
     expect(r.ok && r.reply.uncertainties).toEqual(['one']);
+  });
+
+  describe('#179: JSON compatibility', () => {
+    it('the minimal schema (one meal, its totals, no food list) imports as one entry with populated totals', () => {
+      const r = validateReply({ schemaVersion: 1, mealName: 'Beef curry and dhal', energyKj: 2650, proteinG: 45 });
+      expect(r).toMatchObject({ ok: true, reply: { mealName: 'Beef curry and dhal', items: [{ name: 'Beef curry and dhal', energyKj: 2650, proteinG: 45, carbsG: null, fatG: null }], aiTotals: { energyKj: 2650, proteinG: 45 } } });
+      const nested = validateReply({ mealName: 'Curry', totals: { energyKj: 2650, proteinG: 45 } });
+      expect(nested).toMatchObject({ ok: true, reply: { items: [{ name: 'Curry', energyKj: 2650, proteinG: 45 }] } });
+    });
+
+    it('maps the key spellings AIs use, so documented numbers are never blank', () => {
+      const r = validateReply({ schemaVersion: 1, mealName: 'Dinner', items: [
+        { name: 'Beef curry', energy_kj: 1500, protein_g: 30, carbs: 40, fat: 20 },
+        { name: 'Dhal', kJ: '700 kJ', Protein: '~12 g', Carbohydrates: 25, 'Fat (g)': 4 },
+        { name: 'Rice', calories: 200, protein: 4 },
+        { name: 'Wrap', energy: '150 kcal', protein: 5 },
+      ] });
+      expect(r.ok && r.reply.items.map(({ name, energyKj, proteinG, carbsG, fatG }) => [name, energyKj, proteinG, carbsG, fatG])).toEqual([
+        ['Beef curry', 1500, 30, 40, 20],
+        ['Dhal', 700, 12, 25, 4],
+        ['Rice', 837, 4, null, null],
+        ['Wrap', 628, 5, null, null],
+      ]);
+      expect(r.ok && r.issues.filter((i) => /kcal/.test(i.message))).toHaveLength(2); // conversions are said, not silent
+    });
+
+    it('energy without a unit is left empty with a reason, never guessed', () => {
+      const r = validateReply({ mealName: 'Curry', items: [{ name: 'Curry', energy: 2650, protein: 45 }] });
+      expect(r.ok && r.reply.items[0]).toMatchObject({ energyKj: null, proteinG: 45 });
+      expect(r.ok && r.issues.some((i) => /no unit/.test(i.message))).toBe(true);
+    });
+
+    it('an object with neither foods nor totals still gets one actionable message', () => {
+      expect(validateReply({ schemaVersion: 1, mealName: 'Curry' })).toMatchObject({ ok: false, message: expect.stringMatching(/total energy and protein/) });
+    });
   });
 });

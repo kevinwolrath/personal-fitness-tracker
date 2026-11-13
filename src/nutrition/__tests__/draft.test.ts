@@ -98,7 +98,8 @@ describe('meal draft (#97): paste → review → save', () => {
     const again = finalizeDraft({ ...d, name: 'Renamed' }, 't4');
     expect(again.ok && again.log).toMatchObject({ id: 'meal-1', name: 'Renamed', recordedAt: 't2', updatedAt: 't4', edited: false });
     expect(draftMatches(d, { date: MON, activityId: 'lunch', editId: 'meal-1' })).toBe(true);
-    expect(draftMatches(d, { date: MON, activityId: 'lunch' })).toBe(false);
+    // #179: opening that scheduled meal again resumes this edit of its replacement rather than starting a duplicate.
+    expect(draftMatches(d, { date: MON, activityId: 'lunch' })).toBe(true);
     expect(draftMatches(start(), { date: MON, activityId: 'lunch' })).toBe(true);
     expect(draftMatches(start(), { date: MON, activityId: 'dinner' })).toBe(false);
   });
@@ -148,5 +149,52 @@ describe('replacementCompletion (#97): replace marks the scheduled meal done; re
   it('only scheduled meals can be replaced', () => {
     expect(replacementCompletion(plan, MON, records(), 'school-run-am', true, 't1')).toBeNull();
     expect(replacementCompletion(plan, MON, records(), 'no-such-meal', true, 't1')).toBeNull();
+  });
+});
+
+describe('#179: a plain-text AI estimate → one meal → confirm', () => {
+  const text = 'Dinner: beef curry and dhal — ~2,650 kJ, 45 g protein';
+  it('fills the review with one entry and populated totals; no JSON, carbs or fat needed', () => {
+    const d = applyReply(start(), text, 't1');
+    expect(d).toMatchObject({ step: 'review', replyError: null, source: 'photo-ai', name: 'Beef curry and dhal' });
+    expect(d.items).toHaveLength(1);
+    expect(d.items[0]).toMatchObject({ name: 'Beef curry and dhal', energyKj: '2650', proteinG: '45', carbsG: '', fatG: '', quantity: '' });
+    expect(d.parsed).toMatchObject({ format: 'text', schemaVersion: null, mealType: 'dinner', issues: [], assumptions: ['AI estimate as written: ~2,650 kJ, 45 g protein.'] });
+    const saved = finalizeDraft(d, 't2');
+    expect(saved.ok && saved.log).toMatchObject({ id: 'meal-1', name: 'Beef curry and dhal', source: 'photo-ai', schemaVersion: null, edited: false, aiTotals: { energyKj: 2650, proteinG: 45, carbsG: null, fatG: null }, items: [{ energyKj: 2650, proteinG: 45, carbsG: null, fatG: null }] });
+  });
+
+  it('unclear values arrive empty with the reason (review, not a refusal); nothing is invented', () => {
+    const d = applyReply(start(), 'Dinner: curry, 2,400–2,900 kJ, 45 g protein', 't1');
+    expect(d.step).toBe('review');
+    expect(d.items[0]).toMatchObject({ energyKj: '', proteinG: '45' });
+    expect(d.parsed!.issues.map((i) => i.message).join(' ')).toMatch(/range/);
+  });
+
+  it('a different date in the text is said, and the meal stays on the day being logged', () => {
+    const d = applyReply(start(), `Dinner on 1 November 2026: ${text.slice(8)}`, 't1');
+    expect(d.date).toBe(MON);
+    expect(d.parsed!.issues.map((i) => i.message)).toContain('The estimate is for 1 November 2026; this meal is being logged for 2 November 2026.');
+  });
+
+  it('junk text gets one actionable message and stays on paste', () => {
+    const d = applyReply({ ...start(), step: 'paste' }, 'Thanks! Have a lovely evening.', 't1');
+    expect(d.step).toBe('paste');
+    expect(d.replyError).toMatch(/No meal estimate found\. Paste the AI’s answer with the meal’s total energy/);
+  });
+
+  it('editing a saved text estimate keeps it an AI estimate; changing a value marks it edited', () => {
+    const first = finalizeDraft(applyReply(start(), text, 't1'), 't2');
+    const d = draftFromLog(first.ok ? first.log : (null as never), 't3');
+    expect(d.parsed).toMatchObject({ format: 'text', schemaVersion: null });
+    const changed = finalizeDraft({ ...d, items: [{ ...d.items[0], energyKj: '2500' }] }, 't4');
+    expect(changed.ok && changed.log).toMatchObject({ id: 'meal-1', source: 'photo-ai', edited: true, items: [{ energyKj: 2500 }] });
+  });
+
+  it('pasting into an existing replacement keeps its id: saving replaces, never duplicates', () => {
+    const saved = finalizeDraft(applyReply(start(), text, 't1'), 't2');
+    const again = applyReply({ ...draftFromLog(saved.ok ? saved.log : (null as never), 't3'), step: 'paste' }, 'Dinner: beef curry and dhal — ~2,400 kJ, 40 g protein', 't4');
+    const second = finalizeDraft(again, 't5');
+    expect(second.ok && second.log).toMatchObject({ id: 'meal-1', recordedAt: 't2', items: [{ energyKj: 2400, proteinG: 40 }] });
   });
 });

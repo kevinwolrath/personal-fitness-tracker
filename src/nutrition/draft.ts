@@ -2,6 +2,7 @@ import { limits, nutrientKeys, nutrientLabels, type Confidence, type MealItem, t
 import { extractReply } from './parse';
 import { validateReply, type Issue } from './validate';
 import { interpretInput } from '../input/interpret';
+import { asWrittenNote as asWritten, mealTypeLabel, type MealEstimate } from '../input/mealEstimate';
 
 /**
  * The "Log different meal" wizard's state (#97), pure and serialisable, so it survives leaving the app for the AI
@@ -16,7 +17,12 @@ export type Step = (typeof STEPS)[number];
 export type DraftItem = { key: string; name: string; quantity: string; unit: string } & Record<NutrientKey, string>;
 
 export type ParsedInfo = {
-  schemaVersion: number;
+  /** JSON reply version; null for a plain-text estimate (#179). */
+  schemaVersion: number | null;
+  /** How the AI's reply was read (#179). Absent in drafts saved before it: JSON. */
+  format?: 'json' | 'text';
+  /** The meal type a text estimate named, for the summary heading. */
+  mealType?: string | null;
   confidence: Confidence | null;
   assumptions: string[];
   uncertainties: string[];
@@ -111,8 +117,8 @@ export function draftFromLog(log: MealLog, now: string): MealDraft {
     name: log.name,
     items: log.items.map(toDraftItem),
     parsed:
-      log.schemaVersion !== null
-        ? { schemaVersion: log.schemaVersion, confidence: log.confidence, assumptions: log.assumptions, uncertainties: log.uncertainties, aiTotals: log.aiTotals, issues: [], repaired: [], signature: signature(log.items) }
+      log.source === 'photo-ai'
+        ? { schemaVersion: log.schemaVersion, format: log.schemaVersion === null ? 'text' : 'json', confidence: log.confidence, assumptions: log.assumptions, uncertainties: log.uncertainties, aiTotals: log.aiTotals, issues: [], repaired: [], signature: signature(log.items) }
         : null,
     at: log.at,
     recordedAt: log.recordedAt,
@@ -127,9 +133,13 @@ export function applyReply(d: MealDraft, reply: string, now: string): MealDraft 
   const base = { ...d, reply, updatedAt: now };
   const ex = extractReply(reply);
   if (!ex.ok) {
-    const interpretation = interpretInput(reply);
+    const interpretation = interpretInput(reply, undefined, { year: Number(d.date.slice(0, 4)) || undefined });
+    // #179: a plain-text estimate is one meal with its totals. Unclear values arrive empty, with the reason, for review.
+    const estimate = interpretation.intents.find((entry) => entry.estimate)?.estimate;
+    if (estimate) return fromEstimate(base, estimate, now);
     const meals = interpretation.intents.filter((entry) => entry.kind === 'meal_entry' && entry.outcome === 'ACCEPT');
-    if (!meals.length) return { ...base, replyError: interpretation.intents.find((entry) => entry.outcome === 'CLARIFY')?.message ?? ex.message };
+    // No JSON and nothing readable as a meal: the JSON reader's message says what to do (unless the text asked something).
+    if (!meals.length) return { ...base, replyError: interpretation.intents.find((entry) => entry.outcome === 'CLARIFY')?.message ?? (ex.code === 'no-json' ? NO_MEAL : ex.message) };
     const items = meals.flatMap((entry) => entry.items ?? []);
     if (items.length > limits.items) return { ...base, replyError: `A meal supports at most ${limits.items} foods.` };
     return { ...base, source: 'manual', parsed: null, replyError: null, name: items.map((item) => item.name).join(', '), items: items.map(toDraftItem), step: 'review' };
@@ -145,6 +155,7 @@ export function applyReply(d: MealDraft, reply: string, now: string): MealDraft 
     items: r.items.map(toDraftItem),
     parsed: {
       schemaVersion: r.schemaVersion,
+      format: 'json',
       confidence: r.confidence,
       assumptions: r.assumptions,
       uncertainties: r.uncertainties,
@@ -154,6 +165,34 @@ export function applyReply(d: MealDraft, reply: string, now: string): MealDraft 
       signature: signature(r.items),
     },
     step: 'review',
+  };
+}
+
+const NO_MEAL = 'No meal estimate found. Paste the AI’s answer with the meal’s total energy (kJ or kcal) and protein, e.g. “Dinner: beef curry and dhal, about 2,650 kJ and 45 g protein”, or the JSON from the photo prompt.';
+
+const longDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+/** A plain-text estimate (#179) as the review's one entry: name, total energy and protein; nothing else invented. */
+function fromEstimate(base: MealDraft, e: MealEstimate, now: string): MealDraft {
+  const name = (e.description ?? '').replace(/\.$/, '').slice(0, limits.name) || base.replacedLabel || mealTypeLabel(e.mealType) || 'Meal';
+  const item: MealItem = { name, quantity: null, unit: null, energyKj: e.energyKj, proteinG: e.proteinG, carbsG: null, fatG: null };
+  const issues: Issue[] = e.issues.map((message, i) => ({ path: `estimate.${i}`, message }));
+  if (e.date && e.date !== base.date) issues.push({ path: 'date', message: `The estimate is for ${longDate(e.date)}; this meal is being logged for ${longDate(base.date)}.` });
+  const note = asWritten(e);
+  const assumptions = [
+    ...(note ? [note] : []),
+    ...(e.description && e.description.replace(/\.$/, '').length > limits.name ? [e.description] : []),
+    ...(e.foods.length ? [`Includes: ${e.foods.join(', ')}.`] : []),
+  ];
+  return {
+    ...base,
+    replyError: null,
+    source: 'photo-ai',
+    name,
+    items: [toDraftItem(item)],
+    parsed: { schemaVersion: null, format: 'text', mealType: e.mealType, confidence: null, assumptions, uncertainties: [], aiTotals: { energyKj: e.energyKj, proteinG: e.proteinG, carbsG: null, fatG: null }, issues, repaired: [], signature: signature([item]) },
+    step: 'review',
+    updatedAt: now,
   };
 }
 
@@ -249,5 +288,6 @@ export function restoreDraft(json: string | null): MealDraft | null {
 /** Is this draft for the meal being opened? (Same day and scheduled meal, or the same saved meal being edited.) */
 export function draftMatches(d: MealDraft, target: { date: string; activityId: string | null; editId?: string | null }): boolean {
   if (target.editId) return d.mode === 'edit' && d.id === target.editId;
-  return d.mode === 'new' && d.date === target.date && d.activityId === target.activityId;
+  // A scheduled meal's draft matches whether it's new or edits that meal's existing replacement (#179).
+  return d.date === target.date && d.activityId === target.activityId && (d.mode === 'new' || d.activityId !== null);
 }

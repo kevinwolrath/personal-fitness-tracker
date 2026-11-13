@@ -21,6 +21,7 @@ const isDate = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{
 
 const titles: Record<Step, string> = { capture: 'Add a photo', photos: 'Check the photos', share: 'Ask an AI', paste: 'Paste the reply', review: 'Check the estimate' };
 const grouped = (n: number) => new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
+const longDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 
 /**
  * "Log different meal" (#97, contract 15, layout B): a full-screen modal, one step per screen.
@@ -148,6 +149,9 @@ function CaptureStep({ m }: { m: M }) {
     <View style={styles.stack}>
       <BigChoice icon="📷" title="Take a photo" sub="Opens the camera" onPress={() => m.actions.addPhotos('camera')} testID="meal-camera" />
       <BigChoice icon="🖼" title="Choose from gallery" sub={`Up to ${MAX_PHOTOS} photos you already took`} onPress={() => m.actions.addPhotos('library')} testID="meal-library" />
+      {(m.draft?.photos.length ?? 0) === 0 && (
+        <BigChoice icon="📝" title="Paste an AI estimate" sub="Text like “Dinner: curry, about 2,650 kJ, 45 g protein”. No photo needed." onPress={() => m.actions.goTo('paste')} testID="meal-paste-text" />
+      )}
       {m.cameraDenied && (
         <View style={styles.warn} testID="meal-camera-denied">
           <Text style={styles.warnText}>
@@ -220,12 +224,15 @@ function PasteStep({ m }: { m: M }) {
   const d = m.draft!;
   return (
     <View style={styles.stack}>
-      <Text style={type.detail}>Paste the AI’s whole reply. Text around the JSON is fine. Nothing pasted is run: the app only reads the numbers.</Text>
+      <Text style={type.detail}>
+        Paste the AI’s whole answer: plain text with the meal’s total energy (kJ or kcal) and protein is enough, or the JSON from the photo prompt. Other text
+        around it is fine. Nothing pasted is run: the app only reads the numbers.
+      </Text>
       <TextInput
         value={d.reply}
         onChangeText={m.actions.setReply}
         multiline
-        placeholder="Paste the AI’s reply here"
+        placeholder="Dinner: beef curry and dhal, about 2,650 kJ, 45 g protein"
         placeholderTextColor={colors.faint}
         autoCapitalize="none"
         autoCorrect={false}
@@ -254,8 +261,31 @@ function ReviewStep({ m, onView }: { m: M; onView: (p: MealPhoto) => void }) {
   const discrepancies = totalsDiscrepancies(p?.aiTotals ?? null, totals);
   const unknownFoods = Math.max(0, ...Object.values(totals.unknown));
   const fieldError = (key: string, field: string) => m.errors.find((e) => e.key === key && e.field === field);
+  // #179: a plain-text estimate is one meal: a readable summary first; the fields only on Edit (or when something needs fixing).
+  const text = p?.format === 'text';
+  const [editing, setEditing] = useState(false);
+  const details = !text || editing || m.errors.length > 0;
   return (
     <View style={styles.stack} testID="meal-review">
+      {text && (
+        <View style={styles.summary} testID="meal-estimate-summary">
+          <Text style={type.section}>{`${p?.mealType ? `${p.mealType[0].toUpperCase()}${p.mealType.slice(1)} — ` : ''}${longDate(d.date)}`}</Text>
+          <Text style={styles.summaryName}>{d.name.trim() || 'Meal'}</Text>
+          <Text style={styles.summaryTotals} testID="meal-estimate-totals">
+            {`Estimated: ${totals.energyKj === null ? '— kJ' : `${grouped(totals.energyKj)} kJ`} · ${totals.proteinG === null ? '— g' : `${grouped(totals.proteinG)} g`} protein`}
+          </Text>
+          <Text style={type.detail}>An AI’s estimate, not a measurement.</Text>
+          {!editing && <LinkButton title="Edit" onPress={() => setEditing(true)} testID="meal-estimate-edit" />}
+        </View>
+      )}
+      {text && p && p.issues.length > 0 && !details && (
+        <View style={styles.warn} testID="meal-issues">
+          <Text style={[styles.warnText, styles.warnStrong]}>Check before saving</Text>
+          {p.issues.map((x) => <Text key={x.path + x.message} style={styles.warnText}>{x.message}</Text>)}
+          <LinkButton title="Enter the missing values" onPress={() => setEditing(true)} />
+        </View>
+      )}
+      {details && <>
       {p?.confidence && (
         <Text style={styles.chip} testID="meal-confidence">{`${p.confidence[0].toUpperCase()}${p.confidence.slice(1)} confidence`}</Text>
       )}
@@ -269,7 +299,7 @@ function ReviewStep({ m, onView }: { m: M; onView: (p: MealPhoto) => void }) {
         testID="meal-name"
       />
       <Text style={type.detail} testID="meal-caveat">
-        {d.source === 'photo-ai' ? 'An AI’s estimate from a photo, not a measurement. Portions and hidden oil or sauce can make it well off. Edit anything that looks wrong.' : 'Your own entry. Leave a value empty if you don’t know it.'}
+        {text ? 'Change any value that looks wrong. Leave one empty if you don’t know it.' : d.source === 'photo-ai' ? 'An AI’s estimate from a photo, not a measurement. Portions and hidden oil or sauce can make it well off. Edit anything that looks wrong.' : 'Your own entry. Leave a value empty if you don’t know it.'}
       </Text>
 
       <View style={styles.tiles} testID="meal-totals">
@@ -315,6 +345,7 @@ function ReviewStep({ m, onView }: { m: M; onView: (p: MealPhoto) => void }) {
       <Text style={type.section}>Photos</Text>
       {d.photos.length ? <PhotoGrid photos={d.photos} missing={m.missing} onView={onView} onRemove={m.actions.removePhoto} /> : <Text style={type.detail}>No photos.</Text>}
       {d.photos.length < MAX_PHOTOS && <LinkButton title="Add or change photos" onPress={() => m.actions.goTo('photos')} />}
+      </>}
 
       {m.errors.length > 0 && (
         <View style={styles.error} testID="meal-save-errors" accessibilityLiveRegion="polite">
@@ -379,7 +410,7 @@ function BottomBar({ m, onSave }: { m: M; onSave: () => void }) {
   }
   if (d.step === 'paste') primary = <Button title="Check reply" onPress={m.actions.checkReply} disabled={!d.reply.trim()} testID="meal-check" />;
   if (d.step === 'review') {
-    const title = d.mode === 'edit' ? 'Save changes' : 'Save meal';
+    const title = d.mode === 'edit' ? 'Save changes' : d.parsed?.format === 'text' ? 'Confirm' : 'Save meal';
     primary = <Button title={m.saving ? 'Saving…' : title} onPress={onSave} disabled={m.saving} testID="meal-save" />;
   }
   if (!primary && !back) return null;
@@ -474,6 +505,9 @@ const useStyles = createThemedStyles(({ colors, type }) => ({
   nameInput: { minHeight: touch, fontSize: 20, fontWeight: '800', color: colors.ink, borderBottomWidth: 1, borderBottomColor: colors.line },
   inputError: { borderColor: colors.injured, borderBottomColor: colors.injured },
   chip: { alignSelf: 'flex-start', fontSize: 12, fontWeight: '700', color: colors.sore, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.sore, borderRadius: radius.sm, paddingHorizontal: space.sm, paddingVertical: 4 },
+  summary: { gap: space.xs, padding: space.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.surface },
+  summaryName: { fontSize: 18, fontWeight: '700', color: colors.ink },
+  summaryTotals: { fontSize: 18, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },
   tiles: { flexDirection: 'row', gap: 6 },
   tile: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.sm, paddingVertical: space.sm, alignItems: 'center' },
   tileValue: { fontSize: 16, fontWeight: '800', color: colors.ink, fontVariant: ['tabular-nums'] },

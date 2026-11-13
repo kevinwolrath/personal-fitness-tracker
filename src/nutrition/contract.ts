@@ -76,7 +76,7 @@ export type MealLog = {
   confidence: Confidence | null;
   assumptions: string[];
   uncertainties: string[];
-  /** `photo-ai`: from a pasted AI reply; `manual`: typed in. */
+  /** `photo-ai`: from a pasted AI reply (JSON, or a plain-text estimate with `schemaVersion` null, #179); `manual`: typed in. */
   source: 'photo-ai' | 'manual';
   /** Reply contract version it was parsed from; null for manual. */
   schemaVersion: number | null;

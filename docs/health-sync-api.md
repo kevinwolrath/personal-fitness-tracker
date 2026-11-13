@@ -186,26 +186,35 @@ The body is `{ "error": "..." }`. The app maps statuses to its messages, and nev
 
 Limits: 1 MB and 15,000 records per snapshot; 64 KB per share.
 
-## The snapshot
+## The snapshot (v2, #171)
 
-Built by `buildSnapshot` (`src/healthSync/payload.ts`):
-`{ schemaVersion: 1, appVersion: "x.y.z", coverage: { from, to }, records: [{ date, category, metric, value, source }] }`.
-`coverage.to` is today and `from` is the earliest record. No other key is accepted, so names, free text, photos,
-location and credentials can't be sent.
+**One schema.** The snapshot is the detailed AI export (`body-anvil-ai-export` version 2, `schemaVersion: 2`, built by
+`buildAiExport` in `src/export/aiExport.ts`). The same document is used three ways:
+- the file Advanced sharing makes;
+- what sync stores;
+- what links and Share everything return. The Worker's `projectExport` scopes it, and the phone mirrors it in
+  `src/export/shareProjection.ts`.
 
-| App data | Records |
-|---|---|
-| Observations: weight, waist, body fat | `measurements` weight (kg), waist (cm), bodyFat (%) |
-| Observations: steps, active energy, active minutes, distance | `activity` steps, activeEnergy (**kcal**, converted from kJ), activeMinutes, distance (km) |
-| Observations: time asleep | `sleep` duration (min) |
-| Observations: energy and protein eaten (day totals) | `nutrition` energy (kcal), protein (g), with their own source |
-| Logged meals and ticked plan meals (#154), on days without a day total | `nutrition` energy, protein, carbs, fat, meals (count), source `app` |
-| Plan workouts ticked; exercise log | `training` sessions, duration (planned minutes), sets, reps, volume (kg), source `app` |
-| Today's plan | `plan` energyTarget (kcal), proteinTarget (g), weightTarget (kg), source `plan` |
+It carries:
+- `generatedAt`, `timezone`, `asOf` and `units`;
+- `database`: when this database started (`created`/`firstSeen`) and its earliest retained record;
+- `coverage`: app records and Health Connect imports kept **separate**;
+- `plan` targets;
+- every measurement with `id`, `recordedAt` and source;
+- food per day over the app's coverage: complete, partial, missing or in progress, with eaten kept apart from planned;
+- training sessions and the exercise log;
+- a `readMe` that tells the reader how to interpret coverage, zeros and a link's `share` block.
 
-Sources: `manual`, `screenshot`, `healthConnect` (imported), `app` (derived totals) and `plan`. Inferred values are
-left out. Metrics the Worker doesn't have are not sent: resting heart rate, sleep and readiness scores, floors,
-custom measurements and muscle reports.
+The Worker validates it strictly (questspirestudio `worker/export.mjs`, "Snapshot v2" in its SYNC_API.md). Unknown
+keys, notes, photos, the display name and an install source are rejected. Meal names (≤ 120 characters) are sent, as
+the detailed export carries them.
+
+A link's data is the same document plus `share { format, range, categories, from, to }`. Coverage, the database start
+and the read-me always stay. With `format: "summary"`, used by Share everything when the full history is over the 64 KB
+share limit, the lists become per-metric statistics, food day counts and per-movement training.
+
+Limits are unchanged: 1 MB per snapshot, 15,000 entries per list, 64 KB per share. Older app builds still send v1
+numeric records, which the Worker still accepts and shares as before.
 
 ## Checking against the real Worker
 
@@ -214,7 +223,7 @@ Run questspirestudio's `worker/index.mjs` locally:
 - The rate limiters are stubs.
 - Serve it over HTTP on `localhost:8787`.
 
-Point the app's `healthSyncClient('http://localhost:8787', fetch, { dev: true })` at it and run:
+Point the app's `healthSyncClient('http://localhost:8787', fetch, { dev: true })` at it and run the following. For #171 also check that the server copy and the Share everything link equal the detailed file, and that `shareProjection.ts` gives exactly the Worker's projection for both formats:
 1. a wrong-key enroll, then the first sync and a second sync;
 2. the read-back;
 3. share preview, create and read, then revoke.

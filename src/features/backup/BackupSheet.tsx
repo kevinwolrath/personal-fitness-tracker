@@ -52,7 +52,8 @@ function Contents({ m }: { m: BackupManifest }) {
  * confirmation. Nothing changes until "Replace my data", and a failed restore puts the previous data back.
  */
 /** `store` is passed in: first-run setup (no plan yet, no app context) can restore too. */
-export function BackupSheet({ store, mode: initialMode, onClose }: { store: TrackingStore; mode: 'backup' | 'restore'; onClose: () => void }) {
+/** `onRestored`: runs once a restore has replaced the data, just before the app remounts on it (#174: Settings returns to Today). */
+export function BackupSheet({ store, mode: initialMode, onClose, onRestored }: { store: TrackingStore; mode: 'backup' | 'restore'; onClose: () => void; onRestored?: () => void }) {
   const { type } = useTheme();
   const styles = useStyles();
   const [mode, setMode] = useState(initialMode);
@@ -109,6 +110,7 @@ export function BackupSheet({ store, mode: initialMode, onClose }: { store: Trac
       const r = await restoreBackup(store, backupIO, preview, { restoreId: newId().replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24), progress: setBusy });
       if (!r.ok) throw new Error(r.error);
       onClose();
+      onRestored?.();
       signalRestored(`Restored the backup from ${when(r.manifest.createdAt)}.`);
     });
 

@@ -13,6 +13,7 @@ import { AppProvider } from '../../../providers/AppProvider';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../../storage/keyValueStore';
 import { DayLogScreen } from '../../daily-log/DayLogScreen';
 import { AppShell } from '../../shell/AppShell';
+import { RemindersProvider } from '../../reminders/RemindersProvider';
 import { MealPhotoScreen } from '../MealPhotoScreen';
 
 let mockKv = new MemoryKeyValue();
@@ -84,7 +85,9 @@ async function launch(initialUrl = '/') {
       _layout: () => (
         <SafeAreaProvider initialMetrics={metrics}>
           <AppProvider>
-            <Slot />
+            <RemindersProvider>
+              <Slot />
+            </RemindersProvider>
           </AppProvider>
         </SafeAreaProvider>
       ),

@@ -90,7 +90,7 @@ export function ConfigureScreen() {
   const canUndo = latest && latest.toRevision === s.stored?.revision;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']} testID="configure-screen">
       <View style={styles.header}>
         {/* A pasted update is lost on close: Cancel. Otherwise nothing is: Close. */}
         <ModalHeader title="Configure with AI" dismiss={{ label: hasText ? 'Cancel' : 'Close', onPress: close }} />

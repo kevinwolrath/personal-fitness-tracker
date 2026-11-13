@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { chooseFromMenu, openAt, THURSDAY } from './helpers';
+import { chooseFromMenu, leaveSettings, openAt, THURSDAY } from './helpers';
 
 /**
  * #49 + #53: first-run setup. A fresh install (empty storage) goes About you → Goals → Your starter plan
@@ -171,6 +171,7 @@ test.describe('edit setup answers (existing install)', () => {
     await chooseFromMenu(page, 'Edit setup answers');
     await expect(page.getByTestId('setup-about')).toBeVisible();
     await page.getByRole('button', { name: 'Cancel' }).click();
+    await leaveSettings(page); // Edit setup answers returns to Settings → Plan & goals (#174)
     await expect(page.getByTestId('day-progress')).toBeVisible();
     expect((await doc(page)).plan).toEqual(before.plan); // cancelled: untouched
 
@@ -179,6 +180,7 @@ test.describe('edit setup answers (existing install)', () => {
     await page.getByRole('button', { name: 'Review changes' }).click();
     await expect(page.getByTestId('setup-edit-profile')).toContainText('Your schedule, day types, meals, activities and targets stay exactly as they are');
     await primary(page).click(); // Save profile
+    await leaveSettings(page); // Edit setup answers returns to Settings → Plan & goals (#174)
     await expect(page.getByTestId('day-progress')).toBeVisible();
 
     const after = await doc(page);
@@ -208,6 +210,7 @@ test.describe('edit setup answers (existing install)', () => {
     await primary(page).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Replace plan' }).click();
 
+    await leaveSettings(page); // Edit setup answers returns to Settings → Plan & goals (#174)
     await expect(page.getByTestId('day-progress')).toBeVisible();
     const after = await doc(page);
     expect(after.plan).toMatchObject({ planId: before.plan.planId, revision: before.plan.revision + 1, origin: 'config' });

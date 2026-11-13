@@ -49,6 +49,24 @@ const parsePlan = (json: string): Plan | null => {
     return null;
   }
 };
+/**
+ * #181: every value fits the server's contract (questspirestudio worker/export.mjs), so one odd record can't make the
+ * whole sync fail: text without line breaks and within its length, ids in the allowed pattern, counts as whole numbers.
+ */
+const fit = (v: string, max: number) => v.replace(/[\u0000-\u001f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
+const fitOrNull = (v: string | null | undefined, max: number) => (v == null ? null : fit(v, max));
+const safeId = (v: string) => (v.replace(/[^A-Za-z0-9._:-]/g, '_').slice(0, 80) || '_');
+const whole = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? null : Math.min(1e6, Math.max(0, Math.round(v))));
+/** Several apps joined with "," (#44), kept to whole names within 60 characters: "fitbit,phone,+2". */
+function fitApps(v: string | null): string | null {
+  if (v == null) return null;
+  const clean = fit(v, 1000);
+  if (clean.length <= 60) return clean;
+  const parts = clean.split(',');
+  const kept: string[] = [];
+  for (const p of parts) if ([...kept, p, `+${parts.length}`].join(',').length <= 60) kept.push(p);
+  return kept.length ? `${kept.join(',')},+${parts.length - kept.length}` : clean.slice(0, 60);
+}
 const span = (dates: string[]) => {
   const d = [...dates].sort();
   return d.length ? { from: d[0], to: d[d.length - 1] } : null;
@@ -86,8 +104,8 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
       const e = energyT ? m.nutrition?.[energyT.id] : undefined;
       const p = proteinT ? m.nutrition?.[proteinT.id] : undefined;
       return {
-        activityId: m.id,
-        label: m.label,
+        activityId: safeId(m.id),
+        label: fit(m.label, 80),
         status: replaced ? 'replaced' : log?.status === 'done' ? 'eaten (ticked)' : log?.status === 'skipped' ? 'skipped' : 'not ticked',
         plannedEnergyKj: e === undefined || !plan ? null : round(plan.units.energy === 'kJ' ? e : e * 4.184),
         plannedProteinG: p ?? null,
@@ -96,10 +114,10 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
     const logged = d.meals.map((m) => {
       const t = mealTotals(m.items);
       return {
-        id: m.id,
+        id: safeId(m.id),
         at: m.at,
-        name: m.name,
-        replaces: m.replacedLabel,
+        name: fit(m.name, 120),
+        replaces: fitOrNull(m.replacedLabel, 80),
         energyKj: round(t.energyKj),
         proteinG: round(t.proteinG),
         carbsG: round(t.carbsG),
@@ -160,16 +178,16 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
       : null,
     measurements: obs
       .filter((o) => o.kind === 'observed')
-      .map((o) => ({ id: o.id, date: o.date, recordedAt: o.recordedAt, metric: o.metric, value: o.value, unit: o.unit, source: { type: o.source.type === 'integration' ? 'healthConnect' : o.source.type, app: o.source.app, edited: o.source.edited } }))
+      .map((o) => ({ id: safeId(o.id), date: o.date, recordedAt: o.recordedAt, metric: o.metric, value: o.value, unit: fit(o.unit, 16), source: { type: o.source.type === 'integration' ? 'healthConnect' : o.source.type, app: fitApps(o.source.app), edited: o.source.edited } }))
       .sort((a, b) => a.date.localeCompare(b.date) || a.metric.localeCompare(b.metric) || a.recordedAt.localeCompare(b.recordedAt)),
     food,
     training: {
       sessions: activityLogs
         .filter((a) => plans.get(a.planId)?.activities.find((x) => x.id === a.activityId)?.kind === 'exercise' && a.status !== 'pending')
-        .map((a) => ({ date: a.date, activityId: a.activityId, label: a.labelSnapshot, status: a.status, variant: a.variant ?? 'full', exercisesDone: a.exercisesDone ?? [] }))
+        .map((a) => ({ date: a.date, activityId: safeId(a.activityId), label: fit(a.labelSnapshot, 80), status: a.status, variant: a.variant ?? 'full', exercisesDone: (a.exercisesDone ?? []).slice(0, 60).map((x) => fit(x, 80)) }))
         .sort((a, b) => a.date.localeCompare(b.date)),
       exercises: exerciseLogs
-        .map((l) => ({ id: l.id, date: l.date, movement: l.movement, sets: l.sets, reps: l.reps, seconds: l.seconds, loadKg: l.loadKg ?? null, rir: l.rir ?? null, routine: l.routine ?? null, status: l.status ?? 'done' }))
+        .map((l) => ({ id: safeId(l.id), date: l.date, movement: l.movement, sets: whole(l.sets), reps: whole(l.reps), seconds: whole(l.seconds), loadKg: l.loadKg ?? null, rir: l.rir ?? null, routine: fitOrNull(l.routine, 40), status: l.status ?? 'done' }))
         .sort((a, b) => a.date.localeCompare(b.date)),
     },
     counts: { measurements: obs.length, foodDays: food.length, loggedMeals: mealLogs.length, mealDays: mealDates(mealLogs, ticked).length, sessions: activityLogs.length, exercises: exerciseLogs.length },

@@ -56,17 +56,29 @@ const RANGES: { value: ShareRange; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
-type Shape = { coverage?: { from?: string | null; to?: string | null }; records?: { category?: string }[]; data?: { category?: string }[] };
-/** What a snapshot or a shared projection holds, in words: the preview for sync and share. */
+type Span = { from: string; to: string } | null;
+type Shape = {
+  coverage?: { app?: Span; healthConnect?: Span };
+  share?: { format?: string };
+  measurements?: unknown[];
+  food?: unknown[] | { days?: Record<string, number> };
+  training?: { sessions?: unknown[] | Record<string, number>; exercises?: unknown[] };
+};
+const count = (v: unknown) => (Array.isArray(v) ? v.length : 0);
+/** What an export (#171: the synced snapshot, a link's data, or the detailed file) holds, in words. */
 function Summary({ p, bytes, testID }: { p: unknown; bytes: number | null; testID: string }) {
   const { type } = useTheme();
   const v = (p ?? {}) as Shape;
-  const records = Array.isArray(v.records) ? v.records : Array.isArray(v.data) ? v.data : [];
-  const present = categories.filter((c) => records.some((r) => r.category === c));
+  const app = v.coverage?.app ?? null;
+  const hc = v.coverage?.healthConnect ?? null;
+  const summary = v.share?.format === 'summary';
+  const foodDays = Array.isArray(v.food) ? v.food.length : v.food?.days ? Object.values(v.food.days).reduce((a, b) => a + b, 0) : 0;
   const lines = [
-    v.coverage?.from ? `${v.coverage.from} to ${v.coverage.to}` : 'No records in this period',
-    `${records.length.toLocaleString()} daily values`,
-    present.length ? present.map((x) => categoryLabels[x].label).join(', ') : null,
+    app ? `This phone’s records: ${app.from} to ${app.to}` : 'No records from this phone yet',
+    hc ? `Health Connect history: ${hc.from} to ${hc.to}` : null,
+    summary ? 'A summary of each measurement over this period' : `${count(v.measurements).toLocaleString()} measurements`,
+    foodDays ? `${foodDays.toLocaleString()} days of food` : null,
+    count(v.training?.exercises) || count(v.training?.sessions) ? `${count(v.training?.sessions) + count(v.training?.exercises)} training entries` : null,
     bytes !== null ? `About ${size(bytes)}` : null,
   ].filter((l): l is string => !!l);
   return (

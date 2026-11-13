@@ -1,6 +1,8 @@
 import { MemoryDevice, richHistory } from '../../backup/__tests__/fixture';
 import { KeyValueTrackingStore, MemoryKeyValue } from '../../storage/keyValueStore';
 import { healthSyncClient, normalizeBaseUrl, SyncError, type ShareScope } from '../client';
+import { buildAiExport } from '../../export/aiExport';
+import { metricCategory } from '../../export/shareProjection';
 import { buildSnapshot } from '../payload';
 import {
   aiInstruction, createShareLink, EVERYTHING, everythingMessage, shareEverything, credentialFor, ensureUserId, forgetLegacySettings, inspectRemote, LEGACY_ENROLLMENT_KEY, LEGACY_SERVER_URL,
@@ -43,6 +45,7 @@ async function setup() {
 }
 const token = (s: MemorySecrets) => JSON.parse(s.map.get(SECRET_KEYS.credential)!).ownerToken as string;
 const enrolls = (s: FakeHealthServer) => s.requests.filter((q) => q.url.endsWith('/enroll'));
+const META = { generatedAt: '2026-08-30T10:00:00+10:00', timezone: 'Australia/Melbourne', today: TODAY, appVersion: '0.1.0', databaseStart: null };
 const SCOPE: ShareScope = { range: 30, categories: ['measurements', 'nutrition'], format: 'records', expiresIn: 3600 };
 
 describe('data ID', () => {
@@ -65,54 +68,38 @@ describe('data ID', () => {
   });
 });
 
-describe('snapshot (the Worker’s wire format)', () => {
-  it('the full history passes the Worker’s validation: only its keys, metrics, units and sources', async () => {
-    const { store } = await setup();
-    const s = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
-    expect(() => validateSnapshot(s)).not.toThrow();
-    expect(Object.keys(s).sort()).toEqual(['appVersion', 'coverage', 'records', 'schemaVersion']);
-    expect(s.records.length).toBeGreaterThan(50);
-    expect([...new Set(s.records.map((r) => r.category))].sort()).toEqual(['activity', 'measurements', 'nutrition', 'plan', 'training']);
-    expect(s.records.filter((r) => r.source === 'plan').map((r) => r.date)).toEqual([TODAY, TODAY, TODAY]);
-    expect(s.coverage).toEqual({ from: s.records[0].date, to: TODAY });
-  });
-
-  it('carries no name, free text or identifiers: dated numbers only', async () => {
-    const { store, history } = await setup();
-    const json = JSON.stringify(buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' }));
-    expect(json).not.toContain('Fictional Name');
-    for (const m of history.mealLogs ?? []) expect(json).not.toContain(`"${m.name}"`);
-    for (const r of JSON.parse(json).records) expect(Object.values(r).every((v) => typeof v === 'number' || /^[\w-]+$/.test(String(v)))).toBe(true);
-  });
-
-  it('energy is sent in kcal, sleep in minutes, body fat in %; inferred values are left out', async () => {
+describe('snapshot v2: the detailed export is what syncs (#171)', () => {
+  it('passes the Worker’s v2 validation and is exactly the detailed file (one schema)', async () => {
     const { store } = await setup();
     const snap = await store.snapshot();
-    const o = (metric: string, value: number, kind: 'observed' | 'inferred' = 'observed') =>
-      ({ ...snap.observations[0], id: `x-${metric}-${kind}`, metric, value, kind, date: '2026-08-20' }) as (typeof snap.observations)[number];
-    snap.observations.push(o('energy_intake', 8368), o('active_energy', 2092), o('sleep_duration', 420), o('body_fat', 24.5), o('weight', 90, 'inferred'));
-    const s = buildSnapshot(snap, { today: TODAY, appVersion: '0.1.0' });
+    const s = buildSnapshot(snap, META);
     expect(() => validateSnapshot(s)).not.toThrow();
-    const on = (metric: string) => s.records.filter((r) => r.date === '2026-08-20' && r.metric === metric && r.source !== 'app');
-    expect(on('energy')).toEqual([expect.objectContaining({ category: 'nutrition', value: 2000 })]);
-    expect(on('activeEnergy')).toEqual([expect.objectContaining({ category: 'activity', value: 500 })]);
-    expect(on('duration')).toEqual([expect.objectContaining({ category: 'sleep', value: 420 })]);
-    expect(on('bodyFat')).toEqual([expect.objectContaining({ category: 'measurements', value: 24.5 })]);
-    expect(on('weight').map((r) => r.value)).not.toContain(90);
+    expect(s).toEqual(buildAiExport(snap, META));
+    expect(s).toMatchObject({ schemaVersion: 2, format: 'body-anvil-ai-export', version: 2, asOf: TODAY, timezone: 'Australia/Melbourne' });
+    expect(s.measurements.length).toBeGreaterThan(50);
+    expect(s.food.length).toBeGreaterThan(0);
+    expect(s.plan).not.toBeNull();
   });
 
-  it('a day total and that day’s meals are never both sent (no double counting)', async () => {
+  it('keeps Health Connect history apart from the app’s own records, with provenance on every reading', async () => {
     const { store } = await setup();
-    const s = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
-    const energy = s.records.filter((r) => r.metric === 'energy');
-    const byDate = new Map<string, number>();
-    for (const r of energy) byDate.set(r.date, (byDate.get(r.date) ?? 0) + (r.source === 'app' ? 100 : 1));
-    for (const n of byDate.values()) expect(n === 100 || n < 100).toBe(true);
+    const s = buildSnapshot(await store.snapshot(), META);
+    expect(s.coverage.healthConnect).not.toBeNull();
+    expect(s.coverage.app).not.toBeNull();
+    for (const m of s.measurements) expect(m).toEqual(expect.objectContaining({ id: expect.any(String), recordedAt: expect.any(String), source: expect.objectContaining({ type: expect.stringMatching(/^(manual|screenshot|healthConnect)$/) }) }));
+  });
+
+  it('never carries the display name, photos or notes', async () => {
+    const { store } = await setup();
+    const json = JSON.stringify(buildSnapshot(await store.snapshot(), META));
+    expect(json).not.toContain('Fictional Name');
+    expect(json).not.toContain('meal-photos');
+    expect(json).not.toMatch(/"note"|"photos"|"evidence"/);
   });
 
   it('a version that isn’t major.minor.patch is sent as 0.0.0 (the Worker rejects anything else)', async () => {
     const { store } = await setup();
-    expect(buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '1.0' }).appVersion).toBe('0.0.0');
+    expect(buildSnapshot(await store.snapshot(), { ...META, appVersion: '1.0' }).appVersion).toBe('0.0.0');
   });
 });
 
@@ -205,7 +192,7 @@ describe('Sync my data', () => {
     const before = JSON.stringify(await store.snapshot());
     const remote = await inspectRemote(deps);
     expect(remote.updatedAt).toBeTruthy();
-    expect((remote.snapshot as { records: unknown[] }).records.length).toBeGreaterThan(0);
+    expect((remote.snapshot as { measurements: unknown[] }).measurements.length).toBeGreaterThan(0);
     expect(JSON.stringify(await store.snapshot())).toBe(before);
   });
 });
@@ -238,7 +225,10 @@ describe('Share my details', () => {
     const { deps, server } = await setup();
     const p = await previewShare(deps, SCOPE);
     expect(p.revision).toBeNull();
-    expect((p.data as { data: { category: string }[] }).data.every((r) => SCOPE.categories.includes(r.category as never))).toBe(true);
+    const shown = p.data as { measurements: { metric: string }[]; training: { sessions: unknown[] }; coverage: unknown };
+    expect(shown.measurements.every((m) => SCOPE.categories.includes(metricCategory(m.metric) as never))).toBe(true);
+    expect(shown.training.sessions).toEqual([]);
+    expect(shown.coverage).toBeTruthy();
     expect(server.requests).toHaveLength(0);
   });
 
@@ -272,10 +262,11 @@ describe('Share everything (#168)', () => {
     const r = await shareEverything(deps);
     expect(r.format).toBe('records');
     const shared = await readLink(server, r.link.url);
-    const snap = buildSnapshot(await store.snapshot(), { today: TODAY, appVersion: '0.1.0' });
-    expect(shared.requested).toMatchObject({ range: 'all', categories: EVERYTHING.categories, from: null });
-    expect(shared.data).toEqual(snap.records); // everything the phone holds, nothing cut
-    expect(shared.data.some((x: { category: string }) => x.category === 'plan')).toBe(true);
+    const snap = buildSnapshot(await store.snapshot(), { ...META, generatedAt: shared.generatedAt, timezone: shared.timezone, databaseStart: shared.database.startedAt ? { at: shared.database.startedAt, kind: shared.database.startedAtKind } : null });
+    expect(shared.share).toMatchObject({ format: 'records', range: 'all', categories: EVERYTHING.categories, from: null });
+    // Everything the phone holds, nothing cut: the same document as the detailed file.
+    for (const key of ['measurements', 'food', 'training', 'coverage', 'database', 'readMe', 'plan'] as const) expect(shared[key]).toEqual(snap[key]);
+    expect(shared.plan).not.toBeNull();
     expect(Date.parse(r.link.expiresAt) - server.now).toBe(24 * 3600 * 1000);
     expect((await listShareLinks(deps)).map((l) => l.id)).toEqual([r.link.id]); // revocable from the list
   });
@@ -288,7 +279,7 @@ describe('Share everything (#168)', () => {
     await store.replaceAll(snap);
     const r = await shareEverything(deps);
     const shared = await readLink(server, r.link.url);
-    expect(shared.data).toContainEqual(expect.objectContaining({ date: '2026-08-30', metric: 'weight', value: 81.2 }));
+    expect(shared.measurements).toContainEqual(expect.objectContaining({ date: '2026-08-30', metric: 'weight', value: 81.2 }));
     expect(server.requests.filter((q) => q.method === 'PUT')).toHaveLength(1); // the sync before the share
   });
 
@@ -316,15 +307,17 @@ describe('Share everything (#168)', () => {
     const base = snap.observations[0];
     for (let i = 0; i < 1500; i++) {
       const date = new Date(Date.parse('2022-01-01') + i * 86_400_000).toISOString().slice(0, 10);
-      snap.observations.push({ ...base, id: `steps-${i}`, metric: 'steps', value: 5000 + i, date, kind: 'observed' });
+      // Years of Health Connect history (imported), next to the app's own recent records.
+      snap.observations.push({ ...base, id: `steps-${i}`, metric: 'steps', value: 5000 + i, date, kind: 'observed', source: { ...base.source, type: 'integration', app: 'samsung' } });
     }
     await store.replaceAll(snap);
     const r = await shareEverything(deps);
     expect(r.format).toBe('summary');
     const shared = await readLink(server, r.link.url);
-    expect(shared.requested.range).toBe('all');
-    expect(shared.coverage.from).toBe('2022-01-01');
-    expect(shared.data).toContainEqual(expect.objectContaining({ category: 'activity', metric: 'steps', first: { date: '2022-01-01', value: 5000 } }));
+    expect(shared.share).toMatchObject({ format: 'summary', range: 'all' });
+    expect(shared.measurements).toContainEqual(expect.objectContaining({ metric: 'steps', first: { date: '2022-01-01', value: 5000 } }));
+    expect(shared.coverage.healthConnect.from).toBe('2022-01-01');
+    expect(shared.coverage.app.from).not.toBe('2022-01-01'); // imported history doesn't stretch the app's own coverage
     expect(everythingMessage(r)).toMatch(/summary per measurement over all of it/);
   });
 
@@ -360,7 +353,7 @@ describe('client', () => {
     const r = await syncNow({ ...deps, client: healthSyncClient('', async () => { throw new Error('unused'); }) });
     expect(r).toMatchObject({ ok: false, error: { kind: 'config' } });
     const bad = healthSyncClient(BASE, async () => ({ status: 200, headers: { get: () => null }, text: async () => '<html>' }));
-    await expect(bad.putSnapshot({ userId: 'u', ownerToken: 't' }, buildSnapshot(await deps.store.snapshot(), { today: TODAY, appVersion: '0.1.0' }))).rejects.toMatchObject({ kind: 'badResponse' });
+    await expect(bad.putSnapshot({ userId: 'u', ownerToken: 't' }, buildSnapshot(await deps.store.snapshot(), META))).rejects.toMatchObject({ kind: 'badResponse' });
   });
 });
 

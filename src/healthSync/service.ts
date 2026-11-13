@@ -1,6 +1,7 @@
 import type { LocalDate } from '../plan/dates';
 import type { TrackingStore } from '../storage/types';
 import { MAX_UPLOAD_BYTES, SyncError, type Credential, type HealthSyncClient, type Receipt, type ShareLink, type ShareScope } from './client';
+import { databaseStart } from '../export/aiExport';
 import { buildSnapshot, MAX_RECORDS, projectShare, utf8Bytes, type SyncSnapshot } from './payload';
 
 /**
@@ -54,6 +55,16 @@ export type SyncDeps = {
   randomKey: () => string;
   /** #136: the build's enrollment key (config.ts), '' when this build has none. Sent only on enroll. */
   enrollmentKey: string;
+  /** The device's IANA timezone (#171); the device's own when absent. */
+  timezone?: string;
+};
+
+const deviceTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
+  } catch {
+    return 'unknown';
+  }
 };
 /** A link this phone made (the server can't list them). The URL is a read credential: secure storage only. */
 export type SavedShare = ShareLink & { createdAt: string; range: ShareScope['range']; categories: ShareScope['categories'] };
@@ -85,8 +96,14 @@ export async function syncStatus(secrets: SecretStore): Promise<SyncStatus | nul
 }
 
 /** Everything this phone holds, as the upload snapshot, with its size. Reads only. */
-export async function fullPayload(d: Pick<SyncDeps, 'store' | 'today' | 'appVersion'>): Promise<{ snapshot: SyncSnapshot; bytes: number }> {
-  const snapshot = buildSnapshot(await d.store.snapshot(), { today: d.today, appVersion: d.appVersion });
+export async function fullPayload(d: Pick<SyncDeps, 'store' | 'today' | 'appVersion' | 'now' | 'timezone'>): Promise<{ snapshot: SyncSnapshot; bytes: number }> {
+  const snapshot = buildSnapshot(await d.store.snapshot(), {
+    generatedAt: d.now(),
+    timezone: d.timezone ?? deviceTimezone(),
+    today: d.today,
+    appVersion: d.appVersion,
+    databaseStart: await databaseStart(d.store),
+  });
   return { snapshot, bytes: utf8Bytes(JSON.stringify(snapshot)) };
 }
 
@@ -104,7 +121,8 @@ export async function syncNow(d: SyncDeps): Promise<SyncResult> {
     const userId = await wireId(d.store, d.uuid);
     const built = await fullPayload(d);
     bytes = built.bytes;
-    if (bytes > MAX_UPLOAD_BYTES || built.snapshot.records.length > MAX_RECORDS) {
+    const s = built.snapshot;
+    if (bytes > MAX_UPLOAD_BYTES || [s.measurements, s.training.sessions, s.training.exercises].some((xs) => xs.length > MAX_RECORDS)) {
       throw new SyncError('tooLarge', 'That’s more data than one upload allows. Share a shorter period instead, or use Back up data.');
     }
     const cred = await credentialFor(d.secrets, userId);
@@ -162,7 +180,7 @@ export type SharePreview = { data: unknown; bytes: number; revision: string | nu
  * revision (a link can only be made from this). Not linked yet: the same projection worked out on the phone, for
  * "Share as text" only.
  */
-export async function previewShare(d: Pick<SyncDeps, 'store' | 'client' | 'secrets' | 'uuid' | 'today' | 'appVersion'>, scope: ShareScope): Promise<SharePreview> {
+export async function previewShare(d: Pick<SyncDeps, 'store' | 'client' | 'secrets' | 'uuid' | 'today' | 'appVersion' | 'now' | 'timezone'>, scope: ShareScope): Promise<SharePreview> {
   const cred = await linkedCredential(d);
   if (cred) {
     const p = await d.client.previewShare(cred, scope);
@@ -237,4 +255,4 @@ export const everythingMessage = (r: Pick<EverythingResult, 'link' | 'format'>) 
 
 /** The ready-to-send message for an AI: the instruction and the link. Never contains the owner token. */
 export const aiInstruction = (url: string, expiresAt: string) =>
-  `Read the JSON at this link and analyse my weight, waist, training and nutrition trends. Please identify the dates covered and any missing data.\n${url}\n(The link is read-only and expires ${expiresAt}.)`;
+  `Read the JSON at this link and analyse my weight, waist, training and nutrition trends. Start with its readMe, coverage and database fields: they say which dates the app's records and Health Connect cover, so days outside that aren't missed logging. Then identify the dates covered and any missing data.\n${url}\n(The link is read-only and expires ${expiresAt}.)`;

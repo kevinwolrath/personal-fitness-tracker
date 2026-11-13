@@ -26,7 +26,8 @@ import type { StoreSnapshot } from '../storage/types';
  */
 
 export const AI_EXPORT_FORMAT = 'body-anvil-ai-export';
-export const AI_EXPORT_VERSION = 1;
+/** Version 2 (#171): the same document is the sync snapshot (`schemaVersion: 2`) and what share links return. */
+export const AI_EXPORT_VERSION = 2;
 /** app_meta key: when this database started, recorded once (`noteDatabaseStart`). */
 export const DATABASE_START_KEY = 'database.startedAt';
 
@@ -120,11 +121,14 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
   });
 
   return {
+    schemaVersion: 2 as const,
     format: AI_EXPORT_FORMAT,
     version: AI_EXPORT_VERSION,
+    appVersion: /^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(meta.appVersion) ? meta.appVersion : '0.0.0',
     generatedAt: meta.generatedAt,
-    timezone: meta.timezone,
-    app: { name: 'Body Anvil', version: meta.appVersion },
+    timezone: meta.timezone.slice(0, 64),
+    /** The local date this export runs to: nothing after it is included. */
+    asOf: today,
     readMe: [
       'Personal fitness records exported from the Body Anvil app for analysis.',
       'Coverage: app records only exist from `database.startedAt` / `coverage.app.from`. Earlier app history may have been lost (for example when the app was reinstalled from a different source). Do not treat days before that as missed logging: they are not covered.',
@@ -132,6 +136,7 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
       'A value of 0 is a real zero. A day or metric that is not listed is missing. Food status: complete, partial (some food has no value), missing (nothing recorded that day), or in progress (today).',
       'Eaten food is logged meals plus planned meals the user ticked as eaten (counted at the plan’s estimates). Planned meals that were not ticked were not eaten as far as the app knows.',
       'Dates are local calendar dates in `timezone`. Units are in `units`.',
+      'From a share link, `share` says which period (`from`–`to`) and categories were chosen: nothing outside them is included, and that is a choice, not missing data. With `share.format` "summary", each list is replaced by statistics over the whole period (count, mean, min, max, first, last) because the full history was too long for one link.',
     ],
     units: { mass: 'kg', length: 'cm', energy: 'kJ (1 kcal = 4.184 kJ)', protein: 'g', duration: 'min', distance: 'km', bodyFat: '%' },
     database: {
@@ -167,9 +172,11 @@ export function buildAiExport(s: StoreSnapshot, meta: AiExportMeta) {
         .map((l) => ({ id: l.id, date: l.date, movement: l.movement, sets: l.sets, reps: l.reps, seconds: l.seconds, loadKg: l.loadKg ?? null, rir: l.rir ?? null, routine: l.routine ?? null, status: l.status ?? 'done' }))
         .sort((a, b) => a.date.localeCompare(b.date)),
     },
-    counts: { measurements: obs.length, foodDays: food.length, loggedMeals: mealLogs.length, mealDates: mealDates(mealLogs, ticked).length, sessions: activityLogs.length, exercises: exerciseLogs.length },
+    counts: { measurements: obs.length, foodDays: food.length, loggedMeals: mealLogs.length, mealDays: mealDates(mealLogs, ticked).length, sessions: activityLogs.length, exercises: exerciseLogs.length },
   };
 }
+
+export type AiExport = ReturnType<typeof buildAiExport>;
 
 function enumerate(from: LocalDate, to: LocalDate): LocalDate[] {
   const out: LocalDate[] = [];

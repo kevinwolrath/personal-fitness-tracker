@@ -42,8 +42,8 @@ test('sync my data: confirm what is sent, link, then upload again; nothing local
   await expect(page.getByTestId('health-sync-link-state')).toHaveText('Your first sync links this phone to the server.');
 
   await page.getByTestId('health-sync-prepare').click();
-  // The snapshot covers through today (plan targets are dated today).
-  await expect(page.getByTestId('health-sync-contents')).toContainText('2026-10-30 to 2026-11-02');
+  // #171: the snapshot is the detailed export; it says what this phone's records cover.
+  await expect(page.getByTestId('health-sync-contents')).toContainText('This phone’s records: 2026-10-30 to 2026-11-01');
   await page.screenshot({ path: 'docs/design/issue-134/sync-confirm.png', fullPage: true });
   await expect(page.getByTestId('health-sync-confirm')).toContainText('Not sent: Your name');
   expect(server.requests).toHaveLength(0); // nothing sent before the tap
@@ -61,7 +61,7 @@ test('sync my data: confirm what is sent, link, then upload again; nothing local
   expect(put.body).not.toContain(token);
 
   await page.getByTestId('health-sync-view').click();
-  await expect(page.getByTestId('health-sync-remote')).toContainText('2026-10-30 to 2026-11-02');
+  await expect(page.getByTestId('health-sync-remote')).toContainText('This phone’s records: 2026-10-30 to 2026-11-01');
   expect(await page.evaluate(() => localStorage.getItem('pft:tracking:v1'))).toBe(before);
   // The owner token is never part of a backup's preferences or the tracking data.
   expect(before).not.toContain(token);
@@ -82,17 +82,18 @@ test('share my details: choose scope, preview exactly what is shared, create, co
   await page.getByRole('radio', { name: '7 days' }).click();
   for (const c of ['activity', 'sleep', 'nutrition', 'training']) await page.getByTestId(`share-category-${c}`).click();
   await page.getByTestId('share-preview').click();
-  await expect(page.getByTestId('share-contents')).toContainText('2026-10-30 to 2026-11-01');
-  await expect(page.getByTestId('share-contents')).toContainText('Body measurements');
+  // Coverage describes the whole database; the 7-day scope keeps the two recent weigh-ins only.
+  await expect(page.getByTestId('share-contents')).toContainText('This phone’s records: 2026-08-01 to 2026-11-01');
+  await expect(page.getByTestId('share-contents')).toContainText('2 measurements');
   await page.getByRole('button', { name: 'Show the data' }).click();
-  await expect(page.getByTestId('share-json')).not.toContainText('2026-08-01');
+  await expect(page.getByTestId('share-json')).not.toContainText('"date": "2026-08-01"');
   await page.getByTestId('share-create').click();
   await expect(page.getByTestId('share-link')).toContainText(`${BASE}/api/body-anvil/v1/shared/`);
   const shared = server.shares[0];
   expect(shared.scope).toEqual({ range: 7, categories: ['measurements'], format: 'records', expiresIn: 86400 });
   const read = await (await server.fetch(`${BASE}/api/body-anvil/v1/shared/${shared.token}`, { method: 'GET', headers: {} })).text();
-  expect(read).toContain('2026-10-30');
-  expect(read).not.toContain('2026-08-01');
+  const dates = JSON.parse(read).measurements.map((m: { date: string }) => m.date);
+  expect(dates).toEqual(['2026-10-30', '2026-11-01']);
   await page.getByTestId('share-copy').click();
   await expect(page.getByTestId('health-sync-notice')).toContainText('Copied the link');
   const clip = await page.evaluate(() => navigator.clipboard.readText());
@@ -189,7 +190,7 @@ test('#168 share everything: one tap syncs, links all history for 24 hours and h
   expect(clip).toContain(`${BASE}/api/body-anvil/v1/shared/${share.token}`);
   const read = await (await server.fetch(`${BASE}/api/body-anvil/v1/shared/${share.token}`, { method: 'GET', headers: {} })).text();
   expect(read).toContain('2026-08-01'); // all history, not the last 30 days
-  expect(read).toContain('weightTarget'); // plan targets included
+  expect(JSON.parse(read).plan.weightGoalKg).not.toBeNull(); // plan targets included
   await expect(page.getByTestId('everything-link')).toContainText('All your history');
   if (test.info().project.name === 'phone') await page.screenshot({ path: 'docs/design/issue-168/after-link.png' });
   await page.getByTestId('everything-revoke').click();
@@ -212,7 +213,7 @@ test('#167 detailed file: made on the phone, states its coverage, never uploaded
   const file = await download;
   expect(file.suggestedFilename()).toBe('body-anvil-ai-export-2026-11-02.json');
   const doc = JSON.parse(require('node:fs').readFileSync(await file.path(), 'utf8'));
-  expect(doc).toMatchObject({ format: 'body-anvil-ai-export', version: 1, coverage: { app: { from: '2026-10-30', to: '2026-11-01' }, healthConnect: null } });
+  expect(doc).toMatchObject({ format: 'body-anvil-ai-export', version: 2, schemaVersion: 2, coverage: { app: { from: '2026-10-30', to: '2026-11-01' }, healthConnect: null } });
   expect(doc.database.startedAtKind).toMatch(/created|firstSeen/);
   expect(doc.measurements.map((m: { id: string }) => m.id)).toEqual(['w-2026-10-30', 'w-2026-11-01']);
   expect(server.requests).toHaveLength(0); // nothing uploaded

@@ -1,3 +1,4 @@
+import { projectExport, type ShareCategory } from '../../export/shareProjection';
 /**
  * An in-memory stand-in for the deployed Body Anvil Worker (#163), following its contract and its checks exactly:
  * questspirestudio worker/index.mjs and worker/snapshot.mjs (docs/body-anvil/SYNC_API.md). Strict on every key,
@@ -13,32 +14,8 @@ const prefix = '/api/body-anvil/v1';
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const tokenPattern = /^[0-9a-f]{64}$/;
 const idPattern = /^[0-9a-f]{32}$/;
-const metrics: Record<string, string[]> = {
-  measurements: ['weight', 'waist', 'bodyFat'],
-  activity: ['steps', 'activeEnergy', 'activeMinutes', 'distance'],
-  sleep: ['duration'],
-  training: ['sessions', 'duration', 'sets', 'reps', 'volume'],
-  nutrition: ['energy', 'protein', 'carbs', 'fat', 'fiber', 'water', 'meals'],
-  plan: ['energyTarget', 'proteinTarget', 'carbsTarget', 'fatTarget', 'stepTarget', 'weightTarget', 'sessionsPlanned'],
-};
 export const SHARE_BYTES = 64 * 1024;
-/** The Worker's summary format: per category, metric and source. */
-function summarize(records: { date: string; category: string; metric: string; value: number; source: string }[]) {
-  const groups = new Map<string, { category: string; metric: string; source: string; count: number; sum: number; min: number; max: number; first: { date: string; value: number }; last: { date: string; value: number } }>();
-  for (const { date, category, metric, value, source } of records) {
-    const key = `${category}:${metric}:${source}`;
-    const g = groups.get(key) ?? { category, metric, source, count: 0, sum: 0, min: value, max: value, first: { date, value }, last: { date, value } };
-    g.count += 1;
-    g.sum += value;
-    g.min = Math.min(g.min, value);
-    g.max = Math.max(g.max, value);
-    if (date < g.first.date) g.first = { date, value };
-    if (date >= g.last.date) g.last = { date, value };
-    groups.set(key, g);
-  }
-  return [...groups.values()].map(({ sum, ...g }) => ({ ...g, mean: sum / g.count }));
-}
-const sources = ['manual', 'screenshot', 'healthConnect', 'integration', 'app', 'plan'];
+const shareCats = ['measurements', 'activity', 'sleep', 'nutrition', 'training', 'plan'];
 
 class ApiError extends Error {
   constructor(readonly status: number, message: string) {
@@ -53,26 +30,51 @@ const isObj = (v: unknown): v is Record<string, unknown> => v !== null && typeof
 const fields = (v: unknown, required: string[], optional: string[] = []) =>
   isObj(v) && required.every((k) => Object.hasOwn(v, k)) && Object.keys(v).every((k) => required.includes(k) || optional.includes(k));
 const isDate = (v: unknown) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) === v;
+const isStamp = (v: unknown) => typeof v === 'string' && v.length <= 40 && Number.isFinite(Date.parse(v));
+const text = (v: unknown, max: number) => typeof v === 'string' && v.length <= max && ![...v].some((c) => c.charCodeAt(0) < 32);
+const textOrNull = (v: unknown, max: number) => v === null || text(v, max);
+const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1e9;
+const numOrNull = (v: unknown) => v === null || num(v);
+const intOrNull = (v: unknown) => v === null || (Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 1e6);
+const span = (v: unknown) => v === null || (fields(v, ['from', 'to']) && isDate((v as { from: unknown }).from) && isDate((v as { to: unknown }).to));
+const list = (v: unknown, max: number, each: (x: any) => boolean) => Array.isArray(v) && v.length <= max && v.every((x) => each(x)); // eslint-disable-line @typescript-eslint/no-explicit-any
+const oneOf = (v: unknown, xs: unknown[]) => xs.includes(v);
+const id = (v: unknown) => typeof v === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(v);
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const measurement = (m: any) => fields(m, ['id', 'date', 'recordedAt', 'metric', 'value', 'unit', 'source']) && id(m.id) && isDate(m.date) && isStamp(m.recordedAt)
+  && /^[a-z0-9_]{1,40}$/.test(m.metric) && num(m.value) && text(m.unit, 16) && fields(m.source, ['type', 'app', 'edited'])
+  && oneOf(m.source.type, ['manual', 'screenshot', 'healthConnect']) && textOrNull(m.source.app, 60) && typeof m.source.edited === 'boolean';
+const planned = (p: any) => fields(p, ['activityId', 'label', 'status', 'plannedEnergyKj', 'plannedProteinG']) && id(p.activityId) && text(p.label, 80)
+  && oneOf(p.status, ['eaten (ticked)', 'replaced', 'skipped', 'not ticked']) && numOrNull(p.plannedEnergyKj) && numOrNull(p.plannedProteinG);
+const logged = (m: any) => fields(m, ['id', 'at', 'name', 'replaces', 'energyKj', 'proteinG', 'carbsG', 'fatG', 'complete', 'source']) && id(m.id) && isStamp(m.at)
+  && text(m.name, 120) && textOrNull(m.replaces, 80) && [m.energyKj, m.proteinG, m.carbsG, m.fatG].every(numOrNull) && typeof m.complete === 'boolean' && oneOf(m.source, ['photo-ai', 'manual']);
+const foodDay = (d: any) => fields(d, ['date', 'status', 'eaten', 'plannedMeals', 'loggedMeals']) && isDate(d.date) && oneOf(d.status, ['complete', 'partial', 'missing', 'in progress'])
+  && fields(d.eaten, ['energyKj', 'proteinG', 'carbsG', 'fatG', 'from']) && [d.eaten.energyKj, d.eaten.proteinG, d.eaten.carbsG, d.eaten.fatG].every(numOrNull)
+  && oneOf(d.eaten.from, ['meals', 'day-total', null]) && list(d.plannedMeals, 20, planned) && list(d.loggedMeals, 30, logged);
+const session = (x: any) => fields(x, ['date', 'activityId', 'label', 'status', 'variant', 'exercisesDone']) && isDate(x.date) && id(x.activityId) && text(x.label, 80)
+  && oneOf(x.status, ['done', 'skipped', 'partial']) && oneOf(x.variant, ['full', 'short']) && list(x.exercisesDone, 60, (e: unknown) => text(e, 80));
+const exercise = (e: any) => fields(e, ['id', 'date', 'movement', 'sets', 'reps', 'seconds', 'loadKg', 'rir', 'routine', 'status']) && id(e.id) && isDate(e.date)
+  && /^[a-z0-9_]{1,60}$/.test(e.movement) && [e.sets, e.reps, e.seconds].every(intOrNull) && numOrNull(e.loadKg) && numOrNull(e.rir) && textOrNull(e.routine, 40) && oneOf(e.status, ['done', 'skipped']);
 
-export function validateSnapshot(value: unknown) {
-  need(fields(value, ['schemaVersion', 'appVersion', 'coverage', 'records']), 'Invalid snapshot envelope');
-  const v = value as { schemaVersion: unknown; appVersion: unknown; coverage: unknown; records: unknown };
-  need(v.schemaVersion === 1 && typeof v.appVersion === 'string' && /^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(v.appVersion)
-    && fields(v.coverage, ['from', 'to']) && isDate((v.coverage as { to: unknown }).to)
-    && Array.isArray(v.records) && v.records.length <= 15_000, 'Invalid snapshot envelope');
-  const to = (v.coverage as { to: string }).to;
-  let first: string | null = null;
-  for (const r of v.records as unknown[]) {
-    need(fields(r, ['date', 'category', 'metric', 'value', 'source']), 'Invalid record fields');
-    const { date, category, metric, value: amount, source } = r as Record<string, unknown>;
-    need(isDate(date) && (date as string) <= to && typeof category === 'string' && Object.hasOwn(metrics, category)
-      && typeof metric === 'string' && metrics[category].includes(metric) && typeof amount === 'number' && Number.isFinite(amount)
-      && amount >= 0 && amount <= 1e9 && (metric !== 'bodyFat' || amount <= 100) && sources.includes(source as string),
-    'Invalid record date, metric, value or source');
-    if (first === null || (date as string) < first) first = date as string;
-  }
-  need((v.coverage as { from: unknown }).from === first, 'Coverage start must match the earliest record or be null');
+/** The Worker's v2 `validateExport` (questspirestudio worker/export.mjs), check for check. */
+export function validateSnapshot(v: any) {
+  need(fields(v, ['schemaVersion', 'format', 'version', 'appVersion', 'generatedAt', 'timezone', 'asOf', 'readMe', 'units', 'database', 'coverage', 'plan', 'measurements', 'food', 'training', 'counts'])
+    && v.schemaVersion === 2 && v.format === 'body-anvil-ai-export' && v.version === 2 && /^\d{1,5}\.\d{1,5}\.\d{1,5}$/.test(v.appVersion)
+    && isStamp(v.generatedAt) && text(v.timezone, 64) && isDate(v.asOf) && list(v.readMe, 12, (x: unknown) => text(x, 400))
+    && fields(v.units, ['mass', 'length', 'energy', 'protein', 'duration', 'distance', 'bodyFat']) && Object.values(v.units).every((x) => text(x, 40)), 'Invalid export envelope');
+  const db = v.database;
+  need(fields(db, ['startedAt', 'startedAtKind', 'earliestRetainedRecord', 'installSource', 'installSourceNote']) && (db.startedAt === null || isStamp(db.startedAt))
+    && oneOf(db.startedAtKind, ['created', 'firstSeen', null]) && (db.earliestRetainedRecord === null || isDate(db.earliestRetainedRecord)) && db.installSource === null
+    && text(db.installSourceNote, 200) && fields(v.coverage, ['app', 'healthConnect']) && span(v.coverage.app) && span(v.coverage.healthConnect)
+    && (v.plan === null || (fields(v.plan, ['energyTargetKj', 'proteinTargetG', 'weightGoalKg']) && [v.plan.energyTargetKj, v.plan.proteinTargetG, v.plan.weightGoalKg].every(numOrNull))), 'Invalid export coverage or plan');
+  need(list(v.measurements, 15_000, measurement), 'Invalid measurements');
+  need(list(v.food, 3_660, foodDay), 'Invalid food days');
+  need(fields(v.training, ['sessions', 'exercises']) && list(v.training.sessions, 15_000, session) && list(v.training.exercises, 15_000, exercise), 'Invalid training');
+  need(isObj(v.counts) && Object.entries(v.counts).every(([k, n]) => /^[A-Za-z]{1,30}$/.test(k) && Number.isInteger(n) && (n as number) >= 0), 'Invalid counts');
+  const dates = [...v.measurements, ...v.food, ...v.training.sessions, ...v.training.exercises].map((x: { date: string }) => x.date);
+  need(dates.every((d) => d <= v.asOf), 'Records must be on or before asOf');
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const res = (status: number, body: unknown, headers: Record<string, string> = {}) => ({
   status,
@@ -190,7 +192,7 @@ export class FakeHealthServer {
     }
     const input = this.readJson(init) as Record<string, unknown>;
     need(fields(input, ['range', 'categories', 'format', 'expiresIn'], ['revision']) && [7, 30, 90, 'all'].includes(input.range as number)
-      && Array.isArray(input.categories) && input.categories.length > 0 && input.categories.every((c) => typeof c === 'string' && Object.hasOwn(metrics, c))
+      && Array.isArray(input.categories) && input.categories.length > 0 && input.categories.every((c) => typeof c === 'string' && shareCats.includes(c))
       && ['records', 'summary'].includes(input.format as string) && Number.isInteger(input.expiresIn) && (input.expiresIn as number) >= 60 && (input.expiresIn as number) <= 86400,
     'Invalid share scope');
     const scope = { range: input.range, categories: input.categories, format: input.format, expiresIn: input.expiresIn } as Scope;
@@ -203,18 +205,13 @@ export class FakeHealthServer {
     return res(201, { id: share.id, url: `${u.origin}${prefix}/shared/${share.token}`, expiresAt: new Date(share.expiresAt).toISOString() });
   }
 
-  /** The Worker's projectShare (records or summary), with its 64 KB share limit (worker/snapshot.mjs). */
+  /** The Worker's v2 projectExport (the shared TS mirror), with its 64 KB share limit. */
   private project(user: User, scope: Scope) {
-    const snap = JSON.parse(user.snapshot) as { schemaVersion: number; appVersion: string; coverage: { to: string }; records: { date: string; category: string; metric: string; value: number; source: string }[] };
-    const to = snap.coverage.to;
-    const from = scope.range === 'all' ? null : new Date(Date.parse(to) - (scope.range - 1) * 86_400_000).toISOString().slice(0, 10);
-    const records = snap.records.filter((r) => scope.categories.includes(r.category) && (from === null || r.date >= from));
-    const dates = records.map((r) => r.date).sort();
-    const data = scope.format === 'records' ? records : summarize(records);
-    const out = { schemaVersion: snap.schemaVersion, provenance: { app: 'Body Anvil', appVersion: snap.appVersion }, format: scope.format, requested: { range: scope.range, categories: scope.categories, from, to }, coverage: { from: dates[0] ?? null, to: dates[dates.length - 1] ?? null }, data };
+    const out = projectExport(JSON.parse(user.snapshot), { range: scope.range, categories: scope.categories as ShareCategory[], format: scope.format });
     if (new TextEncoder().encode(JSON.stringify(out)).byteLength > SHARE_BYTES) throw new ApiError(413, 'Share too large. Choose summary or narrow the scope');
     return out;
   }
+
 }
 
 export class MemorySecrets {

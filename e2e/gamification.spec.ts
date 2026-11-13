@@ -121,3 +121,27 @@ test('canonical edits, deletion and backdating reverse rewards without replay',a
   await expect(page.getByTestId('game-level')).toContainText(`${original.xp-20} XP`);
   await page.reload(); await expect(page.getByTestId('game-level')).toContainText(`${original.xp-20} XP`);
 });
+
+test('#176: Quests load after a configuration change (plan history stored as written) and survive navigation', async ({ page }) => {
+  const s = journeySnapshot(5);
+  // A configuration change keeps the previous plan as written, without the schema's defaults (e.g. no `tracking`):
+  // building quests for dates before it used to throw and leave "Loading quests…" forever.
+  const raw = JSON.parse(JSON.stringify(journeyPlan));
+  for (const a of raw.activities) delete a.tracking;
+  s.configChanges = [{ id: 'c176', appliedAt: `${addDays(START, 3)}T02:00:00Z`, sections: [], payload: {}, fromRevision: 1, toRevision: 2, previousPlanJson: JSON.stringify(raw) } as never];
+  const today = addDays(START, 5);
+  await page.addInitScript(() => localStorage.setItem('pft.gamification.v1', JSON.stringify({ version: 1, enabled: true, seen: [] })));
+  await page.goto('/');
+  await install(page, s, today);
+  await expect(page.getByTestId('gamification-card')).toBeVisible();
+  await expect(page.getByTestId('gamification-loading')).toHaveCount(0);
+  await expect(page.getByTestId('gamification-error')).toHaveCount(0);
+  await expectXP(page, s, today);
+  // Away to Progress (the gallery card) and back to Today: still loaded.
+  await page.getByRole('tab', { name: /Progress/ }).click();
+  await expect(page.getByTestId('gamification-card')).toBeVisible();
+  await page.getByRole('tab', { name: /Today/ }).click();
+  await expect(page.getByTestId('gamification-card')).toBeVisible();
+  await gallery(page);
+  await expect(page.getByTestId('achievement-gallery')).toContainText('Today\'s quests');
+});

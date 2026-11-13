@@ -54,9 +54,10 @@ test('logs a different meal: photo, share, paste, review, save; Today shows the 
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('"schemaVersion": 1');
 
   await page.getByTestId('meal-to-paste').click();
-  await page.getByTestId('meal-reply').fill('{"mealName": "no version", "items": [{"name": "x"}]}');
+  // A reply that can't be read gets one actionable message (a missing schemaVersion is read as 1 since #179).
+  await page.getByTestId('meal-reply').fill('{"mealName": "cut off", "items": [{"name": "x"');
   await page.getByTestId('meal-check').click();
-  await expect(page.getByTestId('meal-reply-error')).toContainText('no schemaVersion');
+  await expect(page.getByTestId('meal-reply-error')).toContainText('cut off');
 
   await page.getByTestId('meal-reply').fill(reply);
   await page.getByTestId('meal-check').click();

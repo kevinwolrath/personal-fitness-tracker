@@ -11,11 +11,11 @@ Replace a scheduled meal with what was actually eaten: photograph it, ask any AI
 
 A full-screen modal route (`?date=…&activity=…`, or `?edit=<mealLogId>`), one step per screen:
 
-1. **Add a photo:** Take a photo (camera) or Choose from gallery (up to 6). A denied camera permission explains itself, offers **Open settings** when the system won't ask again, and keeps the gallery available. **No photo? Enter the numbers yourself** skips to the review.
+1. **Add a photo:** Take a photo (camera), Choose from gallery (up to 6), or **Paste an AI estimate** (#179: straight to step 4 with no photo; Back from step 4 then returns here). A denied camera permission explains itself, offers **Open settings** when the system won't ask again, and keeps the gallery available. **No photo? Enter the numbers yourself** skips to the review.
 2. **Check the photos:** thumbnails; tap for full screen; delete; retake or add more (up to 6).
 3. **Ask an AI:** **Share with AI** copies the prompt to the clipboard, then opens the system share sheet with the photo. Android's share (and `expo-sharing`) can't carry text with an image, so the prompt is never silently dropped: the screen says it is copied, and **Copy prompt only** and **See the prompt** are separate. Further photos are shared one at a time ("Share photo 2 of 3"). If sharing isn't available, the prompt is copied and the screen says to attach the photo in the AI app.
-4. **Paste the reply:** a text box and **Paste from clipboard**; **Check reply**. One actionable message on failure; the paste is kept. **Enter the numbers myself instead** is always there.
-5. **Check the estimate:** meal name, the AI's confidence, the caveat, totals tiles (≈, from the foods), totals warnings, the parser's notes, editable foods (name, amount, unit, kJ, protein, carbs, fat), add/remove food, assumptions and uncertainties, photos. **Save meal** (or **Save changes**).
+4. **Paste the reply:** a text box and **Paste from clipboard**; **Check reply**. Plain text with the meal's totals is the default input (#179); the JSON reply is the advanced path. One actionable message on failure; the paste is kept. **Enter the numbers myself instead** is always there.
+5. **Check the estimate.** For a plain-text estimate (#179) it opens on a readable summary: "<Meal type> — <date>", the description, "Estimated: 2,650 kJ · 45 g protein" ("—" for a value left empty) and "An AI's estimate, not a measurement", with **Edit** (the fields below) and **Confirm**. Values left empty are listed under "Check before saving" with **Enter the missing values**. Otherwise, and on Edit: meal name, the AI's confidence, the caveat, totals tiles (≈, from the foods), totals warnings, the parser's notes, editable foods (name, amount, unit, kJ, protein, carbs, fat), add/remove food, assumptions and uncertainties, photos. **Save meal** (or **Save changes**).
 
 - **Header:** `ModalHeader` with **Cancel** on the left whenever something would be lost (Close otherwise) and the step's title. A step strip and "Step n of 5 · Replaces <meal> · <date>" sit under it. **Back** and the step's primary action are in a fixed bottom bar (02 "Modal vertical budget"); Back is never in the header, so 02's header rule is unchanged.
 - **Cancel** asks first ("Discard this meal?"). It deletes only photos taken in this draft; a saved meal's photos are untouched.
@@ -24,6 +24,7 @@ A full-screen modal route (`?date=…&activity=…`, or `?edit=<mealLogId>`), on
 
 - The draft (`src/nutrition/draft.ts`, versioned) is written on every change: natively to `meal-photos/draft.json` in the document directory, on web to `localStorage`. Leaving for the AI app, the OS killing the app, or a restart all return to the same step, photos and paste. Opening the wizard for the same meal resumes it; another meal's unsaved draft is offered (**Continue** / **Discard**), never dropped silently. A damaged or other-version draft is ignored.
 - **Duplicate saves:** the meal's id is fixed when the draft starts, so saving twice writes the same record; Save is also guarded against a double tap.
+- **No duplicate replacements (#179):** opening Log different meal for a scheduled meal that already has a logged replacement on that day edits that meal log (same id) instead of starting a second one.
 - **Missing images:** a photo whose file is gone shows "Photo missing" and can be deleted; it is never shared.
 
 ## Photos and privacy
@@ -46,10 +47,27 @@ The prompt (`src/nutrition/prompt.ts`) is fixed and names no person or plan. It 
 
 Any number may be `null` (unknown).
 
+**Minimal JSON (#179).** The canonical minimal form is one meal with its totals and no food list:
+
+```json
+{ "schemaVersion": 1, "mealName": "Beef curry and dhal", "energyKj": 2650, "proteinG": 45 }
+```
+
+It imports as one entry (the totals may also sit in `"totals"`). `schemaVersion` may be left out: it is read as 1 and the review says so. Key spellings are matched case- and punctuation-insensitively, so documented numbers are never blank: `energyKj`/`energy_kj`/`kj`/`kilojoules`; kcal as `energyKcal`/`kcal`/`calories`/`cal` (converted, and listed); `proteinG`/`protein`/`protein_g`; `carbsG`/`carbs`/`carbohydrates`; `fatG`/`fat`. `"energy": "633 kcal"` or `"2650 kJ"` is read with its unit; a bare `"energy": 2650` has no unit and is left empty with a reason. An object with neither foods nor totals gets one message asking for the meal's total energy and protein.
+
+## Plain-text estimates (#179)
+
+The default input. An AI's answer in words, for example "Dinner: beef curry and dhal — ~2,650 kJ, 45 g protein", is read as **one meal** by `src/input/mealEstimate.ts`, part of the natural-language interpreter (`src/input/interpret.ts`) and tested by its rolling corpus (`fixtures/input/corpus.jsonl`).
+
+- **Reads:** the meal type (breakfast, lunch, dinner or snack), a description (after "Dinner:", else the first line of prose, else what's left of the nutrition line), the date if given (ISO, "13 November 2026", "Nov 13", "13/11/2026"), total energy (kJ, or kcal converted to kJ) and total protein in g. Any order, case and punctuation; "~", "about", "approx", "estimated"; "2,650", "2 650" or "2650kj"; across lines; chatter around it is ignored. An optional per-food breakdown is kept by name only.
+- **Never invents a number.** A value that isn't given stays empty. A range ("2,400–2,900 kJ"), two different totals, or kJ and kcal that disagree by more than 3% leave that value empty. So does a breakdown without a total line, which is never summed. Each case gets a message saying why. A total line ("Total: …") wins over a breakdown.
+- **Not an estimate:** commands ("add 1000 kJ of rice"), configuration updates, JSON and unrelated text stay with the rest of the interpreter.
+- **Stored** as one meal log with one entry: the description as its name, energy and protein, and carbs, fat and amount unknown. `source` is `photo-ai` (an AI's reply, with or without photos; its tag reads "AI estimate" without photos), `schemaVersion` is `null`, and `aiTotals` holds the totals. The values as written and the approximate wording go in the notes ("AI estimate as written: ~2,650 kJ, 45 g protein."), so no storage change was needed. A date in the text that differs from the day being logged is said in the review; the meal stays on that day.
+
 ## Reading a reply (pure, three steps)
 
-1. **Extract** (`parse.ts`): a ```json or plain fence, or a bare object, with any prose around it. Exactly one object (the same object repeated counts once; a one-element array is unwrapped). Errors: empty, too long (> 100,000 characters), no JSON, **cut off** (an open fence or unbalanced object), invalid JSON, more than one object, not an object. Curly quotes and trailing commas are repaired and the review says so. Text is only `JSON.parse`d; nothing is ever evaluated.
-2. **Validate** (`validate.ts`): a missing, non-integer, unknown or newer `schemaVersion`, no foods, or more than 30 foods stop with one message. Field problems never stop it and are never clipped or guessed: a negative, non-numeric, non-finite or out-of-range value is left empty and listed. Limits per food: 15,000 kJ, 300 g protein, 500 g carbs, 300 g fat, amount 5,000. Exact conversions are made and listed: kg → g, l → ml, oz → g, kcal (`energyKcal`/`kcal`/`calories`) → kJ; aliases normalise (`grams` → `g`, `pieces` → `piece`); other units are kept as written and listed. Numeric strings ("1,200", "12 g") are read; confidence 0–1 maps to low/medium/high.
+1. **Extract** (`parse.ts`): with no JSON at all, the text goes to the plain-text reader above instead. Otherwise: a ```json or plain fence, or a bare object, with any prose around it. Exactly one object (the same object repeated counts once; a one-element array is unwrapped). Errors: empty, too long (> 100,000 characters), no JSON, **cut off** (an open fence or unbalanced object), invalid JSON, more than one object, not an object. Curly quotes and trailing commas are repaired and the review says so. Text is only `JSON.parse`d; nothing is ever evaluated.
+2. **Validate** (`validate.ts`): a non-integer, unknown or newer `schemaVersion`, no foods and no totals, or more than 30 foods stop with one message (a missing version reads as 1, #179). Field problems never stop it and are never clipped or guessed: a negative, non-numeric, non-finite or out-of-range value is left empty and listed. Limits per food: 15,000 kJ, 300 g protein, 500 g carbs, 300 g fat, amount 5,000. Exact conversions are made and listed: kg → g, l → ml, oz → g, kcal (`energyKcal`/`kcal`/`calories`) → kJ; aliases normalise (`grams` → `g`, `pieces` → `piece`); other units are kept as written and listed. Numeric strings ("1,200", "12 g") are read; confidence 0–1 maps to low/medium/high.
 3. **Normalise** into the draft (`draft.ts`): values become editable text; empty means unknown. Save needs a meal name, at least one named food, and every value a non-negative number within the limits, or empty.
 
 ## Totals

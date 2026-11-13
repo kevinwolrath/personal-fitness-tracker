@@ -42,7 +42,7 @@ const oneOf = (v: unknown, xs: unknown[]) => xs.includes(v);
 const id = (v: unknown) => typeof v === 'string' && /^[A-Za-z0-9._:-]{1,80}$/.test(v);
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const measurement = (m: any) => fields(m, ['id', 'date', 'recordedAt', 'metric', 'value', 'unit', 'source']) && id(m.id) && isDate(m.date) && isStamp(m.recordedAt)
-  && /^[a-z0-9_]{1,40}$/.test(m.metric) && num(m.value) && text(m.unit, 16) && fields(m.source, ['type', 'app', 'edited'])
+  && /^[a-z0-9_-]{1,40}$/.test(m.metric) && num(m.value) && text(m.unit, 16) && fields(m.source, ['type', 'app', 'edited'])
   && oneOf(m.source.type, ['manual', 'screenshot', 'healthConnect']) && textOrNull(m.source.app, 60) && typeof m.source.edited === 'boolean';
 const planned = (p: any) => fields(p, ['activityId', 'label', 'status', 'plannedEnergyKj', 'plannedProteinG']) && id(p.activityId) && text(p.label, 80)
   && oneOf(p.status, ['eaten (ticked)', 'replaced', 'skipped', 'not ticked']) && numOrNull(p.plannedEnergyKj) && numOrNull(p.plannedProteinG);

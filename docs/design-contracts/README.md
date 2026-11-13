@@ -16,7 +16,7 @@ These documents are **authoritative** for implementation. Code that disagrees wi
 | 08 | [Daily prescription](08-daily-prescription.md) | Prescription from plan + config, requirements with alternatives, windows, next action, completion log |
 | 09 | [Exercise guides](09-exercise-guides.md) | Reusable exercise definitions, bundled illustrations, the read-only guide sheet |
 | 10 | [Reminders](10-reminders.md) | Plan-defined local notifications, the device on/off preference, reconcile-based scheduling, permission UX |
-| 11 | [Settings & energy display](11-settings-energy-display.md) | The Settings sheet, device preferences, energy shown in kJ, kcal or both, conversion and rounding |
+| 11 | [Settings & energy display](11-settings-energy-display.md) | App preferences (a Settings page), device preferences, energy shown in kJ, kcal or both, conversion and rounding |
 | 12 | [Android Health Connect](12-health-connect.md) | Read-only import of steps, active energy, workouts, weight and sleep; permissions, sync, mapping, precedence, failure modes, Play declaration |
 | 13 | [First-run setup](13-first-run-setup.md) | The setup wizard: questions, the offline starter plan from bundled presets (exercise and sample meals), Exercise and Meals review with swaps, optional AI refinement, under-18s, resume, editing setup on an existing plan, the nutrition hook |
 | 14 | [Progress](14-progress.md) | The Progress tab: range, this week vs last, measurement and weight-trend charts, calculated vs estimated vs measured values, editable chart order and visibility |

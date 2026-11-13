@@ -78,7 +78,8 @@ test('a recorded observation: Cancel/Save on an editable day', async ({ page }) 
 test('modal screens: Configure shares the pattern and keeps one primary action per state', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await openAt(page, MONDAY);
-  const screen = page.locator('body');
+  // Configure opens over Settings → Plan & goals (#174), which keeps its own header underneath.
+  const screen = page.getByTestId('configure-screen');
 
   await chooseFromMenu(page, 'Configure with AI');
   await expectHeaderPattern(screen, 'Close');

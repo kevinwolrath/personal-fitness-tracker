@@ -1,22 +1,28 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, openAt, row } from './helpers';
+import { MONDAY, leaveSettings, openAt, openSettings, row } from './helpers';
 
 /** Issue #30: plan-driven local reminders. The web surface uses an in-memory stand-in (window.__pftReminders). */
 
 const scheduled = (page: Page): Promise<string[]> => page.evaluate(() => (window as any).__pftReminders.scheduled().map((r: any) => r.id as string));
 const todayFor = (page: Page, activity: string) =>
   scheduled(page).then((ids) => ids.filter((id) => id.includes('|2026-11-02|') && id.includes(`|${activity}|`)));
+/** ☰ → Settings → Reminders (#174): the existing sheet, over the Settings page. */
 const openReminders = async (page: Page) => {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('app-menu').getByRole('button', { name: 'Reminders' }).click();
+  await openSettings(page);
+  await page.getByTestId('settings-reminders').click();
   await expect(page.getByTestId('reminders-sheet')).toBeVisible();
+};
+/** Close the sheet and back out of Settings to the day. */
+const closeReminders = async (page: Page) => {
+  await page.locator('[role="dialog"]').getByTestId('modal-dismiss').last().click();
+  await leaveSettings(page);
 };
 
 test('off by default; the menu says so; the sheet lists the plan’s reminders (no strength or VR boxing)', async ({ page }) => {
   await openAt(page, MONDAY);
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await expect(page.getByTestId('menu-reminders')).toContainText('Off · reminders from your plan');
-  await page.getByTestId('menu-reminders').click();
+  await openSettings(page);
+  await expect(page.getByTestId('settings-reminders')).toContainText('Off · reminders from your plan');
+  await page.getByTestId('settings-reminders').click();
   const sheet = page.getByTestId('reminders-sheet');
   await expect(sheet).toContainText('Your plan reminds you about');
   await expect(page.getByTestId('reminder-lunch')).toContainText('11:55');
@@ -35,7 +41,7 @@ test('turn on → the week is scheduled; completing lunch cancels it; off cancel
   await expect(page.getByTestId('reminders-status')).toContainText('On · next: Fixed lunch at 11:55');
   await expect.poll(async () => (await scheduled(page)).length).toBe(21); // 3 meals × 7 days
 
-  await page.getByTestId('modal-dismiss').click();
+  await closeReminders(page);
   await row(page, 'lunch').getByRole('checkbox').click();
   await expect.poll(async () => (await todayFor(page, 'lunch')).length).toBe(0);
   expect((await scheduled(page)).length).toBe(20);
@@ -59,7 +65,7 @@ test('a plan change through Configure with AI reschedules; the on/off choice is 
   await openReminders(page);
   await page.getByRole('button', { name: 'Turn on reminders' }).click();
   await expect.poll(async () => (await scheduled(page)).length).toBe(21);
-  await page.getByTestId('modal-dismiss').click();
+  await closeReminders(page);
 
   const seed = JSON.parse(require('node:fs').readFileSync('plans/seed.plan.json', 'utf8'));
   const snack = { ...seed.activities.find((a: any) => a.id === 'snack'), notifications: [{ at: '15:30', title: 'Snack', body: 'Snack time' }] };
@@ -69,6 +75,7 @@ test('a plan change through Configure with AI reschedules; the on/off choice is 
   await page.getByRole('button', { name: 'Check update' }).click();
   await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
+  await leaveSettings(page); // Configure returns to Settings → Plan & goals (#174)
 
   await expect.poll(async () => (await todayFor(page, 'snack')).length).toBe(1);
   const snackToday = await page.evaluate(() => (window as any).__pftReminders.scheduled().find((r: any) => r.date === '2026-11-02' && r.activityId === 'snack'));
@@ -85,7 +92,7 @@ test('denied permission: the app carries on and shows the block; no repeated ask
   await page.getByRole('button', { name: 'Turn on reminders' }).click();
   await expect(page.getByTestId('reminders-blocked')).toBeVisible();
   expect(await scheduled(page)).toEqual([]);
-  await page.getByTestId('modal-dismiss').click();
+  await closeReminders(page);
   await row(page, 'lunch').getByRole('checkbox').click(); // the rest of the app works
   await expect(row(page, 'lunch').getByRole('checkbox')).toBeChecked();
 });
@@ -94,7 +101,7 @@ test('tapping a reminder opens that day’s activity details', async ({ page }) 
   await openAt(page, MONDAY);
   await openReminders(page);
   await page.getByRole('button', { name: 'Turn on reminders' }).click();
-  await page.getByTestId('modal-dismiss').click();
+  await closeReminders(page);
   const id = (await scheduled(page)).find((x) => x.includes('|2026-11-04|') && x.includes('|dinner|'))!;
   await page.evaluate((i) => (window as any).__pftReminders.open(i), id);
   await expect(page.getByTestId('day-title')).toHaveText('Wednesday');

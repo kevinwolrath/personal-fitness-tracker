@@ -7,9 +7,9 @@ type Props = {
   title: string;
   /**
    * Always on the left. "Cancel" when closing loses something (an unsaved value, a pasted update),
-   * "Close" when the surface is read-only or already saved (contract 02 "Modal and sheet header").
+   * "Close" when the surface is read-only or already saved, "Back" on a nested page such as a Settings subpage (contract 02 "Modal and sheet header").
    */
-  dismiss: { label: 'Cancel' | 'Close'; onPress: () => void; /** Fuller screen-reader label, e.g. "Close guide". */ a11yLabel?: string };
+  dismiss: { label: 'Cancel' | 'Close' | 'Back'; onPress: () => void; /** Fuller screen-reader label, e.g. "Close guide". */ a11yLabel?: string };
   /** The surface's confirm (Save), on the right. Omitted on read-only surfaces. */
   confirm?: Action;
   titleTestID?: string;

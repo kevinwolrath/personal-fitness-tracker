@@ -13,6 +13,8 @@ import { installSeedPlan } from '../../../plan/bootstrap';
 import { AppProvider } from '../../../providers/AppProvider';
 import { DayLogScreen } from '../DayLogScreen';
 import { AppShell } from '../../shell/AppShell';
+import { RemindersProvider } from '../../reminders/RemindersProvider';
+import { DataScreen, PlanGoalsScreen, SettingsScreen } from '../../settings/SettingsScreens';
 import { HC_DISTANCE } from '../../../observations/healthConnect';
 
 // One in-memory backend per test; a new store over it simulates an app restart.
@@ -38,7 +40,9 @@ async function launch() {
       _layout: () => (
         <SafeAreaProvider initialMetrics={metrics}>
           <AppProvider>
-            <Slot />
+            <RemindersProvider>
+              <Slot />
+            </RemindersProvider>
           </AppProvider>
         </SafeAreaProvider>
       ),
@@ -49,6 +53,9 @@ async function launch() {
       ),
       '(main)/index': DayLogScreen,
       configure: () => <Text testID="configure-route">configure</Text>,
+      'settings/index': SettingsScreen,
+      'settings/plan': PlanGoalsScreen,
+      'settings/data': DataScreen,
     },
     { initialUrl: '/' },
   );
@@ -196,6 +203,12 @@ async function chooseFromMenu(label: string) {
   }
 }
 
+/** #174: Settings → (subpage) → item. Settings is a page; its rows push subpages or open the existing sheets. */
+async function chooseFromSettings(...labels: string[]) {
+  await chooseFromMenu('Settings');
+  for (const label of labels) fireEvent.press(await screen.findByLabelText(label));
+}
+
 it("has no I'm hungry button or quick-log history, and app operations are in the menu", async () => {
   await launch();
   expect(screen.queryByLabelText("I'm hungry")).toBeNull();
@@ -206,13 +219,15 @@ it("has no I'm hungry button or quick-log history, and app operations are in the
 
   fireEvent.press(screen.getByLabelText('Menu'));
   expect(await screen.findByTestId('app-menu')).toBeTruthy();
-  for (const label of ['Health Connect', 'Configure with AI', 'Export all data']) expect(screen.getByLabelText(label)).toBeTruthy();
+  // #174: the menu holds Training, Sync & Share and Settings; setup and data maintenance live in Settings.
+  for (const label of ['Muscle Growth', 'Muscle coverage & exercise log', 'Health data sync', 'Health Connect', 'Settings']) expect(screen.getByLabelText(label)).toBeTruthy();
+  for (const label of ['Configure with AI', 'Export all data', 'Back up data', 'Reminders', 'My Gym']) expect(screen.queryByLabelText(label)).toBeNull();
 });
 
 it('export asks first with the system alert; only Export JSON exports', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await launch();
-  await chooseFromMenu('Export all data');
+  await chooseFromSettings('Data management', 'Export all data');
   expect(alert).toHaveBeenCalledTimes(1);
   const [title, message, buttons] = alert.mock.calls[0];
   expect(title).toBe('Export all fitness data?');
@@ -222,7 +237,7 @@ it('export asks first with the system alert; only Export JSON exports', async ()
   await act(async () => buttons![0].onPress!());
   expect(shareJson).not.toHaveBeenCalled();
 
-  await chooseFromMenu('Export all data');
+  fireEvent.press(screen.getByLabelText('Export all data'));
   const [, , again] = alert.mock.calls[1];
   await act(async () => again![1].onPress!());
   await waitFor(() => expect(shareJson).toHaveBeenCalledTimes(1));
@@ -243,7 +258,7 @@ it('#138: screenshot import is gone: no menu item, no picker, no import route', 
 
 it('configure opens the existing configuration flow', async () => {
   await launch();
-  await chooseFromMenu('Configure with AI');
+  await chooseFromSettings('Plan & goals', 'Configure with AI');
   expect(await screen.findByTestId('configure-route')).toBeTruthy();
 });
 
@@ -302,7 +317,7 @@ describe('reminders (#30)', () => {
 
   it('Turn on asks once, schedules the plan’s week, and switching off/on cancels and rebuilds; completing lunch cancels it', async () => {
     const first = await launch();
-    await chooseFromMenu('Reminders');
+    await chooseFromSettings('Reminders');
     fireEvent.press(await screen.findByText('Turn on reminders'));
     await settle();
     expect(n().requests).toBe(1);
@@ -310,8 +325,10 @@ describe('reminders (#30)', () => {
     await waitFor(() => expect(ours()).toHaveLength(21));
     expect(todays('lunch')).toHaveLength(1);
 
-    // Completing lunch cancels today's lunch reminder only.
-    fireEvent.press(screen.getByTestId('modal-dismiss'));
+    // Completing lunch cancels today's lunch reminder only. Close the sheet, then back from Settings to the day.
+    const dismissers = screen.getAllByTestId('modal-dismiss');
+    fireEvent.press(dismissers[dismissers.length - 1]);
+    fireEvent.press(screen.getByLabelText('Back from Settings'));
     fireEvent.press(screen.getByLabelText(/, Fixed lunch$/));
     await settle();
     await waitFor(() => expect(todays('lunch')).toHaveLength(0));
@@ -326,7 +343,7 @@ describe('reminders (#30)', () => {
     expect(n().requests).toBe(1);
 
     // Off cancels everything; on rebuilds from the current plan.
-    await chooseFromMenu('Reminders');
+    await chooseFromSettings('Reminders');
     fireEvent(await screen.findByTestId('reminders-switch'), 'valueChange', false);
     await settle();
     await waitFor(() => expect(ours()).toHaveLength(0));
@@ -338,7 +355,7 @@ describe('reminders (#30)', () => {
   it('denied permission: the app carries on, shows it is blocked, and never asks again by itself', async () => {
     n().deny = true;
     const first = await launch();
-    await chooseFromMenu('Reminders');
+    await chooseFromSettings('Reminders');
     fireEvent.press(await screen.findByText('Turn on reminders'));
     await settle();
     expect(await screen.findByTestId('reminders-blocked')).toBeTruthy();

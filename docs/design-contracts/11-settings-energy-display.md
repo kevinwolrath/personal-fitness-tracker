@@ -4,7 +4,7 @@ Device preferences, and how energy is shown (#39). A preference is a choice abou
 
 ## Settings
 
-- **Where:** **Settings** in the app menu (app shell layer, contract 02). Its detail line states the current energy display: "Energy in kJ", "Energy in kcal" or "Energy in kJ and kcal". It opens the Settings sheet (`ModalHeader` "Settings", **Close**).
+- **Where:** ☰ → **Settings** → **App preferences** (#174, contract 02). The App preferences row's detail line states the theme and the current energy display: "Hero Forge · Energy in kJ", "… · Energy in kcal" or "… · Energy in kJ and kcal". It opens the App preferences page (`ModalHeader` "App preferences", **Back**).
 - **What:** **Appearance** (below) and **Energy units**: a radio group with **Kilojoules (kJ)**, **Calories (kcal)** and **Both**. Each energy choice shows the same example amount in that display ("1,780 kJ", "425 kcal", "1,780 kJ / 425 kcal"). Under the group: *Food "calories" are kilocalories (kcal). 1 kcal = 4.184 kJ. This only changes how energy is shown on this phone: your plan and your records stay as they are.*
 - **Behaviour:** a choice applies immediately, everywhere, with no restart. It's remembered across restarts (`preferences`, device storage: key `pft.display.energy`).
 - **Default:** until the user picks, the display is the plan's own `units.energy`, so nothing changes for anyone who hasn't chosen. The bundled plan is in kJ, so the default is kJ.
@@ -35,7 +35,7 @@ Device preferences, and how energy is shown (#39). A preference is a choice abou
 - **Corrections:** an energy observation is corrected in the first unit shown (kcal for kcal, kJ for kJ and both) and stored back in kJ. Saving unchanged text doesn't rewrite the stored value, which was rounded only for display.
 - **Fit:** in Both, the targets line and a meal's energy line fit on one line at 390 px with the bundled plan. The responsive sweep (contract 05) checks Both at every width.
 
-Code: `src/energy.ts` (pure), `src/format.ts`, `src/plan/meals.ts`, `src/observations/format.ts`, `src/config/diff.ts`; UI in `src/features/settings/SettingsSheet.tsx`; preference in `src/platform/preferences.ts` and `AppProvider`.
+Code: `src/energy.ts` (pure), `src/format.ts`, `src/plan/meals.ts`, `src/observations/format.ts`, `src/config/diff.ts`; UI in `src/features/settings/AppPreferences.tsx` (on the `/settings/preferences` page); preference in `src/platform/preferences.ts` and `AppProvider`.
 ## Appearance (#79)
 
-Settings also contains an **Appearance** radio group: **Hero Forge · Theme 01** (default) and **Classic light**. It switches all live screens and sheets immediately and persists as `pft.display.theme`, independently of the plan, observations and energy preference. Its rows are scrollable inside the existing Settings sheet; the fixed Close action and shell heights do not change. Unknown/missing theme IDs use Hero Forge. Storage failures retain the session choice and display a retryable save message.
+Settings also contains an **Appearance** radio group: **Hero Forge · Theme 01** (default) and **Classic light**. It switches all live screens and sheets immediately and persists as `pft.display.theme`, independently of the plan, observations and energy preference. Its rows scroll inside the App preferences page; the fixed Back header and shell heights do not change. Unknown/missing theme IDs use Hero Forge. Storage failures retain the session choice and display a retryable save message.

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { MONDAY, expandToFullDay, openAt, seedRecords } from './helpers';
+import { MONDAY, chooseFromMenu, expandToFullDay, leaveSettings, openAt, openPreferences, openSettings as openSettingsPage, seedRecords } from './helpers';
 
 /** Issue #39: Settings → Energy units (kJ, kcal or both). A device preference; stored values never change. */
 
@@ -14,28 +14,25 @@ const activeEnergy = {
   source: { type: 'screenshot', app: 'fitbit', capturedAt: null, confidence: 0.9, importId: 'imp', assetId: 'a', evidence: '320 cal', edited: false },
 };
 
-async function openSettings(page: Page) {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('menu-settings').click();
-  await expect(page.getByTestId('settings-sheet')).toBeVisible();
-}
+/** ☰ → Settings → App preferences (#174). */
+const openSettings = openPreferences;
 async function choose(page: Page, name: 'Kilojoules (kJ)' | 'Calories (kcal)' | 'Both') {
   await openSettings(page);
   await page.getByRole('radio', { name }).click();
   await expect(page.getByRole('radio', { name })).toBeChecked();
-  await page.getByTestId('modal-dismiss').click();
-  await expect(page.getByTestId('settings-sheet')).toHaveCount(0);
+  await leaveSettings(page);
+  await expect(page.getByTestId('app-preferences')).toHaveCount(0);
 }
 
 test('kJ by default: the menu says so and the sheet explains kcal', async ({ page }) => {
   await openAt(page, MONDAY);
   await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,530 kJ');
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await expect(page.getByTestId('menu-settings')).toContainText('Energy in kJ');
-  await page.getByTestId('menu-settings').click();
+  await openSettingsPage(page);
+  await expect(page.getByTestId('settings-preferences')).toContainText('Energy in kJ');
+  await page.getByTestId('settings-preferences').click();
   await expect(page.getByRole('radio', { name: 'Kilojoules (kJ)' })).toBeChecked();
   await expect(page.getByRole('radio', { name: 'Calories (kcal)' })).not.toBeChecked();
-  await expect(page.getByTestId('settings-sheet')).toContainText('Food “calories” are kilocalories (kcal). 1 kcal = 4.184 kJ.');
+  await expect(page.getByTestId('app-preferences')).toContainText('Food “calories” are kilocalories (kcal). 1 kcal = 4.184 kJ.');
   expect(await savedChoice(page)).toBeNull(); // nothing chosen yet
 });
 
@@ -59,9 +56,9 @@ test('a choice applies immediately everywhere, survives a restart, and never cha
   await expect(page.getByTestId('targets')).toContainText('Energy ≤ 7,530 kJ / 1,800 kcal');
   await expect(page.getByTestId('next-action-meal-nutrition')).toHaveText('≈ 1,780 kJ / 425 kcal · 42 g protein');
   await expect(page.getByTestId('recorded-active_energy')).toContainText('1,340 kJ / 320 kcal');
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await expect(page.getByTestId('menu-settings')).toContainText('Energy in kJ and kcal');
-  await page.getByRole('button', { name: 'Close' }).click();
+  await openSettingsPage(page);
+  await expect(page.getByTestId('settings-preferences')).toContainText('Energy in kJ and kcal');
+  await leaveSettings(page);
 
   expect(await savedChoice(page)).toBe('both');
   expect(await store(page)).toBe(before); // switching units wrote nothing to the records or the plan
@@ -102,8 +99,7 @@ test('correcting an energy value in kcal stores it back in kJ; saving unchanged 
 test('Configure with AI shows energy in the chosen units', async ({ page }) => {
   await openAt(page, MONDAY);
   await choose(page, 'Calories (kcal)');
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('app-menu').getByRole('button', { name: 'Configure with AI' }).click();
+  await chooseFromMenu(page, 'Configure with AI');
   await expect(page.getByTestId('summary-nutrition')).toContainText('Energy ≤ 1,800 kcal');
 });
 
@@ -111,7 +107,7 @@ test.describe('visual', () => {
   test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'baselines are kept for the phone viewport only'));
   test('settings-sheet', async ({ page }) => {
     await openAt(page, MONDAY);
-    await openSettings(page);
+    await openSettings(page); // App preferences, the page that replaced the Settings sheet (#174)
     await expect(page).toHaveScreenshot('settings-sheet.png');
   });
   test('today-both-units', async ({ page }) => {

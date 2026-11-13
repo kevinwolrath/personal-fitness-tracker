@@ -5,12 +5,13 @@ import { space, touch, useTheme, createThemedStyles } from '../../ui/theme';
 import { ModalHeader } from '../../ui/ModalHeader';
 import { SheetScroll } from '../../ui/SheetScroll';
 
-export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void };
+export type AppMenuItem = { key: string; label: string; detail: string; onSelect: () => void; /** Section label shown above the first item of a group (#174). */ group?: string };
 
 type Props = { visible: boolean; onClose: () => void; items: AppMenuItem[] };
 
 /**
- * App-level operations (import, configuration, export), one level down from the Daily Log (#15).
+ * The app menu (#15; grouped since #174): Training and Sync & Share, the frequent actions, then Settings for the rest.
+ * Today and Progress are tabs, so they aren't repeated here.
  * The menu closes before an item runs. On iOS the item runs once the sheet has dismissed, because
  * iOS can't present the photo picker, an alert or a modal route over a closing sheet. Elsewhere it
  * runs inside the tap, which web browsers require before they'll open a file picker.
@@ -35,9 +36,14 @@ export function AppMenu({ visible, onClose, items }: Props) {
       <ModalHeader title="Menu" dismiss={{ label: 'Close', onPress: onClose }} />
       <SheetScroll testID="app-menu-scroll">
         <View style={styles.list} testID="app-menu">
-        {items.map((item) => (
+        {items.map((item, i) => (
+          <View key={item.key}>
+          {item.group && item.group !== items[i - 1]?.group && (
+            <Text style={[type.section, styles.group]} accessibilityRole="header" testID={`menu-group-${item.group.toLowerCase().replace(/[^a-z]+/g, '-')}`}>
+              {item.group}
+            </Text>
+          )}
           <Pressable
-            key={item.key}
             onPress={() => select(item)}
             style={({ pressed }) => [styles.item, pressed && styles.pressed]}
             accessibilityRole="button"
@@ -48,6 +54,7 @@ export function AppMenu({ visible, onClose, items }: Props) {
             <Text style={styles.label}>{item.label}</Text>
             <Text style={type.detail}>{item.detail}</Text>
           </Pressable>
+          </View>
         ))}
         </View>
       </SheetScroll>
@@ -58,6 +65,7 @@ export function AppMenu({ visible, onClose, items }: Props) {
 const useStyles = createThemedStyles(({ colors, type }) => ({
   list: { marginTop: space.sm, marginBottom: space.lg },
   item: { minHeight: touch + 12, justifyContent: 'center', paddingVertical: space.sm, borderBottomWidth: 1, borderBottomColor: colors.line, gap: 2 },
+  group: { marginTop: space.md, marginBottom: space.xs },
   pressed: { opacity: 0.6 },
   label: { fontSize: 17, fontWeight: '700', color: colors.ink },
 }));

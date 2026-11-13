@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react';
 import { preferences } from '../../platform/preferences';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ScrollView } from '../../ui/ScrollView';
 import { GamificationSettings } from '../../gamification/Gamification';
 import { themes } from '../../ui/theme';
 import { energyDisplays, formatEnergy, type EnergyDisplay } from '../../energy';
 import { useApp } from '../../providers/AppProvider';
-import { ModalHeader } from '../../ui/ModalHeader';
-import { Sheet } from '../../ui/Sheet';
 import { space, useTheme, createThemedStyles } from '../../ui/theme';
 
 const choiceLabels: Record<EnergyDisplay, string> = {
@@ -20,19 +17,18 @@ const choiceLabels: Record<EnergyDisplay, string> = {
 const EXAMPLE_KJ = 1780;
 
 /**
- * Settings (#39, contract 02 app shell): device preferences that are never plan data. For now, how energy is
- * shown. A choice applies immediately everywhere and is remembered; stored values never change.
+ * App preferences (#39; a Settings subpage since #174, contract 02): device preferences that are never plan data:
+ * Quests, appearance, how energy is shown and weight-trend alerts. A choice applies immediately everywhere and is
+ * remembered; stored values never change.
  */
-export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function AppPreferences() {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
   const { energy, setEnergy } = useApp();
   const { id: themeId, setTheme, saveError } = useTheme();
   return (
-    <Sheet visible={visible} onClose={onClose} label="Settings">
-      <ModalHeader title="Settings" dismiss={{ label: 'Close', onPress: onClose }} />
-      <ScrollView contentContainerStyle={styles.body} testID="settings-sheet">
+    <View style={styles.body} testID="app-preferences">
         <GamificationSettings />
         <View role="radiogroup" aria-label="Appearance">
           <Text style={type.section}>Appearance</Text>
@@ -74,8 +70,7 @@ export function SettingsSheet({ visible, onClose }: { visible: boolean; onClose:
           and your records stay as they are.
         </Text>
         <TrendAlertsSetting />
-      </ScrollView>
-    </Sheet>
+    </View>
   );
 }
 

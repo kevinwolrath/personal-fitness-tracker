@@ -22,7 +22,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 
 | Layer | Owned by | Contains | Rules |
 |---|---|---|---|
-| **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu) on the left, then the app name. The bottom tab bar (#52): Today and Progress. | Rendered by the layout, never by a screen. The app bar is fixed at the top, outside any scroll view, and respects the top safe area: 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. The tab bar is fixed at the bottom (56 dp plus the bottom inset); sheets cover it. |
+| **App shell** | `app/(main)/_layout.tsx` → `AppShell` (`src/features/shell/`) | The app bar: ☰ (app menu: Training, Sync & Share, Settings) on the left, then the app name. The bottom tab bar (#52): Today and Progress. | Rendered by the layout, never by a screen. The app bar is fixed at the top, outside any scroll view, and respects the top safe area: 48 dp tall plus the inset. The ☰ is in the same place on every main screen and every date. The tab bar is fixed at the bottom (56 dp plus the bottom inset); sheets cover it. |
 | **Screen header** | The screen | For the Daily Log: the date row, then the day line (see below) | Scrolls with the content. Screens never add shell controls (menu, app title) to it. |
 | **Content** | The screen | For the Daily Log: **Do this next**, **Today's workout** (#56; #90: counts are the day's prescribed exercises only, "0 of 5", with catalogue extras behind one Extras row in its sheet and never in the count; a day with nothing prescribed says "No workout planned"), **Muscle Growth** (#122: a section after Today's workout, only when set up; no card, no primary button), measurements, targets, the day's parts, Recorded | The reason the screen exists. It starts as high as possible (see the budget). |
 
@@ -46,7 +46,7 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 |---|---|---|
 | **Dismiss**, always | Title, one line | **Confirm** (e.g. Save), only if the surface has one |
 
-- **Dismiss wording:** **Cancel** when closing loses something (an unsaved value, a pasted update); **Close** when nothing is lost (read-only, or already saved).
+- **Dismiss wording:** **Cancel** when closing loses something (an unsaved value, a pasted update); **Close** when nothing is lost (read-only, or already saved); **Back** on a Settings page, which goes up one level (#174).
 - **Layout:** both sides have the same width, so the title stays centred with or without a confirm.
 - **Primary actions** for the content (Read, Apply) are buttons in the content or a fixed bottom bar, never in the header.
 - **Test:** `e2e/surfaces.spec.ts` checks the order, the centring and the wording on every surface.
@@ -59,20 +59,25 @@ Every main screen stacks three layers, top to bottom. Each control belongs to on
 - **What changes** lists only the sections that change, one row each, with the first change and a count; tap a row to see every change in it. The other sections are named in one line ("… stay as they are").
 - **Discard** and **Apply N changes** sit in a fixed bottom bar.
 
-**App menu (#15).** The ☰ in the app bar opens the app menu, a sheet rather than a drawer. It holds the application-level operations, which stay off the day so they don't compete with it:
+**App menu (#15, grouped in #174).** The ☰ in the app bar opens the app menu, a sheet rather than a drawer. It holds the frequent app-level actions, in two labelled groups, then one row into Settings. Today and Progress are bottom tabs, so the menu doesn't repeat them. Routine training stays on Today.
 
-| Item | Does |
-|---|---|
-| **Health Connect** | Opens the Health Connect sheet: tick what to import, connect (read-only; the only permission requests), and a setup checklist: per type, whether it's allowed and arriving, with a **Fix** for each problem, **Check again** to confirm, and **Manage in Health Connect** (contract 12, #116). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
-| **Configure with AI** | Opens `/configure` (contract 07). |
-| **Edit setup answers** | Opens `/setup`: the setup wizard over the current plan, starting from its saved answers. The plan is replaced only after a confirmation dialog, as a new revision with undo; measurements, workout history and imports are untouched (contract 13). |
-| **Reminders** | Opens the Reminders sheet: status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). |
-| **Settings** | Opens the Settings sheet: **Appearance** (Hero Forge or Classic light) and **Energy units** (kJ, kcal or both). The detail line states the current energy choice, e.g. "Energy in kJ" (contract 11). |
-| **Muscle Growth** | Opens the Muscle Growth editor (#122, contract 09): on/off, target muscles, days, time of day, the exercises for those targets, and custom catalogue exercises. Its detail line shows "On · Biceps, Upper back" or "Targeted routine for chosen muscles". Saved as an `exercise` configuration change with Undo (contract 07). |
-| **Muscle coverage & exercise log** | Opens the live #56 coverage sheet, including on rest days. It also opens from the expanded workout/checklist flow. No new permanent tab, app-bar control or Today banner (#79). |
-| **Back up data** | One ZIP with everything, including original meal photos, saved through the share/save sheet (contract 06, #128). Lists what isn't included. |
-| **Restore data** | Pick a backup file, check it completely, preview it, then **Replace my data** after confirmation (contract 06, #128). Also offered on first-run setup. |
-| **Export all data** | Asks first (see Feedback), then runs the full export (contract 06). A readable history, not a backup. |
+| Group | Item | Does |
+|---|---|---|
+| **Training** | **Muscle Growth** | Opens the Muscle Growth editor (#122, contract 09): on/off, target muscles, days, time of day, the exercises for those targets, and custom catalogue exercises. Its detail line shows "On · Biceps, Upper back" or "Targeted routine for chosen muscles". Saved as an `exercise` configuration change with Undo (contract 07). |
+| | **Muscle coverage & exercise log** | Opens the live #56 coverage sheet, including on rest days. It also opens from the expanded workout/checklist flow. No new permanent tab, app-bar control or Today banner (#79). |
+| **Sync & Share** | **Health data sync** | Opens the Health data sync sheet: one-tap **Share everything** (#168), Sync my data, and Advanced sharing (#134). The detail line leads with the one-tap share and says when this phone last synced ("Last synced today", "Not synced yet"). |
+| | **Health Connect** | Opens the Health Connect sheet: tick what to import, connect (read-only; the only permission requests), and a setup checklist: per type, whether it's allowed and arriving, with a **Fix** for each problem, **Check again** to confirm, and **Manage in Health Connect** (contract 12, #116). Imported values appear in the Daily Log's existing Weight tile and Recorded rows; the Daily Log gains no controls. |
+| — | **Settings** | Opens the Settings page (below). |
+
+**Settings (#174).** A full-screen page at `/settings`, a stack route outside the app shell, for infrequent setup, preferences and data maintenance. Every Settings page has the one header with **Back** on the left (contract "Modal and sheet header"). Back goes up one level: subpage → Settings → the screen it was opened from. Android's back button and the browser's pop the same stack. A deep link straight to a subpage backs up to `/settings`. A sheet opened from a Settings page closes back to that page, and Android back closes only the sheet. Rows have the same size and spacing as the menu's, with a chevron.
+
+| Row | Opens | Holds |
+|---|---|---|
+| **Plan & goals** | `/settings/plan` | **Configure with AI** (`/configure`, contract 07) and **Edit setup answers** (`/setup`, contract 13). Each closes back to this page. Below them, a read-only **Current plan** summary: the title, each daily target in the chosen energy display, and each goal ("Weight: down to 78 kg"). |
+| **My Gym** | The My Gym sheet | Equipment access (contract 18). |
+| **Reminders** | The Reminders sheet | Status, the plan's reminders, and the explicit **Turn on reminders** (the only permission request) or an on/off switch (contract 10). The row's detail is the reminders status. |
+| **App preferences** | `/settings/preferences` | Quests & achievements, **Appearance** (Hero Forge or Classic light), **Energy units** (kJ, kcal or both, contract 11) and weight-trend alerts. The row's detail states the theme and energy choice, e.g. "Hero Forge · Energy in kJ". |
+| **Data management** | `/settings/data` | **Back up data** (one ZIP with everything, including original meal photos, contract 06, #128), **Restore data** (pick, check, preview, then **Replace my data** after confirmation; afterwards the app opens on Today), and **Export all data** (asks first, see Feedback; a readable history, not a backup). Frequent sync and sharing stay in the menu's Sync & Share. |
 
 The menu closes before its item runs. On iOS, the item runs once the sheet has dismissed, because iOS can't present a picker, an alert or a modal route over a closing sheet. On web it runs inside the tap, so the browser allows the file picker.
 
@@ -86,6 +91,8 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
 | `/setup` | Full-screen modal | Edit setup answers (contract 13) |
+| `/settings` | Full-screen page (stack) | Settings landing page (#174): Plan & goals, My Gym, Reminders, App preferences, Data management |
+| `/settings/plan`, `/settings/preferences`, `/settings/data` | Full-screen pages (stack) | Settings subpages (#174); Back and Android back return to `/settings` |
 
 The log shows **one day at a time**. Its screen header (see Layout layers): `‹ date ▾ ›` steps a day either way, and tapping the date opens the go-to-date sheet. **Today** (a button shown whenever another date is open) returns to the current date. The title reads *Today*, *Yesterday* or *Tomorrow*; within a week either side, the weekday name; otherwise the date, with the year if it isn't this year. The header date and title never truncate (the responsive sweep enforces this).
 

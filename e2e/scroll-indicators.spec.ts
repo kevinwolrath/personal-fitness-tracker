@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { MONDAY, openAt, openWorkoutSheet, workoutSheet } from './helpers';
+import { MONDAY, leaveSettings, openAt, openPreferences, openWorkoutSheet, workoutSheet } from './helpers';
 
 const before = process.env.PFT_SCROLL_BEFORE === '1';
 // Do not let the runner mask the scrollbar regression we are testing.
@@ -71,7 +71,13 @@ test('all routes, long sheets, nested guide pager and multiline web input follow
   await indicatorsHidden(page);
   await shot(page, 'progress');
   await page.getByRole('tab', { name: 'Today' }).click();
-  for (const [menu, id] of [['settings', 'settings-sheet'], ['health-connect', 'health-connect-sheet'], ['coverage', 'coverage-sheet']]) {
+  // #174: App preferences (formerly the Settings sheet) is a Settings page now.
+  await openPreferences(page);
+  await indicatorsHidden(page);
+  await bottom(page.getByTestId('settings-preferences-screen-scroll'));
+  await shot(page, 'settings');
+  await leaveSettings(page);
+  for (const [menu, id] of [['health-connect', 'health-connect-sheet'], ['coverage', 'coverage-sheet']]) {
     await page.getByRole('button', { name: 'Menu', exact: true }).click();
     await page.getByTestId(`menu-${menu}`).click();
     await expect(page.getByTestId(id)).toBeVisible();

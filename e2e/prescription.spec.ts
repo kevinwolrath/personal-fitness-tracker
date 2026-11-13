@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import example from '../fixtures/plans/prescription-example.plan.json';
-import { openAt, row, seedPlan, seedRecords, chooseFromMenu, exportAllData, closeWorkoutSheet, openSessionOptions, openWorkoutSheet, workoutCard, workoutSheet } from './helpers';
+import { openAt, row, seedPlan, seedRecords, chooseFromMenu, exportAllData, closeWorkoutSheet, openSessionOptions, openWorkoutSheet, workoutCard, workoutSheet, leaveSettings } from './helpers';
 
 /** Issue #10: "Open app → see what I should do now → do it → tick it off → app tells me what's next." */
 
@@ -162,6 +162,7 @@ test('history is not destroyed by a later plan change', async ({ page, context }
   await expect(page.getByTestId('preview-schedule')).toContainText('Removed Strength workout');
   await page.getByRole('button', { name: /^Apply \d+ changes?$/ }).click();
   await page.getByRole('button', { name: 'Close' }).click();
+  await leaveSettings(page); // Configure returns to Settings → Plan & goals (#174)
 
   await expect(workoutCard(page)).toContainText('No workout planned'); // no longer prescribed
   await expect(page.getByTestId('history-resistance')).toContainText('Done'); // but what happened is still on the day

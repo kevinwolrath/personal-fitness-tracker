@@ -96,10 +96,57 @@ export const historyObservations = [
 /** The VR boxing alternative inside tonight's conditioning requirement (contract 08). */
 export const vrBoxing = (page: Page) => page.getByTestId('option-vr-boxing');
 
-/** App-level operations live in the header menu (#15). */
-export async function chooseFromMenu(page: Page, label: 'Configure with AI' | 'Export all data' | 'Edit setup answers' | 'My Gym' | 'Muscle coverage & exercise log') {
-  await page.getByRole('button', { name: 'Menu' }).click();
-  await page.getByTestId('app-menu').getByRole('button', { name: label }).click();
+type MenuLabel = 'Muscle Growth' | 'Muscle coverage & exercise log' | 'Health data sync' | 'Health Connect' | 'Settings';
+/** Where each former menu item lives since #174: the ☰ menu keeps Training and Sync & Share; the rest is in Settings. */
+const SETTINGS_PATH: Record<string, string[]> = {
+  'Configure with AI': ['Plan & goals'],
+  'Edit setup answers': ['Plan & goals'],
+  'My Gym': [],
+  Reminders: [],
+  'Back up data': ['Data management'],
+  'Restore data': ['Data management'],
+  'Export all data': ['Data management'],
+};
+
+/**
+ * App-level operations (#15, #174): the ☰ menu for Training and Sync & Share, Settings (a page with subpages) for
+ * setup, preferences and data. Leaves you where the item opens; `leaveSettings` returns to the main screen.
+ */
+export async function chooseFromMenu(page: Page, label: MenuLabel | 'Configure with AI' | 'Export all data' | 'Edit setup answers' | 'My Gym' | 'Reminders' | 'Back up data' | 'Restore data') {
+  const path = SETTINGS_PATH[label];
+  await leaveSettings(page); // the ☰ is on the main screens, not on Settings pages
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  if (!path) return page.getByTestId('app-menu').getByRole('button', { name: label, exact: true }).click();
+  await page.getByTestId('menu-settings').click();
+  await expect(page.getByTestId('settings-screen')).toBeVisible();
+  for (const step of path) await page.getByRole('button', { name: step, exact: true }).click();
+  await page.getByRole('button', { name: label, exact: true }).click();
+}
+
+/** ☰ → Settings (#174). */
+export async function openSettings(page: Page) {
+  await leaveSettings(page);
+  await page.getByRole('button', { name: 'Menu', exact: true }).click();
+  await page.getByTestId('menu-settings').click();
+  await expect(page.getByTestId('settings-screen')).toBeVisible();
+}
+
+/** ☰ → Settings → App preferences: Quests, appearance, energy units, trend alerts (#174). */
+export async function openPreferences(page: Page) {
+  await openSettings(page);
+  await page.getByTestId('settings-preferences').click();
+  await expect(page.getByTestId('app-preferences')).toBeVisible();
+}
+
+/** Back out of Settings, one level at a time, to the main screen (#174). */
+export async function leaveSettings(page: Page) {
+  for (let i = 0; i < 4; i++) {
+    const back = page.getByRole('button', { name: /^Back from / });
+    if (!(await back.count())) break;
+    await back.first().click();
+    await page.waitForTimeout(50);
+  }
+  await expect(page.getByTestId('settings-title')).toHaveCount(0);
 }
 
 /** Menu → Export all data → confirm "Export JSON". Resolves with the downloaded document. */
@@ -110,7 +157,9 @@ export async function exportAllData(page: Page): Promise<any> {
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Export JSON' }).click();
   const { readFileSync } = await import('node:fs');
-  return JSON.parse(readFileSync((await (await download).path())!, 'utf8'));
+  const doc = JSON.parse(readFileSync((await (await download).path())!, 'utf8'));
+  await leaveSettings(page);
+  return doc;
 }
 
 /** Today's workout (#56): the card, its sheet, and a session's options (full/short, skip, mark done) from the sheet. */

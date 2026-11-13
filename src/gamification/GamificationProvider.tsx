@@ -7,7 +7,13 @@ import { weekStart } from '../progress/series';
 
 export const GAME_PREFERENCE = 'pft.gamification.v1';
 type Preference = { version: 1; enabled: boolean; seen: string[] };
-type State = { enabled: boolean; ready: boolean; game: Game | null; error: string | null; setEnabled: (on: boolean) => void; celebration: { id: string; title: string; detail: string } | null; dismiss: () => void };
+type State = { enabled: boolean; ready: boolean; game: Game | null; error: string | null; loading: boolean; loadFailed: boolean; retry: () => void; setEnabled: (on: boolean) => void; celebration: { id: string; title: string; detail: string } | null; dismiss: () => void };
+
+/** #176: how long loading may take before the card offers Retry instead of waiting forever. */
+export const LOAD_TIMEOUT_MS = 20_000;
+export const LOAD_ERROR = 'Couldn’t load quests. Your tracking records are safe. Try again.';
+/** Diagnostics for each loading step (#176): step, outcome, elapsed time and counts only, never health data. */
+const trace = (step: string, details: Record<string, string | number | boolean>) => console.info(`[quests] ${step}`, JSON.stringify(details));
 const Context = createContext<State | null>(null);
 export const useGamification = () => useContext(Context);
 
@@ -20,6 +26,8 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [celebration, setCelebration] = useState<State['celebration']>(null);
+  const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const initialized = useRef(false);
   const latest = useRef(pref); latest.current = pref;
   const writes = useRef(Promise.resolve());
@@ -39,9 +47,25 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!pref?.enabled) { setGame(null); setCelebration(null); initialized.current = false; return; }
     let active = true;
+    let settled = false;
+    const started = Date.now();
+    setLoading(true);
+    trace('load start', { attempt });
+    // A store that never answers must not leave an endless spinner: offer Retry; a late answer still loads.
+    const watchdog = setTimeout(() => {
+      if (!active || settled) return;
+      trace('load stalled', { ms: Date.now() - started });
+      setError(LOAD_ERROR);
+      setLoading(false);
+    }, LOAD_TIMEOUT_MS);
     store.snapshot().then(snapshot => {
+      settled = true;
+      clearTimeout(watchdog);
       if (!active || !latest.current?.enabled) return;
+      trace('snapshot ok', { ms: Date.now() - started, activityLogs: snapshot.activityLogs.length, observations: snapshot.observations.length, configChanges: snapshot.configChanges.length });
+      const computeStart = Date.now();
       const next = gameFrom(snapshot,plan,today);
+      trace('quests ok', { ms: Date.now() - computeStart, quests: next.quests.length, achievements: next.achievements.length });
       setGame(next); setError(null);
       setCelebration(current => current && !next.earned.includes(current.id) ? null : current);
       const p = latest.current;
@@ -73,8 +97,16 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
         });
         save({ ...p, seen: [...new Set([...retained,...unseen])] });
       }
-    }, () => { if (active) setError('Could not load achievements. Your tracking records are safe.'); });
-    return () => { active = false; };
-  }, [pref?.enabled, store, plan, today, dataVersion, save]);
-  return <Context.Provider value={{ enabled: pref?.enabled ?? false, ready: !!pref, game, error: saveError ?? error, setEnabled: on => { if (latest.current) save({ ...latest.current, enabled: on }); }, celebration, dismiss: () => setCelebration(null) }}>{children}</Context.Provider>;
+    }).catch((e: unknown) => {
+      // #176: a failure in the snapshot *or in building the game* (a throw inside the handler above) lands here.
+      // It used to escape as an unhandled rejection and leave "Loading quests…" forever.
+      settled = true;
+      clearTimeout(watchdog);
+      if (!active) return;
+      trace('load failed', { ms: Date.now() - started, error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 200) : 'unknown' });
+      setError(LOAD_ERROR);
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; clearTimeout(watchdog); };
+  }, [pref?.enabled, store, plan, today, dataVersion, save, attempt]);
+  return <Context.Provider value={{ enabled: pref?.enabled ?? false, ready: !!pref, game, error: saveError ?? error, loading, loadFailed: error !== null, retry: () => setAttempt(n => n + 1), setEnabled: on => { if (latest.current) save({ ...latest.current, enabled: on }); }, celebration, dismiss: () => setCelebration(null) }}>{children}</Context.Provider>;
 }

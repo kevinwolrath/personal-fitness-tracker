@@ -3,6 +3,7 @@ import type { TrackingStore } from '../storage/types';
 import { MAX_UPLOAD_BYTES, SyncError, type Credential, type HealthSyncClient, type Receipt, type ShareLink, type ShareScope } from './client';
 import { databaseStart } from '../export/aiExport';
 import { buildSnapshot, MAX_RECORDS, projectShare, utf8Bytes, type SyncSnapshot } from './payload';
+import { contractProblem, describeProblem } from './contract';
 
 /**
  * Health data sync (#134, #163), app side, against the deployed Worker (questspirestudio docs/body-anvil/SYNC_API.md).
@@ -124,6 +125,13 @@ export async function syncNow(d: SyncDeps): Promise<SyncResult> {
     const s = built.snapshot;
     if (bytes > MAX_UPLOAD_BYTES || [s.measurements, s.training.sessions, s.training.exercises].some((xs) => xs.length > MAX_RECORDS)) {
       throw new SyncError('tooLarge', 'That’s more data than one upload allows. Share a shorter period instead, or use Back up data.');
+    }
+    // #181: check the server's contract here first, so a record it would refuse is named (list, date, field), not
+    // reported as "invalid" after the upload. Nothing is sent. The log line has the location only, never a value.
+    const problem = contractProblem(s);
+    if (problem) {
+      console.info('[sync] not sent: contract', JSON.stringify(problem));
+      throw new SyncError('invalid', `Not sent: ${describeProblem(problem)} Nothing was changed. Please report this message.`);
     }
     const cred = await credentialFor(d.secrets, userId);
     if (cred) {

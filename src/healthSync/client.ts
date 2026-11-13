@@ -25,8 +25,20 @@ export type RemoteSnapshot = { snapshot: unknown; updatedAt: string | null; revi
 export type ShareScope = { range: ShareRange; categories: Category[]; format: 'records' | 'summary'; expiresIn: number };
 
 export type SyncErrorKind = 'offline' | 'auth' | 'enrollmentKey' | 'notFound' | 'conflict' | 'tooLarge' | 'rateLimited' | 'invalid' | 'server' | 'badResponse' | 'config' | 'unavailable';
+/** The Worker's `{"error": "…"}` reason (#181): one line, printable, at most 200 characters; null when there isn't one. */
+async function serverReason(res: { text(): Promise<string> }): Promise<string | null> {
+  try {
+    const body = JSON.parse(await res.text()) as { error?: unknown };
+    if (typeof body?.error !== 'string') return null;
+    const clean = body.error.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 200);
+    return clean || null;
+  } catch {
+    return null;
+  }
+}
+
 export class SyncError extends Error {
-  constructor(readonly kind: SyncErrorKind, message: string, readonly status: number | null = null, readonly retryAfterSeconds: number | null = null) {
+  constructor(readonly kind: SyncErrorKind, message: string, readonly status: number | null = null, readonly retryAfterSeconds: number | null = null, readonly reason: string | null = null) {
     super(message);
     this.name = 'SyncError';
   }
@@ -114,7 +126,10 @@ export function healthSyncClient(baseUrl: string, fetchImpl: Fetch, opts: { dev?
     if (res.status < 200 || res.status >= 300) {
       const kind = kindFor(res.status, !!o.enrollmentKey);
       const retry = Number(res.headers.get('Retry-After'));
-      throw new SyncError(kind, messages[kind], res.status, Number.isFinite(retry) && retry > 0 ? retry : null);
+      // #181: say what the server objected to. Only its short reason is kept; a token or the data is never in it.
+      const reason = kind === 'invalid' || kind === 'tooLarge' || kind === 'conflict' ? await serverReason(res) : null;
+      const message = reason ? `${messages[kind].replace(/\. Nothing was changed\.$|\.$/, '')} (server: ${reason}).${/Nothing was changed/.test(messages[kind]) ? ' Nothing was changed.' : ''}` : messages[kind];
+      throw new SyncError(kind, message, res.status, Number.isFinite(retry) && retry > 0 ? retry : null, reason);
     }
     return res;
   };

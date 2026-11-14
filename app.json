@@ -48,6 +48,15 @@
             "minSdkVersion": 26
           }
         }
+      ],
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": [
+            "text/*"
+          ],
+          "disableIOS": true
+        }
       ]
     ],
     "experiments": {

@@ -31,6 +31,7 @@ function ThemedApp() {
             <Stack.Screen name="(main)" />
             <Stack.Screen name="configure" options={{ presentation: 'modal' }} />
             <Stack.Screen name="meal-photo" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="meal-return" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="setup" options={{ presentation: 'fullScreenModal' }} />
             <Stack.Screen name="settings/index" />
             <Stack.Screen name="settings/plan" />

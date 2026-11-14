@@ -24,7 +24,7 @@ type Props = {
   /** How energy is shown (#39). */
   energy: EnergyDisplay;
   /** A meal that's due: log what was actually eaten instead (#97). */
-  onLogDifferent?: (item: PrescriptionItem) => void;
+  onTakePhoto?: (item: PrescriptionItem) => void;
 };
 
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -51,7 +51,7 @@ function primaryTitle(a: Activity, log: ActivityLog | undefined): string {
  * only for a timed item due within the hour (#41). The screen hides the card when there's nothing to recommend.
  */
 /** Sessions (strength workouts) use WorkoutCard instead: an exercise checklist with no whole-workout Done (#28). */
-export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy, onLogDifferent }: Props) {
+export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDetails, energy, onTakePhoto }: Props) {
   const { colors, type } = useTheme();
   const styles = useStyles();
 
@@ -113,9 +113,10 @@ export function NextActionCard({ plan, next, nowMinutes, logs, onAdvance, onDeta
             />
           ))
         )}
-        {item.activity?.kind === 'meal' && onLogDifferent && (
-          // Secondary, outlined, under Done (#97 entry A): Done stays the card's one primary action.
-          <Button variant="secondary" title="📷 Log different meal" onPress={() => onLogDifferent(item)} accessibilityLabel={`Log a different meal instead of ${item.label}`} testID="next-action-log-different" />
+        {item.activity?.kind === 'meal' && onTakePhoto && (
+          // Secondary, outlined, under Done (#97 entry A): Done stays the card's one primary action. #183: one flow,
+          // camera → AI share → return page; the wizard is still in the meal's details ("Other ways to log").
+          <Button variant="secondary" title="📷 Take photo" onPress={() => onTakePhoto(item)} accessibilityLabel={`Take a photo of what you ate instead of ${item.label}`} testID="next-action-take-photo" />
         )}
         <Pressable onPress={() => onDetails(item)} style={styles.details} accessibilityRole="button" accessibilityLabel={`${item.label} options`}>
           <Text style={styles.detailsText}>Skip and more</Text>

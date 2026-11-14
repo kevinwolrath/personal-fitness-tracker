@@ -11,6 +11,7 @@ import * as Sharing from 'expo-sharing';
 
 const dir = () => (FileSystem.documentDirectory ? `${FileSystem.documentDirectory}meal-photos/` : null);
 const DRAFT = 'draft.json';
+const PENDING = 'pending-share.json';
 
 async function ensureDir(): Promise<string> {
   const d = dir();
@@ -97,5 +98,52 @@ export async function readClipboard(): Promise<string | null> {
     return (await Clipboard.getStringAsync()) || null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * #183: the day and meal a "Take photo" was for, kept while the user is in the AI app, so the shared result comes
+ * back to the right slot even after the app was killed. A small JSON file next to the photos.
+ */
+export async function loadPendingShare(): Promise<string | null> {
+  const d = dir();
+  if (!d) return null;
+  try {
+    return await FileSystem.readAsStringAsync(`${d}${PENDING}`);
+  } catch {
+    return null;
+  }
+}
+export async function savePendingShare(json: string): Promise<void> {
+  const d = await ensureDir();
+  await FileSystem.writeAsStringAsync(`${d}${PENDING}`, json);
+}
+export async function clearPendingShare(): Promise<void> {
+  const d = dir();
+  if (d) await FileSystem.deleteAsync(`${d}${PENDING}`, { idempotent: true }).catch(() => undefined);
+}
+
+/**
+ * #183: the photo AND the prompt in one Android share (ACTION_SEND with EXTRA_STREAM + EXTRA_TEXT, a read grant and
+ * the system chooser), so the AI can analyse straight away. react-native-share builds that intent; its file provider
+ * serves the app's cache, so a copy of the photo is shared from there. What the chosen app does with the text is up
+ * to that app: some put it in the message box, some drop it.
+ */
+export async function sharePhotoWithText(uri: string, text: string, title: string): Promise<PhotoShareResult> {
+  try {
+    const cache = FileSystem.cacheDirectory;
+    if (!cache) return 'unavailable';
+    await FileSystem.makeDirectoryAsync(`${cache}meal-share/`, { intermediates: true }).catch(() => undefined);
+    const ext = (uri.match(/\.(jpe?g|png|webp)$/i)?.[1] ?? 'jpg').toLowerCase();
+    const copy = `${cache}meal-share/meal.${ext}`;
+    await FileSystem.deleteAsync(copy, { idempotent: true }).catch(() => undefined);
+    await FileSystem.copyAsync({ from: uri, to: copy });
+    const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    // Loaded on use: the native module is only needed (and only present) in the app build, not in tests.
+    const RNShare = (require('react-native-share') as typeof import('react-native-share')).default;
+    const r = await RNShare.open({ url: copy, type, message: text, title, failOnCancel: false });
+    return r?.dismissedAction ? 'dismissed' : 'shared';
+  } catch {
+    return 'unavailable';
   }
 }

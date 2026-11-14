@@ -91,6 +91,7 @@ The menu closes before its item runs. On iOS, the item runs once the sheet has d
 | Go-to-date sheet | Sheet | Jump to any date: shortcuts (Today, Yesterday, A week ago, First entry) and the platform date picker |
 | Observation sheet | Sheet | One recorded observation: value, provenance (source, on-screen evidence, confidence, times), edit or remove |
 | `/setup` | Full-screen modal | Edit setup answers (contract 13) |
+| `/meal-return` | Full-screen modal | Return page for an AI's meal block shared to Body Anvil (#183, contract 15): Description, Energy (kJ), Save; closes back to the meal's day |
 | `/settings` | Full-screen page (stack) | Settings landing page (#174): Plan & goals, My Gym, Reminders, App preferences, Data management |
 | `/settings/plan`, `/settings/preferences`, `/settings/data` | Full-screen pages (stack) | Settings subpages (#174); Back and Android back return to `/settings` |
 

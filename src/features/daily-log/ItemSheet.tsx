@@ -47,12 +47,14 @@ type Props = {
   mealLog?: MealLog | null;
   /** Open the "Log different meal" wizard for this meal (#97). */
   onLogDifferent?: (item: PrescriptionItem) => void;
+  /** #183: camera → AI share → return page. */
+  onTakePhoto?: (item: PrescriptionItem) => void;
   onEditMeal?: (log: MealLog) => void;
   onRemoveMeal?: (log: MealLog) => void;
 };
 
 /** Secondary actions for a prescribed item: session details, short version, alternatives, skip/restore. */
-export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder, mealLog, onLogDifferent, onEditMeal, onRemoveMeal }: Props) {
+export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable, onClose, onSetDone, onSetSkipped, plan, energy, onTickExercise, onChooseVariant, sessionOrder, mealLog, onLogDifferent, onTakePhoto, onEditMeal, onRemoveMeal }: Props) {
   const { colors, type } = useTheme();
 
   const exerciseConfig = plan.exercise;
@@ -135,9 +137,7 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
               {mealLog ? null : item.state === 'skipped' ? (
                 <>
                   <Button title="Restore" disabled={!editable} onPress={act(() => onSetSkipped(item, false))} />
-                  {a?.kind === 'meal' && editable && onLogDifferent && (
-                    <Button title="📷 Log different meal" variant="secondary" onPress={act(() => onLogDifferent(item))} testID="sheet-log-different" />
-                  )}
+                  {a?.kind === 'meal' && editable && <MealPhotoActions item={item} onTakePhoto={onTakePhoto} onLogDifferent={onLogDifferent} act={act} />}
                 </>
               ) : item.kind === 'activity' && a ? (
                 <>
@@ -156,9 +156,9 @@ export function ItemSheet({ date = toLocalDate(new Date()), item, logs, editable
                       onPress={act(() => onSetDone(item, a, item.state !== 'done'))}
                     />
                   )}
-                  {a.kind === 'meal' && editable && onLogDifferent && (
+                  {a.kind === 'meal' && editable && (
                     // Record what was actually eaten (#97): the plan recipe is never counted as eaten.
-                    <Button title="📷 Log different meal" variant="secondary" onPress={act(() => onLogDifferent(item))} testID="sheet-log-different" />
+                    <MealPhotoActions item={item} onTakePhoto={onTakePhoto} onLogDifferent={onLogDifferent} act={act} />
                   )}
                   <Button title="Skip" variant="secondary" disabled={!editable} onPress={act(() => onSetSkipped(item, true))} />
                 </>
@@ -199,3 +199,13 @@ const styles = StyleSheet.create({
   gap: { marginTop: space.md },
   actions: { gap: space.sm, marginTop: space.sm },
 });
+
+/** #183: Take photo (one flow), then a quiet way into the wizard for gallery, a pasted reply or typed numbers. */
+function MealPhotoActions({ item, onTakePhoto, onLogDifferent, act }: { item: PrescriptionItem; onTakePhoto?: (item: PrescriptionItem) => void; onLogDifferent?: (item: PrescriptionItem) => void; act: (fn: () => void) => () => void }) {
+  return (
+    <>
+      {onTakePhoto && <Button title="📷 Take photo" variant="secondary" onPress={act(() => onTakePhoto(item))} testID="sheet-take-photo" />}
+      {onLogDifferent && <Button title="Other ways to log" variant="quiet" onPress={act(() => onLogDifferent(item))} accessibilityLabel="Log a different meal another way: gallery, paste or enter" testID="sheet-log-different" />}
+    </>
+  );
+}

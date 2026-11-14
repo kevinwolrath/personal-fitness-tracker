@@ -23,6 +23,7 @@ import { buildGuide } from '../../exercises/guide';
 import { ExerciseGuideSheet } from '../exercise-guide/ExerciseGuideSheet';
 import type { PrescribedExercise } from '../../prescription/session';
 import { NextActionCard } from './NextActionCard';
+import { useTakeMealPhoto } from '../meal-photo/takeMealPhoto';
 import { NoPlanCard } from './NoPlanCard';
 import { isDue } from '../../prescription/nextAction';
 import { useReminders } from '../reminders/RemindersProvider';
@@ -183,6 +184,15 @@ export function DayLogScreen() {
   );
   const [removingMeal, setRemovingMeal] = useState<MealLog | null>(null);
   const logDifferent = (item: PrescriptionItem) => router.push({ pathname: '/meal-photo', params: { date, activity: item.key } });
+  // #183: one flow: camera → the AI share sheet (photo + prompt) → the AI's block comes back to /meal-return.
+  const photo = useTakeMealPhoto({ store, plan });
+  const takePhoto = (item: PrescriptionItem) => photo.take({ date, activityId: item.key });
+  useEffect(() => {
+    if (photo.notice) {
+      setToast({ key: Date.now(), message: photo.notice });
+      photo.clearNotice();
+    }
+  }, [photo.notice]); // eslint-disable-line react-hooks/exhaustive-deps
   const editMeal = (log: MealLog) => router.push({ pathname: '/meal-photo', params: { date: log.date, edit: log.id } });
   const removeMeal = async (log: MealLog) => {
     setRemovingMeal(null);
@@ -390,7 +400,7 @@ export function DayLogScreen() {
 
         {topCard && (
           <View style={styles.firstBlock}>
-            {topCard.promoted ? workoutCard(true) : <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onLogDifferent={logDifferent} />}
+            {topCard.promoted ? workoutCard(true) : <NextActionCard plan={plan} energy={energy} next={next!} nowMinutes={nowMinutes} logs={records.activities} onAdvance={press} onDetails={setSheetItem} onTakePhoto={takePhoto} />}
           </View>
         )}
 
@@ -500,6 +510,7 @@ export function DayLogScreen() {
         sessionOrder={sheetItem ? orderOf(sheetItem.key) : undefined}
         mealLog={sheetItem ? mealFor[sheetItem.key] ?? null : null}
         onLogDifferent={logDifferent}
+        onTakePhoto={takePhoto}
         onEditMeal={editMeal}
         onRemoveMeal={setRemovingMeal}
       />

@@ -18,6 +18,7 @@ import { HealthConnectProvider, useHealthConnect } from '../health-connect/Healt
 import { HealthConnectSheet, healthConnectStatus } from '../health-connect/HealthConnectSheet';
 import { APP_NAME } from '../../brand';
 import { CoverageSheet } from '../muscles/CoverageSheet';
+import { ShareReceiver } from '../meal-photo/ShareReceiver';
 import { secrets } from '../../platform/secrets';
 import { syncStatus } from '../../healthSync/service';
 import { syncSummary } from '../../healthSync/summary';
@@ -103,6 +104,7 @@ function Shell({ children }: { children: ReactNode }) {
       <SafeAreaView edges={['bottom']} style={styles.toastDock} pointerEvents="box-none">
         <Toast toast={toast} onDone={clearToast} />
       </SafeAreaView>
+      <ShareReceiver />
       <AppMenu visible={menuOpen} onClose={() => setMenuOpen(false)} items={items} />
       {syncOpen && <HealthSyncSheet store={store} onClose={() => setSyncOpen(false)} />}
       {growthOpen && <MuscleGrowthEditor onClose={() => setGrowthOpen(false)} />}

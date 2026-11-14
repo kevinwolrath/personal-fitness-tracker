@@ -96,3 +96,34 @@ export async function readClipboard(): Promise<string | null> {
     return null;
   }
 }
+
+const PENDING = 'pft:meal-pending-share';
+export async function loadPendingShare(): Promise<string | null> {
+  return ls()?.getItem(PENDING) ?? null;
+}
+export async function savePendingShare(json: string): Promise<void> {
+  ls()?.setItem(PENDING, json);
+}
+export async function clearPendingShare(): Promise<void> {
+  ls()?.removeItem(PENDING);
+}
+
+/**
+ * #183 on the web test surface: the Web Share API with the image and the text where the browser supports it. Tests
+ * read `window.__pftLastShare` to check what was handed over (the photo and the prompt, together).
+ */
+export async function sharePhotoWithText(uri: string, text: string, title: string): Promise<PhotoShareResult> {
+  if (typeof window !== 'undefined') (window as unknown as { __pftLastShare?: unknown }).__pftLastShare = { uri, text, title };
+  const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { canShare?: (d: ShareData) => boolean; share?: (d: ShareData) => Promise<void> }) : undefined;
+  const data = photoSource(uri);
+  if (!nav?.share || !nav.canShare || !data) return 'shared';
+  try {
+    const blob = await (await fetch(data)).blob();
+    const file = new File([blob], 'meal.jpg', { type: blob.type || 'image/jpeg' });
+    if (!nav.canShare({ files: [file], text })) return 'shared';
+    await nav.share({ files: [file], text, title });
+    return 'shared';
+  } catch (e) {
+    return (e as { name?: string })?.name === 'AbortError' ? 'dismissed' : 'unavailable';
+  }
+}

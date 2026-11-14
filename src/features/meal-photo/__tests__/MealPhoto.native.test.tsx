@@ -128,7 +128,9 @@ async function openWizardFromCard() {
   await launch();
   await screen.findByTestId('next-action-title');
   expect(screen.getByTestId('next-action-title')).toHaveTextContent('Fixed lunch');
-  fireEvent.press(screen.getByTestId('next-action-log-different'));
+  // #183: the card's button is Take photo (one flow); the wizard is "Other ways to log" in the meal's details.
+  fireEvent.press(screen.getByLabelText('Fixed lunch options'));
+  fireEvent.press(await screen.findByTestId('sheet-log-different'));
   await screen.findByTestId('meal-photo');
 }
 

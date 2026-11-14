@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { openAt, row } from './helpers';
+import { openAt, row, openMealWizard } from './helpers';
 
 /**
  * #179: an AI's plain-text estimate is logged as one meal, without JSON, photos or a food-by-food breakdown. Unclear
@@ -34,8 +34,7 @@ async function pasteEstimate(page: Page, text: string) {
 
 test('a plain-English dinner estimate imports as one meal, reviewed and confirmed without JSON', async ({ page }) => {
   await openAt(page, at('18:00'));
-  await row(page, 'dinner').getByRole('button', { name: /details/ }).click();
-  await page.getByRole('button', { name: 'Log different meal' }).click();
+  await openMealWizard(page, 'dinner', 'Family dinner');
   await pasteEstimate(page, ESTIMATE);
 
   const summary = page.getByTestId('meal-estimate-summary');
@@ -69,7 +68,7 @@ test('a plain-English dinner estimate imports as one meal, reviewed and confirme
 
 test('unclear numbers are left empty with the reason; junk text gets one actionable message', async ({ page }) => {
   await openAt(page, at('12:10'));
-  await page.getByTestId('next-action-log-different').click();
+  await openMealWizard(page);
   await page.getByTestId('meal-paste-text').click();
   await page.getByTestId('meal-reply').fill('Thanks! Have a lovely evening.');
   await page.getByTestId('meal-check').click();
@@ -90,7 +89,7 @@ test('unclear numbers are left empty with the reason; junk text gets one actiona
 
 test('Back from pasting with no photo returns to the first choice', async ({ page }) => {
   await openAt(page, at('12:10'));
-  await page.getByTestId('next-action-log-different').click();
+  await openMealWizard(page);
   await page.getByTestId('meal-paste-text').click();
   await expect(page.getByTestId('meal-reply')).toBeVisible();
   await page.getByTestId('meal-bar').getByRole('button', { name: 'Back' }).click();

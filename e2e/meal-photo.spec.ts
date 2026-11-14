@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openAt, row } from './helpers';
+import { openAt, row, openMealWizard } from './helpers';
 
 /** #97: replace a scheduled meal with a photographed one, estimated by an external AI. */
 
@@ -32,7 +32,7 @@ Portions are estimates.`;
 
 async function startWithPhoto(page: Page) {
   await openAt(page, at('12:10'));
-  await page.getByTestId('next-action-log-different').click();
+  await openMealWizard(page);
   await expect(page.getByTestId('meal-context')).toContainText('Step 1 of 5 · Replaces Fixed lunch');
   const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('meal-library').click();
@@ -103,7 +103,7 @@ test('the draft survives a reload (the app restarting while you are in the AI ap
   await expect(page.getByTestId('meal-context')).toContainText('Step 4 of 5');
   // From Today too: the same meal's button picks the draft up again.
   await openAt(page, at('12:10'));
-  await page.getByTestId('next-action-log-different').click();
+  await openMealWizard(page);
   await expect(page.getByTestId('meal-reply')).toHaveValue('partial reply');
   await page.getByRole('button', { name: 'Back' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
@@ -126,13 +126,13 @@ test('the wizard screens fit the phone with one primary action each', async ({ p
   expect(await noHorizontalScroll()).toBe(true);
 });
 
-test('the due meal card offers Log different meal under Done; the meal sheet offers it for any meal', async ({ page }) => {
+test('the due meal card offers Take photo under Done (#183); the meal sheet offers the wizard for any meal', async ({ page }) => {
   await openAt(page, at('12:10'));
   const card = page.getByTestId('next-action');
   await expect(card.getByRole('button', { name: 'Done: Fixed lunch' })).toBeVisible();
-  await expect(card.getByTestId('next-action-log-different')).toHaveText('📷 Log different meal');
+  await expect(card.getByTestId('next-action-take-photo')).toHaveText('📷 Take photo');
   const done = await card.getByRole('button', { name: 'Done: Fixed lunch' }).boundingBox();
-  const other = await card.getByTestId('next-action-log-different').boundingBox();
+  const other = await card.getByTestId('next-action-take-photo').boundingBox();
   expect(other!.y).toBeGreaterThan(done!.y);
 
   await row(page, 'dinner').getByRole('button', { name: 'Family dinner details' }).click();

@@ -4,10 +4,27 @@ Replace a scheduled meal with what was actually eaten: photograph it, ask any AI
 
 ## Entry (content layer)
 
-- **Do this next**, when the due item is a meal: an outlined **📷 Log different meal** button under **Done**. Done stays the card's one primary action. The card grows by one button; the screen header is unchanged, so the 200 px budget (02) holds.
-- **Every meal's sheet** (the row's `›`): **📷 Log different meal** after Mark done (or after Restore when skipped). So any scheduled meal on today or a past day can be replaced. Future days are view-only (04): the route falls back to today for a future date.
+- **Do this next**, when the due item is a meal: an outlined **📷 Take photo** button under **Done** (#183: the one-flow path below; it replaced "Log different meal" on the card). Done stays the card's one primary action. The card grows by one button; the screen header is unchanged, so the 200 px budget (02) holds.
+- **Every meal's sheet** (the row's `›`): **📷 Take photo**, then a quiet **Other ways to log** (the wizard below: gallery, paste, enter), after Mark done (or after Restore when skipped). So any scheduled meal on today or a past day can be replaced. Future days are view-only (04): the route falls back to today for a future date.
+
+## One flow: Take photo → AI → Body Anvil (#183)
+
+The default, minimum-interaction path. No wizard, prompt copying, paste, preview or confirmation.
+
+1. **Take photo** opens the camera at once. Cancelling it returns to where you were, with nothing kept. A denied camera or a phone that can't share says so in a toast on the day.
+2. On capture, the photo is kept in app storage (as above) and the slot is remembered: the date, the scheduled meal and a fixed meal id, in `meal-photos/pending-share.json`. Then the Android share chooser opens at once with **the photo and the prompt in one share**: `ACTION_SEND` with `EXTRA_STREAM` (a cache copy through `react-native-share`'s file provider, with a read grant) and `EXTRA_TEXT`, through `createChooser`. The prompt (`QUICK_MEAL_PROMPT`) asks for automatic analysis and a shareable plain-text block in the first reply: a short description, total kJ and protein g, no JSON.
+3. The user shares the AI's block to **Body Anvil**. The app is a `text/*` `SEND` target (`expo-share-intent`, Android; the main activity is `singleTask`). Cold start and a running app both land on the return page; the share is cleared once handled.
+4. **Return page** (`/meal-return`, full-screen modal): `ModalHeader` "Log meal" (**Cancel**), a context line ("Replaces Fixed lunch · Mon, 2 Nov" or "Extra meal · …"), **Description** and **Energy (kJ)**, prefilled by the existing parser (`applyReply` → the natural-language interpreter, #179, and its rolling corpus; JSON as a fallback) and editable inline, and one primary **Save** in a fixed bottom bar.
+   - Protein, when parsed, is kept and stated in one line ("Protein ≈ 45 g from the estimate is kept"). It is never asked for and never blocks Save.
+   - An inline error appears only for a field that couldn't be read (with the parser's reason, e.g. a range) or that's invalid on Save. Required: a description (at most 80 characters) and energy from 1 to 30,000 kJ.
+   - **Slot:** the remembered one when it's from the last 24 hours and for today or a past day. Otherwise the safe default is an extra meal today, which replaces nothing.
+   - **Save once:** the fixed id, a double-tap guard, and a scheduled meal that already has a replacement reuses its id (no double counting). A new replacement marks the scheduled meal done in the same write (Replace semantics, below). The photo is attached and the AI's values as written go in the notes.
+   - After Save, the page closes back to the meal's day.
+5. What an AI app does with the shared text (whether it analyses at once, and whether its answer has a Share button) is up to that app. Body Anvil can't guarantee it.
 
 ## The wizard (`/meal-photo`, layout B)
+
+Reached from the meal sheet's **Other ways to log**, and from Edit meal.
 
 A full-screen modal route (`?date=…&activity=…`, or `?edit=<mealLogId>`), one step per screen:
 

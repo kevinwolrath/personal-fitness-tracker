@@ -182,3 +182,13 @@ export async function openSessionOptions(page: Page, label = 'Strength workout')
 export async function closeTopSheet(page: Page) {
   await page.getByTestId('modal-dismiss').filter({ visible: true }).last().click();
 }
+
+/**
+ * #183: the due meal card's button is 📷 Take photo (one flow); the wizard (gallery, paste, manual) is "Other ways to
+ * log" in the meal's details. Opens the wizard for the lunch (or the named meal).
+ */
+export async function openMealWizard(page: Page, meal = 'lunch', label = 'Fixed lunch') {
+  await row(page, meal).getByRole('button', { name: `${label} details` }).click();
+  await page.getByTestId('sheet-log-different').click();
+  await expect(page.getByTestId('meal-photo')).toBeVisible();
+}

@@ -78,6 +78,8 @@ jest.mock('expo-share-intent', () => {
 
 const NOW = new Date(2026, 10, 5, 12, 5); // Thursday 5 Nov, 12:05: the fixed lunch is due
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+/** A remembered photo time relative to the test's clock, so it holds in any time zone (CI runs in AEDT). */
+const minutesBefore = (m: number) => new Date(NOW.getTime() - m * 60_000).toISOString();
 const BLOCK = 'Beef curry with lentil dhal and rice\nEstimated energy: ~2,650 kJ\nProtein: ~45 g';
 
 async function launch() {
@@ -177,7 +179,7 @@ it('a second photo for the same lunch replaces the first meal: still one, never 
   const first = (await store().mealLogs())[0];
 
   // Another photo for the same lunch (a new id was remembered for it): its block is shared back.
-  mockFiles.pending = JSON.stringify({ id: 'other-id', date: '2026-11-05', planId: first.planId, activityId: 'lunch', replacedLabel: 'Fixed lunch', photo: null, startedAt: '2026-11-05T18:15:00+11:00' });
+  mockFiles.pending = JSON.stringify({ id: 'other-id', date: '2026-11-05', planId: first.planId, activityId: 'lunch', replacedLabel: 'Fixed lunch', photo: null, startedAt: minutesBefore(1) });
   await shareBack('Dinner: beef curry and dhal — ~2,400 kJ, 40 g protein');
   await act(async () => { fireEvent.press(await screen.findByTestId('meal-return-save')); });
   const logs = await store().mealLogs();
@@ -245,7 +247,7 @@ it('a camera that is denied, or a phone that can’t share, says so on the day (
 });
 
 it('cold start: a share that opened the app lands on the return page with the remembered slot', async () => {
-  mockFiles.pending = JSON.stringify({ id: 'cold-1', date: '2026-11-05', planId: 'weight-loss-v1', activityId: 'lunch', replacedLabel: 'Fixed lunch', photo: null, startedAt: '2026-11-05T18:00:00+11:00' });
+  mockFiles.pending = JSON.stringify({ id: 'cold-1', date: '2026-11-05', planId: 'weight-loss-v1', activityId: 'lunch', replacedLabel: 'Fixed lunch', photo: null, startedAt: minutesBefore(5) });
   mockShare.text = BLOCK; // the intent is there before the app renders
   await launch();
   expect(await screen.findByTestId('meal-return')).toBeTruthy();

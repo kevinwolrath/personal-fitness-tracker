@@ -31,3 +31,10 @@ export function mealPrompt(photoCount = 1): string {
     'Units: g, ml, piece, slice, cup, tbsp, tsp or serving. Numbers only (no "~" or ranges); null when unknown.',
   ].join('\n');
 }
+
+/**
+ * #183: the prompt sent WITH the photo in one share, so the AI analyses straight away and its first answer is a
+ * plain-text block the user can share back to Body Anvil (read by the #179 parser). Kevin's wording, verbatim.
+ */
+export const QUICK_MEAL_PROMPT =
+  'Analyse this meal photo. In your FIRST reply output a native shareable text/writing block where supported. Include a short meal description, estimated total energy in kJ and protein g where estimable. No JSON, verbose breakdown, extra prompts or commentary. If I correct the meal, regenerate the complete block.';
